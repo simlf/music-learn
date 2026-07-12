@@ -150,6 +150,62 @@ describe('lookup page sharp/flat helpers', () => {
 	});
 });
 
+describe('lookup page did-you-mean suggestion', () => {
+	it('stamping an unrecognized-but-close symbol shows a tappable suggestion that stamps the candidate on click', async () => {
+		render(LookupPage);
+
+		const input = screen.getByRole('textbox');
+		const button = screen.getByRole('button', { name: /stamp/i });
+
+		await fireEvent.input(input, { target: { value: 'Cmn7' } });
+		await fireEvent.click(button);
+
+		const errorBar = screen.getByTestId('error-bar');
+		expect(errorBar).toHaveTextContent(/DID YOU MEAN/);
+
+		const suggestion = within(errorBar).getByTestId('suggestion');
+		expect(suggestion).toHaveTextContent('Cm7');
+
+		await fireEvent.click(suggestion);
+
+		const result = screen.getByTestId('chord-result');
+		const glyphShadow = within(result).getAllByTestId('chord-glyph-shadow')[0];
+		expect(within(glyphShadow).getByText('C')).toBeInTheDocument();
+		expect(within(glyphShadow).getByText('m7')).toBeInTheDocument();
+	});
+
+	it('stamping an unrelated unrecognized symbol falls back to a plain rotating hint with no suggestion token', async () => {
+		render(LookupPage);
+
+		const input = screen.getByRole('textbox');
+		const button = screen.getByRole('button', { name: /stamp/i });
+
+		await fireEvent.input(input, { target: { value: 'Zxq9' } });
+		await fireEvent.click(button);
+
+		const errorBar = screen.getByTestId('error-bar');
+		expect(errorBar).toBeInTheDocument();
+		expect(within(errorBar).queryByTestId('suggestion')).not.toBeInTheDocument();
+	});
+
+	it('keeps the previously rendered chord-result visible while showing the suggestion bar (non-blocking)', async () => {
+		render(LookupPage);
+
+		const input = screen.getByRole('textbox');
+		const button = screen.getByRole('button', { name: /stamp/i });
+
+		await fireEvent.input(input, { target: { value: 'Cm7' } });
+		await fireEvent.click(button);
+		expect(screen.getByTestId('chord-result')).toBeInTheDocument();
+
+		await fireEvent.input(input, { target: { value: 'Cmn7' } });
+		await fireEvent.click(button);
+
+		expect(screen.getByTestId('error-bar')).toBeInTheDocument();
+		expect(screen.getByTestId('chord-result')).toBeInTheDocument();
+	});
+});
+
 describe('lookup page focus behavior', () => {
 	it('autofocuses the input on initial mount', () => {
 		render(LookupPage);

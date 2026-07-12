@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { spellChord } from '$lib/theory/chord';
-	import { pickHint } from '$lib/copy/hints';
+	import { pickHint, pickSuggestionHint } from '$lib/copy/hints';
+	import { didYouMean } from '$lib/theory/didYouMean';
 	import { playChord } from '$lib/audio/playChord';
 	import { formulaFor, aliasLine } from '$lib/lookup/chordPresentation';
 	import { getRecentLookups, addRecentLookup } from '$lib/lookup/recentLookups';
@@ -17,8 +18,21 @@
 	let symbol = $state('');
 	let result = $state<ChordResult | null>(null);
 	let hint = $state('');
+	let suggestion = $state<string | null>(null);
 	let recent = $state<string[]>(getRecentLookups());
 	let inputEl: HTMLInputElement | undefined = $state();
+
+	/** Placeholder token substituted with the didYouMean candidate in suggestion copy. */
+	const SYMBOL_PLACEHOLDER = '{SYMBOL}';
+
+	/** Splits the hint on the {SYMBOL} placeholder so the candidate can render as an inline element. */
+	function splitHintOnPlaceholder(text: string): [string, string] {
+		const index = text.indexOf(SYMBOL_PLACEHOLDER);
+		if (index === -1) {
+			return [text, ''];
+		}
+		return [text.slice(0, index), text.slice(index + SYMBOL_PLACEHOLDER.length)];
+	}
 
 	/** Selects the input's full content so the next keystroke types over it. */
 	function focusAndSelectInput() {
@@ -32,12 +46,21 @@
 			// Non-blocking success: replace the rendered result and clear any hint.
 			result = spelled;
 			hint = '';
+			suggestion = null;
 			recent = addRecentLookup(spelled.symbol);
 			focusAndSelectInput();
 		} else {
 			// Non-blocking error (D-08): keep the previously rendered chord visible,
-			// only surface a rotating hint in the error bar.
-			hint = pickHint();
+			// never clear `result` here. Try a confident single-candidate
+			// suggestion first; otherwise fall back to the existing rotating hint.
+			const candidate = didYouMean(input);
+			if (candidate) {
+				suggestion = candidate;
+				hint = pickSuggestionHint();
+			} else {
+				suggestion = null;
+				hint = pickHint();
+			}
 		}
 	}
 
@@ -111,7 +134,17 @@
 
 	{#if hint}
 		<p class="bg-ink text-mustard mt-4 p-3 font-mono text-label uppercase" data-testid="error-bar">
-			{hint}
+			{#if suggestion}
+				{@const [before, after] = splitHintOnPlaceholder(hint)}
+				{before}<button
+					type="button"
+					class="underline"
+					data-testid="suggestion"
+					onclick={() => showChordFromSymbol(suggestion!)}
+				>{suggestion}</button>{after}
+			{:else}
+				{hint}
+			{/if}
 		</p>
 	{/if}
 
