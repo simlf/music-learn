@@ -35,7 +35,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Notes are spelled with one letter per scale degree from the root + interval formula (F♯m7 shows C♯, not D♭), never a flattened pitch-class list.
   4. Every note is displayed with its letter name primary and Do-Ré-Mi solfège alongside.
   5. The interface renders in the Print Shop direction (paper ground, ink borders, vermilion/mustard, sharp corners) with root/3rd/5th/7th shown in their fixed interval colors.
-**Plans**: TBD
+**Plans**: 4 plans
+- [ ] 01-01-PLAN.md — Walking Skeleton: scaffold SvelteKit static app, RED e2e test, thinnest Cm7 slice, 01-SKELETON.md
+- [ ] 01-02-PLAN.md — Theory engine (TDD): spellChord across 8 qualities × 12 roots, aliases, enharmonics, dual letter/solfège naming
+- [ ] 01-03-PLAN.md — Print Shop design system: interval color tokens + PianoKeyboard, NoteLabel, ChordGlyph, Button, IntervalChip
+- [ ] 01-04-PLAN.md — Full /showcase slice: stamp glyph, colored keyboard, formula readout, alias line, empty/error states, surprise-me, synth playback
 **UI hint**: yes
 
 ### Phase 2: Chord Lookup Companion
@@ -141,7 +145,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Print Shop Foundation & Theory Core | 0/TBD | Not started | - |
+| 1. Print Shop Foundation & Theory Core | 0/4 | Not started | - |
 | 2. Chord Lookup Companion | 0/TBD | Not started | - |
 | 3. On-Screen Drill Loop | 0/TBD | Not started | - |
 | 4. MIDI Play-to-Answer | 0/TBD | Not started | - |
