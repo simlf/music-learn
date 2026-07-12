@@ -3,11 +3,13 @@
 	import { pickHint } from '$lib/copy/hints';
 	import { playChord } from '$lib/audio/playChord';
 	import { formulaFor, aliasLine } from '$lib/lookup/chordPresentation';
+	import { getRecentLookups, addRecentLookup } from '$lib/lookup/recentLookups';
 	import type { ChordResult } from '$lib/theory/types';
 	import PianoKeyboard from '$lib/components/PianoKeyboard.svelte';
 	import ChordGlyph from '$lib/components/ChordGlyph.svelte';
 	import IntervalChip from '$lib/components/IntervalChip.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import RecentChipRow from '$lib/components/RecentChipRow.svelte';
 
 	/** Starter chords for the empty state (D-09): zero-friction first success. */
 	const STARTER_CHORDS = ['Cm7', 'Fmaj7', 'G7'];
@@ -15,6 +17,14 @@
 	let symbol = $state('');
 	let result = $state<ChordResult | null>(null);
 	let hint = $state('');
+	let recent = $state<string[]>(getRecentLookups());
+	let inputEl: HTMLInputElement | undefined = $state();
+
+	/** Selects the input's full content so the next keystroke types over it. */
+	function focusAndSelectInput() {
+		inputEl?.focus();
+		inputEl?.select();
+	}
 
 	function showChord(input: string) {
 		const spelled = spellChord(input);
@@ -22,6 +32,8 @@
 			// Non-blocking success: replace the rendered result and clear any hint.
 			result = spelled;
 			hint = '';
+			recent = addRecentLookup(spelled.symbol);
+			focusAndSelectInput();
 		} else {
 			// Non-blocking error (D-08): keep the previously rendered chord visible,
 			// only surface a rotating hint in the error bar.
@@ -44,6 +56,24 @@
 		event.preventDefault();
 		showChord(symbol);
 	}
+
+	/** Inserts a glyph at the input's current caret position, then refocuses. */
+	function insertGlyph(glyph: string) {
+		const el = inputEl;
+		const start = el?.selectionStart ?? symbol.length;
+		const end = el?.selectionEnd ?? symbol.length;
+		symbol = symbol.slice(0, start) + glyph + symbol.slice(end);
+		const caret = start + glyph.length;
+		queueMicrotask(() => {
+			el?.focus();
+			el?.setSelectionRange(caret, caret);
+		});
+	}
+
+	/** Autofocus on mount so the piano-side user can type immediately. */
+	function autofocus(node: HTMLInputElement) {
+		node.focus();
+	}
 </script>
 
 <main class="bg-paper text-ink min-h-screen p-8 font-sans">
@@ -53,11 +83,31 @@
 		<input
 			type="text"
 			bind:value={symbol}
+			bind:this={inputEl}
+			use:autofocus
 			placeholder="Type a chord: Cm7, F♯ø7, B♭maj7..."
-			class="border-ink bg-paper-bright border-2 p-2"
+			class="border-ink bg-paper-bright min-w-0 flex-1 border-2 p-2"
 		/>
+		<Button
+			type="button"
+			variant="ghost"
+			aria-label="Insert sharp"
+			onclick={() => insertGlyph('♯')}
+		>
+			♯
+		</Button>
+		<Button
+			type="button"
+			variant="ghost"
+			aria-label="Insert flat"
+			onclick={() => insertGlyph('♭')}
+		>
+			♭
+		</Button>
 		<Button type="submit">Stamp</Button>
 	</form>
+
+	<RecentChipRow {recent} onselect={showChordFromSymbol} />
 
 	{#if hint}
 		<p class="bg-ink text-mustard mt-4 p-3 font-mono text-label uppercase" data-testid="error-bar">

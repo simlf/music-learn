@@ -27,6 +27,11 @@
 		padding: var(--spacing-sm) var(--spacing-md);
 		border: 2px solid var(--color-ink);
 		cursor: pointer;
+		/* 44px minimum touch target (Phase 1 exception), load-bearing for
+		   single-glyph ghost content (helper buttons, recent chips) where
+		   word-length padding alone isn't guaranteed to clear it. */
+		min-height: 44px;
+		min-width: 44px;
 		transition:
 			transform 120ms ease-out,
 			box-shadow 120ms ease-out;

@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, within } from '@testing-library/svelte';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import LookupPage from '../src/routes/+page.svelte';
 
 // Note: masthead assertions intentionally live outside this file. The masthead
@@ -7,6 +7,13 @@ import LookupPage from '../src/routes/+page.svelte';
 // page component in isolation (no layout wrapper) to avoid layout-render
 // coupling. Masthead behavior is verified via manual/e2e navigation checks,
 // not a unit-rendered +layout.svelte import here.
+
+// Recent-lookups state is read from localStorage at page mount, so every
+// test in this file needs a clean store to stay deterministic and
+// independent of test execution order.
+beforeEach(() => {
+	localStorage.clear();
+});
 
 describe('lookup page happy path', () => {
 	it('typing Dm7 and clicking Stamp renders a chord-result with dual naming and interval-colored keys', async () => {
@@ -83,5 +90,85 @@ describe('lookup page non-blocking error', () => {
 
 		expect(screen.getByTestId('error-bar')).toBeInTheDocument();
 		expect(screen.getByTestId('chord-result')).toBeInTheDocument();
+	});
+});
+
+describe('lookup page recent lookups', () => {
+	it('does not render a recent-chip row before the first successful lookup', () => {
+		render(LookupPage);
+
+		expect(screen.queryByTestId('recent-chip-row')).not.toBeInTheDocument();
+	});
+
+	it('shows a recent-chip row after stamping, and re-stamps on chip click', async () => {
+		render(LookupPage);
+
+		const input = screen.getByRole('textbox');
+		const button = screen.getByRole('button', { name: /stamp/i });
+
+		await fireEvent.input(input, { target: { value: 'Cm7' } });
+		await fireEvent.click(button);
+		await fireEvent.input(input, { target: { value: 'Fmaj7' } });
+		await fireEvent.click(button);
+
+		const row = screen.getByTestId('recent-chip-row');
+		expect(within(row).getByText('Cm7')).toBeInTheDocument();
+		expect(within(row).getByText('Fmaj7')).toBeInTheDocument();
+
+		await fireEvent.click(within(row).getByRole('button', { name: 'Look up Cm7 again' }));
+
+		const result = screen.getByTestId('chord-result');
+		const glyphShadow = within(result).getAllByTestId('chord-glyph-shadow')[0];
+		expect(within(glyphShadow).getByText('C')).toBeInTheDocument();
+		expect(within(glyphShadow).getByText('m7')).toBeInTheDocument();
+	});
+});
+
+describe('lookup page sharp/flat helpers', () => {
+	it('clicking the sharp helper inserts the glyph into the input value', async () => {
+		render(LookupPage);
+
+		const input = screen.getByRole('textbox') as HTMLInputElement;
+		await fireEvent.input(input, { target: { value: 'F' } });
+
+		const sharpButton = screen.getByRole('button', { name: 'Insert sharp' });
+		await fireEvent.click(sharpButton);
+
+		expect(input.value).toContain('♯');
+	});
+
+	it('clicking the flat helper inserts the glyph into the input value', async () => {
+		render(LookupPage);
+
+		const input = screen.getByRole('textbox') as HTMLInputElement;
+		await fireEvent.input(input, { target: { value: 'B' } });
+
+		const flatButton = screen.getByRole('button', { name: 'Insert flat' });
+		await fireEvent.click(flatButton);
+
+		expect(input.value).toContain('♭');
+	});
+});
+
+describe('lookup page focus behavior', () => {
+	it('autofocuses the input on initial mount', () => {
+		render(LookupPage);
+
+		const input = screen.getByRole('textbox');
+		expect(document.activeElement).toBe(input);
+	});
+
+	it('re-selects the input content after a successful stamp for type-over entry', async () => {
+		render(LookupPage);
+
+		const input = screen.getByRole('textbox') as HTMLInputElement;
+		const button = screen.getByRole('button', { name: /stamp/i });
+
+		await fireEvent.input(input, { target: { value: 'Cm7' } });
+		await fireEvent.click(button);
+
+		expect(document.activeElement).toBe(input);
+		expect(input.selectionStart).toBe(0);
+		expect(input.selectionEnd).toBe(input.value.length);
 	});
 });
