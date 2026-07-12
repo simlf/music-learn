@@ -5,7 +5,7 @@
 	let notes = $state<string[]>([]);
 
 	function showChord() {
-		notes = spellChord(symbol);
+		notes = spellChord(symbol).notes.map((note) => note.letter);
 	}
 </script>
 
