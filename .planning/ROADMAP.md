@@ -14,7 +14,7 @@ Music Learn takes a returning classical pianist from "I freeze when I see `F♯�
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Print Shop Foundation & Theory Core** - Design identity + correct chord/spelling/dual-naming engine, testable in isolation (completed 2026-07-12)
-- [ ] **Phase 2: Chord Lookup Companion** - Type a symbol, see notes on a colored keyboard diagram next to the piano
+- [x] **Phase 2: Chord Lookup Companion** - Type a symbol, see notes on a colored keyboard diagram next to the piano (completed 2026-07-12)
 - [ ] **Phase 3: On-Screen Drill Loop** - Construction & identification drills with instant elaborative feedback on the clickable keyboard
 - [ ] **Phase 4: MIDI Play-to-Answer** - Answer the same drills by playing the connected digital piano
 - [ ] **Phase 5: Smart Drill Design** - Interleaved sessions, scoped practice, and fading label scaffolds
@@ -67,7 +67,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Each highlighted note shows letter + solfège naming and is colored by its interval role (root/3rd/5th/7th).
   3. Unrecognized or malformed input gives a clear, non-blocking message rather than a wrong answer.
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans complete
 
 **Wave 1**
 
@@ -79,7 +79,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 02-03-PLAN.md — Did-you-mean suggestion: single-candidate heuristic + suggestion copy variants + inline tappable suggestion in the error bar
+- [x] 02-03-PLAN.md — Did-you-mean suggestion: single-candidate heuristic + suggestion copy variants + inline tappable suggestion in the error bar
 
 **UI hint**: yes
 
@@ -196,7 +196,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Print Shop Foundation & Theory Core | 4/4 | Complete    | 2026-07-12 |
-| 2. Chord Lookup Companion | 2/3 | In Progress|  |
+| 2. Chord Lookup Companion | 3/3 | Complete   | 2026-07-12 |
 | 3. On-Screen Drill Loop | 0/TBD | Not started | - |
 | 4. MIDI Play-to-Answer | 0/TBD | Not started | - |
 | 5. Smart Drill Design | 0/TBD | Not started | - |
