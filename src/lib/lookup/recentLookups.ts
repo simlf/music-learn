@@ -27,7 +27,10 @@ export function getRecentLookups(): string[] {
 		if (!Array.isArray(parsed) || !parsed.every((entry) => typeof entry === 'string')) {
 			return [];
 		}
-		return parsed;
+		// Enforce the documented invariants on the read path too: a legacy or
+		// hand-edited store must never yield duplicates (the keyed chip row
+		// throws on duplicate keys) or more than MAX_RECENT chips.
+		return [...new Set(parsed)].slice(0, MAX_RECENT);
 	} catch {
 		return [];
 	}

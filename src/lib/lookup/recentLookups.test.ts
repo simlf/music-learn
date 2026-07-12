@@ -42,6 +42,19 @@ describe('recentLookups', () => {
 		expect(result).not.toContain('Cm7');
 	});
 
+	it('dedupes duplicate entries from a legacy or foreign-written store on read', () => {
+		localStorage.setItem('music-learn:recent-lookups', JSON.stringify(['Cm7', 'Cm7', 'Fmaj7']));
+		expect(getRecentLookups()).toEqual(['Cm7', 'Fmaj7']);
+	});
+
+	it('caps an oversized stored list at 5 entries on read', () => {
+		localStorage.setItem(
+			'music-learn:recent-lookups',
+			JSON.stringify(['Cm7', 'Fmaj7', 'G7', 'Dm7', 'Bbmaj7', 'Am7', 'Em7'])
+		);
+		expect(getRecentLookups()).toEqual(['Cm7', 'Fmaj7', 'G7', 'Dm7', 'Bbmaj7']);
+	});
+
 	it('treats a corrupt/non-array value in localStorage as empty', () => {
 		localStorage.setItem('music-learn:recent-lookups', '{"not":"an array"}');
 		expect(getRecentLookups()).toEqual([]);
