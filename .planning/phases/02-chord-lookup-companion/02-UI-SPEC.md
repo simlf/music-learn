@@ -58,7 +58,7 @@ Exceptions (carried from Phase 1, still apply):
 - 44px minimum touch target — now load-bearing this phase for the ♯/♭ helper buttons and recent chips, not just a future-proofing note.
 
 New exception:
-- **Mobile-portrait above-the-fold budget:** on a 375×667 viewport (iPhone SE baseline), the stack of masthead + input row + recent chips (if present) + chord glyph + keyboard must fit without scrolling for the primary "type, see notes" loop. If the recent-chip row would push the keyboard below the fold on first render, the chip row's vertical footprint takes priority for trimming (reduce its top margin to `sm` instead of `md`) before touching keyboard size or type sizes.
+- **Mobile-portrait above-the-fold budget (conditional, explicit fallback):** on viewport width ≤375px and height ≤667px (iPhone SE baseline) with a recent-chip row present: if the stack height of masthead + input row + recent chips + chord glyph + keyboard exceeds the viewport height, reduce the recent-chip row's top margin from `md` (16px) to `sm` (8px). Otherwise use the standard `md` (16px) top margin. This is the only conditional spacing value in this spec. Keyboard size and type sizes are never trimmed; all other spacing values are unconditional.
 
 ---
 
