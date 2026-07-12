@@ -67,11 +67,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Each highlighted note shows letter + solfège naming and is colored by its interval role (root/3rd/5th/7th).
   3. Unrecognized or malformed input gives a clear, non-blocking message rather than a wrong answer.
 
-**Plans**: 3 plans
+**Plans**: 1/3 plans executed
 
 **Wave 1**
 
-- [ ] 02-01-PLAN.md — Lookup page as app home + masthead shell: RED e2e, extract chordPresentation, type-symbol-to-stamp on keyboard with dual naming and interval colors (LOOK-01 core)
+- [x] 02-01-PLAN.md — Lookup page as app home + masthead shell: RED e2e, extract chordPresentation, type-symbol-to-stamp on keyboard with dual naming and interval colors (LOOK-01 core)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -196,7 +196,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Print Shop Foundation & Theory Core | 4/4 | Complete    | 2026-07-12 |
-| 2. Chord Lookup Companion | 0/3 | Not started | - |
+| 2. Chord Lookup Companion | 1/3 | In Progress|  |
 | 3. On-Screen Drill Loop | 0/TBD | Not started | - |
 | 4. MIDI Play-to-Answer | 0/TBD | Not started | - |
 | 5. Smart Drill Design | 0/TBD | Not started | - |

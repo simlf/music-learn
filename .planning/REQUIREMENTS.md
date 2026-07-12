@@ -29,7 +29,7 @@
 
 ### Chord Lookup Companion
 
-- [ ] **LOOK-01**: User can type a chord symbol and see its notes on a keyboard diagram with dual naming — fast enough to use mid-song at the piano
+- [x] **LOOK-01**: User can type a chord symbol and see its notes on a keyboard diagram with dual naming — fast enough to use mid-song at the piano
 
 ### Scales
 
