@@ -5,11 +5,19 @@
  * spellChord recognizes - doubling as a manual engine-correctness spot-check.
  */
 
-/** The 12 roots used in the v1 reference chord matrix (ASCII form, spellChord normalizes). */
-const ROOTS = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
+/**
+ * The 12 roots used in the v1 reference chord matrix (ASCII form, spellChord
+ * normalizes). Exported so didYouMean.ts can draw its candidate space from
+ * this same proven set rather than redefining it.
+ */
+export const ROOTS = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
 
-/** The 8 v1 chord-quality symbol suffixes (matches the reference chord matrix). */
-const QUALITY_SUFFIXES = ['', 'm', 'dim', 'maj7', 'm7', '7', 'm7b5', 'dim7'];
+/**
+ * The 8 v1 chord-quality symbol suffixes (matches the reference chord
+ * matrix). Exported so didYouMean.ts can draw its candidate space from this
+ * same proven set rather than redefining it.
+ */
+export const QUALITY_SUFFIXES = ['', 'm', 'dim', 'maj7', 'm7', '7', 'm7b5', 'dim7'];
 
 /**
  * Returns a random chord symbol drawn from the supported root x quality
