@@ -1,6 +1,7 @@
-import { render, screen } from '@testing-library/svelte';
-import { describe, expect, it } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/svelte';
+import { describe, expect, it, vi } from 'vitest';
 import PianoKeyboard from './PianoKeyboard.svelte';
+import RecentChipRow from './RecentChipRow.svelte';
 import { spellChord } from '$lib/theory/chord';
 
 describe('PianoKeyboard', () => {
@@ -48,5 +49,34 @@ describe('PianoKeyboard', () => {
 		expect(keyboard).not.toBeNull();
 		expect(keyboard?.getAttribute('onclick')).toBeNull();
 		expect(keyboard?.getAttribute('onkeydown')).toBeNull();
+	});
+});
+
+describe('RecentChipRow', () => {
+	it('shows a ghost chip per recent symbol with a re-lookup aria-label', () => {
+		render(RecentChipRow, { recent: ['Cm7', 'Fmaj7'], onselect: () => {} });
+
+		const chips = screen.getAllByTestId('recent-chip');
+		expect(chips).toHaveLength(2);
+		expect(screen.getByText('Cm7')).toBeInTheDocument();
+		expect(screen.getByText('Fmaj7')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Look up Cm7 again' })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Look up Fmaj7 again' })).toBeInTheDocument();
+	});
+
+	it('renders nothing when recent is empty', () => {
+		const { container } = render(RecentChipRow, { recent: [], onselect: () => {} });
+
+		expect(container.querySelector('[data-testid="recent-chip-row"]')).toBeNull();
+		expect(container.textContent?.trim()).toBe('');
+	});
+
+	it('calls onselect with the clicked chip symbol', async () => {
+		const onselect = vi.fn();
+		render(RecentChipRow, { recent: ['Cm7', 'Fmaj7'], onselect });
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Look up Fmaj7 again' }));
+
+		expect(onselect).toHaveBeenCalledWith('Fmaj7');
 	});
 });
