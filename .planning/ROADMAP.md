@@ -13,7 +13,7 @@ Music Learn takes a returning classical pianist from "I freeze when I see `F♯�
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Print Shop Foundation & Theory Core** - Design identity + correct chord/spelling/dual-naming engine, testable in isolation
+- [x] **Phase 1: Print Shop Foundation & Theory Core** - Design identity + correct chord/spelling/dual-naming engine, testable in isolation (completed 2026-07-12)
 - [ ] **Phase 2: Chord Lookup Companion** - Type a symbol, see notes on a colored keyboard diagram next to the piano
 - [ ] **Phase 3: On-Screen Drill Loop** - Construction & identification drills with instant elaborative feedback on the clickable keyboard
 - [ ] **Phase 4: MIDI Play-to-Answer** - Answer the same drills by playing the connected digital piano
@@ -39,7 +39,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Every note is displayed with its letter name primary and Do-Ré-Mi solfège alongside.
   5. The interface renders in the Print Shop direction (paper ground, ink borders, vermilion/mustard, sharp corners) with root/3rd/5th/7th shown in their fixed interval colors.
 
-**Plans**: 3/4 plans executed
+**Plans**: 4/4 plans complete
 **Wave 1**
 
 - [x] 01-01-PLAN.md — Walking Skeleton: scaffold SvelteKit static app, RED e2e test, thinnest Cm7 slice, 01-SKELETON.md
@@ -51,7 +51,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 01-04-PLAN.md — Full /showcase slice: stamp glyph, colored keyboard, formula readout, alias line, empty/error states, surprise-me, synth playback
+- [x] 01-04-PLAN.md — Full /showcase slice: stamp glyph, colored keyboard, formula readout, alias line, empty/error states, surprise-me, synth playback
 
 **UI hint**: yes
 
@@ -182,7 +182,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Print Shop Foundation & Theory Core | 3/4 | In Progress|  |
+| 1. Print Shop Foundation & Theory Core | 4/4 | Complete   | 2026-07-12 |
 | 2. Chord Lookup Companion | 0/TBD | Not started | - |
 | 3. On-Screen Drill Loop | 0/TBD | Not started | - |
 | 4. MIDI Play-to-Answer | 0/TBD | Not started | - |
