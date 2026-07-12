@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 01
 current_phase_name: print-shop-foundation-theory-core
 status: executing
-stopped_at: Completed 01-02-PLAN.md
-last_updated: "2026-07-12T20:49:12.977Z"
+stopped_at: Completed 01-03-PLAN.md
+last_updated: "2026-07-12T20:59:06.094Z"
 last_activity: 2026-07-12
 last_activity_desc: Phase 01 execution started
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 4
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-12)
 ## Current Position
 
 Phase: 01 (print-shop-foundation-theory-core) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-07-12 — Phase 01 execution started
 
@@ -57,6 +57,7 @@ Progress: [░░░░░░░░░░] 0%
 *Updated after each plan completion*
 | Phase 01 P01 | 35 min | 3 tasks | 18 files |
 | Phase 01 P02 | 25 min | 2 tasks | 7 files |
+| Phase 01 P03 | 27min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,8 @@ Recent decisions affecting current work:
 - [Phase 01]: Vite pinned to 8.1.4; resolve.conditions:['browser'] required for Vitest component tests under SvelteKit — Vite 8.x satisfies all peer ranges (kit, vite-plugin-svelte, tailwind vite plugin, vitest); browser condition fixes lifecycle_function_unavailable in @testing-library/svelte tests
 - [Phase 01 P02]: Reference chord matrix generated from tonal's Chord.get output (12 roots x 8 v1 qualities), including legitimate double-flat diminished-seventh spellings, as the correctness proof for THEORY-01/03
 - [Phase 01 P02]: ø/ø7 jazz shorthand (half-diminished glyph) both normalize to m7b5 before parsing; ASCII and glyph accidentals normalized at the spellChord input boundary
+- [Phase 01 P03]: Two-octave PianoKeyboard span resolves the delegated keyboard-span decision; note-to-key assignment walks ascending from the root rather than matching by letter alone — Naive letter matching over-highlights repeated letters across a two-octave keyboard; caught during Task 3 verification
+- [Phase 01 P03]: app.css theme token contract completed additively across Plans 01-03: base palette, interval aliases, on-fill text colors, spacing scale, typography roles — Each plan extends the shared token contract rather than redefining it, per the phase's living design-token baseline
 
 ### Pending Todos
 
@@ -94,6 +97,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-12T20:49:12.969Z
-Stopped at: Completed 01-02-PLAN.md
+Last session: 2026-07-12T20:59:06.090Z
+Stopped at: Completed 01-03-PLAN.md
 Resume file: None
