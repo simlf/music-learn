@@ -1,14 +1,20 @@
 <script lang="ts">
 	import { Interval } from 'tonal';
 	import { spellChord } from '$lib/theory/chord';
+	import { randomChord } from '$lib/theory/randomChord';
+	import { pickHint } from '$lib/copy/hints';
 	import type { ChordResult, IntervalRole } from '$lib/theory/types';
 	import PianoKeyboard from '$lib/components/PianoKeyboard.svelte';
 	import ChordGlyph from '$lib/components/ChordGlyph.svelte';
 	import IntervalChip from '$lib/components/IntervalChip.svelte';
 	import Button from '$lib/components/Button.svelte';
 
+	/** Starter chords for the empty state (D-09): zero-friction first success. */
+	const STARTER_CHORDS = ['Cm7', 'Fmaj7', 'G7'];
+
 	let symbol = $state('');
 	let result = $state<ChordResult | null>(null);
+	let hint = $state('');
 
 	interface FormulaEntry {
 		role: IntervalRole;
@@ -43,7 +49,25 @@
 	}
 
 	function showChord(input: string) {
-		result = spellChord(input);
+		const spelled = spellChord(input);
+		if (spelled.recognized) {
+			// Non-blocking success: replace the rendered result and clear any hint.
+			result = spelled;
+			hint = '';
+		} else {
+			// Non-blocking error (D-08): keep the previously rendered chord visible,
+			// only surface a rotating hint in the error bar.
+			hint = pickHint();
+		}
+	}
+
+	function showChordFromSymbol(input: string) {
+		symbol = input;
+		showChord(input);
+	}
+
+	function surpriseMe() {
+		showChordFromSymbol(randomChord());
 	}
 
 	/**
@@ -68,7 +92,7 @@
 	<h1 class="text-heading font-bold uppercase tracking-tight">Music Learn</h1>
 	<h2 class="text-heading mt-2 font-bold">Chord showcase</h2>
 
-	<form class="mt-8" onsubmit={handleSubmit}>
+	<form class="mt-8 flex items-center gap-2" onsubmit={handleSubmit}>
 		<input
 			type="text"
 			bind:value={symbol}
@@ -76,7 +100,35 @@
 			class="border-ink bg-paper-bright border-2 p-2"
 		/>
 		<Button type="submit">Show chord</Button>
+		<Button type="button" variant="ghost" onclick={surpriseMe}>Surprise me</Button>
 	</form>
+
+	{#if hint}
+		<p class="bg-ink text-mustard mt-4 p-3 font-mono text-label uppercase" data-testid="error-bar">
+			{hint}
+		</p>
+	{/if}
+
+	{#if !result}
+		<div class="mt-8">
+			<p class="text-heading font-bold">No chord yet</p>
+			<p class="text-muted mt-2">
+				Type a symbol like Cm7 and press Show chord to see its notes in ink and color.
+			</p>
+			<div class="mt-4 flex gap-2">
+				{#each STARTER_CHORDS as starter (starter)}
+					<Button
+						type="button"
+						variant="ghost"
+						data-testid="starter-chord"
+						onclick={() => showChordFromSymbol(starter)}
+					>
+						{starter}
+					</Button>
+				{/each}
+			</div>
+		</div>
+	{/if}
 
 	{#if result?.recognized}
 		<div class="stamp mt-8" data-testid="chord-result">
