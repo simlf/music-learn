@@ -31,3 +31,37 @@ export function pickHint(): string {
 	lastIndex = index;
 	return errorHints[index];
 }
+
+/**
+ * Rotating "did you mean" suggestion copy for LOOK-01's single-candidate
+ * error recovery. Same warm, witty print-shop-clerk voice as errorHints
+ * (uppercase mono, no em dashes), each variant embedding a {SYMBOL}
+ * placeholder the caller substitutes with the didYouMean candidate before
+ * rendering. Never plural, never multiple candidates.
+ */
+export const suggestionHints: string[] = [
+	'NOT IN THE CATALOG. DID YOU MEAN {SYMBOL}?',
+	'WE DO NOT STOCK THAT SPELLING. DID YOU MEAN {SYMBOL}?',
+	'CLOSE, BUT NOT QUITE. DID YOU MEAN {SYMBOL}?'
+];
+
+let lastSuggestionIndex = -1;
+
+/**
+ * Picks a suggestion variant, avoiding an immediate repeat, mirroring
+ * pickHint's anti-repeat logic exactly but tracked by its own independent
+ * lastSuggestionIndex so the two rotations never cross-contaminate.
+ */
+export function pickSuggestionHint(): string {
+	if (suggestionHints.length === 1) {
+		lastSuggestionIndex = 0;
+		return suggestionHints[0];
+	}
+
+	let index = Math.floor(Math.random() * suggestionHints.length);
+	while (index === lastSuggestionIndex) {
+		index = Math.floor(Math.random() * suggestionHints.length);
+	}
+	lastSuggestionIndex = index;
+	return suggestionHints[index];
+}
