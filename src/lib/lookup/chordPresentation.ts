@@ -49,6 +49,14 @@ export function formulaFor(chord: ChordResult): FormulaEntry[] {
  * there are no aliases.
  */
 export function aliasLine(chord: ChordResult): string {
-	const forms = [chord.symbol, ...chord.aliases.map((alias) => chord.root + alias)];
+	// tonal echoes `symbol` in ASCII accidental form ("Bbmaj7", "F#m7b5")
+	// while `root` is glyph-converted ("B♭", "F♯"). Rebuild the symbol on the
+	// glyph root (root-aware, so quality suffixes like "b5" stay untouched)
+	// or the Set dedupe below never collapses "Bbmaj7" against "B♭maj7".
+	const asciiRoot = toAsciiAccidentals(chord.root);
+	const glyphSymbol = chord.symbol.startsWith(asciiRoot)
+		? chord.root + chord.symbol.slice(asciiRoot.length)
+		: chord.symbol;
+	const forms = [glyphSymbol, ...chord.aliases.map((alias) => chord.root + alias)];
 	return [...new Set(forms)].join(' = ');
 }

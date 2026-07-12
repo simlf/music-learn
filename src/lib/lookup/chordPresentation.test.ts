@@ -33,6 +33,23 @@ describe('aliasLine', () => {
 		expect(line.split(' = ')).toHaveLength(new Set(line.split(' = ')).size);
 	});
 
+	it('renders a flat-rooted chord with glyph accidentals only, never the ASCII duplicate', () => {
+		const line = aliasLine(spellChord('Bbmaj7'));
+		const forms = line.split(' = ');
+		expect(forms[0]).toBe('B♭maj7');
+		expect(line).not.toContain('Bbmaj7');
+		expect(forms).toHaveLength(new Set(forms).size);
+		expect(forms.every((form) => form.startsWith('B♭'))).toBe(true);
+	});
+
+	it('renders a sharp-rooted chord with glyph accidentals only, never the ASCII duplicate', () => {
+		const line = aliasLine(spellChord('F#m7b5'));
+		const forms = line.split(' = ');
+		expect(line).not.toContain('F#');
+		expect(forms).toHaveLength(new Set(forms).size);
+		expect(forms.every((form) => form.startsWith('F♯'))).toBe(true);
+	});
+
 	it('returns just the symbol with no trailing " = " when there are no aliases', () => {
 		const chord = spellChord('Cm7');
 		const line = aliasLine({ ...chord, aliases: [] });
