@@ -25,6 +25,8 @@ Chord symbol fluency: see a jazz chord symbol like `Cm7` or `F♯ø7` in sheet m
 - [ ] Smart practice: spaced repetition that tracks wrong answers and drills weak chords/scales more; progress persists between sessions (streaks, progress view)
 - [ ] Dual note naming: letters (C, D, E) primary to match jazz notation, Do-Ré-Mi solfège shown alongside as a bridge
 - [ ] Deployed as a website accessible from any device (laptop at the piano, phone elsewhere)
+- [ ] "Print Shop" visual identity with a memory-supporting interval color language (root/3rd/5th/7th consistently colored app-wide)
+- [ ] Learning-science drill design: interleaved practice by default, fading label scaffolds, elaborative wrong-answer feedback
 
 ### Out of Scope
 
@@ -58,6 +60,10 @@ Chord symbol fluency: see a jazz chord symbol like `Cm7` or `F♯ø7` in sheet m
 | Letters primary, solfège alongside | Jazz symbols are letter-based; immersion with a familiar bridge | — Pending |
 | Spaced repetition for drills | Weak spots (unfamiliar chords/scales) need more reps; supports daily-habit goal | — Pending |
 | Deployed website over local app | Accessible at the piano and on the phone; supports habit formation | — Pending |
+| Backend on user's Oracle server + SQLite | One shared progress history across laptop and phone; user already owns the server | — Pending |
+| "Print Shop" artistic direction | User choice after comparing 4 directions + 3 hybrids: letterpress vibe — paper ground, ink borders, vermilion/mustard, sharp corners, misregistered print shadows (mockups in `.planning/design/`) | — Pending |
+| Interval color language (root=vermilion, 7th=mustard, ...) | Color encodes chord structure consistently app-wide — dual coding makes chord-quality differences visual, not just intellectual | — Pending |
+| Spaced repetition deferred to v1.x | Research: don't build scheduling before 1–2 weeks of real answer history exists; persistence ships in v1 | — Pending |
 
 ## Evolution
 

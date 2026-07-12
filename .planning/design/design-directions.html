@@ -1,0 +1,331 @@
+<title>Music Learn — Four Design Directions</title>
+<style>
+  :root{
+    --page-bg:#eceae6;
+    --page-ink:#2a2723;
+    --page-muted:#6f695f;
+    --rule:#d8d4cc;
+  }
+  body{
+    background:var(--page-bg);
+    color:var(--page-ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.55;
+    padding:48px 24px 80px;
+  }
+  .wrap{max-width:1120px;margin:0 auto;}
+  header.intro{max-width:640px;margin-bottom:40px;}
+  .eyebrow{
+    font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--page-muted);margin-bottom:10px;
+  }
+  h1{font-size:clamp(26px,4vw,36px);line-height:1.15;margin-bottom:12px;text-wrap:balance;font-weight:700;}
+  .intro p{color:var(--page-muted);font-size:15px;}
+  .grid{
+    display:grid;grid-template-columns:repeat(2,1fr);gap:28px;
+  }
+  @media(max-width:860px){.grid{grid-template-columns:1fr;}}
+
+  .direction{display:flex;flex-direction:column;gap:0;}
+  .dir-head{
+    display:flex;align-items:baseline;justify-content:space-between;
+    gap:12px;padding:0 2px 10px;
+  }
+  .dir-name{font-size:17px;font-weight:700;}
+  .dir-num{font-size:12px;color:var(--page-muted);letter-spacing:.08em;}
+  .dir-note{font-size:13.5px;color:var(--page-muted);padding:12px 2px 0;}
+  .swatches{display:flex;gap:6px;padding:10px 2px 0;}
+  .sw{width:26px;height:26px;border-radius:50%;border:1px solid rgba(0,0,0,.12);}
+
+  /* ---------- shared mockup skeleton ---------- */
+  .mock{
+    border-radius:10px;overflow:hidden;
+    box-shadow:0 1px 2px rgba(30,25,18,.08),0 12px 32px rgba(30,25,18,.10);
+    display:flex;flex-direction:column;
+  }
+  .m-top{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;}
+  .m-brand{font-size:14px;}
+  .m-streak{font-size:12px;padding:4px 10px;border-radius:99px;white-space:nowrap;}
+  .m-body{padding:22px 22px 26px;display:flex;flex-direction:column;align-items:center;gap:6px;}
+  .m-task{font-size:12px;letter-spacing:.12em;text-transform:uppercase;}
+  .m-chord{line-height:1.1;}
+  .m-sub{font-size:13px;margin-bottom:12px;}
+
+  /* keyboard */
+  .kb{position:relative;width:100%;max-width:400px;height:120px;margin:4px 0 14px;}
+  .kb .w{
+    position:absolute;top:0;height:100%;width:12.1%;
+    border:1px solid;border-radius:0 0 4px 4px;box-sizing:border-box;
+    display:flex;align-items:flex-end;justify-content:center;padding-bottom:5px;
+  }
+  .kb .b{
+    position:absolute;top:0;height:60%;width:7.4%;
+    border-radius:0 0 3px 3px;z-index:2;
+  }
+  .klbl{font-size:9.5px;text-align:center;line-height:1.25;font-family:inherit;}
+  .klbl b{display:block;font-size:11px;}
+  .m-feedback{
+    display:flex;align-items:center;gap:8px;
+    font-size:13.5px;padding:8px 16px;border-radius:8px;
+  }
+  .m-actions{display:flex;gap:10px;margin-top:16px;}
+  .btn{font-size:13px;padding:9px 20px;border-radius:8px;font-weight:600;}
+
+  /* white key positions: C D E F G A B C  → i*12.53% */
+  .w1{left:0}.w2{left:12.53%}.w3{left:25.06%}.w4{left:37.59%}
+  .w5{left:50.12%}.w6{left:62.65%}.w7{left:75.18%}.w8{left:87.71%}
+  /* black keys at boundaries 1,2,4,5,6 → left = i*12.53 - 3.7 */
+  .b1{left:8.83%}.b2{left:21.36%}.b3{left:46.42%}.b4{left:58.95%}.b5{left:71.48%}
+
+  /* ============ 1 · JAZZ CLUB ============ */
+  .t-jazz .mock{background:linear-gradient(175deg,#211a13 0%,#171209 100%);color:#efe4d0;}
+  .t-jazz .m-top{border-bottom:1px solid rgba(217,160,91,.18);}
+  .t-jazz .m-brand{font-family:Palatino,"Palatino Linotype","Book Antiqua",Georgia,serif;font-style:italic;font-size:16px;color:#d9a05b;}
+  .t-jazz .m-streak{background:rgba(217,160,91,.12);color:#d9a05b;border:1px solid rgba(217,160,91,.3);}
+  .t-jazz .m-task{color:#8a7a62;}
+  .t-jazz .m-chord{font-family:Palatino,"Palatino Linotype",Georgia,serif;font-size:58px;font-weight:400;color:#f3e9d7;}
+  .t-jazz .m-chord sup{font-size:26px;color:#d9a05b;}
+  .t-jazz .m-sub{color:#9c8c73;}
+  .t-jazz .kb .w{background:#f0e8da;border-color:#0d0a06;}
+  .t-jazz .kb .b{background:#0f0c08;border:1px solid #000;}
+  .t-jazz .kb .w.hit{background:#d9a05b;}
+  .t-jazz .kb .w.hit .klbl{color:#2a1e0e;}
+  .t-jazz .klbl{color:#a99;}
+  .t-jazz .m-feedback{background:rgba(140,180,120,.1);color:#a8c890;border:1px solid rgba(168,200,144,.25);}
+  .t-jazz .btn.primary{background:#d9a05b;color:#211708;}
+  .t-jazz .btn.ghost{border:1px solid rgba(239,228,208,.25);color:#cfc2ab;}
+
+  /* ============ 2 · CLEAN STUDIO ============ */
+  .t-studio .mock{background:#ffffff;color:#1b1e22;}
+  .t-studio .m-top{border-bottom:1px solid #edeff2;}
+  .t-studio .m-brand{font-weight:700;letter-spacing:-.01em;}
+  .t-studio .m-streak{background:#eef4ff;color:#2b5fd9;font-weight:600;}
+  .t-studio .m-task{color:#8a919c;}
+  .t-studio .m-chord{font-size:56px;font-weight:800;letter-spacing:-.03em;}
+  .t-studio .m-chord sup{font-size:24px;color:#2b5fd9;font-weight:700;}
+  .t-studio .m-sub{color:#8a919c;}
+  .t-studio .kb .w{background:#fff;border-color:#c9cdd4;}
+  .t-studio .kb .b{background:#2a2e35;}
+  .t-studio .kb .w.hit{background:#2b5fd9;border-color:#2b5fd9;}
+  .t-studio .kb .w.hit .klbl{color:#fff;}
+  .t-studio .klbl{color:#9aa1ab;}
+  .t-studio .m-feedback{background:#e9f7ee;color:#1d7a3e;}
+  .t-studio .btn.primary{background:#1b1e22;color:#fff;}
+  .t-studio .btn.ghost{border:1px solid #d6dae0;color:#4a5058;}
+
+  /* ============ 3 · PAPER & INK ============ */
+  .t-paper .mock{background:#f6efdf;color:#2b2418;font-family:Georgia,"Times New Roman",serif;}
+  .t-paper .m-top{border-bottom:1.5px solid #2b2418;}
+  .t-paper .m-brand{font-style:italic;font-size:15px;}
+  .t-paper .m-streak{border:1px solid #2b2418;color:#2b2418;border-radius:2px;font-family:Georgia,serif;}
+  .t-paper .m-task{color:#8c7f66;font-family:Georgia,serif;}
+  .t-paper .m-chord{font-size:56px;font-weight:400;}
+  .t-paper .m-chord sup{font-size:24px;color:#a33d2a;}
+  .t-paper .m-sub{color:#8c7f66;font-style:italic;}
+  .t-paper .kb .w{background:#fdfaf2;border-color:#4a4030;border-radius:0;}
+  .t-paper .kb .b{background:#332b1e;border-radius:0;}
+  .t-paper .kb .w.hit{background:#e8c9a0;}
+  .t-paper .kb .w.hit .klbl{color:#4a3a1a;}
+  .t-paper .klbl{color:#9c8f76;}
+  .t-paper .m-feedback{border-top:1px solid #cdbfa4;border-bottom:1px solid #cdbfa4;border-radius:0;color:#5a6b3f;background:transparent;}
+  .t-paper .btn{border-radius:2px;font-family:Georgia,serif;font-weight:400;}
+  .t-paper .btn.primary{background:#2b2418;color:#f6efdf;}
+  .t-paper .btn.ghost{border:1px solid #2b2418;color:#2b2418;}
+
+  /* ============ 4 · PLAYFUL ============ */
+  .t-play .mock{background:#fffdf5;color:#2d2a33;border:2.5px solid #2d2a33;border-radius:18px;box-shadow:5px 6px 0 #2d2a33;}
+  .t-play .m-top{border-bottom:2px dashed #e4dfd0;}
+  .t-play .m-brand{font-weight:800;color:#7a4fd0;}
+  .t-play .m-streak{background:#ffd166;color:#6b4a00;font-weight:800;border:2px solid #2d2a33;}
+  .t-play .m-task{color:#a49fac;font-weight:700;}
+  .t-play .m-chord{font-size:56px;font-weight:900;color:#7a4fd0;letter-spacing:-.02em;}
+  .t-play .m-chord sup{font-size:24px;color:#ef6351;}
+  .t-play .m-sub{color:#8d8896;font-weight:600;}
+  .t-play .kb .w{background:#fff;border-color:#2d2a33;border-width:2px;border-radius:0 0 7px 7px;}
+  .t-play .kb .b{background:#2d2a33;border-radius:0 0 5px 5px;}
+  .t-play .kb .w.hit{background:#5ec26a;}
+  .t-play .kb .w.hit .klbl{color:#fff;}
+  .t-play .klbl{color:#a49fac;font-weight:700;}
+  .t-play .m-feedback{background:#e7f7e9;color:#1e7a2e;border:2px solid #5ec26a;border-radius:12px;font-weight:700;}
+  .t-play .btn{border:2px solid #2d2a33;border-radius:12px;font-weight:800;}
+  .t-play .btn.primary{background:#7a4fd0;color:#fff;box-shadow:2.5px 3px 0 #2d2a33;}
+  .t-play .btn.ghost{background:#fff;color:#2d2a33;}
+
+  footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--rule);color:var(--page-muted);font-size:13.5px;max-width:640px;}
+</style>
+
+<div class="wrap">
+  <header class="intro">
+    <div class="eyebrow">Music Learn · Artistic direction</div>
+    <h1>The same drill, four ways</h1>
+    <p>One construction drill — “Play D<span style="font-size:.8em;vertical-align:super">m7</span>”, answered correctly — rendered in each direction. Compare how the same moment feels.</p>
+  </header>
+
+  <div class="grid">
+
+    <!-- 1 · JAZZ CLUB -->
+    <section class="direction t-jazz">
+      <div class="dir-head"><span class="dir-name">Jazz Club</span><span class="dir-num">DARK · WARM</span></div>
+      <div class="mock">
+        <div class="m-top">
+          <span class="m-brand">Music Learn</span>
+          <span class="m-streak">5-day streak</span>
+        </div>
+        <div class="m-body">
+          <span class="m-task">Play this chord</span>
+          <div class="m-chord">D<sup>m7</sup></div>
+          <span class="m-sub">Ré mineur septième</span>
+          <div class="kb">
+            <div class="w w1"><span class="klbl"></span></div>
+            <div class="w w2 hit"><span class="klbl"><b>D</b>Ré</span></div>
+            <div class="w w3"></div>
+            <div class="w w4 hit"><span class="klbl"><b>F</b>Fa</span></div>
+            <div class="w w5"></div>
+            <div class="w w6 hit"><span class="klbl"><b>A</b>La</span></div>
+            <div class="w w7"></div>
+            <div class="w w8 hit"><span class="klbl"><b>C</b>Do</span></div>
+            <div class="b b1"></div><div class="b b2"></div><div class="b b3"></div><div class="b b4"></div><div class="b b5"></div>
+          </div>
+          <div class="m-feedback">✓ Correct — any inversion counts</div>
+          <div class="m-actions">
+            <span class="btn primary">Next chord</span>
+            <span class="btn ghost">Why these notes?</span>
+          </div>
+        </div>
+      </div>
+      <div class="swatches">
+        <span class="sw" style="background:#171209"></span>
+        <span class="sw" style="background:#211a13"></span>
+        <span class="sw" style="background:#d9a05b"></span>
+        <span class="sw" style="background:#f3e9d7"></span>
+        <span class="sw" style="background:#a8c890"></span>
+      </div>
+      <p class="dir-note">Dark, warm, a little atmosphere. Serif chord symbols like a club poster. Easiest on the eyes next to the piano in the evening.</p>
+    </section>
+
+    <!-- 2 · CLEAN STUDIO -->
+    <section class="direction t-studio">
+      <div class="dir-head"><span class="dir-name">Clean Studio</span><span class="dir-num">LIGHT · MINIMAL</span></div>
+      <div class="mock">
+        <div class="m-top">
+          <span class="m-brand">Music Learn</span>
+          <span class="m-streak">5-day streak</span>
+        </div>
+        <div class="m-body">
+          <span class="m-task">Play this chord</span>
+          <div class="m-chord">D<sup>m7</sup></div>
+          <span class="m-sub">Ré mineur septième</span>
+          <div class="kb">
+            <div class="w w1"></div>
+            <div class="w w2 hit"><span class="klbl"><b>D</b>Ré</span></div>
+            <div class="w w3"></div>
+            <div class="w w4 hit"><span class="klbl"><b>F</b>Fa</span></div>
+            <div class="w w5"></div>
+            <div class="w w6 hit"><span class="klbl"><b>A</b>La</span></div>
+            <div class="w w7"></div>
+            <div class="w w8 hit"><span class="klbl"><b>C</b>Do</span></div>
+            <div class="b b1"></div><div class="b b2"></div><div class="b b3"></div><div class="b b4"></div><div class="b b5"></div>
+          </div>
+          <div class="m-feedback">✓ Correct — any inversion counts</div>
+          <div class="m-actions">
+            <span class="btn primary">Next chord</span>
+            <span class="btn ghost">Why these notes?</span>
+          </div>
+        </div>
+      </div>
+      <div class="swatches">
+        <span class="sw" style="background:#ffffff"></span>
+        <span class="sw" style="background:#1b1e22"></span>
+        <span class="sw" style="background:#2b5fd9"></span>
+        <span class="sw" style="background:#eef4ff"></span>
+        <span class="sw" style="background:#1d7a3e"></span>
+      </div>
+      <p class="dir-note">Bright, functional, zero decoration. Bold sans-serif, one blue accent. Fastest to read at a glance, best in daylight.</p>
+    </section>
+
+    <!-- 3 · PAPER & INK -->
+    <section class="direction t-paper">
+      <div class="dir-head"><span class="dir-name">Paper &amp; Ink</span><span class="dir-num">WARM LIGHT · CLASSICAL</span></div>
+      <div class="mock">
+        <div class="m-top">
+          <span class="m-brand">Music Learn</span>
+          <span class="m-streak">5-day streak</span>
+        </div>
+        <div class="m-body">
+          <span class="m-task">Play this chord</span>
+          <div class="m-chord">D<sup>m7</sup></div>
+          <span class="m-sub">Ré mineur septième</span>
+          <div class="kb">
+            <div class="w w1"></div>
+            <div class="w w2 hit"><span class="klbl"><b>D</b>Ré</span></div>
+            <div class="w w3"></div>
+            <div class="w w4 hit"><span class="klbl"><b>F</b>Fa</span></div>
+            <div class="w w5"></div>
+            <div class="w w6 hit"><span class="klbl"><b>A</b>La</span></div>
+            <div class="w w7"></div>
+            <div class="w w8 hit"><span class="klbl"><b>C</b>Do</span></div>
+            <div class="b b1"></div><div class="b b2"></div><div class="b b3"></div><div class="b b4"></div><div class="b b5"></div>
+          </div>
+          <div class="m-feedback">✓ Correct — any inversion counts</div>
+          <div class="m-actions">
+            <span class="btn primary">Next chord</span>
+            <span class="btn ghost">Why these notes?</span>
+          </div>
+        </div>
+      </div>
+      <div class="swatches">
+        <span class="sw" style="background:#f6efdf"></span>
+        <span class="sw" style="background:#2b2418"></span>
+        <span class="sw" style="background:#a33d2a"></span>
+        <span class="sw" style="background:#e8c9a0"></span>
+        <span class="sw" style="background:#5a6b3f"></span>
+      </div>
+      <p class="dir-note">Warm off-white like aged sheet music, serif throughout, restrained rules instead of boxes. Feels like a music stand, not an app.</p>
+    </section>
+
+    <!-- 4 · PLAYFUL -->
+    <section class="direction t-play">
+      <div class="dir-head"><span class="dir-name">Playful Learning</span><span class="dir-num">COLORFUL · GAMIFIED</span></div>
+      <div class="mock">
+        <div class="m-top">
+          <span class="m-brand">Music Learn</span>
+          <span class="m-streak">🔥 5-day streak</span>
+        </div>
+        <div class="m-body">
+          <span class="m-task">Play this chord</span>
+          <div class="m-chord">D<sup>m7</sup></div>
+          <span class="m-sub">Ré mineur septième</span>
+          <div class="kb">
+            <div class="w w1"></div>
+            <div class="w w2 hit"><span class="klbl"><b>D</b>Ré</span></div>
+            <div class="w w3"></div>
+            <div class="w w4 hit"><span class="klbl"><b>F</b>Fa</span></div>
+            <div class="w w5"></div>
+            <div class="w w6 hit"><span class="klbl"><b>A</b>La</span></div>
+            <div class="w w7"></div>
+            <div class="w w8 hit"><span class="klbl"><b>C</b>Do</span></div>
+            <div class="b b1"></div><div class="b b2"></div><div class="b b3"></div><div class="b b4"></div><div class="b b5"></div>
+          </div>
+          <div class="m-feedback">✓ Nice! Any inversion counts</div>
+          <div class="m-actions">
+            <span class="btn primary">Next chord</span>
+            <span class="btn ghost">Why these notes?</span>
+          </div>
+        </div>
+      </div>
+      <div class="swatches">
+        <span class="sw" style="background:#fffdf5"></span>
+        <span class="sw" style="background:#7a4fd0"></span>
+        <span class="sw" style="background:#5ec26a"></span>
+        <span class="sw" style="background:#ffd166"></span>
+        <span class="sw" style="background:#ef6351"></span>
+      </div>
+      <p class="dir-note">Chunky borders, candy colors, visible celebration. Makes streaks and wins loud — strongest pull for daily-habit motivation.</p>
+    </section>
+
+  </div>
+
+  <footer>
+    All four show the same information: chord symbol with solfège bridge, keyboard with the answer highlighted (letters + Do-Ré-Mi), instant feedback, and the streak. Directions can also be mixed — e.g. Clean Studio layout with a Jazz Club dark palette.
+  </footer>
+</div>

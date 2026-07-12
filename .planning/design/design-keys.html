@@ -1,0 +1,271 @@
+<title>Music Learn — Print Shop, key color tests</title>
+<style>
+  :root{
+    --page-bg:#e9e5dc;
+    --page-ink:#26221b;
+    --page-muted:#736c5f;
+    --rule:#d3cdc0;
+  }
+  body{
+    background:var(--page-bg);color:var(--page-ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.55;padding:48px 24px 80px;
+  }
+  .wrap{max-width:1140px;margin:0 auto;}
+  header.intro{max-width:680px;margin-bottom:40px;}
+  .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--page-muted);margin-bottom:10px;}
+  h1{font-size:clamp(26px,4vw,36px);line-height:1.15;margin-bottom:12px;text-wrap:balance;font-weight:700;}
+  .intro p{color:var(--page-muted);font-size:15px;}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;}
+  @media(max-width:1020px){.grid{grid-template-columns:repeat(2,1fr);}}
+  @media(max-width:700px){.grid{grid-template-columns:1fr;max-width:460px;margin:0 auto;}}
+
+  .direction{display:flex;flex-direction:column;}
+  .dir-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:0 2px 10px;}
+  .dir-name{font-size:15px;font-weight:700;}
+  .dir-num{font-size:11px;color:var(--page-muted);letter-spacing:.08em;}
+  .dir-note{font-size:13px;color:var(--page-muted);padding:10px 2px 0;}
+
+  /* Print Shop frame — shared */
+  .mock{
+    background:#f2ecdd;color:#221e17;border:2px solid #221e17;
+    overflow:hidden;display:flex;flex-direction:column;
+    box-shadow:0 1px 2px rgba(30,25,18,.08),0 12px 32px rgba(30,25,18,.10);
+  }
+  .m-top{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:2px solid #221e17;}
+  .m-brand{font-weight:800;letter-spacing:-.02em;text-transform:uppercase;font-size:12px;}
+  .m-streak{font-size:11px;padding:4px 9px;background:#221e17;color:#f2ecdd;font-family:"Courier New",monospace;font-weight:700;white-space:nowrap;}
+  .m-body{padding:18px 16px 22px;display:flex;flex-direction:column;align-items:center;gap:5px;}
+  .m-task{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;}
+  .m-chord{font-family:Georgia,serif;font-size:50px;font-weight:700;position:relative;line-height:1.05;}
+  .m-chord .shadow{position:absolute;left:3px;top:3px;color:#c8502e;z-index:-1;}
+  .m-chord sup{font-size:21px;}
+  .m-sub{color:#7d7462;font-family:"Courier New",monospace;font-size:11.5px;margin-bottom:10px;}
+  .m-feedback{font-size:11.5px;padding:7px 12px;background:#221e17;color:#f0c948;font-family:"Courier New",monospace;font-weight:700;margin-top:2px;}
+  .m-actions{display:flex;gap:10px;margin-top:13px;}
+  .btn{font-size:12px;padding:8px 16px;font-weight:600;border:2px solid #221e17;}
+  .btn.primary{background:#c8502e;color:#f2ecdd;box-shadow:3px 3px 0 #221e17;}
+  .btn.ghost{color:#221e17;background:transparent;}
+
+  .kb{position:relative;width:100%;max-width:340px;height:104px;margin:4px 0 12px;}
+  .kb .w{
+    position:absolute;top:0;height:100%;width:12.1%;
+    background:#faf6ea;border:1.5px solid #221e17;box-sizing:border-box;
+    display:flex;align-items:flex-end;justify-content:center;padding-bottom:5px;
+  }
+  .kb .b{position:absolute;top:0;height:60%;width:7.4%;background:#221e17;z-index:2;}
+  .klbl{font-size:8.5px;text-align:center;line-height:1.25;color:#9a907f;}
+  .klbl b{display:block;font-size:10px;}
+  .w1{left:0}.w2{left:12.53%}.w3{left:25.06%}.w4{left:37.59%}
+  .w5{left:50.12%}.w6{left:62.65%}.w7{left:75.18%}.w8{left:87.71%}
+  .b1{left:8.83%}.b2{left:21.36%}.b3{left:46.42%}.b4{left:58.95%}.b5{left:71.48%}
+
+  /* key color variants */
+  .k-mustard .kb .w.hit{background:#f0c948;}
+  .k-mustard .kb .w.hit .klbl{color:#221e17;}
+
+  .k-vermilion .kb .w.hit{background:#c8502e;}
+  .k-vermilion .kb .w.hit .klbl{color:#f2ecdd;}
+  .k-vermilion .kb .w.hit .klbl b{color:#fff;}
+
+  .k-ink .kb .w.hit{background:#221e17;}
+  .k-ink .kb .w.hit .klbl{color:#b9ac93;}
+  .k-ink .kb .w.hit .klbl b{color:#f0c948;}
+
+  .k-verdigris .kb .w.hit{background:#3e7d6b;}
+  .k-verdigris .kb .w.hit .klbl{color:#dff0e8;}
+  .k-verdigris .kb .w.hit .klbl b{color:#fff;}
+
+  .k-cobalt .kb .w.hit{background:#31599e;}
+  .k-cobalt .kb .w.hit .klbl{color:#dbe6f7;}
+  .k-cobalt .kb .w.hit .klbl b{color:#fff;}
+
+  .k-duo .kb .w.hit{background:#f0c948;}
+  .k-duo .kb .w.hit .klbl{color:#221e17;}
+  .k-duo .kb .w.hit.root{background:#c8502e;}
+  .k-duo .kb .w.hit.root .klbl{color:#f2ecdd;}
+  .k-duo .kb .w.hit.root .klbl b{color:#fff;}
+
+  .sw-row{display:flex;gap:6px;padding:8px 2px 0;}
+  .sw{width:22px;height:22px;border:1px solid rgba(0,0,0,.15);}
+
+  footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--rule);color:var(--page-muted);font-size:13.5px;max-width:680px;}
+</style>
+
+<div class="wrap">
+  <header class="intro">
+    <div class="eyebrow">Music Learn · Print Shop — key color tests</div>
+    <h1>Six treatments for the highlighted keys</h1>
+    <p>Same Print Shop card, same D<span style="font-size:.8em;vertical-align:super">m7</span> answer — only the correct-key color changes. Look for the one that pops without fighting the vermilion buttons.</p>
+  </header>
+
+  <div class="grid">
+
+    <section class="direction k-mustard">
+      <div class="dir-head"><span class="dir-name">1 · Mustard</span><span class="dir-num">ORIGINAL</span></div>
+      <div class="mock">
+        <div class="m-top"><span class="m-brand">Music Learn</span><span class="m-streak">STREAK:05</span></div>
+        <div class="m-body">
+          <span class="m-task">Play this chord</span>
+          <div class="m-chord"><span class="shadow" aria-hidden="true">D<sup>m7</sup></span>D<sup>m7</sup></div>
+          <span class="m-sub">ré mineur septième</span>
+          <div class="kb">
+            <div class="w w1"></div>
+            <div class="w w2 hit"><span class="klbl"><b>D</b>Ré</span></div>
+            <div class="w w3"></div>
+            <div class="w w4 hit"><span class="klbl"><b>F</b>Fa</span></div>
+            <div class="w w5"></div>
+            <div class="w w6 hit"><span class="klbl"><b>A</b>La</span></div>
+            <div class="w w7"></div>
+            <div class="w w8 hit"><span class="klbl"><b>C</b>Do</span></div>
+            <div class="b b1"></div><div class="b b2"></div><div class="b b3"></div><div class="b b4"></div><div class="b b5"></div>
+          </div>
+          <div class="m-feedback">OK — ANY INVERSION COUNTS</div>
+          <div class="m-actions"><span class="btn primary">Next chord</span><span class="btn ghost">Why?</span></div>
+        </div>
+      </div>
+      <div class="sw-row"><span class="sw" style="background:#f0c948"></span></div>
+      <p class="dir-note">The baseline. Warm, print-like, high contrast with the ink borders.</p>
+    </section>
+
+    <section class="direction k-vermilion">
+      <div class="dir-head"><span class="dir-name">2 · Vermilion</span><span class="dir-num">MATCHES BUTTONS</span></div>
+      <div class="mock">
+        <div class="m-top"><span class="m-brand">Music Learn</span><span class="m-streak">STREAK:05</span></div>
+        <div class="m-body">
+          <span class="m-task">Play this chord</span>
+          <div class="m-chord"><span class="shadow" aria-hidden="true">D<sup>m7</sup></span>D<sup>m7</sup></div>
+          <span class="m-sub">ré mineur septième</span>
+          <div class="kb">
+            <div class="w w1"></div>
+            <div class="w w2 hit"><span class="klbl"><b>D</b>Ré</span></div>
+            <div class="w w3"></div>
+            <div class="w w4 hit"><span class="klbl"><b>F</b>Fa</span></div>
+            <div class="w w5"></div>
+            <div class="w w6 hit"><span class="klbl"><b>A</b>La</span></div>
+            <div class="w w7"></div>
+            <div class="w w8 hit"><span class="klbl"><b>C</b>Do</span></div>
+            <div class="b b1"></div><div class="b b2"></div><div class="b b3"></div><div class="b b4"></div><div class="b b5"></div>
+          </div>
+          <div class="m-feedback">OK — ANY INVERSION COUNTS</div>
+          <div class="m-actions"><span class="btn primary">Next chord</span><span class="btn ghost">Why?</span></div>
+        </div>
+      </div>
+      <div class="sw-row"><span class="sw" style="background:#c8502e"></span></div>
+      <p class="dir-note">One accent everywhere — very unified, but keys and buttons compete for attention.</p>
+    </section>
+
+    <section class="direction k-ink">
+      <div class="dir-head"><span class="dir-name">3 · Ink Inverted</span><span class="dir-num">STAMPED</span></div>
+      <div class="mock">
+        <div class="m-top"><span class="m-brand">Music Learn</span><span class="m-streak">STREAK:05</span></div>
+        <div class="m-body">
+          <span class="m-task">Play this chord</span>
+          <div class="m-chord"><span class="shadow" aria-hidden="true">D<sup>m7</sup></span>D<sup>m7</sup></div>
+          <span class="m-sub">ré mineur septième</span>
+          <div class="kb">
+            <div class="w w1"></div>
+            <div class="w w2 hit"><span class="klbl"><b>D</b>Ré</span></div>
+            <div class="w w3"></div>
+            <div class="w w4 hit"><span class="klbl"><b>F</b>Fa</span></div>
+            <div class="w w5"></div>
+            <div class="w w6 hit"><span class="klbl"><b>A</b>La</span></div>
+            <div class="w w7"></div>
+            <div class="w w8 hit"><span class="klbl"><b>C</b>Do</span></div>
+            <div class="b b1"></div><div class="b b2"></div><div class="b b3"></div><div class="b b4"></div><div class="b b5"></div>
+          </div>
+          <div class="m-feedback">OK — ANY INVERSION COUNTS</div>
+          <div class="m-actions"><span class="btn primary">Next chord</span><span class="btn ghost">Why?</span></div>
+        </div>
+      </div>
+      <div class="sw-row"><span class="sw" style="background:#221e17"></span><span class="sw" style="background:#f0c948"></span></div>
+      <p class="dir-note">Correct keys stamped solid ink, letter names in gold. The most letterpress of all — strongest contrast on paper.</p>
+    </section>
+
+    <section class="direction k-verdigris">
+      <div class="dir-head"><span class="dir-name">4 · Verdigris</span><span class="dir-num">COOL COUNTERPOINT</span></div>
+      <div class="mock">
+        <div class="m-top"><span class="m-brand">Music Learn</span><span class="m-streak">STREAK:05</span></div>
+        <div class="m-body">
+          <span class="m-task">Play this chord</span>
+          <div class="m-chord"><span class="shadow" aria-hidden="true">D<sup>m7</sup></span>D<sup>m7</sup></div>
+          <span class="m-sub">ré mineur septième</span>
+          <div class="kb">
+            <div class="w w1"></div>
+            <div class="w w2 hit"><span class="klbl"><b>D</b>Ré</span></div>
+            <div class="w w3"></div>
+            <div class="w w4 hit"><span class="klbl"><b>F</b>Fa</span></div>
+            <div class="w w5"></div>
+            <div class="w w6 hit"><span class="klbl"><b>A</b>La</span></div>
+            <div class="w w7"></div>
+            <div class="w w8 hit"><span class="klbl"><b>C</b>Do</span></div>
+            <div class="b b1"></div><div class="b b2"></div><div class="b b3"></div><div class="b b4"></div><div class="b b5"></div>
+          </div>
+          <div class="m-feedback">OK — ANY INVERSION COUNTS</div>
+          <div class="m-actions"><span class="btn primary">Next chord</span><span class="btn ghost">Why?</span></div>
+        </div>
+      </div>
+      <div class="sw-row"><span class="sw" style="background:#3e7d6b"></span></div>
+      <p class="dir-note">Muted green against warm paper — calm, distinct from the vermilion buttons, easy on the eyes over long sessions.</p>
+    </section>
+
+    <section class="direction k-cobalt">
+      <div class="dir-head"><span class="dir-name">5 · Cobalt</span><span class="dir-num">INK ANNOTATION</span></div>
+      <div class="mock">
+        <div class="m-top"><span class="m-brand">Music Learn</span><span class="m-streak">STREAK:05</span></div>
+        <div class="m-body">
+          <span class="m-task">Play this chord</span>
+          <div class="m-chord"><span class="shadow" aria-hidden="true">D<sup>m7</sup></span>D<sup>m7</sup></div>
+          <span class="m-sub">ré mineur septième</span>
+          <div class="kb">
+            <div class="w w1"></div>
+            <div class="w w2 hit"><span class="klbl"><b>D</b>Ré</span></div>
+            <div class="w w3"></div>
+            <div class="w w4 hit"><span class="klbl"><b>F</b>Fa</span></div>
+            <div class="w w5"></div>
+            <div class="w w6 hit"><span class="klbl"><b>A</b>La</span></div>
+            <div class="w w7"></div>
+            <div class="w w8 hit"><span class="klbl"><b>C</b>Do</span></div>
+            <div class="b b1"></div><div class="b b2"></div><div class="b b3"></div><div class="b b4"></div><div class="b b5"></div>
+          </div>
+          <div class="m-feedback">OK — ANY INVERSION COUNTS</div>
+          <div class="m-actions"><span class="btn primary">Next chord</span><span class="btn ghost">Why?</span></div>
+        </div>
+      </div>
+      <div class="sw-row"><span class="sw" style="background:#31599e"></span></div>
+      <p class="dir-note">Ballpoint blue on paper — classic annotation feel, strong complementary tension with the vermilion.</p>
+    </section>
+
+    <section class="direction k-duo">
+      <div class="dir-head"><span class="dir-name">6 · Duo (root marked)</span><span class="dir-num">FUNCTIONAL TWIST</span></div>
+      <div class="mock">
+        <div class="m-top"><span class="m-brand">Music Learn</span><span class="m-streak">STREAK:05</span></div>
+        <div class="m-body">
+          <span class="m-task">Play this chord</span>
+          <div class="m-chord"><span class="shadow" aria-hidden="true">D<sup>m7</sup></span>D<sup>m7</sup></div>
+          <span class="m-sub">ré mineur septième</span>
+          <div class="kb">
+            <div class="w w1"></div>
+            <div class="w w2 hit root"><span class="klbl"><b>D</b>Ré</span></div>
+            <div class="w w3"></div>
+            <div class="w w4 hit"><span class="klbl"><b>F</b>Fa</span></div>
+            <div class="w w5"></div>
+            <div class="w w6 hit"><span class="klbl"><b>A</b>La</span></div>
+            <div class="w w7"></div>
+            <div class="w w8 hit"><span class="klbl"><b>C</b>Do</span></div>
+            <div class="b b1"></div><div class="b b2"></div><div class="b b3"></div><div class="b b4"></div><div class="b b5"></div>
+          </div>
+          <div class="m-feedback">OK — ANY INVERSION COUNTS</div>
+          <div class="m-actions"><span class="btn primary">Next chord</span><span class="btn ghost">Why?</span></div>
+        </div>
+      </div>
+      <div class="sw-row"><span class="sw" style="background:#c8502e"></span><span class="sw" style="background:#f0c948"></span></div>
+      <p class="dir-note">Root in vermilion, other chord tones in mustard — the color itself teaches chord structure. Slightly busier, but pedagogically useful.</p>
+    </section>
+
+  </div>
+
+  <footer>
+    All six keep the Print Shop frame and buttons untouched. Option 6 uses two colors to encode meaning (root vs chord tones) — worth considering since the app's whole point is understanding chord structure.
+  </footer>
+</div>

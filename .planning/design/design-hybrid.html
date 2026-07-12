@@ -1,0 +1,256 @@
+<title>Music Learn — Studio × Paper Hybrids</title>
+<style>
+  :root{
+    --page-bg:#e9e5dc;
+    --page-ink:#26221b;
+    --page-muted:#736c5f;
+    --rule:#d3cdc0;
+  }
+  body{
+    background:var(--page-bg);
+    color:var(--page-ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.55;
+    padding:48px 24px 80px;
+  }
+  .wrap{max-width:1140px;margin:0 auto;}
+  header.intro{max-width:680px;margin-bottom:40px;}
+  .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--page-muted);margin-bottom:10px;}
+  h1{font-size:clamp(26px,4vw,36px);line-height:1.15;margin-bottom:12px;text-wrap:balance;font-weight:700;}
+  .intro p{color:var(--page-muted);font-size:15px;}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;}
+  @media(max-width:1020px){.grid{grid-template-columns:1fr;max-width:520px;margin:0 auto;}}
+
+  .direction{display:flex;flex-direction:column;}
+  .dir-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:0 2px 10px;}
+  .dir-name{font-size:16px;font-weight:700;}
+  .dir-num{font-size:11px;color:var(--page-muted);letter-spacing:.08em;}
+  .dir-note{font-size:13.5px;color:var(--page-muted);padding:12px 2px 0;}
+  .swatches{display:flex;gap:6px;padding:10px 2px 0;}
+  .sw{width:24px;height:24px;border:1px solid rgba(0,0,0,.15);}
+
+  .mock{
+    overflow:hidden;display:flex;flex-direction:column;
+    box-shadow:0 1px 2px rgba(30,25,18,.08),0 12px 32px rgba(30,25,18,.10);
+  }
+  .m-top{display:flex;justify-content:space-between;align-items:center;padding:13px 18px;}
+  .m-brand{font-size:14px;}
+  .m-streak{font-size:11.5px;padding:4px 10px;white-space:nowrap;}
+  .m-body{padding:20px 18px 24px;display:flex;flex-direction:column;align-items:center;gap:6px;}
+  .m-task{font-size:11px;letter-spacing:.14em;text-transform:uppercase;}
+  .m-chord{line-height:1.05;}
+  .m-sub{font-size:13px;margin-bottom:12px;}
+
+  .kb{position:relative;width:100%;max-width:360px;height:112px;margin:4px 0 14px;}
+  .kb .w{
+    position:absolute;top:0;height:100%;width:12.1%;
+    border:1px solid;box-sizing:border-box;
+    display:flex;align-items:flex-end;justify-content:center;padding-bottom:5px;
+  }
+  .kb .b{position:absolute;top:0;height:60%;width:7.4%;z-index:2;}
+  .klbl{font-size:9px;text-align:center;line-height:1.25;}
+  .klbl b{display:block;font-size:10.5px;}
+  .m-feedback{display:flex;align-items:center;gap:8px;font-size:13px;padding:8px 14px;}
+  .m-actions{display:flex;gap:10px;margin-top:14px;}
+  .btn{font-size:12.5px;padding:9px 18px;font-weight:600;}
+  .w1{left:0}.w2{left:12.53%}.w3{left:25.06%}.w4{left:37.59%}
+  .w5{left:50.12%}.w6{left:62.65%}.w7{left:75.18%}.w8{left:87.71%}
+  .b1{left:8.83%}.b2{left:21.36%}.b3{left:46.42%}.b4{left:58.95%}.b5{left:71.48%}
+
+  /* ============ A · QUIET HYBRID ============ */
+  .t-a .mock{background:#f5f0e4;color:#26221b;}
+  .t-a .m-top{border-bottom:1px solid #26221b;}
+  .t-a .m-brand{font-family:Georgia,serif;font-style:italic;}
+  .t-a .m-streak{border:1px solid #26221b;font-weight:600;}
+  .t-a .m-task{color:#8f8674;}
+  .t-a .m-chord{font-family:Georgia,serif;font-size:54px;font-weight:400;}
+  .t-a .m-chord sup{font-size:23px;color:#31599e;}
+  .t-a .m-sub{color:#8f8674;font-style:italic;font-family:Georgia,serif;}
+  .t-a .kb .w{background:#fdfaf1;border-color:#3f382c;}
+  .t-a .kb .b{background:#2c261c;}
+  .t-a .kb .w.hit{background:#31599e;border-color:#31599e;}
+  .t-a .kb .w.hit .klbl{color:#f5f0e4;}
+  .t-a .klbl{color:#9c9382;}
+  .t-a .m-feedback{border-top:1px solid #b9ae97;border-bottom:1px solid #b9ae97;color:#4c6b3c;}
+  .t-a .btn.primary{background:#26221b;color:#f5f0e4;}
+  .t-a .btn.ghost{border:1px solid #26221b;color:#26221b;}
+
+  /* ============ B · PRINT SHOP ============ */
+  .t-b .mock{background:#f2ecdd;color:#221e17;border:2px solid #221e17;}
+  .t-b .m-top{border-bottom:2px solid #221e17;}
+  .t-b .m-brand{font-weight:800;letter-spacing:-.02em;text-transform:uppercase;font-size:13px;}
+  .t-b .m-streak{background:#221e17;color:#f2ecdd;font-family:"Courier New",monospace;font-weight:700;}
+  .t-b .m-task{color:#221e17;font-weight:700;}
+  .t-b .m-chord{font-family:Georgia,serif;font-size:58px;font-weight:700;position:relative;}
+  .t-b .m-chord .shadow{position:absolute;left:3px;top:3px;color:#c8502e;z-index:-1;}
+  .t-b .m-chord sup{font-size:24px;}
+  .t-b .m-sub{color:#7d7462;font-family:"Courier New",monospace;font-size:12px;}
+  .t-b .kb .w{background:#faf6ea;border-color:#221e17;border-width:1.5px;}
+  .t-b .kb .b{background:#221e17;}
+  .t-b .kb .w.hit{background:#f0c948;}
+  .t-b .kb .w.hit .klbl{color:#221e17;}
+  .t-b .klbl{color:#9a907f;}
+  .t-b .m-feedback{background:#221e17;color:#f0c948;font-family:"Courier New",monospace;font-weight:700;}
+  .t-b .btn{border:2px solid #221e17;}
+  .t-b .btn.primary{background:#c8502e;color:#f2ecdd;box-shadow:3px 3px 0 #221e17;}
+  .t-b .btn.ghost{color:#221e17;background:transparent;}
+
+  /* ============ C · MANUSCRIPT MACHINE ============ */
+  .t-c .mock{background:#efe9da;color:#211d15;position:relative;}
+  .t-c .mock::before{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(180deg,transparent 0 26px,rgba(33,29,21,.055) 26px 27px);
+  }
+  .t-c .m-top{border-bottom:1px solid #211d15;position:relative;}
+  .t-c .m-brand{font-family:Georgia,serif;font-weight:700;}
+  .t-c .m-brand::after{content:" — op. 1";font-style:italic;font-weight:400;color:#8b816d;}
+  .t-c .m-streak{font-family:Georgia,serif;font-style:italic;border:1px dashed #211d15;transform:rotate(-2deg);}
+  .t-c .m-task{color:#8b816d;}
+  .t-c .m-chord{font-size:60px;font-weight:800;letter-spacing:-.04em;transform:rotate(-1.5deg);}
+  .t-c .m-chord sup{font-size:25px;color:#8a2f4f;font-family:Georgia,serif;font-weight:400;font-style:italic;}
+  .t-c .m-sub{color:#8b816d;font-style:italic;font-family:Georgia,serif;}
+  .t-c .kb .w{background:#f9f5e9;border-color:#211d15;}
+  .t-c .kb .b{background:#211d15;}
+  .t-c .kb .w.hit{background:#211d15;}
+  .t-c .kb .w.hit .klbl{color:#efe9da;}
+  .t-c .kb .w.hit .klbl b{color:#e8b93c;}
+  .t-c .klbl{color:#9a9180;}
+  .t-c .m-feedback{color:#211d15;font-family:Georgia,serif;font-style:italic;border-bottom:2px solid #8a2f4f;}
+  .t-c .btn.primary{background:#8a2f4f;color:#efe9da;}
+  .t-c .btn.ghost{border:1px solid #211d15;color:#211d15;}
+
+  footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--rule);color:var(--page-muted);font-size:13.5px;max-width:680px;}
+</style>
+
+<div class="wrap">
+  <header class="intro">
+    <div class="eyebrow">Music Learn · Artistic direction, round 2</div>
+    <h1>Clean Studio × Paper &amp; Ink — three temperatures of weird</h1>
+    <p>All three share the brief: warm paper ground, functional studio layout, sharp corners. They differ in how far the originality is pushed — from quiet to properly strange.</p>
+  </header>
+
+  <div class="grid">
+
+    <!-- A -->
+    <section class="direction t-a">
+      <div class="dir-head"><span class="dir-name">A · Quiet Hybrid</span><span class="dir-num">SUBTLE</span></div>
+      <div class="mock">
+        <div class="m-top">
+          <span class="m-brand">Music Learn</span>
+          <span class="m-streak">5-day streak</span>
+        </div>
+        <div class="m-body">
+          <span class="m-task">Play this chord</span>
+          <div class="m-chord">D<sup>m7</sup></div>
+          <span class="m-sub">Ré mineur septième</span>
+          <div class="kb">
+            <div class="w w1"></div>
+            <div class="w w2 hit"><span class="klbl"><b>D</b>Ré</span></div>
+            <div class="w w3"></div>
+            <div class="w w4 hit"><span class="klbl"><b>F</b>Fa</span></div>
+            <div class="w w5"></div>
+            <div class="w w6 hit"><span class="klbl"><b>A</b>La</span></div>
+            <div class="w w7"></div>
+            <div class="w w8 hit"><span class="klbl"><b>C</b>Do</span></div>
+            <div class="b b1"></div><div class="b b2"></div><div class="b b3"></div><div class="b b4"></div><div class="b b5"></div>
+          </div>
+          <div class="m-feedback">✓ Correct — any inversion counts</div>
+          <div class="m-actions">
+            <span class="btn primary">Next chord</span>
+            <span class="btn ghost">Why these notes?</span>
+          </div>
+        </div>
+      </div>
+      <div class="swatches">
+        <span class="sw" style="background:#f5f0e4"></span>
+        <span class="sw" style="background:#26221b"></span>
+        <span class="sw" style="background:#31599e"></span>
+        <span class="sw" style="background:#4c6b3c"></span>
+      </div>
+      <p class="dir-note">Paper ground, studio structure, serif reserved for musical things (chord symbols, solfège), sans for interface. Ink-blue accent like a ballpoint annotation. Original but calm.</p>
+    </section>
+
+    <!-- B -->
+    <section class="direction t-b">
+      <div class="dir-head"><span class="dir-name">B · Print Shop</span><span class="dir-num">BOLDER</span></div>
+      <div class="mock">
+        <div class="m-top">
+          <span class="m-brand">Music Learn</span>
+          <span class="m-streak">STREAK:05</span>
+        </div>
+        <div class="m-body">
+          <span class="m-task">Play this chord</span>
+          <div class="m-chord"><span class="shadow" aria-hidden="true">D<sup>m7</sup></span>D<sup>m7</sup></div>
+          <span class="m-sub">ré mineur septième</span>
+          <div class="kb">
+            <div class="w w1"></div>
+            <div class="w w2 hit"><span class="klbl"><b>D</b>Ré</span></div>
+            <div class="w w3"></div>
+            <div class="w w4 hit"><span class="klbl"><b>F</b>Fa</span></div>
+            <div class="w w5"></div>
+            <div class="w w6 hit"><span class="klbl"><b>A</b>La</span></div>
+            <div class="w w7"></div>
+            <div class="w w8 hit"><span class="klbl"><b>C</b>Do</span></div>
+            <div class="b b1"></div><div class="b b2"></div><div class="b b3"></div><div class="b b4"></div><div class="b b5"></div>
+          </div>
+          <div class="m-feedback">OK — ANY INVERSION COUNTS</div>
+          <div class="m-actions">
+            <span class="btn primary">Next chord</span>
+            <span class="btn ghost">Why these notes?</span>
+          </div>
+        </div>
+      </div>
+      <div class="swatches">
+        <span class="sw" style="background:#f2ecdd"></span>
+        <span class="sw" style="background:#221e17"></span>
+        <span class="sw" style="background:#c8502e"></span>
+        <span class="sw" style="background:#f0c948"></span>
+      </div>
+      <p class="dir-note">Letterpress energy: heavy borders, misregistered print shadow on the chord glyph, typewriter monospace for data, mustard highlight keys. Weird in a crafted, poster-like way.</p>
+    </section>
+
+    <!-- C -->
+    <section class="direction t-c">
+      <div class="dir-head"><span class="dir-name">C · Manuscript Machine</span><span class="dir-num">WEIRDEST</span></div>
+      <div class="mock">
+        <div class="m-top">
+          <span class="m-brand">Music Learn</span>
+          <span class="m-streak">5ᵉ jour</span>
+        </div>
+        <div class="m-body">
+          <span class="m-task">Play this chord</span>
+          <div class="m-chord">D<sup>m7</sup></div>
+          <span class="m-sub">Ré mineur septième</span>
+          <div class="kb">
+            <div class="w w1"></div>
+            <div class="w w2 hit"><span class="klbl"><b>D</b>Ré</span></div>
+            <div class="w w3"></div>
+            <div class="w w4 hit"><span class="klbl"><b>F</b>Fa</span></div>
+            <div class="w w5"></div>
+            <div class="w w6 hit"><span class="klbl"><b>A</b>La</span></div>
+            <div class="w w7"></div>
+            <div class="w w8 hit"><span class="klbl"><b>C</b>Do</span></div>
+            <div class="b b1"></div><div class="b b2"></div><div class="b b3"></div><div class="b b4"></div><div class="b b5"></div>
+          </div>
+          <div class="m-feedback">Correct — any inversion counts</div>
+          <div class="m-actions">
+            <span class="btn primary">Next chord</span>
+            <span class="btn ghost">Why these notes?</span>
+          </div>
+        </div>
+      </div>
+      <div class="swatches">
+        <span class="sw" style="background:#efe9da"></span>
+        <span class="sw" style="background:#211d15"></span>
+        <span class="sw" style="background:#8a2f4f"></span>
+        <span class="sw" style="background:#e8b93c"></span>
+      </div>
+      <p class="dir-note">Faint staff lines across the whole surface, tilted chord glyph and hand-stamped streak chip, correct keys inverted to ink-black with gold letters, wine-red accent. Deliberately off-kilter — a manuscript that became an app.</p>
+    </section>
+
+  </div>
+
+  <footer>
+    Same drill, same information in all three. A is the safest expression of the brief; B pushes into letterpress-poster territory; C leans into musical-manuscript strangeness. Mixing is allowed — e.g. A's layout with B's misregistered print accents.
+  </footer>
+</div>
