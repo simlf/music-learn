@@ -5,6 +5,9 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
+	resolve: {
+		conditions: ['browser']
+	},
 	test: {
 		environment: 'jsdom',
 		setupFiles: ['./vitest-setup.ts'],
