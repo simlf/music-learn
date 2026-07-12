@@ -80,11 +80,35 @@ Deferred — becomes active once v1 is validated.
 
 ## Traceability
 
-Populated by roadmap creation.
-
 | Requirement | Phase |
 |-------------|-------|
-| (pending) | |
+| THEORY-01 | Phase 1 |
+| THEORY-02 | Phase 1 |
+| THEORY-03 | Phase 1 |
+| THEORY-04 | Phase 1 |
+| DESIGN-01 | Phase 1 |
+| DESIGN-02 | Phase 1 |
+| LOOK-01 | Phase 2 |
+| DRILL-01 | Phase 3 |
+| DRILL-02 | Phase 3 |
+| DRILL-03 | Phase 3 |
+| INPUT-02 | Phase 3 |
+| INPUT-01 | Phase 4 |
+| INPUT-03 | Phase 4 |
+| DRILL-04 | Phase 5 |
+| DRILL-05 | Phase 5 |
+| DRILL-06 | Phase 5 |
+| SCALE-01 | Phase 6 |
+| SCALE-02 | Phase 6 |
+| LESSON-01 | Phase 7 |
+| LESSON-02 | Phase 7 |
+| PROG-01 | Phase 8 |
+| PROG-02 | Phase 8 |
+| PROG-03 | Phase 8 |
+| PLAT-01 | Phase 9 |
+| PLAT-02 | Phase 9 |
+
+**Coverage:** 25/25 v1 requirements mapped, no orphans, no duplicates.
 
 ---
-*Last updated: 2026-07-12 after initial definition*
+*Last updated: 2026-07-12 after roadmap creation*
