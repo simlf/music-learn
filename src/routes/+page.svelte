@@ -141,7 +141,7 @@
 				{@const [before, after] = splitHintOnPlaceholder(hint)}
 				{before}<button
 					type="button"
-					class="underline"
+					class="suggestion-tap underline"
 					data-testid="suggestion"
 					onclick={() => showChordFromSymbol(suggestion!)}
 				>{suggestion}</button>{after}
@@ -203,6 +203,19 @@
 </main>
 
 <style>
+	/* 44px minimum touch target for the inline did-you-mean suggestion (the
+	   primary tap in the error-recovery flow, phone-first). Padding grows the
+	   hit area to the minimum; the matching negative margin keeps the error
+	   bar's visual height and text flow unchanged. */
+	.suggestion-tap {
+		min-height: 44px;
+		min-width: 44px;
+		padding: var(--spacing-sm);
+		margin: calc(-1 * var(--spacing-sm));
+		vertical-align: middle;
+		cursor: pointer;
+	}
+
 	.stamp {
 		animation: stamp-in 240ms ease-out;
 	}
