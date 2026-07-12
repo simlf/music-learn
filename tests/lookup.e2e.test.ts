@@ -45,6 +45,32 @@ describe('lookup page happy path', () => {
 	});
 });
 
+describe('lookup page keyboard reactivity across repeat lookups', () => {
+	it('stamping Cm7 then Fmaj7 updates the keyboard highlights to the new chord (no stale E♭)', async () => {
+		render(LookupPage);
+
+		const input = screen.getByRole('textbox');
+		const button = screen.getByRole('button', { name: /stamp/i });
+
+		await fireEvent.input(input, { target: { value: 'Cm7' } });
+		await fireEvent.click(button);
+
+		let keyboard = screen.getByRole('img', { name: /piano keyboard/i });
+		expect(within(keyboard).getByText('E♭')).toBeInTheDocument();
+
+		await fireEvent.input(input, { target: { value: 'Fmaj7' } });
+		await fireEvent.click(button);
+
+		keyboard = screen.getByRole('img', { name: /piano keyboard/i });
+		expect(within(keyboard).queryByText('E♭')).not.toBeInTheDocument();
+		expect(within(keyboard).queryByText('B♭')).not.toBeInTheDocument();
+		expect(within(keyboard).getByText('F')).toBeInTheDocument();
+		expect(within(keyboard).getByText('A')).toBeInTheDocument();
+		expect(within(keyboard).getByText('C')).toBeInTheDocument();
+		expect(within(keyboard).getByText('E')).toBeInTheDocument();
+	});
+});
+
 describe('lookup page dual naming and interval formula', () => {
 	it('typing Cm7 and stamping renders the interval-formula chip labels and dual-named notes', async () => {
 		render(LookupPage);

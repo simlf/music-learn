@@ -109,7 +109,11 @@
 		return assignment;
 	}
 
-	const noteAssignment = assignNotesToKeys();
+	// $derived (not plain const): the key/note assignment must recompute when
+	// the `notes` prop changes, or every lookup after the first would keep the
+	// previous chord's highlights (the component instance persists across
+	// result changes on the lookup page).
+	const noteAssignment = $derived(assignNotesToKeys());
 
 	function noteAtWhiteIndex(index: number): SpelledNote | undefined {
 		for (const [note, candidate] of noteAssignment) {
@@ -125,20 +129,24 @@
 		return undefined;
 	}
 
-	const whiteKeys: WhiteKey[] = WHITE_LETTERS.map((letter, index) => ({
-		index,
-		letter,
-		leftPct: index * WHITE_KEY_WIDTH_PCT,
-		note: noteAtWhiteIndex(index)
-	}));
+	const whiteKeys: WhiteKey[] = $derived(
+		WHITE_LETTERS.map((letter, index) => ({
+			index,
+			letter,
+			leftPct: index * WHITE_KEY_WIDTH_PCT,
+			note: noteAtWhiteIndex(index)
+		}))
+	);
 
-	const blackKeys: BlackKey[] = BLACK_KEYS.map(({ afterWhiteIndex, sharpLetter, flatLetter }, blackIndex) => ({
-		position: afterWhiteIndex + 1,
-		leftPct: (afterWhiteIndex + 1) * WHITE_KEY_WIDTH_PCT - BLACK_KEY_WIDTH_PCT / 2,
-		sharpLetter,
-		flatLetter,
-		note: noteAtBlackIndex(blackIndex)
-	}));
+	const blackKeys: BlackKey[] = $derived(
+		BLACK_KEYS.map(({ afterWhiteIndex, sharpLetter, flatLetter }, blackIndex) => ({
+			position: afterWhiteIndex + 1,
+			leftPct: (afterWhiteIndex + 1) * WHITE_KEY_WIDTH_PCT - BLACK_KEY_WIDTH_PCT / 2,
+			sharpLetter,
+			flatLetter,
+			note: noteAtBlackIndex(blackIndex)
+		}))
+	);
 
 	function roleClass(role: IntervalRole | undefined): string {
 		return role ? `piano-keyboard__key--${role}` : '';
