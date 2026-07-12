@@ -7,7 +7,7 @@
 
 ### Theory Core
 
-- [ ] **THEORY-01**: User sees correct notes for any supported chord symbol — qualities: major, minor, diminished triads + maj7, m7, dom7, ø7 (m7♭5), °7 — across all 12 roots
+- [x] **THEORY-01**: User sees correct notes for any supported chord symbol — qualities: major, minor, diminished triads + maj7, m7, dom7, ø7 (m7♭5), °7 — across all 12 roots
 - [ ] **THEORY-02**: User can enter a chord symbol in any common jazz notation variant (Cm7, C-7, Cmin7; Cø7, Cm7♭5) and the app recognizes it as the same chord
 - [ ] **THEORY-03**: User sees correctly spelled notes (enharmonics derived from root + interval formula — F♯m7 shows C♯, not D♭)
 - [ ] **THEORY-04**: User sees every note labeled with letters primary (C, D, E) and solfège alongside (Do, Ré, Mi)
@@ -43,7 +43,7 @@
 
 ### Design
 
-- [ ] **DESIGN-01**: App follows the "Print Shop" artistic direction — warm paper ground (#f2ecdd), ink (#221e17), vermilion accent (#c8502e), mustard (#f0c948), sharp corners, heavy 2px borders, offset-shadow buttons, misregistered print shadow on chord glyphs, serif chord symbols + monospace data labels (see `.planning/design/`)
+- [x] **DESIGN-01**: App follows the "Print Shop" artistic direction — warm paper ground (#f2ecdd), ink (#221e17), vermilion accent (#c8502e), mustard (#f0c948), sharp corners, heavy 2px borders, offset-shadow buttons, misregistered print shadow on chord glyphs, serif chord symbols + monospace data labels (see `.planning/design/`)
 - [ ] **DESIGN-02**: Interval color language — root, 3rd, 5th, 7th each have a fixed color applied consistently across drills, lookup, and lessons (root=vermilion, 7th=mustard confirmed; 3rd/5th colors settled in UI design phase)
 
 ### Progress

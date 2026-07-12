@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 1
-current_phase_name: Print Shop Foundation & Theory Core
+current_phase: 01
+current_phase_name: print-shop-foundation-theory-core
 status: executing
-stopped_at: Phase 1 context gathered
-last_updated: "2026-07-12T20:30:20.919Z"
+stopped_at: Completed 01-01-PLAN.md
+last_updated: "2026-07-12T20:40:58.047Z"
 last_activity: 2026-07-12
-last_activity_desc: Roadmap created (9 phases, 25/25 requirements mapped)
+last_activity_desc: Phase 01 execution started
 progress:
   total_phases: 9
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 4
+  completed_plans: 1
   percent: 0
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-12)
 
 **Core value:** See a jazz chord symbol and know instantly what to play with the left hand.
-**Current focus:** Phase 1 — Print Shop Foundation & Theory Core
+**Current focus:** Phase 01 — print-shop-foundation-theory-core
 
 ## Current Position
 
-Phase: 1 of 9 (Print Shop Foundation & Theory Core)
-Plan: 0 of TBD in current phase
+Phase: 01 (print-shop-foundation-theory-core) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-07-12 — Roadmap created (9 phases, 25/25 requirements mapped)
+Last activity: 2026-07-12 — Phase 01 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -55,6 +55,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: —
 
 *Updated after each plan completion*
+| Phase 01 P01 | 35 min | 3 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -68,6 +69,7 @@ Recent decisions affecting current work:
 - Letters primary, solfège alongside; interval color language applied app-wide from Phase 1.
 - Spaced repetition deferred to v1.x; v1 persists raw answer history (Phase 8), no scheduler.
 - Backend on user's Oracle server + SQLite for cross-device progress (Phases 8-9).
+- [Phase 01]: Vite pinned to 8.1.4; resolve.conditions:['browser'] required for Vitest component tests under SvelteKit — Vite 8.x satisfies all peer ranges (kit, vite-plugin-svelte, tailwind vite plugin, vitest); browser condition fixes lifecycle_function_unavailable in @testing-library/svelte tests
 
 ### Pending Todos
 
@@ -89,6 +91,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-12T20:10:16.572Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-print-shop-foundation-theory-core/01-CONTEXT.md
+Last session: 2026-07-12T20:40:58.043Z
+Stopped at: Completed 01-01-PLAN.md
+Resume file: None

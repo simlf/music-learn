@@ -39,10 +39,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Every note is displayed with its letter name primary and Do-Ré-Mi solfège alongside.
   5. The interface renders in the Print Shop direction (paper ground, ink borders, vermilion/mustard, sharp corners) with root/3rd/5th/7th shown in their fixed interval colors.
 
-**Plans**: 4 plans
+**Plans**: 1/4 plans executed
 **Wave 1**
 
-- [ ] 01-01-PLAN.md — Walking Skeleton: scaffold SvelteKit static app, RED e2e test, thinnest Cm7 slice, 01-SKELETON.md
+- [x] 01-01-PLAN.md — Walking Skeleton: scaffold SvelteKit static app, RED e2e test, thinnest Cm7 slice, 01-SKELETON.md
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -182,7 +182,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Print Shop Foundation & Theory Core | 0/4 | Not started | - |
+| 1. Print Shop Foundation & Theory Core | 1/4 | In Progress|  |
 | 2. Chord Lookup Companion | 0/TBD | Not started | - |
 | 3. On-Screen Drill Loop | 0/TBD | Not started | - |
 | 4. MIDI Play-to-Answer | 0/TBD | Not started | - |
