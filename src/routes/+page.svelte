@@ -41,7 +41,10 @@
 	}
 
 	function showChord(input: string) {
-		const spelled = spellChord(input);
+		// Trim once at the entry point: mobile keyboards routinely append a
+		// trailing space via autocomplete, and tonal rejects "Cm7 " outright.
+		const cleaned = input.trim();
+		const spelled = spellChord(cleaned);
 		if (spelled.recognized) {
 			// Non-blocking success: replace the rendered result and clear any hint.
 			result = spelled;
@@ -53,7 +56,7 @@
 			// Non-blocking error (D-08): keep the previously rendered chord visible,
 			// never clear `result` here. Try a confident single-candidate
 			// suggestion first; otherwise fall back to the existing rotating hint.
-			const candidate = didYouMean(input);
+			const candidate = didYouMean(cleaned);
 			if (candidate) {
 				suggestion = candidate;
 				hint = pickSuggestionHint();

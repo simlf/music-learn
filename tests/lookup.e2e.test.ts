@@ -45,6 +45,21 @@ describe('lookup page happy path', () => {
 	});
 });
 
+describe('lookup page input trimming', () => {
+	it('stamping "Cm7 " with a trailing space (mobile autocomplete artifact) resolves the chord directly', async () => {
+		render(LookupPage);
+
+		const input = screen.getByRole('textbox');
+		await fireEvent.input(input, { target: { value: 'Cm7 ' } });
+
+		const button = screen.getByRole('button', { name: /stamp/i });
+		await fireEvent.click(button);
+
+		expect(screen.getByTestId('chord-result')).toBeInTheDocument();
+		expect(screen.queryByTestId('error-bar')).not.toBeInTheDocument();
+	});
+});
+
 describe('lookup page keyboard reactivity across repeat lookups', () => {
 	it('stamping Cm7 then Fmaj7 updates the keyboard highlights to the new chord (no stale E♭)', async () => {
 		render(LookupPage);
