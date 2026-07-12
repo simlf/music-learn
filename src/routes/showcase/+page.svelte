@@ -3,6 +3,7 @@
 	import { spellChord } from '$lib/theory/chord';
 	import { randomChord } from '$lib/theory/randomChord';
 	import { pickHint } from '$lib/copy/hints';
+	import { playChord } from '$lib/audio/playChord';
 	import type { ChordResult, IntervalRole } from '$lib/theory/types';
 	import PianoKeyboard from '$lib/components/PianoKeyboard.svelte';
 	import ChordGlyph from '$lib/components/ChordGlyph.svelte';
@@ -70,6 +71,12 @@
 		showChordFromSymbol(randomChord());
 	}
 
+	/** Plays the currently rendered chord's notes on a plain synth (D-11). */
+	function hearIt() {
+		if (!result) return;
+		void playChord(result.notes.map((note) => note.letter));
+	}
+
 	/**
 	 * Alias-equivalence line: tonal's ChordResult.aliases are quality suffixes
 	 * only (e.g. "m7", "min7", "-7"), not full symbols - so each is prefixed
@@ -132,7 +139,10 @@
 
 	{#if result?.recognized}
 		<div class="stamp mt-8" data-testid="chord-result">
-			<ChordGlyph root={result.root} quality={result.symbol.slice(result.root.length)} />
+			<div class="flex items-start gap-4">
+				<ChordGlyph root={result.root} quality={result.symbol.slice(result.root.length)} />
+				<Button type="button" variant="ghost" onclick={hearIt}>Hear it</Button>
+			</div>
 
 			{#if result.aliases.length > 0}
 				<p class="text-label text-muted mt-2 font-mono" data-testid="alias-line">
