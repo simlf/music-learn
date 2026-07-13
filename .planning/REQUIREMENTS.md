@@ -50,7 +50,7 @@
 
 - [x] **PROG-01**: User's drill answer history persists across sessions and devices (backend on user's Oracle server, SQLite storage)
 - [x] **PROG-02**: User can see per-chord/per-scale accuracy stats highlighting their weakest items
-- [ ] **PROG-03**: User can see a daily practice streak counter
+- [x] **PROG-03**: User can see a daily practice streak counter
 
 ### Platform
 

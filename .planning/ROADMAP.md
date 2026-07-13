@@ -20,7 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 5: Smart Drill Design** - Interleaved sessions, scoped practice, and fading label scaffolds
 - [ ] **Phase 6: Major Scales** - Drill and see fingerings for all 12 major scales, expanding from G major
 - [ ] **Phase 7: Theory Lessons** - Short shape-first lessons explaining what the symbols mean
-- [ ] **Phase 8: Progress & Streaks** - Cross-device answer history, weakness-aware stats, and a daily streak
+- [x] **Phase 8: Progress & Streaks** - Cross-device answer history, weakness-aware stats, and a daily streak (completed 2026-07-13)
 - [ ] **Phase 9: Deploy to the Piano** - Live on the Oracle server over HTTPS, usable on laptop and phone
 
 ## Phase Details
@@ -184,7 +184,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. The user can see per-chord and per-scale accuracy stats that highlight their weakest items.
   3. The user can see a daily practice streak counter.
 
-**Plans**: 3/4 plans executed
+**Plans**: 4/4 plans complete
 
 **Wave 1**
 
@@ -200,7 +200,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 4** *(blocked on Wave 3: shares progress page, layout, server index)*
 
-- [ ] 08-04-PLAN.md — Streak slice (PROG-03): GET /streak + computeStreak, streak copy pools, StreakBadge, Progress streak hero + masthead chip
+- [x] 08-04-PLAN.md — Streak slice (PROG-03): GET /streak + computeStreak, streak copy pools, StreakBadge, Progress streak hero + masthead chip
 
 **UI hint**: yes
 
@@ -233,5 +233,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 5. Smart Drill Design | 0/TBD | Not started | - |
 | 6. Major Scales | 0/TBD | Not started | - |
 | 7. Theory Lessons | 0/TBD | Not started | - |
-| 8. Progress & Streaks | 3/4 | In Progress|  |
+| 8. Progress & Streaks | 4/4 | Complete   | 2026-07-13 |
 | 9. Deploy to the Piano | 0/TBD | Not started | - |

@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 08
 current_phase_name: progress-streaks
-status: executing
-stopped_at: Completed 08-03-PLAN.md
-last_updated: "2026-07-13T19:07:25.265Z"
+status: verifying
+stopped_at: Completed 08-04-PLAN.md
+last_updated: "2026-07-13T19:17:41.685Z"
 last_activity: 2026-07-13
 last_activity_desc: Phase 08 execution resumed (wave continue)
 progress:
   total_phases: 9
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 15
-  completed_plans: 14
-  percent: 33
+  completed_plans: 15
+  percent: 44
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-12)
 
 Phase: 08 (progress-streaks) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-13 — Phase 08 execution resumed (wave continue)
 
 Progress: [░░░░░░░░░░] 0%
@@ -70,6 +70,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 08 P01 | 7 min | 3 tasks | 12 files |
 | Phase 08-progress-streaks P02 | 10min | 3 tasks | 11 files |
 | Phase 08-progress-streaks P03 | 10min | 3 tasks | 13 files |
+| Phase 08-progress-streaks P04 | 9min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -109,6 +110,8 @@ Recent decisions affecting current work:
 - [Phase 08]: docker-compose env_file uses required:false so config validates before .env exists — Rule 3 fix: the plan's own docker compose config -q acceptance criterion failed on a fresh clone without a real .env present
 - [Phase 08-progress-streaks]: computeStats uses attempts >= 3 AND accuracy < 0.7 as the literal needsPractice threshold — Traceable directly to the plan's acceptance criteria and UI-SPEC threshold
 - [Phase 08-progress-streaks]: Button.svelte gained an optional href prop rendering a real <a> for Start a Drill / Practice Now — Plan's acceptance criteria require genuine link semantics (getByRole('link'), real href) rather than a button-triggered navigation
+- [Phase 08-04]: computeStreak's previousDate() parses/formats YYYY-MM-DD using UTC Date fields only, never the host process's local timezone — The calendar labels being subtracted already came from the browser's local date (localDateString), so the day-subtraction math itself must stay timezone-neutral to avoid double-shifting
+- [Phase 08-04]: The streak hero card's Practice Now button replaces (not duplicates) 08-03's bottom-of-page Practice Now button — UI-SPEC explicitly requires avoiding duplicate CTAs in the populated layout
 
 ### Pending Todos
 
@@ -130,6 +133,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-13T19:07:25.260Z
-Stopped at: Completed 08-03-PLAN.md
+Last session: 2026-07-13T19:17:41.680Z
+Stopped at: Completed 08-04-PLAN.md
 Resume file: None
