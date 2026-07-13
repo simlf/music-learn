@@ -24,7 +24,7 @@
 ### Input
 
 - [ ] **INPUT-01**: User can answer drills by playing on a connected MIDI digital piano (Web MIDI, Chromium browsers)
-- [ ] **INPUT-02**: User can answer drills on an on-screen clickable keyboard — fully equivalent input path, works on any browser/device
+- [x] **INPUT-02**: User can answer drills on an on-screen clickable keyboard — fully equivalent input path, works on any browser/device
 - [ ] **INPUT-03**: Both input methods produce identical drill behavior (same matching logic, same feedback)
 
 ### Chord Lookup Companion

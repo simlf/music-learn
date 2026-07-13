@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 3
 current_phase_name: On-Screen Drill Loop
 status: executing
-stopped_at: Phase 3 UI-SPEC approved
-last_updated: "2026-07-13T01:10:31.765Z"
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-07-13T01:17:13.180Z"
 last_activity: 2026-07-13
 last_activity_desc: Phase 3 execution started
 progress:
   total_phases: 9
   completed_phases: 2
   total_plans: 11
-  completed_plans: 8
+  completed_plans: 9
   percent: 22
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-12)
 ## Current Position
 
 Phase: 3 (On-Screen Drill Loop) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-07-13 — Phase 3 execution started
 
@@ -64,6 +64,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02 P02 | 10min | 3 tasks | 8 files |
 | Phase 02 P03 | 18min | 3 tasks | 7 files |
 | Phase 03 P01 | 12min | 2 tasks | 4 files |
+| Phase 03 P02 | 8min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -89,6 +90,8 @@ Recent decisions affecting current work:
 - [Phase 03 P01]: matchChord compares only chroma (0-11) sets, never MIDI number or spelled-letter strings, so keyboard clicks and future MIDI note-on events share identical grading logic (D-01/D-02/D-03)
 - [Phase 03 P01]: pickDistractors reuses matchChord's chroma derivation (via an empty played set) rather than duplicating chroma-extraction logic a second time
 - [Phase 03 P01]: Distractor candidates are ordered near-miss-first (same root or same quality as correct answer) before falling back to any other supported symbol, for pedagogical plausibility (D-05)
+- [Phase 03 P02]: PianoKeyboard interactive mode is opt-in via interactive/selected/onToggle props; selection state is lifted to the parent (no internal $state), keeping the component a pure display+event surface
+- [Phase 03 P02]: Black keys emit their sharp-spelling letter as the canonical onToggle payload; parent maps letter to chroma before matchChord, so either enharmonic spelling resolves correctly
 
 ### Pending Todos
 
@@ -110,6 +113,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-13T01:09:32.672Z
-Stopped at: Phase 3 UI-SPEC approved
-Resume file: .planning/phases/03-on-screen-drill-loop/03-UI-SPEC.md
+Last session: 2026-07-13T01:17:13.176Z
+Stopped at: Completed 03-02-PLAN.md
+Resume file: None

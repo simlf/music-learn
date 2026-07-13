@@ -96,12 +96,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Every answer produces instant right/wrong feedback; a wrong answer reveals the correct notes and the interval formula in interval colors.
   4. The on-screen keyboard is a fully equivalent input path that works on any browser or device.
 
-**Plans**: 1/4 plans executed
+**Plans**: 2/4 plans executed
 
 **Wave 1** *(parallel: disjoint file sets)*
 
 - [x] 03-01-PLAN.md — Pure logic substrate (TDD): matchChord chroma-set matcher (D-01/02/03) + generateQuestion question/distractor/type generation (D-05/06)
-- [ ] 03-02-PLAN.md — Extend PianoKeyboard in place with interactive/selected/onToggle mode + selected-key hatch, display-only non-regression test (D-11, INPUT-02)
+- [x] 03-02-PLAN.md — Extend PianoKeyboard in place with interactive/selected/onToggle mode + selected-key hatch, display-only non-regression test (D-11, INPUT-02)
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -211,7 +211,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 |-------|----------------|--------|-----------|
 | 1. Print Shop Foundation & Theory Core | 4/4 | Complete    | 2026-07-12 |
 | 2. Chord Lookup Companion | 3/3 | Complete    | 2026-07-12 |
-| 3. On-Screen Drill Loop | 1/4 | In Progress|  |
+| 3. On-Screen Drill Loop | 2/4 | In Progress|  |
 | 4. MIDI Play-to-Answer | 0/TBD | Not started | - |
 | 5. Smart Drill Design | 0/TBD | Not started | - |
 | 6. Major Scales | 0/TBD | Not started | - |
