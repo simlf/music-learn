@@ -173,3 +173,12 @@ None - no external service configuration required.
 ---
 *Phase: 03-on-screen-drill-loop*
 *Completed: 2026-07-13*
+
+## Self-Check: PASSED
+
+- FOUND: src/lib/components/PianoKeyboard.svelte
+- FOUND: src/lib/components/components.test.ts
+- FOUND: .planning/phases/03-on-screen-drill-loop/03-02-SUMMARY.md
+- FOUND commit: d96e41c (test)
+- FOUND commit: 7ff8a4a (feat)
+- FOUND commit: 3c72b8d (docs: summary)
