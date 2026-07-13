@@ -77,11 +77,12 @@ describe('PianoKeyboard', () => {
 		const { container } = render(PianoKeyboard, {
 			notes: [],
 			interactive: true,
-			selected: new Set(),
+			selected: new Set<string>(),
 			onToggle
 		});
 
-		const cKey = screen.getByRole('button', { name: 'C key' });
+		// Two-octave keyboard repeats C three times; any instance is a valid target.
+		const [cKey] = screen.getAllByRole('button', { name: 'C key' });
 		await fireEvent.click(cKey);
 
 		expect(onToggle).toHaveBeenCalledWith('C');
@@ -96,11 +97,13 @@ describe('PianoKeyboard', () => {
 			onToggle: () => {}
 		});
 
-		const selectedKey = screen.getByRole('button', { name: 'C key, selected' });
-		expect(selectedKey).toHaveAttribute('aria-pressed', 'true');
+		const selectedKeys = screen.getAllByRole('button', { name: 'C key, selected' });
+		expect(selectedKeys.length).toBeGreaterThan(0);
+		selectedKeys.forEach((key) => expect(key).toHaveAttribute('aria-pressed', 'true'));
 
-		const unselectedKey = screen.getByRole('button', { name: 'D key' });
-		expect(unselectedKey).toHaveAttribute('aria-pressed', 'false');
+		const unselectedKeys = screen.getAllByRole('button', { name: 'D key' });
+		expect(unselectedKeys.length).toBeGreaterThan(0);
+		unselectedKeys.forEach((key) => expect(key).toHaveAttribute('aria-pressed', 'false'));
 	});
 
 	it('interactive mode: Enter and Space keydown both toggle a key', async () => {
@@ -108,11 +111,11 @@ describe('PianoKeyboard', () => {
 		render(PianoKeyboard, {
 			notes: [],
 			interactive: true,
-			selected: new Set(),
+			selected: new Set<string>(),
 			onToggle
 		});
 
-		const cKey = screen.getByRole('button', { name: 'C key' });
+		const [cKey] = screen.getAllByRole('button', { name: 'C key' });
 		await fireEvent.keyDown(cKey, { key: 'Enter' });
 		expect(onToggle).toHaveBeenCalledWith('C');
 

@@ -3,19 +3,45 @@
 	import type { IntervalRole, SpelledNote } from '$lib/theory/types';
 
 	/**
-	 * Display-only Print Shop piano keyboard. Renders a two-octave C-to-C span
-	 * (15 white keys) so every v1 chord's root/3rd/5th/7th fit fully above its
-	 * root without wrapping. No click/keydown handlers - interactivity is
-	 * Phase 3. Matches spelled notes to keys by letter name, not MIDI number
-	 * (UI-SPEC implementation note), and fills matched keys with their interval
-	 * color, showing a NoteLabel (letter + solfege) on top.
+	 * Print Shop piano keyboard. Renders a two-octave C-to-C span (15 white
+	 * keys) so every v1 chord's root/3rd/5th/7th fit fully above its root
+	 * without wrapping. Matches spelled notes to keys by letter name, not MIDI
+	 * number (UI-SPEC implementation note), and fills matched keys with their
+	 * interval color, showing a NoteLabel (letter + solfege) on top.
+	 *
+	 * Display-only by default (Phase 1 showcase, Phase 2 lookup): no
+	 * click/keydown handlers, no button semantics. Passing `interactive`
+	 * (Phase 3 / INPUT-02) opts every key into click + Enter/Space toggling,
+	 * gated entirely behind the `interactive` prop so the pre-existing
+	 * display-only render stays byte-identical when it is omitted.
 	 */
 	interface Props {
 		/** Spelled notes (from the theory engine) to highlight on the keyboard. */
 		notes: SpelledNote[];
+		/** Opt into clickable/keyboard-toggleable keys (default false, Phase 3). */
+		interactive?: boolean;
+		/** Letters currently toggled on by the user; only meaningful when `interactive`. */
+		selected?: Set<string>;
+		/** Called with a key's letter when the user toggles it (click or Enter/Space). */
+		onToggle?: (letter: string) => void;
 	}
 
-	let { notes }: Props = $props();
+	let { notes, interactive = false, selected, onToggle }: Props = $props();
+
+	function toggleKey(letter: string) {
+		onToggle?.(letter);
+	}
+
+	function handleKeydown(event: KeyboardEvent, letter: string) {
+		if (event.key === 'Enter' || event.key === ' ') {
+			event.preventDefault();
+			toggleKey(letter);
+		}
+	}
+
+	function keyAriaLabel(letter: string): string {
+		return selected?.has(letter) ? `${letter} key, selected` : `${letter} key`;
+	}
 
 	/** White key letters across a two-octave C-to-C span (15 keys). */
 	const WHITE_LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'A', 'B', 'C'];
@@ -151,13 +177,32 @@
 	function roleClass(role: IntervalRole | undefined): string {
 		return role ? `piano-keyboard__key--${role}` : '';
 	}
+
+	/**
+	 * Selected/pending hatch treatment applies only in interactive mode, only
+	 * when the key has no interval-role highlight (selected and
+	 * revealed-correct are mutually exclusive per UI-SPEC), so a merely-
+	 * selected key never fights with the four reserved interval-color fills.
+	 */
+	function selectedClass(letter: string, role: IntervalRole | undefined): string {
+		return interactive && !role && selected?.has(letter) ? 'piano-keyboard__key--selected' : '';
+	}
 </script>
 
 <div class="piano-keyboard" role="img" aria-label="Piano keyboard, two octaves">
 	{#each whiteKeys as key (key.index)}
+		<!-- svelte-ignore a11y_no_noninteractive_tabindex -- role is dynamically 'button' whenever tabindex is set (both gated by `interactive`) -->
 		<div
-			class="piano-keyboard__key piano-keyboard__key--white {roleClass(key.note?.role)}"
+			class="piano-keyboard__key piano-keyboard__key--white {roleClass(
+				key.note?.role
+			)} {selectedClass(key.letter, key.note?.role)}"
 			style="left: {key.leftPct}%; width: {WHITE_KEY_WIDTH_PCT}%;"
+			role={interactive ? 'button' : undefined}
+			tabindex={interactive ? 0 : undefined}
+			aria-pressed={interactive ? (selected?.has(key.letter) ?? false) : undefined}
+			aria-label={interactive ? keyAriaLabel(key.letter) : undefined}
+			onclick={interactive ? () => toggleKey(key.letter) : undefined}
+			onkeydown={interactive ? (event: KeyboardEvent) => handleKeydown(event, key.letter) : undefined}
 		>
 			{#if key.note}
 				<NoteLabel letter={key.note.letter} solfege={key.note.solfege} highlighted />
@@ -165,9 +210,20 @@
 		</div>
 	{/each}
 	{#each blackKeys as key, i (i)}
+		<!-- svelte-ignore a11y_no_noninteractive_tabindex -- role is dynamically 'button' whenever tabindex is set (both gated by `interactive`) -->
 		<div
-			class="piano-keyboard__key piano-keyboard__key--black {roleClass(key.note?.role)}"
+			class="piano-keyboard__key piano-keyboard__key--black {roleClass(
+				key.note?.role
+			)} {selectedClass(key.sharpLetter, key.note?.role)}"
 			style="left: {key.leftPct}%; width: {BLACK_KEY_WIDTH_PCT}%;"
+			role={interactive ? 'button' : undefined}
+			tabindex={interactive ? 0 : undefined}
+			aria-pressed={interactive ? (selected?.has(key.sharpLetter) ?? false) : undefined}
+			aria-label={interactive ? keyAriaLabel(key.sharpLetter) : undefined}
+			onclick={interactive ? () => toggleKey(key.sharpLetter) : undefined}
+			onkeydown={interactive
+				? (event: KeyboardEvent) => handleKeydown(event, key.sharpLetter)
+				: undefined}
 		>
 			{#if key.note}
 				<NoteLabel letter={key.note.letter} solfege={key.note.solfege} highlighted />
@@ -222,5 +278,34 @@
 
 	.piano-keyboard__key--seventh {
 		background-color: var(--color-seventh);
+	}
+
+	/*
+	 * Selected/pending key: a diagonal ink hatch texture plus an inset ink
+	 * border, deliberately NOT a color fill, so it can never be confused with
+	 * the four reserved interval-color fills above (which only ever appear on
+	 * revealed/correct notes). Layered over the key's existing base color via
+	 * repeating-linear-gradient; no new app.css token, per UI-SPEC.
+	 */
+	.piano-keyboard__key--selected {
+		background-image: repeating-linear-gradient(
+			45deg,
+			color-mix(in srgb, var(--color-ink) 12%, transparent) 0,
+			color-mix(in srgb, var(--color-ink) 12%, transparent) 1px,
+			transparent 1px,
+			transparent 7px
+		);
+		box-shadow: inset 0 0 0 2px var(--color-ink);
+	}
+
+	.piano-keyboard__key--black.piano-keyboard__key--selected {
+		background-image: repeating-linear-gradient(
+			45deg,
+			color-mix(in srgb, var(--color-paper-bright) 20%, transparent) 0,
+			color-mix(in srgb, var(--color-paper-bright) 20%, transparent) 1px,
+			transparent 1px,
+			transparent 7px
+		);
+		box-shadow: inset 0 0 0 2px var(--color-paper-bright);
 	}
 </style>
