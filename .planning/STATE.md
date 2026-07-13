@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 9
+current_phase: 09
 current_phase_name: Deploy to the Piano
 status: executing
-stopped_at: Phase 9 context gathered
-last_updated: "2026-07-13T21:36:33.886Z"
+stopped_at: Completed 09-01-PLAN.md (responsive PianoKeyboard)
+last_updated: "2026-07-13T21:56:47.525Z"
 last_activity: 2026-07-13
-last_activity_desc: Phase 8 verified (UAT 2/2 passed, security 14/14 closed), transitioned to Phase 9
+last_activity_desc: Phase 09 execution started
 progress:
   total_phases: 9
   completed_phases: 4
-  total_plans: 15
-  completed_plans: 15
+  total_plans: 21
+  completed_plans: 16
   percent: 44
 ---
 
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 ## Current Position
 
-Phase: 9 — Deploy to the Piano
-Plan: Not started
+Phase: 09 (Deploy to the Piano) — EXECUTING
+Plan: 2 of 6
 Status: Ready to execute
-Last activity: 2026-07-13 — Phase 8 verified (UAT 2/2 passed, security 14/14 closed), transitioned to Phase 9
+Last activity: 2026-07-13 — Phase 09 execution started
 
 Progress: [████████████████████] 15/15 plans (100%)
 
@@ -72,6 +72,7 @@ Progress: [████████████████████] 15/15 p
 | Phase 08-progress-streaks P02 | 10min | 3 tasks | 11 files |
 | Phase 08-progress-streaks P03 | 10min | 3 tasks | 13 files |
 | Phase 08-progress-streaks P04 | 9min | 3 tasks | 13 files |
+| Phase 09-deploy-to-the-piano P01 | 6min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -113,6 +114,9 @@ Recent decisions affecting current work:
 - [Phase 08-progress-streaks]: Button.svelte gained an optional href prop rendering a real <a> for Start a Drill / Practice Now — Plan's acceptance criteria require genuine link semantics (getByRole('link'), real href) rather than a button-triggered navigation
 - [Phase 08-04]: computeStreak's previousDate() parses/formats YYYY-MM-DD using UTC Date fields only, never the host process's local timezone — The calendar labels being subtracted already came from the browser's local date (localDateString), so the day-subtraction math itself must stay timezone-neutral to avoid double-shifting
 - [Phase 08-04]: The streak hero card's Practice Now button replaces (not duplicates) 08-03's bottom-of-page Practice Now button — UI-SPEC explicitly requires avoiding duplicate CTAs in the populated layout
+- [Phase 09 P01]: octavesForWidth threshold is >= 15*44px (660px) for two octaves, matching the prior fixed layout's implicit width exactly so wide-viewport rendering stays byte-identical
+- [Phase 09 P01]: assignNotesToKeys wrap-around branch falls back to the lowest same-pitch-class key in the visible span when a note has no candidate at/after the ascending cursor, preserving its interval role instead of dropping it
+- [Phase 09 P01]: PianoKeyboard defaults to 2 octaves when width is unmeasurable (no ResizeObserver, e.g. jsdom) so all pre-existing tests stay green without modification
 
 ### Pending Todos
 
@@ -137,6 +141,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-13T20:31:19.733Z
-Stopped at: Phase 9 context gathered
-Resume file: .planning/phases/09-deploy-to-the-piano/09-CONTEXT.md
+Last session: 2026-07-13T21:56:47.519Z
+Stopped at: Completed 09-01-PLAN.md (responsive PianoKeyboard)
+Resume file: None

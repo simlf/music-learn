@@ -54,7 +54,7 @@
 
 ### Platform
 
-- [ ] **PLAT-01**: User can access the app from laptop and phone (responsive layout, on-screen keyboard usable on mobile)
+- [x] **PLAT-01**: User can access the app from laptop and phone (responsive layout, on-screen keyboard usable on mobile)
 - [ ] **PLAT-02**: App is deployed on the user's Oracle server over HTTPS (required for Web MIDI)
 
 ## v2 Requirements
