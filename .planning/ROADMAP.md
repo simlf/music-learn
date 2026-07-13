@@ -218,7 +218,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Scope note (Phase 9 planning):** Deployment to the Oracle server over HTTPS (criterion 1, and the cross-device part of criterion 3) is DEFERRED per the phase CONTEXT reframe — the user handles deployment himself outside these plans. These plans deliver criterion 2 in depth (responsive/mobile, PLAT-01); PLAT-02 is not claimed here.
 
-**Plans**: 4/6 plans executed
+**Plans**: 5/6 plans executed
 
 **Wave 1** *(parallel: disjoint file sets)*
 
@@ -232,7 +232,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 09-03-PLAN.md — Mobile drills layout: portrait thumb-zone + landscape two-pane + one-time rotate hint + 2x2 choices (D-05, D-06, D-10, D-13)
+- [x] 09-03-PLAN.md — Mobile drills layout: portrait thumb-zone + landscape two-pane + one-time rotate hint + 2x2 choices (D-05, D-06, D-10, D-13)
 - [ ] 09-04-PLAN.md — Touch ergonomics: press cue + guarded haptic + keyboard gesture hygiene (D-11, D-12)
 
 **UI hint**: yes
@@ -252,4 +252,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 6. Major Scales | 0/TBD | Not started | - |
 | 7. Theory Lessons | 0/TBD | Not started | - |
 | 8. Progress & Streaks | 4/4 | Complete    | 2026-07-13 |
-| 9. Deploy to the Piano | 4/6 | In Progress|  |
+| 9. Deploy to the Piano | 5/6 | In Progress|  |
