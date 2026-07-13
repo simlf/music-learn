@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 09
 current_phase_name: Deploy to the Piano
 status: executing
-stopped_at: Completed 09-01-PLAN.md (responsive PianoKeyboard)
-last_updated: "2026-07-13T21:56:47.525Z"
+stopped_at: Completed 09-05-PLAN.md (minimal PWA manifest + icons)
+last_updated: "2026-07-13T22:04:36.160Z"
 last_activity: 2026-07-13
 last_activity_desc: Phase 09 execution started
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 21
-  completed_plans: 16
+  completed_plans: 17
   percent: 44
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 09 (Deploy to the Piano) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-07-13 — Phase 09 execution started
 
@@ -73,6 +73,7 @@ Progress: [████████████████████] 15/15 p
 | Phase 08-progress-streaks P03 | 10min | 3 tasks | 13 files |
 | Phase 08-progress-streaks P04 | 9min | 3 tasks | 13 files |
 | Phase 09-deploy-to-the-piano P01 | 6min | 3 tasks | 4 files |
+| Phase 09-deploy-to-the-piano P05 | 10min | 1 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -117,6 +118,7 @@ Recent decisions affecting current work:
 - [Phase 09 P01]: octavesForWidth threshold is >= 15*44px (660px) for two octaves, matching the prior fixed layout's implicit width exactly so wide-viewport rendering stays byte-identical
 - [Phase 09 P01]: assignNotesToKeys wrap-around branch falls back to the lowest same-pitch-class key in the visible span when a note has no candidate at/after the ascending cursor, preserving its interval role instead of dropping it
 - [Phase 09 P01]: PianoKeyboard defaults to 2 octaves when width is unmeasurable (no ResizeObserver, e.g. jsdom) so all pre-existing tests stay green without modification
+- [Phase 09 P05]: Manifest theme_color/background_color reuse app.css's --color-ink/--color-paper tokens directly rather than introducing new colors, per D-07 discretion
 
 ### Pending Todos
 
@@ -141,6 +143,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-13T21:56:47.519Z
-Stopped at: Completed 09-01-PLAN.md (responsive PianoKeyboard)
+Last session: 2026-07-13T22:04:36.154Z
+Stopped at: Completed 09-05-PLAN.md (minimal PWA manifest + icons)
 Resume file: None
