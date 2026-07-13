@@ -132,6 +132,23 @@
 		const chroma = Note.chroma(toAsciiAccidentals(letter));
 		return feedback?.extra.includes(chroma) ?? false;
 	}
+
+	/**
+	 * Wrong extra letters the user played (Sketch 001 Variant A): reuses the
+	 * existing isExtraLetter() derivation, no new matching logic. Feeds the
+	 * merged feedback keyboard's gray ✕ overlay.
+	 */
+	const wrongLetters = $derived(new Set(playedLetters.filter(isExtraLetter)));
+
+	/**
+	 * True once a wrong CONSTRUCTION answer is graded: the input keyboard
+	 * transforms in place into the reveal (interval colors + wrongLetters),
+	 * replacing the prior separate correct-answer keyboard. Construction-only
+	 * per plan scope; identification's reveal keyboard is unchanged.
+	 */
+	const showConstructionReveal = $derived(
+		question.kind === 'construction' && answered && feedback !== null && !feedback.correct
+	);
 </script>
 
 <main class="bg-paper text-ink min-h-screen p-8 font-sans">
@@ -149,7 +166,13 @@
 			<p class="text-body mt-4">Click the notes for {question.symbol}.</p>
 
 			<div class="mt-6">
-				<PianoKeyboard notes={[]} interactive {selected} onToggle={toggleKey} />
+				<PianoKeyboard
+					notes={showConstructionReveal ? target.notes : []}
+					interactive={!showConstructionReveal}
+					selected={showConstructionReveal ? undefined : selected}
+					onToggle={showConstructionReveal ? undefined : toggleKey}
+					wrongLetters={showConstructionReveal ? wrongLetters : undefined}
+				/>
 			</div>
 
 			<div class="mt-6 flex gap-2">
@@ -198,10 +221,30 @@
 						<div class="mt-4 flex items-start gap-4">
 							<ChordGlyph root={target.root} quality={target.symbol.slice(target.root.length)} />
 						</div>
+						<div class="mt-4">
+							<PianoKeyboard notes={target.notes} />
+						</div>
 					{/if}
-					<div class="mt-4">
-						<PianoKeyboard notes={target.notes} />
-					</div>
+					{#if question.kind === 'construction'}
+						<p class="text-label mt-4 flex gap-4 font-mono" data-testid="feedback-legend">
+							<span class="inline-flex items-center gap-2">
+								<span
+									class="inline-block h-3 w-3"
+									style="background-color: var(--color-third);"
+									aria-hidden="true"
+								></span>
+								The chord
+							</span>
+							<span class="inline-flex items-center gap-2">
+								<span
+									class="inline-block h-3 w-3"
+									style="background-color: var(--color-wrong);"
+									aria-hidden="true"
+								></span>
+								Your extra note
+							</span>
+						</p>
+					{/if}
 					<div class="mt-6 flex gap-4" data-testid="interval-formula">
 						{#each formulaFor(target) as entry (entry.role + entry.letter)}
 							<div class="flex flex-col items-center gap-1">
@@ -211,25 +254,6 @@
 							</div>
 						{/each}
 					</div>
-					{#if question.kind === 'construction'}
-						<div class="mt-6 flex flex-col gap-2">
-							<p class="text-label font-mono" data-testid="played-diff">
-								<span class="text-muted">You played:</span>
-								{#each playedLetters as letter, i (letter + i)}
-									{#if isExtraLetter(letter)}
-										<span class="border-ink inline-block border-2 px-1">{letter}</span>
-									{:else}
-										<span>{letter}</span>
-									{/if}
-									{i < playedLetters.length - 1 ? ', ' : ''}
-								{/each}
-							</p>
-							<p class="text-label font-mono" data-testid="correct-diff">
-								<span class="text-muted">Correct:</span>
-								{target.notes.map((note) => note.letter).join(', ')}
-							</p>
-						</div>
-					{/if}
 				{/if}
 			</div>
 		{/if}
@@ -243,21 +267,9 @@
 </main>
 
 <style>
+	/* @keyframes stamp-in now lives in app.css (shared with PianoKeyboard's
+	   feedback-mode key stamp, Sketch 001 Variant A). */
 	.stamp {
 		animation: stamp-in 240ms ease-out;
-	}
-
-	@keyframes stamp-in {
-		0% {
-			transform: scale(0.96);
-			opacity: 0;
-		}
-		60% {
-			transform: scale(1.02);
-			opacity: 1;
-		}
-		100% {
-			transform: scale(1);
-		}
 	}
 </style>

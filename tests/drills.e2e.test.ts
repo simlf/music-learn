@@ -165,10 +165,13 @@ describe('drills page wrong construction answer teaches', () => {
 		expect(keyboards).toHaveLength(1);
 		const keyboard = keyboards[0];
 
-		// The wrongly-played A carries the wrong-fill gray class and a ✕ mark.
+		// The wrongly-played A carries the wrong-fill gray class and a ✕ mark
+		// (letter/pitch-class based, so every visible A instance across the
+		// default two-octave render is marked — mirrors selectedClass's
+		// existing octave-agnostic behavior).
 		const wrongKeys = keyboard.querySelectorAll('.piano-keyboard__key--wrong');
-		expect(wrongKeys).toHaveLength(1);
-		expect(within(wrongKeys[0] as HTMLElement).getByText('✕')).toBeInTheDocument();
+		expect(wrongKeys.length).toBeGreaterThan(0);
+		wrongKeys.forEach((key) => expect(within(key as HTMLElement).getByText('✕')).toBeInTheDocument());
 
 		// The four correct Cm7 notes still render in their interval-role colors.
 		const highlighted = keyboard.querySelectorAll(

@@ -156,7 +156,11 @@ describe('PianoKeyboard', () => {
 
 	it('feedback mode (wrongLetters defined): the wrong extra key gets a gray ✕ fill and the reveal keys are stamped', () => {
 		const { notes } = spellChord('Cm7');
-		const { container } = render(PianoKeyboard, { notes, wrongLetters: new Set(['A']) });
+		const { container } = render(PianoKeyboard, {
+			notes,
+			wrongLetters: new Set(['A']),
+			octaves: 1
+		});
 
 		const wrongKeys = container.querySelectorAll('.piano-keyboard__key--wrong');
 		expect(wrongKeys).toHaveLength(1);

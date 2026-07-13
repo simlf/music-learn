@@ -45,9 +45,18 @@
 		 * else 1 - D-01, D-04).
 		 */
 		octaves?: 1 | 2;
+		/**
+		 * Letters the user played that are NOT part of `notes` (Sketch 001
+		 * Variant A wrong-answer feedback). Defined (even as an empty set) is
+		 * the feedback-mode signal: matching keys get a gray wrong-fill + a ✕
+		 * mark instead of a NoteLabel, and every interval-colored/wrong key
+		 * gets the stamp-in reveal animation. Undefined leaves display/
+		 * interactive mode byte-identical to before this prop existed.
+		 */
+		wrongLetters?: Set<string>;
 	}
 
-	let { notes, interactive = false, selected, onToggle, octaves }: Props = $props();
+	let { notes, interactive = false, selected, onToggle, octaves, wrongLetters }: Props = $props();
 
 	let containerEl: HTMLDivElement | undefined = $state();
 	let measuredWidth: number | undefined = $state(undefined);
@@ -174,6 +183,27 @@
 	function selectedClass(letter: string, role: IntervalRole | undefined): string {
 		return interactive && !role && selected?.has(letter) ? 'piano-keyboard__key--selected' : '';
 	}
+
+	/**
+	 * Wrong-answer gray fill (Sketch 001 Variant A): only applies when this
+	 * key has no interval-role highlight — revealed-correct notes always keep
+	 * their interval color, never gray, so a wrong key and a colored key are
+	 * mutually exclusive (mirrors `selectedClass`'s `!role` guard).
+	 */
+	function wrongClass(letter: string, role: IntervalRole | undefined): string {
+		return !role && wrongLetters?.has(letter) ? 'piano-keyboard__key--wrong' : '';
+	}
+
+	/**
+	 * Reveal stamp beat (shared `stamp-in` keyframe lives in app.css): fires on
+	 * every interval-colored key and every wrong-fill key once feedback mode
+	 * is on (`wrongLetters` defined, even as an empty set), so the whole
+	 * reveal lands together.
+	 */
+	function stampedClass(letter: string, role: IntervalRole | undefined): string {
+		if (wrongLetters === undefined) return '';
+		return role || wrongLetters.has(letter) ? 'piano-keyboard__key--stamped' : '';
+	}
 </script>
 
 <div
@@ -187,7 +217,10 @@
 		<div
 			class="piano-keyboard__key piano-keyboard__key--white {roleClass(
 				key.note?.role
-			)} {selectedClass(key.letter, key.note?.role)}"
+			)} {selectedClass(key.letter, key.note?.role)} {wrongClass(
+				key.letter,
+				key.note?.role
+			)} {stampedClass(key.letter, key.note?.role)}"
 			style="left: {key.leftPct}%; width: {whiteKeyWidthPct}%;"
 			role={interactive ? 'button' : undefined}
 			tabindex={interactive ? 0 : undefined}
@@ -198,6 +231,9 @@
 		>
 			{#if key.note}
 				<NoteLabel letter={key.note.letter} solfege={key.note.solfege} highlighted />
+			{:else if wrongLetters?.has(key.letter)}
+				<span class="piano-keyboard__wrong-mark" aria-hidden="true">✕</span>
+				<span class="sr-only">extra note</span>
 			{/if}
 		</div>
 	{/each}
@@ -206,7 +242,10 @@
 		<div
 			class="piano-keyboard__key piano-keyboard__key--black {roleClass(
 				key.note?.role
-			)} {selectedClass(key.sharpLetter, key.note?.role)}"
+			)} {selectedClass(key.sharpLetter, key.note?.role)} {wrongClass(
+				key.sharpLetter,
+				key.note?.role
+			)} {stampedClass(key.sharpLetter, key.note?.role)}"
 			style="left: {key.leftPct}%; width: {blackKeyWidthPct}%;"
 			role={interactive ? 'button' : undefined}
 			tabindex={interactive ? 0 : undefined}
@@ -219,6 +258,9 @@
 		>
 			{#if key.note}
 				<NoteLabel letter={key.note.letter} solfege={key.note.solfege} highlighted />
+			{:else if wrongLetters?.has(key.sharpLetter)}
+				<span class="piano-keyboard__wrong-mark" aria-hidden="true">✕</span>
+				<span class="sr-only">extra note</span>
 			{/if}
 		</div>
 	{/each}
@@ -269,6 +311,36 @@
 
 	.piano-keyboard__key--seventh {
 		background-color: var(--color-seventh);
+	}
+
+	/*
+	 * Wrong-answer feedback fill (Sketch 001 Variant A): the user's extra,
+	 * non-chord notes at reveal time. Mutually exclusive with the four
+	 * interval-role fills above (wrongClass only applies when there is no
+	 * role), so a wrong key never fights with a colored one.
+	 */
+	.piano-keyboard__key--wrong {
+		background-color: var(--color-wrong);
+	}
+
+	.piano-keyboard__key--black.piano-keyboard__key--wrong {
+		background-color: var(--color-wrong-deep);
+	}
+
+	.piano-keyboard__wrong-mark {
+		font-family: var(--font-sans);
+		font-weight: 700;
+		font-size: var(--text-label);
+		color: var(--color-ink);
+	}
+
+	/*
+	 * Reveal stamp beat: keyframe now lives in app.css (shared with the
+	 * drills page's .stamp) so both consumers reference one definition; the
+	 * prefers-reduced-motion guard also lives there alongside it.
+	 */
+	.piano-keyboard__key--stamped {
+		animation: stamp-in 240ms ease-out;
 	}
 
 	/*

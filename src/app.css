@@ -18,6 +18,12 @@
 	--color-fifth: #a89a7f;
 	--color-seventh: #f0c948;
 
+	/* Wrong-answer feedback grays (Sketch 001 Variant A) — additive, NOT part
+	   of the fixed interval-color language above; only fills the user's
+	   wrong extra notes at reveal time. */
+	--color-wrong: #b8b0a0;
+	--color-wrong-deep: #8f877a;
+
 	/* On-fill text colors paired with each interval color (UI-SPEC contrast note):
 	   vermilion + verdigris take paper/white text; mustard + tan take ink text. */
 	--color-on-root: #ffffff;
@@ -76,4 +82,32 @@ body {
 	background-color: var(--color-paper);
 	color: var(--color-ink);
 	font-family: var(--font-sans);
+}
+
+/*
+ * Shared reveal "stamp-in" beat (Sketch 001 Variant A). Used by the drills
+ * feedback block (.stamp, src/routes/drills/+page.svelte) and by
+ * PianoKeyboard's feedback-mode interval-colored/wrong keys
+ * (.piano-keyboard__key--stamped) — lives here (not component-scoped) so
+ * both consumers share one definition instead of duplicating the keyframe.
+ */
+@keyframes stamp-in {
+	0% {
+		transform: scale(0.96);
+		opacity: 0;
+	}
+	60% {
+		transform: scale(1.02);
+		opacity: 1;
+	}
+	100% {
+		transform: scale(1);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.stamp,
+	.piano-keyboard__key--stamped {
+		animation: none !important;
+	}
 }
