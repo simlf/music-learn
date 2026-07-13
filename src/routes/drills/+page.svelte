@@ -402,10 +402,47 @@
 				'next next';
 			align-items: center;
 			gap: var(--spacing-md);
+			margin-top: var(--spacing-sm);
 		}
 
 		.drill-layout__keyboard {
 			align-self: center;
+		}
+
+		/*
+		 * D-06 no-scroll fix: at a genuinely short landscape height (measured
+		 * 844x390) the chrome ABOVE the two-pane card - the page's own
+		 * vertical padding, the "Drills" h1 (redundant with the masthead's
+		 * active nav state), and the score register's top margin - was
+		 * costing 89px more than the viewport had, forcing a scroll to reach
+		 * the keyboard's bottom / Check-Clear row. Compacting that chrome
+		 * (not the card itself, which already fits) closes the gap. These
+		 * element selectors are scoped to this component by Svelte, so they
+		 * safely out-specificity the plain Tailwind utility classes
+		 * (py-8/mt-2/mt-8/min-h-screen) they override, regardless of
+		 * stylesheet order.
+		 *
+		 * min-height also needs clearing here: <main> carries min-h-screen
+		 * (100vh) for the normal single-column page, but at this short
+		 * landscape height the masthead sits ABOVE <main> - so a 100vh-tall
+		 * <main> plus the masthead's own height always overflows the
+		 * viewport by the masthead's height, even once the actual content is
+		 * shrunk well below the fold. Letting <main> size to its own
+		 * (now-compact) content removes that floor.
+		 */
+		main {
+			min-height: 0;
+			padding-top: var(--spacing-xs);
+			padding-bottom: var(--spacing-xs);
+		}
+
+		h1 {
+			display: none;
+		}
+
+		[data-testid='score-register'] {
+			margin-top: 0;
+			margin-bottom: var(--spacing-xs);
 		}
 	}
 
