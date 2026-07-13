@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 3
-current_phase_name: On-Screen Drill Loop
+current_phase: 08
+current_phase_name: progress-streaks
 status: executing
 stopped_at: Phase 8 context gathered
-last_updated: "2026-07-13T18:19:22.430Z"
+last_updated: "2026-07-13T18:41:51.708Z"
 last_activity: 2026-07-13
-last_activity_desc: Phase 3 execution started
+last_activity_desc: Phase 08 execution resumed (wave continue)
 progress:
   total_phases: 9
   completed_phases: 3
-  total_plans: 11
-  completed_plans: 11
+  total_plans: 15
+  completed_plans: 12
   percent: 33
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-12)
 
 **Core value:** See a jazz chord symbol and know instantly what to play with the left hand.
-**Current focus:** Phase 3 — On-Screen Drill Loop
+**Current focus:** Phase 08 — progress-streaks
 
 ## Current Position
 
-Phase: 3 (On-Screen Drill Loop) — EXECUTING
-Plan: 4 of 4
+Phase: 08 (progress-streaks) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-07-13 — Phase 3 execution started
+Last activity: 2026-07-13 — Phase 08 execution resumed (wave continue)
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -67,6 +67,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03 P02 | 8min | 2 tasks | 2 files |
 | Phase 03 P03 | 22min | 2 tasks | 3 files |
 | Phase 03 P04 | 4min | 2 tasks | 2 files |
+| Phase 08 P01 | 7 min | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -100,6 +101,8 @@ Recent decisions affecting current work:
 - [Phase 03 P04]: generateQuestion() is now called directly on load and on every Next, removing Plan 03's construction-only redraw loop entirely; both kinds interleave with no mode toggle per D-06
 - [Phase 03 P04]: Identification's wrong-answer reveal renders a ChordGlyph of the correct symbol above the shared keyboard/interval-formula reveal; the You played/Correct diff row stays construction-only
 - [Phase 03 P04]: A single recordGrade(correct) helper is shared by checkAnswer (construction) and selectChoice (identification) for score mutation and confirmation/headline variant selection
+- [Phase 08-01]: Fastify Ajv removeAdditional overridden to false so additionalProperties:false rejects unknown fields with 400 (default silently strips them)
+- [Phase 08-01]: buildApp DI factory + encapsulated auth plugin context: /health open, authenticated routes (answers now, stats/streak later) register inside the bearer preHandler scope
 
 ### Pending Todos
 
@@ -121,6 +124,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-13T17:51:52.698Z
+Last session: 2026-07-13T18:41:38.626Z
 Stopped at: Phase 8 context gathered
 Resume file: .planning/phases/08-progress-streaks/08-CONTEXT.md
