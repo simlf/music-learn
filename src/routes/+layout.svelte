@@ -7,6 +7,7 @@
 
 	const navLinks = [
 		{ href: '/', label: 'Lookup' },
+		{ href: '/drills', label: 'Drills' },
 		{ href: '/showcase', label: 'Showcase' }
 	];
 </script>

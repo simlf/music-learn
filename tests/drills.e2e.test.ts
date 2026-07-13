@@ -1,8 +1,19 @@
 import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import { createRawSnippet } from 'svelte';
+import { readable } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DrillsPage from '../src/routes/drills/+page.svelte';
-import RootLayout from '../src/routes/+layout.svelte';
+
+// +layout.svelte reads the `$page` store from $app/stores to mark the active
+// nav link. That store is populated by the real SvelteKit client router at
+// runtime, which isn't present when rendering +layout.svelte standalone here
+// - so it's mocked with a minimal readable stub exposing just the `url`
+// shape the masthead's active-link check reads (`$page.url.pathname`).
+vi.mock('$app/stores', () => ({
+	page: readable({ url: new URL('http://localhost/') })
+}));
+
+const { default: RootLayout } = await import('../src/routes/+layout.svelte');
 
 // This suite pins the construction-drill loop (Plan 03). generateQuestion's
 // question type and symbol are drawn via Math.random(), so every test here
@@ -75,9 +86,9 @@ describe('drills page correct construction answer', () => {
 		render(DrillsPage);
 
 		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
-		await fireEvent.click(screen.getAllByRole('button', { name: 'E♭ key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
 		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
-		await fireEvent.click(screen.getAllByRole('button', { name: 'B♭ key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
 
@@ -96,11 +107,11 @@ describe('drills page correct construction answer', () => {
 		// octave-duplicated keys rather than requiring the exact same key index
 		// every time (DRILL-01).
 		const cKeys = screen.getAllByRole('button', { name: 'C key' });
-		const eFlatKeys = screen.getAllByRole('button', { name: 'E♭ key' });
+		const eFlatKeys = screen.getAllByRole('button', { name: 'D♯ key' });
 		await fireEvent.click(cKeys[cKeys.length - 1]);
 		await fireEvent.click(eFlatKeys[eFlatKeys.length - 1]);
 		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
-		await fireEvent.click(screen.getAllByRole('button', { name: 'B♭ key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
 
@@ -117,7 +128,7 @@ describe('drills page wrong construction answer teaches', () => {
 
 		// Omit B♭, add A: an incorrect set (missing the 7th, an extra 6th).
 		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
-		await fireEvent.click(screen.getAllByRole('button', { name: 'E♭ key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
 		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
 		await fireEvent.click(screen.getAllByRole('button', { name: 'A key' })[0]);
 
@@ -145,7 +156,7 @@ describe('drills page Clear', () => {
 		render(DrillsPage);
 
 		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
-		await fireEvent.click(screen.getAllByRole('button', { name: 'E♭ key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
 
 		const checkButton = screen.getByRole('button', { name: 'Check' });
 		expect(checkButton).toBeEnabled();
@@ -163,7 +174,7 @@ describe('drills masthead nav link', () => {
 			render: () => '<div></div>'
 		}));
 
-		render(RootLayout, { children: emptyChildren });
+		render(RootLayout, { params: {}, data: {}, children: emptyChildren });
 
 		const link = screen.getByRole('link', { name: 'Drills' });
 		expect(link).toBeInTheDocument();
