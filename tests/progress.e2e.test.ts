@@ -11,8 +11,11 @@ vi.mock('$app/stores', () => ({
 }));
 
 const fetchStatsMock = vi.fn();
+const fetchStreakMock = vi.fn();
 vi.mock('$lib/api/progress', () => ({
-	fetchStats: (...args: unknown[]) => fetchStatsMock(...args)
+	fetchStats: (...args: unknown[]) => fetchStatsMock(...args),
+	fetchStreak: (...args: unknown[]) => fetchStreakMock(...args),
+	localDateString: () => '2026-07-13'
 }));
 
 // Stateful token mock: setApiToken updates what getApiToken subsequently
@@ -33,6 +36,8 @@ const { default: RootLayout } = await import('../src/routes/+layout.svelte');
 beforeEach(() => {
 	storedToken = '';
 	fetchStatsMock.mockReset();
+	fetchStreakMock.mockReset();
+	fetchStreakMock.mockResolvedValue({ streak: 0, practicedToday: false });
 	getApiTokenMock.mockClear();
 	setApiTokenMock.mockClear();
 });
@@ -62,6 +67,44 @@ describe('progress page populated state', () => {
 		const accuracyTable = screen.getByTestId('accuracy-table');
 		expect(within(accuracyTable).getByText('Cm7')).toBeInTheDocument();
 		expect(within(accuracyTable).getByText('G7')).toBeInTheDocument();
+	});
+
+	it('shows a streak hero numeral and a rotation line containing the count when fetchStreak resolves an active streak', async () => {
+		storedToken = 'secret';
+		fetchStatsMock.mockResolvedValue({
+			items: [{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4, needsPractice: true }],
+			weakest: [{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4, needsPractice: true }]
+		});
+		fetchStreakMock.mockResolvedValue({ streak: 3, practicedToday: true });
+
+		render(ProgressPage);
+
+		await waitFor(() =>
+			expect(within(screen.getByTestId('streak-hero')).getByTestId('streak-badge')).toHaveTextContent(
+				'3'
+			)
+		);
+
+		const hero = screen.getByTestId('streak-hero');
+		expect(hero.textContent).toMatch(/3/);
+	});
+
+	it('shows the hero numeral 0 in ink and a zeroStreak line when the streak is 0', async () => {
+		storedToken = 'secret';
+		fetchStatsMock.mockResolvedValue({
+			items: [{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4, needsPractice: true }],
+			weakest: [{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4, needsPractice: true }]
+		});
+		fetchStreakMock.mockResolvedValue({ streak: 0, practicedToday: false });
+
+		render(ProgressPage);
+
+		await waitFor(() => expect(screen.getByTestId('streak-hero')).toBeInTheDocument());
+
+		const hero = screen.getByTestId('streak-hero');
+		const badge = within(hero).getByTestId('streak-badge');
+		expect(badge).toHaveTextContent('0');
+		expect(badge.classList.contains('streak-badge--active')).toBe(false);
 	});
 });
 

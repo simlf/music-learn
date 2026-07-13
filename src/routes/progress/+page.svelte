@@ -1,19 +1,25 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { fetchStats, type StatItem } from '$lib/api/progress';
+	import { fetchStats, fetchStreak, localDateString, type StatItem } from '$lib/api/progress';
 	import { getApiToken, setApiToken } from '$lib/api/client';
+	import { pickStreakLine } from '$lib/copy/streak';
 	import PracticeItemRow from '$lib/components/PracticeItemRow.svelte';
 	import AccuracyTable from '$lib/components/AccuracyTable.svelte';
+	import StreakBadge from '$lib/components/StreakBadge.svelte';
 	import Button from '$lib/components/Button.svelte';
 
 	/**
-	 * Progress page (PROG-02): the first true network round-trip in the UI.
-	 * Fetches server-computed per-item accuracy stats and renders the
-	 * Weakest Spots shortlist + a full stats table, with real loading/
-	 * empty/error states (plus a token-entry branch when no bearer token is
-	 * stored yet, D-03's "entered once per device" flow). The streak hero
-	 * card (08-04) will sit above Weakest Spots; nothing here reserves
-	 * visual space for it since it's a future addition to this same layout.
+	 * Progress page (PROG-02, PROG-03): the first true network round-trip in
+	 * the UI. Fetches server-computed per-item accuracy stats and the daily
+	 * streak, rendering a streak hero card above the Weakest Spots shortlist
+	 * and a full stats table, with real loading/empty/error states (plus a
+	 * token-entry branch when no bearer token is stored yet, D-03's
+	 * "entered once per device" flow).
+	 *
+	 * The streak fetch is independent of the page's own loading/empty/error
+	 * state machine (which is driven only by fetchStats): if fetchStreak
+	 * fails, streak defaults to 0 and the hero still renders in its zero
+	 * form rather than blocking the rest of the page.
 	 */
 	type PageState = 'loading' | 'empty' | 'error' | 'populated' | 'token-missing';
 
@@ -21,6 +27,13 @@
 	let items = $state<StatItem[]>([]);
 	let weakest = $state<StatItem[]>([]);
 	let tokenInput = $state('');
+	let streak = $state(0);
+	let practicedToday = $state(false);
+
+	const streakLine = $derived.by(() => {
+		const kind = streak === 0 ? 'zeroStreak' : practicedToday ? 'activePracticedToday' : 'activeNudge';
+		return pickStreakLine(kind).replace('{N}', String(streak));
+	});
 
 	async function load(): Promise<void> {
 		if (getApiToken() === '') {
@@ -35,6 +48,15 @@
 			pageState = result.items.length === 0 ? 'empty' : 'populated';
 		} catch {
 			pageState = 'error';
+		}
+
+		try {
+			const streakResult = await fetchStreak(localDateString());
+			streak = streakResult.streak;
+			practicedToday = streakResult.practicedToday;
+		} catch {
+			streak = 0;
+			practicedToday = false;
 		}
 	}
 
@@ -91,6 +113,16 @@
 			</div>
 		</div>
 	{:else}
+		<div class="border-ink bg-paper-bright mt-8 border-2 p-6" data-testid="streak-hero">
+			<p class="text-body">{streakLine}</p>
+			<div class="mt-4">
+				<StreakBadge variant="hero" count={streak} />
+			</div>
+			<div class="mt-6">
+				<Button variant="primary" href="/drills">Practice Now</Button>
+			</div>
+		</div>
+
 		<div class="border-ink bg-paper-bright mt-8 border-2 p-6" data-testid="weakest-spots">
 			<h2 class="text-heading font-bold">Weakest Spots</h2>
 			<p class="text-body mt-2">The chords and scales tripping you up most. Give these extra reps.</p>
@@ -108,10 +140,6 @@
 			<div class="mt-4">
 				<AccuracyTable {items} />
 			</div>
-		</div>
-
-		<div class="mt-8">
-			<Button variant="primary" href="/drills">Practice Now</Button>
 		</div>
 	{/if}
 </main>

@@ -1,6 +1,10 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import '../app.css';
 	import { page } from '$app/stores';
+	import { fetchStreak, localDateString } from '$lib/api/progress';
+	import { getApiToken } from '$lib/api/client';
+	import StreakBadge from '$lib/components/StreakBadge.svelte';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
@@ -11,6 +15,32 @@
 		{ href: '/progress', label: 'Progress' },
 		{ href: '/showcase', label: 'Showcase' }
 	];
+
+	/**
+	 * Masthead streak chip (PROG-03): fetched only when a token is already
+	 * stored, since an unauthenticated request would just 401. StreakBadge's
+	 * own compact-variant self-hide (loading/zero/error) means the masthead
+	 * needs no conditional wrapper here - nav links render immediately
+	 * regardless of this fetch's state.
+	 */
+	let streakCount = $state(0);
+	let streakLoading = $state(false);
+
+	onMount(() => {
+		if (getApiToken() === '') return;
+		streakLoading = true;
+		fetchStreak(localDateString())
+			.then((result) => {
+				streakCount = result.streak;
+			})
+			.catch(() => {
+				// Fetch failure: the chip stays hidden (count remains 0). The
+				// full error explanation lives only on the Progress page.
+			})
+			.finally(() => {
+				streakLoading = false;
+			});
+	});
 </script>
 
 <nav
@@ -18,6 +48,7 @@
 	data-testid="masthead"
 >
 	<span class="text-heading font-bold uppercase tracking-tight">MUSIC LEARN</span>
+	<StreakBadge variant="compact" count={streakCount} loading={streakLoading} />
 	<div class="flex gap-4">
 		{#each navLinks as link (link.href)}
 			<a
