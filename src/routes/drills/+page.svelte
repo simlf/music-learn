@@ -5,6 +5,7 @@
 	import { formulaFor } from '$lib/lookup/chordPresentation';
 	import { generateQuestion } from '$lib/drills/generateQuestion';
 	import { matchChord } from '$lib/drills/matchChord';
+	import { dismissRotateHint, isRotateHintDismissed } from '$lib/drills/rotateHint';
 	import { recordAnswer, flushQueue } from '$lib/api/progress';
 	import type { DrillQuestion } from '$lib/drills/generateQuestion';
 	import type { MatchResult } from '$lib/drills/matchChord';
@@ -59,9 +60,36 @@
 	/** In-session running tally (D-10): in-memory only, no localStorage, resets on reload. */
 	let score = $state({ correct: 0, streak: 0 });
 
+	/**
+	 * Rotate hint (D-05): read synchronously at init (mirrors question's
+	 * $state(generateQuestion()) init pattern) so the hint's presence is
+	 * correct on the very first render, no post-mount flash.
+	 */
+	let hintDismissed = $state(isRotateHintDismissed());
+
+	function dismissHint() {
+		dismissRotateHint();
+		hintDismissed = true;
+	}
+
 	// Drain any answers queued from a previous offline session (PROG-01).
 	onMount(() => {
 		flushQueue();
+	});
+
+	// D-05 "first rotation" clause: entering landscape counts as an implicit
+	// dismissal, same as tapping the hint's dismiss control. Feature-detected
+	// (matchMedia isn't implemented by jsdom, so this is a silent no-op in
+	// tests and in any browser lacking it - progressive enhancement only).
+	onMount(() => {
+		if (typeof window.matchMedia !== 'function') return;
+		const mql = window.matchMedia('(orientation: landscape)');
+		const handleOrientationChange = (event: MediaQueryListEvent) => {
+			if (event.matches) dismissHint();
+		};
+		if (mql.matches) dismissHint();
+		mql.addEventListener('change', handleOrientationChange);
+		return () => mql.removeEventListener('change', handleOrientationChange);
 	});
 
 	function recordGrade(correct: boolean) {
@@ -158,14 +186,28 @@
 		{score.correct} RIGHT · {score.streak} STREAK
 	</p>
 
-	<div class="border-ink bg-paper-bright mt-8 border-2 px-2 py-6 sm:px-6" data-testid="drill-card">
-		{#if question.kind === 'construction'}
-			<div class="flex items-start gap-4">
-				<ChordGlyph root={target.root} quality={target.symbol.slice(target.root.length)} />
-			</div>
-			<p class="text-body mt-4">Click the notes for {question.symbol}.</p>
+	<div
+		class="drill-layout border-ink bg-paper-bright mt-8 border-2 px-2 py-6 sm:px-6"
+		data-testid="drill-card"
+	>
+		{#if !hintDismissed}
+			<p class="drill-layout__hint text-label border-ink flex items-center justify-between gap-4 border-2 px-3 py-2 font-mono uppercase" data-testid="rotate-hint">
+				<span>Turn the phone sideways for the full two-octave board.</span>
+				<button type="button" class="text-label shrink-0 font-mono underline" onclick={dismissHint}>
+					Got it
+				</button>
+			</p>
+		{/if}
 
-			<div class="mt-6">
+		{#if question.kind === 'construction'}
+			<div class="drill-layout__prompt">
+				<div class="flex items-start gap-4">
+					<ChordGlyph root={target.root} quality={target.symbol.slice(target.root.length)} />
+				</div>
+				<p class="text-body mt-4">Click the notes for {question.symbol}.</p>
+			</div>
+
+			<div class="drill-layout__keyboard">
 				<PianoKeyboard
 					notes={showConstructionReveal ? target.notes : []}
 					interactive={!showConstructionReveal}
@@ -175,41 +217,49 @@
 				/>
 			</div>
 
-			<div class="mt-6 flex gap-2">
-				<Button
-					type="button"
-					variant="primary"
-					disabled={selected.size === 0}
-					onclick={checkAnswer}
-				>
-					Check
-				</Button>
-				<Button type="button" variant="ghost" onclick={clearSelection}>Clear</Button>
+			<div class="drill-layout__controls drill-controls">
+				<div class="drill-controls__primary">
+					<Button
+						type="button"
+						variant="primary"
+						disabled={selected.size === 0}
+						onclick={checkAnswer}
+					>
+						Check
+					</Button>
+				</div>
+				<div class="drill-controls__secondary">
+					<Button type="button" variant="ghost" onclick={clearSelection}>Clear</Button>
+				</div>
 			</div>
 		{:else}
-			<p class="text-body">Name this chord.</p>
+			<div class="drill-layout__prompt">
+				<p class="text-body">Name this chord.</p>
+			</div>
 
-			<div class="mt-6">
+			<div class="drill-layout__keyboard">
 				<PianoKeyboard notes={target.notes} />
 			</div>
 
-			<div class="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4" data-testid="choice-grid">
-				{#each question.choices ?? [] as choice (choice)}
-					<Button
-						type="button"
-						variant="ghost"
-						disabled={answered}
-						aria-label={`Answer: ${choice}`}
-						onclick={() => selectChoice(choice)}
-					>
-						<span class="font-serif text-heading font-bold">{choice}</span>
-					</Button>
-				{/each}
+			<div class="drill-layout__controls">
+				<div class="grid grid-cols-2 gap-2 xl:grid-cols-4" data-testid="choice-grid">
+					{#each question.choices ?? [] as choice (choice)}
+						<Button
+							type="button"
+							variant="ghost"
+							disabled={answered}
+							aria-label={`Answer: ${choice}`}
+							onclick={() => selectChoice(choice)}
+						>
+							<span class="font-serif text-heading font-bold">{choice}</span>
+						</Button>
+					{/each}
+				</div>
 			</div>
 		{/if}
 
 		{#if answered && feedback}
-			<div class="stamp mt-6" data-testid="drill-feedback">
+			<div class="drill-layout__feedback stamp" data-testid="drill-feedback">
 				{#if feedback.correct}
 					<p class="text-body font-bold">{confirmationText}</p>
 				{:else}
@@ -259,7 +309,7 @@
 		{/if}
 
 		{#if answered}
-			<div class="mt-6">
+			<div class="drill-layout__next">
 				<Button type="button" variant="primary" onclick={nextQuestion}>Next</Button>
 			</div>
 		{/if}
@@ -271,5 +321,116 @@
 	   feedback-mode key stamp, Sketch 001 Variant A). */
 	.stamp {
 		animation: stamp-in 240ms ease-out;
+	}
+
+	/*
+	 * Portrait (base): a single column, top to bottom - hint, prompt, the
+	 * keyboard, then Check/Clear directly below it in the thumb zone (D-10),
+	 * followed by feedback and Next. Named grid areas (rather than margin
+	 * utilities between siblings) let the landscape query below reflow the
+	 * SAME elements into a two-pane layout without reordering the DOM.
+	 */
+	.drill-layout {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-areas:
+			'hint'
+			'prompt'
+			'keyboard'
+			'controls'
+			'feedback'
+			'next';
+		gap: var(--spacing-lg);
+	}
+
+	.drill-layout__hint {
+		grid-area: hint;
+	}
+
+	.drill-layout__prompt {
+		grid-area: prompt;
+		min-width: 0;
+	}
+
+	.drill-layout__keyboard {
+		grid-area: keyboard;
+		min-width: 0;
+	}
+
+	.drill-layout__controls {
+		grid-area: controls;
+	}
+
+	.drill-layout__feedback {
+		grid-area: feedback;
+		min-width: 0;
+	}
+
+	.drill-layout__next {
+		grid-area: next;
+	}
+
+	/*
+	 * D-05: the rotate hint only makes sense in portrait. The moment the
+	 * device is landscape, hide it outright (independent of the compact
+	 * two-pane query below) - the JS matchMedia listener in the script block
+	 * persists the dismissal for future portrait visits, but this rule keeps
+	 * it hidden immediately even on a browser lacking matchMedia.
+	 */
+	@media (orientation: landscape) {
+		.drill-layout__hint {
+			display: none;
+		}
+	}
+
+	/*
+	 * D-06: a genuinely short landscape viewport (a phone rotated, not a
+	 * laptop/desktop window that merely happens to be wider than it is
+	 * tall) switches to a side-by-side two-pane layout so everything fits
+	 * without scrolling - prompt/controls (or the identification choices)
+	 * on the left, the keyboard filling the remaining width on the right.
+	 * Gating on max-height (not just orientation) keeps roomy landscape
+	 * windows on the single-column layout.
+	 */
+	@media (orientation: landscape) and (max-height: 600px) {
+		.drill-layout {
+			grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+			grid-template-areas:
+				'prompt keyboard'
+				'controls keyboard'
+				'feedback feedback'
+				'next next';
+			align-items: center;
+			gap: var(--spacing-md);
+		}
+
+		.drill-layout__keyboard {
+			align-self: center;
+		}
+	}
+
+	/*
+	 * D-10: Check is the generous primary target, Clear a smaller secondary
+	 * beside it. Both are wrapped so a flex-basis ratio (not a fixed px
+	 * width) controls the split, then stretched to fill their share via the
+	 * :global() rule below (Button.svelte's own <button>/<a> has no
+	 * caller-facing width prop).
+	 */
+	.drill-controls {
+		display: flex;
+		gap: var(--spacing-sm);
+	}
+
+	.drill-controls__primary {
+		flex: 3;
+	}
+
+	.drill-controls__secondary {
+		flex: 1;
+	}
+
+	.drill-controls__primary :global(.ps-button),
+	.drill-controls__secondary :global(.ps-button) {
+		width: 100%;
 	}
 </style>
