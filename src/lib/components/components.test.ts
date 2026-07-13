@@ -283,7 +283,7 @@ describe('PianoKeyboard', () => {
 		});
 
 		it('pointerdown calls navigator.vibrate with a short duration when available', async () => {
-			const vibrateMock = vi.fn(() => true);
+			const vibrateMock = vi.fn((_pattern: VibratePattern) => true);
 			Object.defineProperty(navigator, 'vibrate', {
 				value: vibrateMock,
 				configurable: true,

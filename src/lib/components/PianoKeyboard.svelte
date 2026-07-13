@@ -28,6 +28,15 @@
 	 * display-only render stays byte-identical when it is omitted. Selection
 	 * is letter-based and octave-agnostic, so it survives an octave-count
 	 * change uninterrupted (D-03).
+	 *
+	 * Interactive keys also get a phone-touch press cue: a pointerdown sets a
+	 * transient `--pressed` state (brief scale/shade, additive to interval-
+	 * color/wrong fills and the selected hatch, disabled under
+	 * prefers-reduced-motion) and fires a feature-detected `navigator.vibrate`
+	 * pulse where supported (D-11). The keyboard surface also carries
+	 * gesture-hygiene styling (touch-action, -webkit-touch-callout,
+	 * user-select) so taps register cleanly without double-tap zoom or the
+	 * long-press callout/selection menu (D-12).
 	 */
 	interface Props {
 		/** Spelled notes (from the theory engine) to highlight on the keyboard. */
@@ -60,6 +69,8 @@
 
 	let containerEl: HTMLDivElement | undefined = $state();
 	let measuredWidth: number | undefined = $state(undefined);
+	/** Letter of the key currently pressed (pointer down), for the D-11 press cue. Interactive-only. */
+	let pressedLetter: string | undefined = $state(undefined);
 
 	// Self-measure only when `octaves` isn't explicitly provided. Reads the
 	// container's width and derives octave count from it via `$derived` below
@@ -96,6 +107,28 @@
 			event.preventDefault();
 			toggleKey(letter);
 		}
+	}
+
+	/**
+	 * Feature-detected haptic pulse (D-11): a single short vibration on key
+	 * press, only when the Vibration API exists (Android Chrome/Firefox).
+	 * No-ops cleanly everywhere else (iOS Safari, desktop) - never throws.
+	 */
+	function triggerHapticPulse() {
+		if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+			navigator.vibrate(10);
+		}
+	}
+
+	/** Pointerdown press cue + haptic (D-11). Interactive-only. */
+	function handlePointerDown(letter: string) {
+		pressedLetter = letter;
+		triggerHapticPulse();
+	}
+
+	/** Clears the transient pressed state on release/cancel/leave (D-11). */
+	function clearPressed(letter: string) {
+		if (pressedLetter === letter) pressedLetter = undefined;
 	}
 
 	function keyAriaLabel(letter: string): string {
@@ -204,12 +237,23 @@
 		if (wrongLetters === undefined) return '';
 		return role || wrongLetters.has(letter) ? 'piano-keyboard__key--stamped' : '';
 	}
+
+	/**
+	 * Press-down cue (D-11): additive to every other treatment above (interval
+	 * color, wrong fill, selected hatch) - a key can be pressed at the same
+	 * time as any of those, never replacing them. Interactive-only, since
+	 * display-mode keys have no pointer handlers to set `pressedLetter`.
+	 */
+	function pressedClass(letter: string): string {
+		return interactive && pressedLetter === letter ? 'piano-keyboard__key--pressed' : '';
+	}
 </script>
 
 <div
 	class="piano-keyboard"
 	role="img"
 	aria-label={keyboardAriaLabel(effectiveOctaves)}
+	style="touch-action: manipulation;"
 	bind:this={containerEl}
 >
 	{#each whiteKeys as key (key.index)}
@@ -220,7 +264,7 @@
 			)} {selectedClass(key.letter, key.note?.role)} {wrongClass(
 				key.letter,
 				key.note?.role
-			)} {stampedClass(key.letter, key.note?.role)}"
+			)} {stampedClass(key.letter, key.note?.role)} {pressedClass(key.letter)}"
 			style="left: {key.leftPct}%; width: {whiteKeyWidthPct}%;"
 			role={interactive ? 'button' : undefined}
 			tabindex={interactive ? 0 : undefined}
@@ -228,6 +272,10 @@
 			aria-label={interactive ? keyAriaLabel(key.letter) : undefined}
 			onclick={interactive ? () => toggleKey(key.letter) : undefined}
 			onkeydown={interactive ? (event: KeyboardEvent) => handleKeydown(event, key.letter) : undefined}
+			onpointerdown={interactive ? () => handlePointerDown(key.letter) : undefined}
+			onpointerup={interactive ? () => clearPressed(key.letter) : undefined}
+			onpointerleave={interactive ? () => clearPressed(key.letter) : undefined}
+			onpointercancel={interactive ? () => clearPressed(key.letter) : undefined}
 		>
 			{#if key.note}
 				<NoteLabel letter={key.note.letter} solfege={key.note.solfege} highlighted />
@@ -245,7 +293,7 @@
 			)} {selectedClass(key.sharpLetter, key.note?.role)} {wrongClass(
 				key.sharpLetter,
 				key.note?.role
-			)} {stampedClass(key.sharpLetter, key.note?.role)}"
+			)} {stampedClass(key.sharpLetter, key.note?.role)} {pressedClass(key.sharpLetter)}"
 			style="left: {key.leftPct}%; width: {blackKeyWidthPct}%;"
 			role={interactive ? 'button' : undefined}
 			tabindex={interactive ? 0 : undefined}
@@ -255,6 +303,10 @@
 			onkeydown={interactive
 				? (event: KeyboardEvent) => handleKeydown(event, key.sharpLetter)
 				: undefined}
+			onpointerdown={interactive ? () => handlePointerDown(key.sharpLetter) : undefined}
+			onpointerup={interactive ? () => clearPressed(key.sharpLetter) : undefined}
+			onpointerleave={interactive ? () => clearPressed(key.sharpLetter) : undefined}
+			onpointercancel={interactive ? () => clearPressed(key.sharpLetter) : undefined}
 		>
 			{#if key.note}
 				<NoteLabel letter={key.note.letter} solfege={key.note.solfege} highlighted />
@@ -271,6 +323,11 @@
 		position: relative;
 		width: 100%;
 		height: 160px;
+		/* Gesture hygiene (D-12): see the touch-action inline style above and
+		   the matching rule on .piano-keyboard__key below - keyboard-only, not
+		   page-wide. */
+		-webkit-touch-callout: none;
+		user-select: none;
 	}
 
 	/*
@@ -292,6 +349,19 @@
 		align-items: flex-end;
 		justify-content: center;
 		padding-bottom: var(--spacing-xs);
+		/*
+		 * Gesture hygiene (D-12): keyboard-only touch hardening so taps
+		 * register cleanly - no double-tap zoom, no iOS long-press
+		 * callout/selection menu. Scoped to the keyboard element itself, not
+		 * applied page-wide (pull-to-refresh blocking and leave-confirmation
+		 * were explicitly NOT selected, D-12).
+		 */
+		touch-action: manipulation;
+		-webkit-touch-callout: none;
+		user-select: none;
+		transition:
+			transform 90ms ease-out,
+			filter 90ms ease-out;
 	}
 
 	.piano-keyboard__key--white {
@@ -380,5 +450,27 @@
 			transparent 7px
 		);
 		box-shadow: inset 0 0 0 2px var(--color-paper-bright);
+	}
+
+	/*
+	 * Press-down cue (D-11): an immediate, brief confirmation that a tap
+	 * landed, so a fat-finger tap on glass is instantly confirmable. Additive
+	 * to every treatment above - the interval-color/wrong fills, the
+	 * selected-hatch, and the stamp-in reveal - never replacing any of them,
+	 * since `pressedClass` is concatenated alongside those classes rather than
+	 * gated behind an `!role`/`!selected` check. Disabled under
+	 * prefers-reduced-motion (D-11); the `transition` above still applies so
+	 * the class can be added/removed without a visible flash.
+	 */
+	.piano-keyboard__key--pressed {
+		transform: scale(0.94);
+		filter: brightness(0.9);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.piano-keyboard__key--pressed {
+			transform: none;
+			filter: none;
+		}
 	}
 </style>
