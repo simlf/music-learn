@@ -13,6 +13,17 @@ vi.mock('$app/stores', () => ({
 	page: readable({ url: new URL('http://localhost/') })
 }));
 
+// The drills page now fire-and-forgets every graded answer to the backend
+// (PROG-01) via $lib/api/progress. Mocked here so this suite never touches
+// real fetch/localStorage and the existing timing-sensitive assertions stay
+// unaffected.
+const recordAnswerMock = vi.fn();
+const flushQueueMock = vi.fn();
+vi.mock('$lib/api/progress', () => ({
+	recordAnswer: (...args: unknown[]) => recordAnswerMock(...args),
+	flushQueue: (...args: unknown[]) => flushQueueMock(...args)
+}));
+
 const { default: RootLayout } = await import('../src/routes/+layout.svelte');
 
 // This suite pins the construction-drill loop (Plan 03). generateQuestion's
@@ -49,6 +60,8 @@ function forceConstructionCm7() {
 
 beforeEach(() => {
 	forceConstructionCm7();
+	recordAnswerMock.mockClear();
+	flushQueueMock.mockClear();
 });
 
 afterEach(() => {
@@ -354,5 +367,39 @@ describe('drills page ScoreRegister', () => {
 		await fireEvent.click(wrongChoice!);
 
 		expect(screen.getByTestId('score-register')).toHaveTextContent('1 RIGHT · 0 STREAK');
+	});
+});
+
+describe('drills page answer persistence (PROG-01)', () => {
+	it('calls recordAnswer once with the question symbol, kind chord, and correct true after a right answer', async () => {
+		forceIdentificationCm7();
+		render(DrillsPage);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Answer: Cm7' }));
+
+		expect(recordAnswerMock).toHaveBeenCalledTimes(1);
+		expect(recordAnswerMock).toHaveBeenCalledWith({ item: 'Cm7', kind: 'chord', correct: true });
+	});
+
+	it('calls recordAnswer with correct false after a wrong answer', async () => {
+		forceIdentificationCm7();
+		render(DrillsPage);
+
+		const choices = screen.getAllByRole('button', { name: /^Answer: / });
+		const wrongChoice = choices.find(
+			(button) => button.getAttribute('aria-label') !== 'Answer: Cm7'
+		);
+		expect(wrongChoice).toBeDefined();
+		await fireEvent.click(wrongChoice!);
+
+		expect(recordAnswerMock).toHaveBeenCalledTimes(1);
+		expect(recordAnswerMock).toHaveBeenCalledWith({ item: 'Cm7', kind: 'chord', correct: false });
+	});
+
+	it('flushes the queue on mount', () => {
+		forceConstructionCm7();
+		render(DrillsPage);
+
+		expect(flushQueueMock).toHaveBeenCalledTimes(1);
 	});
 });

@@ -1,9 +1,11 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { Note } from 'tonal';
 	import { spellChord } from '$lib/theory/chord';
 	import { formulaFor } from '$lib/lookup/chordPresentation';
 	import { generateQuestion } from '$lib/drills/generateQuestion';
 	import { matchChord } from '$lib/drills/matchChord';
+	import { recordAnswer, flushQueue } from '$lib/api/progress';
 	import type { DrillQuestion } from '$lib/drills/generateQuestion';
 	import type { MatchResult } from '$lib/drills/matchChord';
 	import PianoKeyboard from '$lib/components/PianoKeyboard.svelte';
@@ -57,6 +59,11 @@
 	/** In-session running tally (D-10): in-memory only, no localStorage, resets on reload. */
 	let score = $state({ correct: 0, streak: 0 });
 
+	// Drain any answers queued from a previous offline session (PROG-01).
+	onMount(() => {
+		flushQueue();
+	});
+
 	function recordGrade(correct: boolean) {
 		if (correct) {
 			score = { correct: score.correct + 1, streak: score.streak + 1 };
@@ -69,6 +76,11 @@
 			headlineText = text;
 			lastWrongIndex = index;
 		}
+
+		// Fire-and-forget persistence (D-04): never awaited, so this cannot
+		// delay the synchronous UI updates above. The item kind is always
+		// 'chord' this phase; scale items arrive in Phase 6.
+		recordAnswer({ item: question.symbol, kind: 'chord', correct });
 	}
 
 	function toggleKey(letter: string) {
