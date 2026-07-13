@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 08
-current_phase_name: progress-streaks
+current_phase: 9
+current_phase_name: Deploy to the Piano
 status: verifying
 stopped_at: Completed 08-04-PLAN.md
-last_updated: "2026-07-13T19:17:41.685Z"
+last_updated: "2026-07-13T20:06:50.797Z"
 last_activity: 2026-07-13
-last_activity_desc: Phase 08 execution resumed (wave continue)
+last_activity_desc: Phase 8 complete, transitioned to Phase 9
 progress:
   total_phases: 9
   completed_phases: 4
@@ -21,25 +21,25 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-12)
+See: .planning/PROJECT.md (updated 2026-07-13)
 
 **Core value:** See a jazz chord symbol and know instantly what to play with the left hand.
-**Current focus:** Phase 08 — progress-streaks
+**Current focus:** Phase 09 — Deploy to the Piano
 
 ## Current Position
 
-Phase: 08 (progress-streaks) — EXECUTING
-Plan: 4 of 4
-Status: Phase complete — ready for verification
-Last activity: 2026-07-13 — Phase 08 execution resumed (wave continue)
+Phase: 9 — Deploy to the Piano
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-07-13 — Phase 8 verified (UAT 2/2 passed, security 14/14 closed), transitioned to Phase 9
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [████████████████████] 15/15 plans (100%)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 7
+- Total plans completed: 11
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -49,6 +49,7 @@ Progress: [░░░░░░░░░░] 0%
 |-------|-------|-------|----------|
 | 01 | 4 | - | - |
 | 2 | 3 | - | - |
+| 8 | 4 | - | - |
 
 **Recent Trend:**
 
@@ -122,6 +123,9 @@ None yet.
 - ~~Phase 1: Verify tonal.js enharmonic spelling against jazz conventions (F♯ø7, C♯m7)~~ — RESOLVED in 01-02: 96-cell reference chord matrix confirms tonal's spellings match jazz conventions (F♯m7 → C♯ not D♭); ø/ø7 required explicit normalization since tonal doesn't parse the glyph natively.
 - Phase 3: Document explicit chord-matching tolerance (voicing/octave/extra-note) before coding — research flag.
 - Phase 4: Cross-browser Web MIDI permission/hot-plug behavior needs testing (Chrome/Firefox/Safari) — research flag.
+- ⚠️ [Phase 8, for Phase 9] CORS_ORIGIN must match the deployed frontend origin exactly; UAT hit a block when the app ran on a non-allowed port (npm run preview, 4173). Deploy config must set CORS_ORIGIN.
+- ⚠️ [Phase 8] Progress page shows the generic "server's not answering" copy for a 401 (wrong access key). Misleading during setup; consider a distinct wrong-key message (minor UX).
+- ⚠️ [Phase 8] 08-REVIEW.md CR-02: on a fresh Linux host, the ./data bind mount may shadow the image chown and crash the non-root app user (SQLITE_CANTOPEN). Worked locally; re-check on the Oracle server in Phase 9.
 
 ## Deferred Items
 
@@ -133,6 +137,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-13T19:17:41.680Z
-Stopped at: Completed 08-04-PLAN.md
+Last session: 2026-07-13T20:15:00Z
+Stopped at: Phase 8 complete, ready to plan Phase 9
 Resume file: None

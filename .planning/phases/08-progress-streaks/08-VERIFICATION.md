@@ -1,22 +1,26 @@
 ---
 phase: 08-progress-streaks
 verified: 2026-07-13T19:30:42Z
-status: human_needed
+status: passed
 score: 3/3 must-haves verified
 behavior_unverified: 2
 overrides_applied: 0
 human_verification:
+
   - test: "Run `docker compose up --build` on the actual target (or a Linux VM/container host) with a real .env, and confirm the `api` service reports healthy and `GET /health` returns 200 through the published port."
     expected: "The api container builds, starts, and stays healthy; the SQLite file at ./data/music-learn.db is created and writable."
     why_human: "The docker daemon was unavailable in both the execution sandbox (per 08-02-SUMMARY.md) and this verification sandbox, so `docker compose up --build` itself has never been exercised. Static validation (`docker compose config -q`) passed and a non-containerized run of the built server against real SQLite confirmed persistence/auth/health logic, but the container image build/run path is unverified. 08-REVIEW.md's CR-02 additionally gives a concrete, code-level reason to expect this will fail on the actual Linux deploy target: the Dockerfile's `chown -R app:app /data` has no effect once `docker-compose.yml`'s `./data:/data` bind mount shadows it at runtime, so the non-root `app` user likely cannot write to the mounted directory, and the server would crash-loop on `SQLITE_CANTOPEN`."
+
   - test: "With the api service reachable and a bearer token saved via the Progress page's token-entry form, reload the app (or open a fresh tab) and confirm the masthead's compact streak chip appears within a moment of page load once a streak exists."
     expected: "The masthead shows '{N} DAY STREAK' shortly after load when a token is stored and the streak is >= 1; it stays absent at 0/loading/error."
     why_human: "08-04-SUMMARY.md's own coverage (D5) flags that no e2e test exercises the masthead's token-present fetch-and-render sequence end to end; the existing masthead e2e test (from 08-03) renders +layout.svelte without a token, only exercising the self-hidden path. Component-level self-hide behavior is unit-tested (streakBadge.test.ts), but the layout's onMount wiring around it is not."
 behavior_unverified_items:
+
   - truth: "`docker compose up` brings up the api service on the Oracle-server-shaped Linux target with a persisted SQLite volume and a passing healthcheck."
     test: "Run `docker compose up --build` against a fresh `./data` directory on a Linux host (bind mount, non-root container user) and observe container health."
     expected: "Container starts, stays healthy, and the SQLite file persists across a container restart."
     why_human: "Never executed end to end (no docker daemon available at execution time or verification time); CR-02 identifies a specific ownership-shadowing bug (chown at build time vs. bind-mount ownership at runtime) that is very likely to reproduce this failure on Linux, unlike on Docker Desktop/OrbStack for Mac where ownership shimming hides it."
+
   - truth: "Masthead compact streak chip renders correctly after a real onMount fetch with a stored token (not just its self-hide states)."
     test: "Load the app with a token already stored in localStorage and a non-zero streak on the server; observe the masthead chip appear."
     expected: "Chip text '{N} DAY STREAK' appears without blocking nav render."

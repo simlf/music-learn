@@ -233,5 +233,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 5. Smart Drill Design | 0/TBD | Not started | - |
 | 6. Major Scales | 0/TBD | Not started | - |
 | 7. Theory Lessons | 0/TBD | Not started | - |
-| 8. Progress & Streaks | 4/4 | Complete   | 2026-07-13 |
+| 8. Progress & Streaks | 4/4 | Complete    | 2026-07-13 |
 | 9. Deploy to the Piano | 0/TBD | Not started | - |

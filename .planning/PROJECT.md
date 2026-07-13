@@ -12,7 +12,7 @@ Chord symbol fluency: see a jazz chord symbol like `Cm7` or `F♯ø7` in sheet m
 
 ### Validated
 
-(None yet — ship to validate)
+- ✓ Progress persists between sessions: raw answer history on the backend, per-item stats, weakest shortlist, daily streak (progress view + masthead chip) — Phase 8 (spaced-repetition scheduler itself remains deferred to v1.x per Key Decisions)
 
 ### Active
 
@@ -22,7 +22,7 @@ Chord symbol fluency: see a jazz chord symbol like `Cm7` or `F♯ø7` in sheet m
 - [ ] Theory lessons explaining the "why": intervals, chord construction, what symbols like 7, maj7, m7, ø, °, 9 mean
 - [ ] Scale drills and lessons — all major scales (with fingerings), beyond the one (G major) currently known
 - [ ] Practice companion / chord lookup: enter a chord symbol, see notes, keyboard diagram, and left-hand voicing suggestions — usable next to the piano while playing real songs
-- [ ] Smart practice: spaced repetition that tracks wrong answers and drills weak chords/scales more; progress persists between sessions (streaks, progress view)
+- [ ] Smart practice: spaced repetition that tracks wrong answers and drills weak chords/scales more (v1.x — persistence foundation shipped in Phase 8)
 - [ ] Dual note naming: letters (C, D, E) primary to match jazz notation, Do-Ré-Mi solfège shown alongside as a bridge
 - [ ] Deployed as a website accessible from any device (laptop at the piano, phone elsewhere)
 - [ ] "Print Shop" visual identity with a memory-supporting interval color language (root/3rd/5th/7th consistently colored app-wide)
@@ -60,7 +60,8 @@ Chord symbol fluency: see a jazz chord symbol like `Cm7` or `F♯ø7` in sheet m
 | Letters primary, solfège alongside | Jazz symbols are letter-based; immersion with a familiar bridge | — Pending |
 | Spaced repetition for drills | Weak spots (unfamiliar chords/scales) need more reps; supports daily-habit goal | — Pending |
 | Deployed website over local app | Accessible at the piano and on the phone; supports habit formation | — Pending |
-| Backend on user's Oracle server + SQLite | One shared progress history across laptop and phone; user already owns the server | — Pending |
+| Backend on user's Oracle server + SQLite | One shared progress history across laptop and phone; user already owns the server | ✓ Phase 8: Fastify + better-sqlite3 API shipped via plain docker compose; UAT-verified locally, Oracle deploy is Phase 9 |
+| Shared-secret bearer token auth for the personal API | Single user, internet-facing once deployed; timing-safe compare, fail-fast boot without API_TOKEN | ✓ Phase 8: implemented and threat-verified (08-SECURITY.md, 14/14 closed) |
 | "Print Shop" artistic direction | User choice after comparing 4 directions + 3 hybrids: letterpress vibe — paper ground, ink borders, vermilion/mustard, sharp corners, misregistered print shadows (mockups in `.planning/design/`) | — Pending |
 | Interval color language (root=vermilion, 7th=mustard, ...) | Color encodes chord structure consistently app-wide — dual coding makes chord-quality differences visual, not just intellectual | — Pending |
 | Spaced repetition deferred to v1.x | Research: don't build scheduling before 1–2 weeks of real answer history exists; persistence ships in v1 | — Pending |
@@ -83,4 +84,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-12 after initialization*
+*Last updated: 2026-07-13 after Phase 8*
