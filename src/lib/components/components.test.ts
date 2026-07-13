@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, within } from '@testing-library/svelte';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import PianoKeyboard from './PianoKeyboard.svelte';
 import RecentChipRow from './RecentChipRow.svelte';
 import { spellChord } from '$lib/theory/chord';
@@ -273,6 +273,88 @@ describe('PianoKeyboard', () => {
 		selectedKeys = screen.getAllByRole('button', { name: 'C key, selected' });
 		expect(selectedKeys.length).toBeGreaterThan(0);
 		selectedKeys.forEach((key) => expect(key).toHaveAttribute('aria-pressed', 'true'));
+	});
+
+	describe('interactive touch (D-11 press cue + haptic, D-12 gesture hygiene)', () => {
+		afterEach(() => {
+			// Restore jsdom's baseline (no navigator.vibrate) so each test starts
+			// from the same unsupported-by-default state.
+			Reflect.deleteProperty(navigator, 'vibrate');
+		});
+
+		it('pointerdown calls navigator.vibrate with a short duration when available', async () => {
+			const vibrateMock = vi.fn(() => true);
+			Object.defineProperty(navigator, 'vibrate', {
+				value: vibrateMock,
+				configurable: true,
+				writable: true
+			});
+
+			render(PianoKeyboard, {
+				notes: [],
+				interactive: true,
+				selected: new Set<string>(),
+				onToggle: () => {}
+			});
+
+			const [cKey] = screen.getAllByRole('button', { name: 'C key' });
+			await fireEvent.pointerDown(cKey);
+
+			expect(vibrateMock).toHaveBeenCalledTimes(1);
+			const [duration] = vibrateMock.mock.calls[0];
+			expect(duration).toBeGreaterThan(0);
+			expect(duration).toBeLessThanOrEqual(50);
+		});
+
+		it('pointerdown does not throw when navigator.vibrate is unsupported (feature-detected no-op)', async () => {
+			Object.defineProperty(navigator, 'vibrate', {
+				value: undefined,
+				configurable: true,
+				writable: true
+			});
+
+			render(PianoKeyboard, {
+				notes: [],
+				interactive: true,
+				selected: new Set<string>(),
+				onToggle: () => {}
+			});
+
+			const [cKey] = screen.getAllByRole('button', { name: 'C key' });
+			await expect(fireEvent.pointerDown(cKey)).resolves.not.toThrow();
+		});
+
+		it('pointerdown applies a transient pressed state additive to the interval-role color', async () => {
+			const { notes } = spellChord('Cm7');
+			render(PianoKeyboard, {
+				notes,
+				interactive: true,
+				selected: new Set<string>(),
+				onToggle: () => {},
+				octaves: 1
+			});
+
+			const rootKey = screen.getAllByText('C')[0].closest('.piano-keyboard__key') as HTMLElement;
+			expect(rootKey).toHaveClass('piano-keyboard__key--root');
+			expect(rootKey).not.toHaveClass('piano-keyboard__key--pressed');
+
+			await fireEvent.pointerDown(rootKey);
+
+			expect(rootKey).toHaveClass('piano-keyboard__key--pressed');
+			expect(rootKey).toHaveClass('piano-keyboard__key--root');
+		});
+
+		it('interactive keyboard surface carries touch-action styling that suppresses double-tap zoom', () => {
+			const { container } = render(PianoKeyboard, {
+				notes: [],
+				interactive: true,
+				selected: new Set<string>(),
+				onToggle: () => {}
+			});
+
+			const keyboard = container.querySelector('.piano-keyboard') as HTMLElement;
+			expect(keyboard.style.touchAction).toBe('manipulation');
+		});
 	});
 });
 
