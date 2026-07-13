@@ -24,7 +24,7 @@
 	<thead>
 		<tr>
 			<th class="text-label font-mono">SYMBOL</th>
-			<th class="text-label font-mono">KIND</th>
+			<th class="text-label font-mono hidden sm:table-cell">KIND</th>
 			<th class="text-label font-mono">ATTEMPTS</th>
 			<th class="text-label font-mono">ACCURACY</th>
 		</tr>

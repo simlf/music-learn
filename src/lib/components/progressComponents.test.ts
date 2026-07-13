@@ -13,6 +13,12 @@ describe('PracticeItemRow', () => {
 		expect(within(row).getByText('5')).toBeInTheDocument();
 		expect(within(row).getByText('40%')).toBeInTheDocument();
 		expect(row).toHaveClass('practice-row--weak');
+
+		// The KIND cell stays in the DOM but is hidden on mobile via a
+		// responsive display class (09-06: mobile-fit accuracy table).
+		const kindCell = within(row).getByText('CHORD');
+		expect(kindCell).toHaveClass('hidden');
+		expect(kindCell.className).toMatch(/sm:table-cell/);
 	});
 
 	it('does not carry the weak accent class at 80% accuracy (above threshold)', () => {
@@ -41,7 +47,10 @@ describe('AccuracyTable', () => {
 
 		const table = screen.getByTestId('accuracy-table');
 		expect(within(table).getByText('SYMBOL')).toBeInTheDocument();
-		expect(within(table).getByText('KIND')).toBeInTheDocument();
+		const kindHeader = within(table).getByText('KIND');
+		expect(kindHeader).toBeInTheDocument();
+		expect(kindHeader).toHaveClass('hidden');
+		expect(kindHeader.className).toMatch(/sm:table-cell/);
 		expect(within(table).getByText('ATTEMPTS')).toBeInTheDocument();
 		expect(within(table).getByText('ACCURACY')).toBeInTheDocument();
 

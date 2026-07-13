@@ -31,7 +31,9 @@
 
 <tr class="practice-row" class:practice-row--weak={isWeak} data-testid="practice-item-row">
 	<td class="practice-row__symbol text-heading font-bold">{item.item}</td>
-	<td class="practice-row__kind text-label font-mono">{item.kind.toUpperCase()}</td>
+	<td class="practice-row__kind text-label font-mono hidden sm:table-cell"
+		>{item.kind.toUpperCase()}</td
+	>
 	<td class="practice-row__attempts text-body">{item.attempts}</td>
 	<td
 		class="practice-row__accuracy text-body"
