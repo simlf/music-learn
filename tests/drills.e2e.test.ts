@@ -24,6 +24,16 @@ vi.mock('$lib/api/progress', () => ({
 	flushQueue: (...args: unknown[]) => flushQueueMock(...args)
 }));
 
+// The drills page reads/writes the rotate-hint dismissed flag (D-05) via
+// $lib/drills/rotateHint. Mocked so each rotate-hint scenario controls the
+// dismissed state explicitly rather than depending on real localStorage.
+const isRotateHintDismissedMock = vi.fn(() => false);
+const dismissRotateHintMock = vi.fn();
+vi.mock('$lib/drills/rotateHint', () => ({
+	isRotateHintDismissed: () => isRotateHintDismissedMock(),
+	dismissRotateHint: (...args: unknown[]) => dismissRotateHintMock(...args)
+}));
+
 const { default: RootLayout } = await import('../src/routes/+layout.svelte');
 
 // This suite pins the construction-drill loop (Plan 03). generateQuestion's
@@ -62,6 +72,8 @@ beforeEach(() => {
 	forceConstructionCm7();
 	recordAnswerMock.mockClear();
 	flushQueueMock.mockClear();
+	isRotateHintDismissedMock.mockReset().mockReturnValue(false);
+	dismissRotateHintMock.mockClear();
 });
 
 afterEach(() => {
@@ -230,6 +242,32 @@ describe('drills page Clear', () => {
 	});
 });
 
+describe('drills page rotate hint (D-05)', () => {
+	it('shows a dismissable rotate hint on load when not yet dismissed', () => {
+		render(DrillsPage);
+
+		expect(screen.getByTestId('rotate-hint')).toBeInTheDocument();
+	});
+
+	it('clicking the dismiss control hides the hint and calls dismissRotateHint', async () => {
+		render(DrillsPage);
+
+		const hint = screen.getByTestId('rotate-hint');
+		const dismissButton = within(hint).getByRole('button');
+		await fireEvent.click(dismissButton);
+
+		expect(dismissRotateHintMock).toHaveBeenCalledTimes(1);
+		expect(screen.queryByTestId('rotate-hint')).not.toBeInTheDocument();
+	});
+
+	it('is absent on load when isRotateHintDismissed is mocked true', () => {
+		isRotateHintDismissedMock.mockReturnValue(true);
+		render(DrillsPage);
+
+		expect(screen.queryByTestId('rotate-hint')).not.toBeInTheDocument();
+	});
+});
+
 describe('drills masthead nav link', () => {
 	it('the masthead exposes a Drills link routing to /drills', () => {
 		const emptyChildren = createRawSnippet(() => ({
@@ -288,6 +326,11 @@ describe('drills page identification prompt', () => {
 		const choices = screen.getAllByRole('button', { name: /^Answer: / });
 		expect(choices).toHaveLength(4);
 		expect(screen.queryByTestId('chord-glyph-shadow')).not.toBeInTheDocument();
+
+		// The choice grid keeps a 2-column base (D-13): a 2x2 block of large
+		// targets on phone, only widening on desktop breakpoints.
+		const choiceGrid = screen.getByTestId('choice-grid');
+		expect(choiceGrid.className).toMatch(/(?:^|\s)grid-cols-2(?:\s|$)/);
 	});
 });
 
