@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 08
 current_phase_name: progress-streaks
 status: executing
-stopped_at: Phase 8 context gathered
-last_updated: "2026-07-13T18:41:51.708Z"
+stopped_at: Completed 08-02-PLAN.md
+last_updated: "2026-07-13T18:54:00.707Z"
 last_activity: 2026-07-13
 last_activity_desc: Phase 08 execution resumed (wave continue)
 progress:
   total_phases: 9
   completed_phases: 3
   total_plans: 15
-  completed_plans: 12
+  completed_plans: 13
   percent: 33
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-12)
 ## Current Position
 
 Phase: 08 (progress-streaks) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-07-13 — Phase 08 execution resumed (wave continue)
 
@@ -68,6 +68,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03 P03 | 22min | 2 tasks | 3 files |
 | Phase 03 P04 | 4min | 2 tasks | 2 files |
 | Phase 08 P01 | 7 min | 3 tasks | 12 files |
+| Phase 08-progress-streaks P02 | 10min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -103,6 +104,8 @@ Recent decisions affecting current work:
 - [Phase 03 P04]: A single recordGrade(correct) helper is shared by checkAnswer (construction) and selectChoice (identification) for score mutation and confirmation/headline variant selection
 - [Phase 08-01]: Fastify Ajv removeAdditional overridden to false so additionalProperties:false rejects unknown fields with 400 (default silently strips them)
 - [Phase 08-01]: buildApp DI factory + encapsulated auth plugin context: /health open, authenticated routes (answers now, stats/streak later) register inside the bearer preHandler scope
+- [Phase 08]: clientDate uses local calendar date (getFullYear/getMonth/getDate), never UTC — Resolves the UI-SPEC streak-boundary open question so day boundaries follow the user's local clock
+- [Phase 08]: docker-compose env_file uses required:false so config validates before .env exists — Rule 3 fix: the plan's own docker compose config -q acceptance criterion failed on a fresh clone without a real .env present
 
 ### Pending Todos
 
@@ -124,6 +127,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-13T18:41:38.626Z
-Stopped at: Phase 8 context gathered
-Resume file: .planning/phases/08-progress-streaks/08-CONTEXT.md
+Last session: 2026-07-13T18:54:00.701Z
+Stopped at: Completed 08-02-PLAN.md
+Resume file: None
