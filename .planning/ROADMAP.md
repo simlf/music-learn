@@ -184,7 +184,24 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. The user can see per-chord and per-scale accuracy stats that highlight their weakest items.
   3. The user can see a daily practice streak counter.
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+**Wave 1**
+
+- [ ] 08-01-PLAN.md — Backend persistence service (server half of PROG-01): SQLite answers table + POST /answers + bearer auth + /health, integration-tested (D-01/D-02/D-03)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 08-02-PLAN.md — Client wiring + docker compose: fire-and-forget recordAnswer + offline queue, drills hook, Dockerfile/compose/.env.example — completes PROG-01 end to end (D-04)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 08-03-PLAN.md — Stats slice (PROG-02): GET /stats + computeStats, PracticeItemRow/AccuracyTable, Progress page (loading/empty/error/populated) + nav link
+
+**Wave 4** *(blocked on Wave 3: shares progress page, layout, server index)*
+
+- [ ] 08-04-PLAN.md — Streak slice (PROG-03): GET /streak + computeStreak, streak copy pools, StreakBadge, Progress streak hero + masthead chip
+
 **UI hint**: yes
 
 ### Phase 9: Deploy to the Piano
@@ -216,5 +233,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 5. Smart Drill Design | 0/TBD | Not started | - |
 | 6. Major Scales | 0/TBD | Not started | - |
 | 7. Theory Lessons | 0/TBD | Not started | - |
-| 8. Progress & Streaks | 0/TBD | Not started | - |
+| 8. Progress & Streaks | 0/4 | Planned | - |
 | 9. Deploy to the Piano | 0/TBD | Not started | - |
