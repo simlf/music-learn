@@ -1,12 +1,15 @@
+import { Note } from 'tonal';
 import type { SpelledNote } from '$lib/theory/types';
 
 /**
  * Pure, DOM-free keyboard layout logic shared by PianoKeyboard.svelte:
  * how many octaves fit a given width, the white/black key letter arrays for
  * that octave count, and the note-to-key assignment (including the
- * one-octave wrap-around case, D-02). No matching/grading logic lives here -
- * matchChord.ts stays the source of truth for chord correctness; this module
- * is display-layout only.
+ * one-octave wrap-around case, D-02, and a pitch-class/chroma fallback for
+ * exotic spellings tonal produces, e.g. F♭, C♭, E♯, B♯, double-flats -
+ * 09-02 defect fix). No matching/grading logic lives here - matchChord.ts
+ * stays the source of truth for chord correctness; this module is
+ * display-layout only.
  */
 
 /** Black key shape: which white key it sits after, and its two enharmonic spellings. */
@@ -77,6 +80,20 @@ export function blackKeysForOctaves(octaves: 1 | 2): BlackKeyPattern[] {
 	return blackKeys;
 }
 
+/**
+ * Converts display-glyph accidentals (♯ ♭) to tonal's ASCII form (# b) so
+ * `Note.chroma` can parse any spelling tonal produces, including doubled
+ * accidentals (e.g. "A♭♭" -> "Abb").
+ */
+function toAsciiAccidentals(letter: string): string {
+	return letter.replace(/♯/g, '#').replace(/♭/g, 'b');
+}
+
+/** Pitch class (0-11) for a display-glyph letter, or undefined if unparseable. */
+function chromaFor(letter: string): number | undefined {
+	return Note.chroma(toAsciiAccidentals(letter));
+}
+
 function candidatesForNote(
 	note: SpelledNote,
 	whiteLetters: string[],
@@ -94,6 +111,33 @@ function candidatesForNote(
 	blackKeys.forEach(({ afterWhiteIndex, sharpLetter, flatLetter }, blackIndex) => {
 		const position = afterWhiteIndex + 1;
 		if ((note.letter === sharpLetter || note.letter === flatLetter) && position >= minPosition) {
+			candidates.push({ position, kind: 'black', keyIndex: blackIndex });
+		}
+	});
+
+	if (candidates.length > 0) return candidates;
+
+	// Exotic-spelling fallback (pitch-class/chroma match): letter-string
+	// matching alone misses spellings like F♭, C♭, E♯, B♯, or double-flats
+	// (e.g. A♭♭ in flat-root dim7 chords) - none of these share a letter
+	// string with any key's natural or sharp/flat spelling, so they'd
+	// otherwise be silently dropped from the highlight map (this has been
+	// broken since Phase 1 for every chord using such an enharmonic). Every
+	// chroma maps to exactly one key kind in this layout - the 7 natural
+	// chromas to white keys, the 5 accidental chromas to black keys - so
+	// resolving by chroma is unambiguous.
+	const noteChroma = chromaFor(note.letter);
+	if (noteChroma === undefined) return candidates;
+
+	whiteLetters.forEach((letter, index) => {
+		if (index >= minPosition && chromaFor(letter) === noteChroma) {
+			candidates.push({ position: index, kind: 'white', keyIndex: index });
+		}
+	});
+
+	blackKeys.forEach(({ afterWhiteIndex, sharpLetter }, blackIndex) => {
+		const position = afterWhiteIndex + 1;
+		if (position >= minPosition && chromaFor(sharpLetter) === noteChroma) {
 			candidates.push({ position, kind: 'black', keyIndex: blackIndex });
 		}
 	});

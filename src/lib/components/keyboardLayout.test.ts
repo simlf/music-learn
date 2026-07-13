@@ -156,3 +156,48 @@ describe('assignNotesToKeys', () => {
 		expect(() => assignNotesToKeys(notes, whiteLetters, blackKeys)).not.toThrow();
 	});
 });
+
+describe('assignNotesToKeys - exotic spellings (chroma/pitch-class fallback, 09-02 defect fix)', () => {
+	it('maps F♭ (Dbm third) to the E key, not dropping it', () => {
+		const { notes } = spellChord('Dbm');
+		const whiteLetters = whiteLettersForOctaves(1);
+		const blackKeys = blackKeysForOctaves(1);
+
+		const assignment = assignNotesToKeys(notes, whiteLetters, blackKeys);
+		const third = notes.find((note) => note.role === 'third')!;
+
+		expect(third.letter).toBe('F♭');
+		expect(assignment.get(third)).toEqual({ position: 2, kind: 'white', keyIndex: 2 });
+		expect(whiteLetters[2]).toBe('E');
+	});
+
+	it('maps a double-flat (A♭♭, Dbdim fifth) to the G key, not dropping it', () => {
+		const { notes } = spellChord('Dbdim');
+		const whiteLetters = whiteLettersForOctaves(1);
+		const blackKeys = blackKeysForOctaves(1);
+
+		const assignment = assignNotesToKeys(notes, whiteLetters, blackKeys);
+		const fifth = notes.find((note) => note.role === 'fifth')!;
+
+		expect(fifth.letter).toBe('A♭♭');
+		expect(assignment.get(fifth)).toEqual({ position: 4, kind: 'white', keyIndex: 4 });
+		expect(whiteLetters[4]).toBe('G');
+	});
+
+	it('maps E♯ (F♯maj7 seventh) to the F key via a one-octave wrap, not dropping it', () => {
+		const { notes } = spellChord('F#maj7');
+		const whiteLetters = whiteLettersForOctaves(1);
+		const blackKeys = blackKeysForOctaves(1);
+
+		const assignment = assignNotesToKeys(notes, whiteLetters, blackKeys);
+		const seventh = notes.find((note) => note.role === 'seventh')!;
+
+		expect(seventh.letter).toBe('E♯');
+		// All four notes still resolve to four distinct keys within one octave
+		// (the wrap-around case, D-02) - the seventh's chroma fallback lands on
+		// the F key rather than being silently dropped.
+		expect(assignment.size).toBe(4);
+		expect(assignment.get(seventh)).toEqual({ position: 3, kind: 'white', keyIndex: 3 });
+		expect(whiteLetters[3]).toBe('F');
+	});
+});

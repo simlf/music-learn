@@ -175,6 +175,29 @@ describe('PianoKeyboard', () => {
 		highlighted.forEach((key) => expect(key).toHaveClass('piano-keyboard__key--stamped'));
 	});
 
+	it('exotic-spelling reveal (Dbm, 09-02 defect fix): root/third/fifth all highlight, including the F♭ third, plus the wrong extra', () => {
+		const { notes } = spellChord('Dbm');
+		const { container } = render(PianoKeyboard, {
+			notes,
+			wrongLetters: new Set(['B']),
+			octaves: 1
+		});
+
+		// Three interval-colored keys: Dbm is a triad (root/third/fifth), no
+		// seventh. Before the 09-02 fix, the F♭ third had zero letter
+		// candidates and was silently dropped, leaving only two.
+		const highlighted = container.querySelectorAll(
+			'.piano-keyboard__key--root, .piano-keyboard__key--third, .piano-keyboard__key--fifth, .piano-keyboard__key--seventh'
+		);
+		expect(highlighted).toHaveLength(3);
+
+		const thirdLetter = screen.getAllByText('F♭')[0];
+		expect(thirdLetter.closest('.piano-keyboard__key')).toHaveClass('piano-keyboard__key--third');
+
+		const wrongKeys = container.querySelectorAll('.piano-keyboard__key--wrong');
+		expect(wrongKeys).toHaveLength(1);
+	});
+
 	it('wrongLetters undefined (display/interactive mode unchanged): no wrong fill or stamped class appears', () => {
 		const { notes } = spellChord('Cm7');
 		const { container } = render(PianoKeyboard, { notes });
