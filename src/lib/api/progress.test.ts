@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { flushQueue, localDateString, recordAnswer } from './progress';
+import { fetchStats, flushQueue, localDateString, recordAnswer } from './progress';
 import { setApiToken } from './client';
 
 const QUEUE_KEY = 'music-learn:answer-queue';
@@ -105,6 +105,28 @@ describe('progress', () => {
 
 			expect(fetchMock).toHaveBeenCalledTimes(2);
 			expect(readQueueFromStorage()).toEqual([]);
+		});
+	});
+
+	describe('fetchStats', () => {
+		it('resolves to the parsed { items, weakest } on an ok response', async () => {
+			const payload = {
+				items: [{ item: 'Cm7', kind: 'chord', attempts: 3, accuracy: 0.5, needsPractice: true }],
+				weakest: [{ item: 'Cm7', kind: 'chord', attempts: 3, accuracy: 0.5, needsPractice: true }]
+			};
+			const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(payload), { status: 200 }));
+			vi.stubGlobal('fetch', fetchMock);
+
+			const result = await fetchStats();
+
+			expect(result).toEqual(payload);
+		});
+
+		it('throws on a non-ok response', async () => {
+			const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 500 }));
+			vi.stubGlobal('fetch', fetchMock);
+
+			await expect(fetchStats()).rejects.toThrow();
 		});
 	});
 });
