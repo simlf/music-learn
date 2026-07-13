@@ -31,6 +31,12 @@ export interface StatItem {
 	needsPractice: boolean;
 }
 
+/** Server-computed daily streak (mirrors server/src/streak.ts's StreakResult, PROG-03). */
+export interface StreakResult {
+	streak: number;
+	practicedToday: boolean;
+}
+
 const QUEUE_KEY = 'music-learn:answer-queue';
 
 /** Caps queue growth so a long-offline stretch can't grow storage unbounded; oldest entries drop first. */
@@ -124,6 +130,19 @@ export async function fetchStats(): Promise<{ items: StatItem[]; weakest: StatIt
 	const response = await apiFetch('/stats');
 	if (!response.ok) {
 		throw new Error('Failed to fetch stats');
+	}
+	return response.json();
+}
+
+/**
+ * Fetches the server-computed daily practice streak for the given local
+ * calendar date (PROG-03, D-02: the client never re-derives the streak from
+ * raw events). Throws on a non-ok response.
+ */
+export async function fetchStreak(today: string): Promise<StreakResult> {
+	const response = await apiFetch(`/streak?today=${encodeURIComponent(today)}`);
+	if (!response.ok) {
+		throw new Error('Failed to fetch streak');
 	}
 	return response.json();
 }

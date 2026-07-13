@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchStats, flushQueue, localDateString, recordAnswer } from './progress';
+import { fetchStats, fetchStreak, flushQueue, localDateString, recordAnswer } from './progress';
 import { setApiToken } from './client';
 
 const QUEUE_KEY = 'music-learn:answer-queue';
@@ -127,6 +127,29 @@ describe('progress', () => {
 			vi.stubGlobal('fetch', fetchMock);
 
 			await expect(fetchStats()).rejects.toThrow();
+		});
+	});
+
+	describe('fetchStreak', () => {
+		it('calls apiFetch with a path including /streak?today=... and resolves the parsed result', async () => {
+			const payload = { streak: 3, practicedToday: true };
+			const fetchMock = vi
+				.fn()
+				.mockResolvedValue(new Response(JSON.stringify(payload), { status: 200 }));
+			vi.stubGlobal('fetch', fetchMock);
+
+			const result = await fetchStreak('2026-07-13');
+
+			expect(result).toEqual(payload);
+			const [url] = fetchMock.mock.calls[0];
+			expect(url).toBe('http://localhost:8080/streak?today=2026-07-13');
+		});
+
+		it('throws on a non-ok response', async () => {
+			const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 500 }));
+			vi.stubGlobal('fetch', fetchMock);
+
+			await expect(fetchStreak('2026-07-13')).rejects.toThrow();
 		});
 	});
 });
