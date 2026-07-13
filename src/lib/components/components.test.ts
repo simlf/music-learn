@@ -206,6 +206,49 @@ describe('PianoKeyboard', () => {
 		expect(container.querySelectorAll('.piano-keyboard__key--stamped')).toHaveLength(0);
 	});
 
+	it('one-octave key geometry (09-02 defect fix): white/black key widths derive purely from percentages, no fixed-px floor fighting `left`', () => {
+		const { notes } = spellChord('Cm7');
+		const { container } = render(PianoKeyboard, { notes, octaves: 1 });
+
+		// 8 white keys at one octave: each key is an equal 100/8 = 12.5% slice,
+		// positioned by percentage `left` - a fixed min-width px clamp would
+		// make every key the same width regardless of this percentage,
+		// overlapping neighbors once the container is narrower than
+		// 8 * (min-width px).
+		const whiteKeys = container.querySelectorAll<HTMLElement>('.piano-keyboard__key--white');
+		expect(whiteKeys).toHaveLength(8);
+		whiteKeys.forEach((key, index) => {
+			expect(key.style.width).toBe('12.5%');
+			expect(key.style.left).toBe(`${index * 12.5}%`);
+		});
+
+		// Black keys stay 60% of white width (7.5%), preserving the visible
+		// gaps between the 2-key and 3-key groups a pianist orients by.
+		const blackKeys = container.querySelectorAll<HTMLElement>('.piano-keyboard__key--black');
+		expect(blackKeys).toHaveLength(5);
+		blackKeys.forEach((key) => {
+			expect(key.style.width).toBe('7.5%');
+		});
+	});
+
+	it('two-octave key geometry stays proportional (byte-identical math, different octave count)', () => {
+		const { notes } = spellChord('Cm7');
+		const { container } = render(PianoKeyboard, { notes, octaves: 2 });
+
+		// 15 white keys at two octaves: 100/15 repeating decimal - assert via
+		// the black-key-is-60%-of-white relationship rather than a rounded
+		// literal, so this doesn't drift if floating point formatting changes.
+		const whiteKeys = container.querySelectorAll<HTMLElement>('.piano-keyboard__key--white');
+		const blackKeys = container.querySelectorAll<HTMLElement>('.piano-keyboard__key--black');
+		expect(whiteKeys).toHaveLength(15);
+		expect(blackKeys).toHaveLength(10);
+
+		const whiteWidthPct = parseFloat(whiteKeys[0].style.width);
+		const blackWidthPct = parseFloat(blackKeys[0].style.width);
+		expect(whiteWidthPct).toBeCloseTo(100 / 15, 10);
+		expect(blackWidthPct).toBeCloseTo(whiteWidthPct * 0.6, 10);
+	});
+
 	it('rotation continuity (D-03): selected letters stay aria-pressed true when octaves changes from 2 to 1', async () => {
 		const { rerender } = render(PianoKeyboard, {
 			notes: [],

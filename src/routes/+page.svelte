@@ -102,7 +102,7 @@
 	}
 </script>
 
-<main class="bg-paper text-ink min-h-screen p-8 font-sans">
+<main class="bg-paper text-ink min-h-screen px-2 py-8 font-sans sm:px-8">
 	<h1 class="text-heading mt-2 font-bold">Chord lookup</h1>
 
 	<form class="mt-8 flex items-center gap-2" onsubmit={handleSubmit}>

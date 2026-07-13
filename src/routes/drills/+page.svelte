@@ -151,14 +151,14 @@
 	);
 </script>
 
-<main class="bg-paper text-ink min-h-screen p-8 font-sans">
+<main class="bg-paper text-ink min-h-screen px-2 py-8 font-sans sm:px-8">
 	<h1 class="text-heading mt-2 font-bold">Drills</h1>
 
 	<p class="text-label mt-8 text-right font-mono uppercase" data-testid="score-register">
 		{score.correct} RIGHT · {score.streak} STREAK
 	</p>
 
-	<div class="border-ink bg-paper-bright mt-8 border-2 p-6" data-testid="drill-card">
+	<div class="border-ink bg-paper-bright mt-8 border-2 px-2 py-6 sm:px-6" data-testid="drill-card">
 		{#if question.kind === 'construction'}
 			<div class="flex items-start gap-4">
 				<ChordGlyph root={target.root} quality={target.symbol.slice(target.root.length)} />

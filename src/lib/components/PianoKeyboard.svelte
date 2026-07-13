@@ -273,6 +273,17 @@
 		height: 160px;
 	}
 
+	/*
+	 * No min-width here (09-02 defect fix): a fixed px floor fights the
+	 * percentage-based `left`/`width` layout above - every key would clamp to
+	 * the same 44px regardless of its percentage position, so at one octave
+	 * (8 white keys, ~34px pitch on a typical 390px phone with the old page
+	 * padding) keys overlapped their neighbors by ~10px and black keys fused
+	 * into solid blocks. The real >=44px touch pitch at one octave now comes
+	 * from the container being wide enough (page/card padding reduced at
+	 * phone widths, see drills/+page.svelte and routes/+page.svelte), not
+	 * from clamping key width independently of its position.
+	 */
 	.piano-keyboard__key {
 		position: absolute;
 		top: 0;
@@ -281,7 +292,6 @@
 		align-items: flex-end;
 		justify-content: center;
 		padding-bottom: var(--spacing-xs);
-		min-width: 44px;
 	}
 
 	.piano-keyboard__key--white {
