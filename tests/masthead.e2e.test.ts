@@ -1,0 +1,45 @@
+import { render, screen } from '@testing-library/svelte';
+import { createRawSnippet } from 'svelte';
+import { readable } from 'svelte/store';
+import { describe, expect, it, vi } from 'vitest';
+
+// +layout.svelte reads the `$page` store from $app/stores to mark the active
+// nav link. That store is populated by the real SvelteKit client router at
+// runtime, which isn't present when rendering +layout.svelte standalone here
+// - so it's mocked with a minimal readable stub exposing just the `url`
+// shape the masthead's active-link check reads (`$page.url.pathname`). Kept
+// in its own file (not tests/drills.e2e.test.ts) to avoid file contention
+// per 09-06's plan.
+vi.mock('$app/stores', () => ({
+	page: readable({ url: new URL('http://localhost/') })
+}));
+
+const { default: RootLayout } = await import('../src/routes/+layout.svelte');
+
+describe('masthead responsive nav (09-06)', () => {
+	it('exposes Lookup, Drills, and Progress links on every viewport', () => {
+		const emptyChildren = createRawSnippet(() => ({
+			render: () => '<div></div>'
+		}));
+
+		render(RootLayout, { params: {}, data: {}, children: emptyChildren });
+
+		expect(screen.getByRole('link', { name: 'Lookup' })).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Drills' })).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Progress' })).toBeInTheDocument();
+	});
+
+	it('hides the Showcase link on mobile via a responsive display class, keeping it in the DOM for desktop', () => {
+		const emptyChildren = createRawSnippet(() => ({
+			render: () => '<div></div>'
+		}));
+
+		render(RootLayout, { params: {}, data: {}, children: emptyChildren });
+
+		const showcaseLink = screen.getByRole('link', { name: 'Showcase' });
+		expect(showcaseLink).toBeInTheDocument();
+		expect(showcaseLink).toHaveAttribute('href', '/showcase');
+		expect(showcaseLink.className).toMatch(/\bhidden\b/);
+		expect(showcaseLink.className).toMatch(/\bsm:inline\b/);
+	});
+});
