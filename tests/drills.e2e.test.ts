@@ -136,7 +136,7 @@ describe('drills page correct construction answer', () => {
 });
 
 describe('drills page wrong construction answer teaches', () => {
-	it('shows the wrong-answer headline, teaching lead-in, interval formula, and played/correct diff', async () => {
+	it('shows ONE merged feedback keyboard (interval colors + gray ✕ extra) and a legend, no text diff', async () => {
 		render(DrillsPage);
 
 		// Omit B♭, add A: an incorrect set (missing the 7th, an extra 6th).
@@ -159,8 +159,54 @@ describe('drills page wrong construction answer teaches', () => {
 		expect(within(formula).getByText('P5')).toBeInTheDocument();
 		expect(within(formula).getByText('m7')).toBeInTheDocument();
 
-		expect(within(feedback).getByText('You played:')).toBeInTheDocument();
-		expect(within(feedback).getByText('Correct:')).toBeInTheDocument();
+		// Exactly ONE keyboard renders on the page (the input keyboard
+		// transformed in place) — the separate correct-answer keyboard is gone.
+		const keyboards = screen.getAllByRole('img', { name: /piano keyboard/i });
+		expect(keyboards).toHaveLength(1);
+		const keyboard = keyboards[0];
+
+		// The wrongly-played A carries the wrong-fill gray class and a ✕ mark.
+		const wrongKeys = keyboard.querySelectorAll('.piano-keyboard__key--wrong');
+		expect(wrongKeys).toHaveLength(1);
+		expect(within(wrongKeys[0] as HTMLElement).getByText('✕')).toBeInTheDocument();
+
+		// The four correct Cm7 notes still render in their interval-role colors.
+		const highlighted = keyboard.querySelectorAll(
+			'.piano-keyboard__key--root, .piano-keyboard__key--third, .piano-keyboard__key--fifth, .piano-keyboard__key--seventh'
+		);
+		expect(highlighted).toHaveLength(4);
+
+		// A one-line legend explains the two color meanings.
+		const legend = screen.getByTestId('feedback-legend');
+		expect(legend).toHaveTextContent('The chord');
+		expect(legend).toHaveTextContent('Your extra note');
+
+		// The old two-keyboard text diff is gone.
+		expect(screen.queryByTestId('played-diff')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('correct-diff')).not.toBeInTheDocument();
+	});
+
+	it('a wrong answer with only a missing note (no extras) still reveals the full chord with no gray keys', async () => {
+		render(DrillsPage);
+
+		// Play only 3 of the 4 Cm7 notes (missing the 7th, B♭), no extras.
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		const feedback = screen.getByTestId('drill-feedback');
+		const keyboards = screen.getAllByRole('img', { name: /piano keyboard/i });
+		expect(keyboards).toHaveLength(1);
+		const keyboard = keyboards[0];
+
+		expect(keyboard.querySelectorAll('.piano-keyboard__key--wrong')).toHaveLength(0);
+		const highlighted = keyboard.querySelectorAll(
+			'.piano-keyboard__key--root, .piano-keyboard__key--third, .piano-keyboard__key--fifth, .piano-keyboard__key--seventh'
+		);
+		expect(highlighted).toHaveLength(4);
+		expect(within(feedback).getByTestId('feedback-legend')).toBeInTheDocument();
 	});
 });
 

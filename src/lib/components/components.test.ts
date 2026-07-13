@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/svelte';
+import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vitest';
 import PianoKeyboard from './PianoKeyboard.svelte';
 import RecentChipRow from './RecentChipRow.svelte';
@@ -152,6 +152,31 @@ describe('PianoKeyboard', () => {
 			'.piano-keyboard__key--root, .piano-keyboard__key--third, .piano-keyboard__key--fifth, .piano-keyboard__key--seventh'
 		);
 		expect(highlighted).toHaveLength(4);
+	});
+
+	it('feedback mode (wrongLetters defined): the wrong extra key gets a gray ✕ fill and the reveal keys are stamped', () => {
+		const { notes } = spellChord('Cm7');
+		const { container } = render(PianoKeyboard, { notes, wrongLetters: new Set(['A']) });
+
+		const wrongKeys = container.querySelectorAll('.piano-keyboard__key--wrong');
+		expect(wrongKeys).toHaveLength(1);
+		expect(within(wrongKeys[0] as HTMLElement).getByText('✕')).toBeInTheDocument();
+		expect(within(wrongKeys[0] as HTMLElement).getByText('extra note')).toBeInTheDocument();
+		expect(wrongKeys[0]).toHaveClass('piano-keyboard__key--stamped');
+
+		const highlighted = container.querySelectorAll(
+			'.piano-keyboard__key--root, .piano-keyboard__key--third, .piano-keyboard__key--fifth, .piano-keyboard__key--seventh'
+		);
+		expect(highlighted).toHaveLength(4);
+		highlighted.forEach((key) => expect(key).toHaveClass('piano-keyboard__key--stamped'));
+	});
+
+	it('wrongLetters undefined (display/interactive mode unchanged): no wrong fill or stamped class appears', () => {
+		const { notes } = spellChord('Cm7');
+		const { container } = render(PianoKeyboard, { notes });
+
+		expect(container.querySelectorAll('.piano-keyboard__key--wrong')).toHaveLength(0);
+		expect(container.querySelectorAll('.piano-keyboard__key--stamped')).toHaveLength(0);
 	});
 
 	it('rotation continuity (D-03): selected letters stay aria-pressed true when octaves changes from 2 to 1', async () => {
