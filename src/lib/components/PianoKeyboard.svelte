@@ -1,19 +1,33 @@
 <script lang="ts">
 	import NoteLabel from './NoteLabel.svelte';
 	import type { IntervalRole, SpelledNote } from '$lib/theory/types';
+	import {
+		assignNotesToKeys,
+		blackKeysForOctaves,
+		octavesForWidth,
+		whiteLettersForOctaves,
+		type BlackKeyPattern,
+		type KeyCandidate
+	} from './keyboardLayout';
 
 	/**
-	 * Print Shop piano keyboard. Renders a two-octave C-to-C span (15 white
-	 * keys) so every v1 chord's root/3rd/5th/7th fit fully above its root
-	 * without wrapping. Matches spelled notes to keys by letter name, not MIDI
-	 * number (UI-SPEC implementation note), and fills matched keys with their
-	 * interval color, showing a NoteLabel (letter + solfege) on top.
+	 * Print Shop piano keyboard. Renders a responsive C-to-C span: one octave
+	 * (8 white keys) on phone-width viewports, two octaves (15 white keys) once
+	 * enough width is available for every v1 chord's root/3rd/5th/7th to fit
+	 * without wrapping (D-01). Matches spelled notes to keys by letter name,
+	 * not MIDI number (UI-SPEC implementation note), and fills matched keys
+	 * with their interval color, showing a NoteLabel (letter + solfege) on
+	 * top. A chord that would run past the visible one-octave span wraps its
+	 * overflow notes back into the octave as pitch classes, still tagged with
+	 * their interval role (D-02, via keyboardLayout's assignNotesToKeys).
 	 *
 	 * Display-only by default (Phase 1 showcase, Phase 2 lookup): no
 	 * click/keydown handlers, no button semantics. Passing `interactive`
 	 * (Phase 3 / INPUT-02) opts every key into click + Enter/Space toggling,
 	 * gated entirely behind the `interactive` prop so the pre-existing
-	 * display-only render stays byte-identical when it is omitted.
+	 * display-only render stays byte-identical when it is omitted. Selection
+	 * is letter-based and octave-agnostic, so it survives an octave-count
+	 * change uninterrupted (D-03).
 	 */
 	interface Props {
 		/** Spelled notes (from the theory engine) to highlight on the keyboard. */
@@ -24,9 +38,45 @@
 		selected?: Set<string>;
 		/** Called with a key's letter when the user toggles it (click or Enter/Space). */
 		onToggle?: (letter: string) => void;
+		/**
+		 * Explicit octave-count override (mainly a test seam). When omitted, the
+		 * component self-measures its available width via ResizeObserver and
+		 * derives the octave count from it (2 when a full two-octave span fits,
+		 * else 1 - D-01, D-04).
+		 */
+		octaves?: 1 | 2;
 	}
 
-	let { notes, interactive = false, selected, onToggle }: Props = $props();
+	let { notes, interactive = false, selected, onToggle, octaves }: Props = $props();
+
+	let containerEl: HTMLDivElement | undefined = $state();
+	let measuredWidth: number | undefined = $state(undefined);
+
+	// Self-measure only when `octaves` isn't explicitly provided. Reads the
+	// container's width and derives octave count from it via `$derived` below
+	// - never writes anything back that affects the observed element's size,
+	// so there is no observe -> resize -> observe feedback loop (T-09-01).
+	// Guarded for jsdom/older browsers lacking ResizeObserver: falls back to
+	// the default of 2 octaves (matches every pre-existing display/interactive
+	// test).
+	$effect(() => {
+		if (octaves !== undefined) return;
+		if (!containerEl || typeof ResizeObserver === 'undefined') return;
+
+		const observer = new ResizeObserver((entries) => {
+			const entry = entries[0];
+			if (entry) {
+				measuredWidth = entry.contentRect.width;
+			}
+		});
+		observer.observe(containerEl);
+
+		return () => observer.disconnect();
+	});
+
+	const effectiveOctaves: 1 | 2 = $derived(
+		octaves ?? (measuredWidth !== undefined ? octavesForWidth(measuredWidth) : 2)
+	);
 
 	function toggleKey(letter: string) {
 		onToggle?.(letter);
@@ -43,33 +93,15 @@
 		return selected?.has(letter) ? `${letter} key, selected` : `${letter} key`;
 	}
 
-	/** White key letters across a two-octave C-to-C span (15 keys). */
-	const WHITE_LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'A', 'B', 'C'];
+	function keyboardAriaLabel(octaveCount: 1 | 2): string {
+		return octaveCount === 1 ? 'Piano keyboard, one octave' : 'Piano keyboard, two octaves';
+	}
 
-	/**
-	 * Black keys as { afterWhiteIndex, sharpLetter, flatLetter } pairs. A black
-	 * key sits between two white keys except after E and B (standard piano
-	 * layout), repeated per octave. Each black key position is enharmonically
-	 * two letters (e.g. C♯/D♭) - a spelled note matches the key if it equals
-	 * either spelling, since v1 chords can spell a black key either way
-	 * (e.g. Cm7 spells its third as E♭, which sits on the D♯/E♭ key).
-	 */
-	const BLACK_KEYS: { afterWhiteIndex: number; sharpLetter: string; flatLetter: string }[] = [
-		{ afterWhiteIndex: 0, sharpLetter: 'C♯', flatLetter: 'D♭' },
-		{ afterWhiteIndex: 1, sharpLetter: 'D♯', flatLetter: 'E♭' },
-		{ afterWhiteIndex: 3, sharpLetter: 'F♯', flatLetter: 'G♭' },
-		{ afterWhiteIndex: 4, sharpLetter: 'G♯', flatLetter: 'A♭' },
-		{ afterWhiteIndex: 5, sharpLetter: 'A♯', flatLetter: 'B♭' },
-		{ afterWhiteIndex: 7, sharpLetter: 'C♯', flatLetter: 'D♭' },
-		{ afterWhiteIndex: 8, sharpLetter: 'D♯', flatLetter: 'E♭' },
-		{ afterWhiteIndex: 10, sharpLetter: 'F♯', flatLetter: 'G♭' },
-		{ afterWhiteIndex: 11, sharpLetter: 'G♯', flatLetter: 'A♭' },
-		{ afterWhiteIndex: 12, sharpLetter: 'A♯', flatLetter: 'B♭' }
-	];
+	const whiteLetters = $derived(whiteLettersForOctaves(effectiveOctaves));
+	const blackKeyPatterns: BlackKeyPattern[] = $derived(blackKeysForOctaves(effectiveOctaves));
 
-	const WHITE_KEY_COUNT = WHITE_LETTERS.length;
-	const WHITE_KEY_WIDTH_PCT = 100 / WHITE_KEY_COUNT;
-	const BLACK_KEY_WIDTH_PCT = WHITE_KEY_WIDTH_PCT * 0.6;
+	const whiteKeyWidthPct = $derived(100 / whiteLetters.length);
+	const blackKeyWidthPct = $derived(whiteKeyWidthPct * 0.6);
 
 	interface WhiteKey {
 		index: number;
@@ -87,59 +119,14 @@
 		note: SpelledNote | undefined;
 	}
 
-	/** A key candidate a note could be assigned to, tagged by which key kind it targets. */
-	interface KeyCandidate {
-		position: number;
-		kind: 'white' | 'black';
-		keyIndex: number;
-	}
-
-	/**
-	 * Assigns each spelled note to exactly one key, walking the keyboard once
-	 * from the root's key position upward in ascending pitch order (a single
-	 * chord voicing built from its root - never re-highlighting the same
-	 * letter's later octave repetition). Each note is matched to the nearest
-	 * key at or after the previous note's position, keeping root < third <
-	 * fifth < seventh in left-to-right order on the keyboard. White-letter
-	 * notes only ever match white keys; accidental notes only ever match
-	 * black keys - the two key kinds never share a candidate pool.
-	 */
-	function assignNotesToKeys(): Map<SpelledNote, KeyCandidate> {
-		const assignment = new Map<SpelledNote, KeyCandidate>();
-		let cursor = 0;
-
-		for (const note of notes) {
-			const candidates: KeyCandidate[] = [];
-
-			WHITE_LETTERS.forEach((letter, index) => {
-				if (letter === note.letter && index >= cursor) {
-					candidates.push({ position: index, kind: 'white', keyIndex: index });
-				}
-			});
-			BLACK_KEYS.forEach(({ afterWhiteIndex, sharpLetter, flatLetter }, blackIndex) => {
-				const position = afterWhiteIndex + 1;
-				if ((note.letter === sharpLetter || note.letter === flatLetter) && position >= cursor) {
-					candidates.push({ position, kind: 'black', keyIndex: blackIndex });
-				}
-			});
-
-			if (candidates.length === 0) continue;
-
-			const chosen = candidates.reduce((best, candidate) =>
-				candidate.position < best.position ? candidate : best
-			);
-			assignment.set(note, chosen);
-			cursor = chosen.position + 1;
-		}
-
-		return assignment;
-	}
-
 	// $derived (not plain const): the key/note assignment must recompute when
-	// the `notes` prop changes, or every lookup after the first would keep the
-	// previous chord's highlights (the component instance persists across
-	// result changes on the lookup page).
-	const noteAssignment = $derived(assignNotesToKeys());
+	// `notes` or the effective octave count changes, or every lookup/relayout
+	// after the first would keep the previous chord's highlights (the
+	// component instance persists across result changes on the lookup page,
+	// and across octave-count changes on rotation).
+	const noteAssignment: Map<SpelledNote, KeyCandidate> = $derived(
+		assignNotesToKeys(notes, whiteLetters, blackKeyPatterns)
+	);
 
 	function noteAtWhiteIndex(index: number): SpelledNote | undefined {
 		for (const [note, candidate] of noteAssignment) {
@@ -156,18 +143,18 @@
 	}
 
 	const whiteKeys: WhiteKey[] = $derived(
-		WHITE_LETTERS.map((letter, index) => ({
+		whiteLetters.map((letter, index) => ({
 			index,
 			letter,
-			leftPct: index * WHITE_KEY_WIDTH_PCT,
+			leftPct: index * whiteKeyWidthPct,
 			note: noteAtWhiteIndex(index)
 		}))
 	);
 
 	const blackKeys: BlackKey[] = $derived(
-		BLACK_KEYS.map(({ afterWhiteIndex, sharpLetter, flatLetter }, blackIndex) => ({
+		blackKeyPatterns.map(({ afterWhiteIndex, sharpLetter, flatLetter }, blackIndex) => ({
 			position: afterWhiteIndex + 1,
-			leftPct: (afterWhiteIndex + 1) * WHITE_KEY_WIDTH_PCT - BLACK_KEY_WIDTH_PCT / 2,
+			leftPct: (afterWhiteIndex + 1) * whiteKeyWidthPct - blackKeyWidthPct / 2,
 			sharpLetter,
 			flatLetter,
 			note: noteAtBlackIndex(blackIndex)
@@ -189,14 +176,19 @@
 	}
 </script>
 
-<div class="piano-keyboard" role="img" aria-label="Piano keyboard, two octaves">
+<div
+	class="piano-keyboard"
+	role="img"
+	aria-label={keyboardAriaLabel(effectiveOctaves)}
+	bind:this={containerEl}
+>
 	{#each whiteKeys as key (key.index)}
 		<!-- svelte-ignore a11y_no_noninteractive_tabindex -- role is dynamically 'button' whenever tabindex is set (both gated by `interactive`) -->
 		<div
 			class="piano-keyboard__key piano-keyboard__key--white {roleClass(
 				key.note?.role
 			)} {selectedClass(key.letter, key.note?.role)}"
-			style="left: {key.leftPct}%; width: {WHITE_KEY_WIDTH_PCT}%;"
+			style="left: {key.leftPct}%; width: {whiteKeyWidthPct}%;"
 			role={interactive ? 'button' : undefined}
 			tabindex={interactive ? 0 : undefined}
 			aria-pressed={interactive ? (selected?.has(key.letter) ?? false) : undefined}
@@ -215,7 +207,7 @@
 			class="piano-keyboard__key piano-keyboard__key--black {roleClass(
 				key.note?.role
 			)} {selectedClass(key.sharpLetter, key.note?.role)}"
-			style="left: {key.leftPct}%; width: {BLACK_KEY_WIDTH_PCT}%;"
+			style="left: {key.leftPct}%; width: {blackKeyWidthPct}%;"
 			role={interactive ? 'button' : undefined}
 			tabindex={interactive ? 0 : undefined}
 			aria-pressed={interactive ? (selected?.has(key.sharpLetter) ?? false) : undefined}
@@ -236,7 +228,6 @@
 	.piano-keyboard {
 		position: relative;
 		width: 100%;
-		min-width: 660px;
 		height: 160px;
 	}
 
