@@ -96,7 +96,21 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Every answer produces instant right/wrong feedback; a wrong answer reveals the correct notes and the interval formula in interval colors.
   4. The on-screen keyboard is a fully equivalent input path that works on any browser or device.
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+**Wave 1** *(parallel: disjoint file sets)*
+
+- [ ] 03-01-PLAN.md — Pure logic substrate (TDD): matchChord chroma-set matcher (D-01/02/03) + generateQuestion question/distractor/type generation (D-05/06)
+- [ ] 03-02-PLAN.md — Extend PianoKeyboard in place with interactive/selected/onToggle mode + selected-key hatch, display-only non-regression test (D-11, INPUT-02)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 03-03-PLAN.md — Construction drill vertical slice: /drills page + Drills nav, RED e2e first, keyboard→matcher→elaborative feedback + stamp reward (DRILL-01/03, INPUT-02, D-04/08/09/13)
+
+**Wave 3** *(blocked on Wave 2: shares drills/+page.svelte)*
+
+- [ ] 03-04-PLAN.md — Identification drill + interleaving + Next + in-memory ScoreRegister (DRILL-02/03, D-05/06/07/10)
+
 **UI hint**: yes
 
 ### Phase 4: MIDI Play-to-Answer
@@ -197,7 +211,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 |-------|----------------|--------|-----------|
 | 1. Print Shop Foundation & Theory Core | 4/4 | Complete    | 2026-07-12 |
 | 2. Chord Lookup Companion | 3/3 | Complete    | 2026-07-12 |
-| 3. On-Screen Drill Loop | 0/TBD | Not started | - |
+| 3. On-Screen Drill Loop | 0/4 | Not started | - |
 | 4. MIDI Play-to-Answer | 0/TBD | Not started | - |
 | 5. Smart Drill Design | 0/TBD | Not started | - |
 | 6. Major Scales | 0/TBD | Not started | - |
