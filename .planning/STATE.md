@@ -5,16 +5,16 @@ milestone_name: milestone
 current_phase: 3
 current_phase_name: On-Screen Drill Loop
 status: verifying
-stopped_at: Completed 03-03-PLAN.md
-last_updated: "2026-07-13T01:26:18.515Z"
+stopped_at: Completed 03-04-PLAN.md (Phase 3 complete, ready for verification)
+last_updated: "2026-07-13T01:34:42.190Z"
 last_activity: 2026-07-13
 last_activity_desc: Phase 3 execution started
 progress:
   total_phases: 9
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 11
-  completed_plans: 10
-  percent: 22
+  completed_plans: 11
+  percent: 33
 ---
 
 # Project State
@@ -66,6 +66,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03 P01 | 12min | 2 tasks | 4 files |
 | Phase 03 P02 | 8min | 2 tasks | 2 files |
 | Phase 03 P03 | 22min | 2 tasks | 3 files |
+| Phase 03 P04 | 4min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -96,6 +97,9 @@ Recent decisions affecting current work:
 - [Phase 03 P03]: generateQuestion() is redrawn in a loop until a construction question lands (Plan 03 only implements the construction branch)
 - [Phase 03 P03]: Black-key letters are queried/toggled by their sharp spelling (D♯, A♯) throughout the drills page, matching PianoKeyboard's Plan 02 onToggle contract
 - [Phase 03 P03]: The masthead Drills nav-link e2e test renders +layout.svelte directly with a mocked $app/stores page readable, per the plan's explicit assertion requirement
+- [Phase 03 P04]: generateQuestion() is now called directly on load and on every Next, removing Plan 03's construction-only redraw loop entirely; both kinds interleave with no mode toggle per D-06
+- [Phase 03 P04]: Identification's wrong-answer reveal renders a ChordGlyph of the correct symbol above the shared keyboard/interval-formula reveal; the You played/Correct diff row stays construction-only
+- [Phase 03 P04]: A single recordGrade(correct) helper is shared by checkAnswer (construction) and selectChoice (identification) for score mutation and confirmation/headline variant selection
 
 ### Pending Todos
 
@@ -117,6 +121,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-13T01:26:18.511Z
-Stopped at: Completed 03-03-PLAN.md
+Last session: 2026-07-13T01:34:42.186Z
+Stopped at: Completed 03-04-PLAN.md (Phase 3 complete, ready for verification)
 Resume file: None

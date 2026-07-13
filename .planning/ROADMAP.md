@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Print Shop Foundation & Theory Core** - Design identity + correct chord/spelling/dual-naming engine, testable in isolation (completed 2026-07-12)
 - [x] **Phase 2: Chord Lookup Companion** - Type a symbol, see notes on a colored keyboard diagram next to the piano (completed 2026-07-12)
-- [ ] **Phase 3: On-Screen Drill Loop** - Construction & identification drills with instant elaborative feedback on the clickable keyboard
+- [x] **Phase 3: On-Screen Drill Loop** - Construction & identification drills with instant elaborative feedback on the clickable keyboard (completed 2026-07-13)
 - [ ] **Phase 4: MIDI Play-to-Answer** - Answer the same drills by playing the connected digital piano
 - [ ] **Phase 5: Smart Drill Design** - Interleaved sessions, scoped practice, and fading label scaffolds
 - [ ] **Phase 6: Major Scales** - Drill and see fingerings for all 12 major scales, expanding from G major
@@ -96,7 +96,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Every answer produces instant right/wrong feedback; a wrong answer reveals the correct notes and the interval formula in interval colors.
   4. The on-screen keyboard is a fully equivalent input path that works on any browser or device.
 
-**Plans**: 3/4 plans executed
+**Plans**: 4/4 plans complete
 
 **Wave 1** *(parallel: disjoint file sets)*
 
@@ -109,7 +109,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 3** *(blocked on Wave 2: shares drills/+page.svelte)*
 
-- [ ] 03-04-PLAN.md — Identification drill + interleaving + Next + in-memory ScoreRegister (DRILL-02/03, D-05/06/07/10)
+- [x] 03-04-PLAN.md — Identification drill + interleaving + Next + in-memory ScoreRegister (DRILL-02/03, D-05/06/07/10)
 
 **UI hint**: yes
 
@@ -211,7 +211,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 |-------|----------------|--------|-----------|
 | 1. Print Shop Foundation & Theory Core | 4/4 | Complete    | 2026-07-12 |
 | 2. Chord Lookup Companion | 3/3 | Complete    | 2026-07-12 |
-| 3. On-Screen Drill Loop | 3/4 | In Progress|  |
+| 3. On-Screen Drill Loop | 4/4 | Complete   | 2026-07-13 |
 | 4. MIDI Play-to-Answer | 0/TBD | Not started | - |
 | 5. Smart Drill Design | 0/TBD | Not started | - |
 | 6. Major Scales | 0/TBD | Not started | - |
