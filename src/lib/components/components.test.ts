@@ -123,6 +123,62 @@ describe('PianoKeyboard', () => {
 		await fireEvent.keyDown(cKey, { key: ' ' });
 		expect(onToggle).toHaveBeenCalledWith('C');
 	});
+
+	it('octaves={1}: renders 8 white keys, 5 black keys, and a one-octave aria-label', () => {
+		const { notes } = spellChord('Cm7');
+		const { container } = render(PianoKeyboard, { notes, octaves: 1 });
+
+		const keyboard = container.querySelector('.piano-keyboard');
+		expect(keyboard).toHaveAttribute('aria-label', 'Piano keyboard, one octave');
+		expect(container.querySelectorAll('.piano-keyboard__key--white')).toHaveLength(8);
+		expect(container.querySelectorAll('.piano-keyboard__key--black')).toHaveLength(5);
+	});
+
+	it('octaves={2}: renders 15 white keys, 10 black keys, and a two-octave aria-label', () => {
+		const { notes } = spellChord('Cm7');
+		const { container } = render(PianoKeyboard, { notes, octaves: 2 });
+
+		const keyboard = container.querySelector('.piano-keyboard');
+		expect(keyboard).toHaveAttribute('aria-label', 'Piano keyboard, two octaves');
+		expect(container.querySelectorAll('.piano-keyboard__key--white')).toHaveLength(15);
+		expect(container.querySelectorAll('.piano-keyboard__key--black')).toHaveLength(10);
+	});
+
+	it('octaves={1}: a high-rooted chord (Bm7) still shows all four interval colors via wrapping', () => {
+		const { notes } = spellChord('Bm7');
+		const { container } = render(PianoKeyboard, { notes, octaves: 1 });
+
+		const highlighted = container.querySelectorAll(
+			'.piano-keyboard__key--root, .piano-keyboard__key--third, .piano-keyboard__key--fifth, .piano-keyboard__key--seventh'
+		);
+		expect(highlighted).toHaveLength(4);
+	});
+
+	it('rotation continuity (D-03): selected letters stay aria-pressed true when octaves changes from 2 to 1', async () => {
+		const { rerender } = render(PianoKeyboard, {
+			notes: [],
+			interactive: true,
+			selected: new Set(['C']),
+			onToggle: () => {},
+			octaves: 2
+		});
+
+		let selectedKeys = screen.getAllByRole('button', { name: 'C key, selected' });
+		expect(selectedKeys.length).toBeGreaterThan(0);
+		selectedKeys.forEach((key) => expect(key).toHaveAttribute('aria-pressed', 'true'));
+
+		await rerender({
+			notes: [],
+			interactive: true,
+			selected: new Set(['C']),
+			onToggle: () => {},
+			octaves: 1
+		});
+
+		selectedKeys = screen.getAllByRole('button', { name: 'C key, selected' });
+		expect(selectedKeys.length).toBeGreaterThan(0);
+		selectedKeys.forEach((key) => expect(key).toHaveAttribute('aria-pressed', 'true'));
+	});
 });
 
 describe('RecentChipRow', () => {
