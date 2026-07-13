@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 09
 current_phase_name: Deploy to the Piano
 status: executing
-stopped_at: Completed 09-05-PLAN.md (minimal PWA manifest + icons)
-last_updated: "2026-07-13T22:04:36.160Z"
+stopped_at: Completed 09-02-PLAN.md (merged feedback keyboard + checkpoint defect fixes)
+last_updated: "2026-07-13T22:40:07.284Z"
 last_activity: 2026-07-13
 last_activity_desc: Phase 09 execution started
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 21
-  completed_plans: 17
+  completed_plans: 18
   percent: 44
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 ## Current Position
 
 Phase: 09 (Deploy to the Piano) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-07-13 — Phase 09 execution started
 
@@ -74,6 +74,7 @@ Progress: [████████████████████] 15/15 p
 | Phase 08-progress-streaks P04 | 9min | 3 tasks | 13 files |
 | Phase 09-deploy-to-the-piano P01 | 6min | 3 tasks | 4 files |
 | Phase 09-deploy-to-the-piano P05 | 10min | 1 tasks | 7 files |
+| Phase 09-deploy-to-the-piano P02 | 35min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -119,6 +120,8 @@ Recent decisions affecting current work:
 - [Phase 09 P01]: assignNotesToKeys wrap-around branch falls back to the lowest same-pitch-class key in the visible span when a note has no candidate at/after the ascending cursor, preserving its interval role instead of dropping it
 - [Phase 09 P01]: PianoKeyboard defaults to 2 octaves when width is unmeasurable (no ResizeObserver, e.g. jsdom) so all pre-existing tests stay green without modification
 - [Phase 09 P05]: Manifest theme_color/background_color reuse app.css's --color-ink/--color-paper tokens directly rather than introducing new colors, per D-07 discretion
+- [Phase 09-02]: candidatesForNote resolves exotic note spellings (F♭, C♭, E♯, B♯, double-flats) by chroma/pitch-class only when the primary letter-match walk finds zero candidates — Every chroma maps to exactly one key kind in this layout (7 natural chromas to white keys, 5 accidental chromas to black keys), so the fallback is unambiguous and preserves the existing ascending-cursor/wrap-around algorithm unchanged
+- [Phase 09-02]: Removed PianoKeyboard's fixed min-width: 44px per-key clamp; real >=44px touch pitch at one octave now comes from responsive Tailwind padding (px-2 below sm, unchanged p-8/p-6 at/above), not a px floor fighting percentage layout — No universal CSS min-width was added to .piano-keyboard itself, since that risks horizontal overflow on viewports narrower than the 390px checkpoint target
 
 ### Pending Todos
 
@@ -143,6 +146,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-13T22:04:36.154Z
-Stopped at: Completed 09-05-PLAN.md (minimal PWA manifest + icons)
+Last session: 2026-07-13T22:40:07.279Z
+Stopped at: Completed 09-02-PLAN.md (merged feedback keyboard + checkpoint defect fixes)
 Resume file: None
