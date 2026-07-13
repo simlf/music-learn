@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sketch 001 — Merged feedback keyboard</title>
+<link rel="stylesheet" href="../themes/default.css">
+<style>
+	* { box-sizing: border-box; }
+	body {
+		margin: 0;
+		padding: 64px 16px 80px;
+		background: var(--color-paper);
+		color: var(--color-ink);
+		font-family: var(--font-sans);
+	}
+
+	/* ── Variant tabs ── */
+	#variant-nav {
+		position: fixed; top: 0; left: 0; right: 0; z-index: 9998;
+		background: var(--color-ink); padding: 8px 16px;
+		display: flex; gap: 8px; flex-wrap: wrap;
+		font-family: var(--font-mono);
+	}
+	.variant-tab {
+		font-family: var(--font-mono); font-size: 12px; font-weight: 700;
+		letter-spacing: 0.1em; text-transform: uppercase;
+		background: transparent; color: var(--color-paper-bright);
+		border: 1.5px solid var(--color-paper-bright);
+		padding: 6px 12px; cursor: pointer;
+	}
+	.variant-tab.active { background: var(--color-mustard); color: var(--color-ink); border-color: var(--color-mustard); }
+
+	.variant { display: none; }
+	.variant.active { display: block; }
+
+	/* ── Viewport frame ── */
+	#frame { margin: 0 auto; max-width: 720px; transition: max-width 0.2s ease; }
+	#frame.phone { max-width: 390px; }
+	#frame.tablet { max-width: 768px; }
+
+	.variant-title {
+		font-family: var(--font-mono); font-size: 13px; font-weight: 700;
+		letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-muted);
+		margin: 16px 0 8px;
+	}
+	.variant-blurb { font-size: 14px; color: var(--color-muted); margin: 0 0 16px; max-width: 60ch; }
+
+	/* ── Drill card (mirrors drills page) ── */
+	.drill-card {
+		border: 2px solid var(--color-ink);
+		background: var(--color-paper-bright);
+		padding: 24px 16px;
+	}
+	.chord-glyph { font-family: var(--font-serif); font-size: 44px; font-weight: 700; margin: 0; }
+	.prompt { font-size: 15px; margin: 12px 0 0; }
+
+	/* ── Keyboard ── */
+	.kb-wrap { margin-top: 24px; }
+	.kb { position: relative; height: 150px; width: 100%; }
+	.kb .key {
+		position: absolute; top: 0;
+		display: flex; align-items: flex-end; justify-content: center;
+		padding-bottom: 4px; cursor: pointer;
+		transition: transform 0.08s ease, background-color 0.15s ease;
+		-webkit-tap-highlight-color: transparent;
+		touch-action: manipulation;
+	}
+	.kb .key:active { transform: scale(0.97); }
+	.kb .white { height: 100%; background: var(--color-paper-bright); border: 1.5px solid var(--color-ink); z-index: 1; }
+	.kb .black { height: 60%; background: var(--color-ink); z-index: 2; }
+
+	/* selection hatch (existing app treatment) */
+	.kb .key.selected {
+		background-image: repeating-linear-gradient(45deg,
+			rgba(34,30,23,0.12) 0, rgba(34,30,23,0.12) 1px, transparent 1px, transparent 7px);
+		box-shadow: inset 0 0 0 2px var(--color-ink);
+	}
+	.kb .black.selected {
+		background-image: repeating-linear-gradient(45deg,
+			rgba(250,246,234,0.2) 0, rgba(250,246,234,0.2) 1px, transparent 1px, transparent 7px);
+		box-shadow: inset 0 0 0 2px var(--color-paper-bright);
+	}
+
+	/* interval color fills (revealed) */
+	.kb .key.c-root { background-color: var(--color-root); }
+	.kb .key.c-third { background-color: var(--color-third); }
+	.kb .key.c-fifth { background-color: var(--color-fifth); }
+	.kb .key.c-seventh { background-color: var(--color-seventh); }
+
+	/* wrong-extra gray */
+	.kb .key.c-wrong { background-color: var(--color-wrong); }
+	.kb .black.c-wrong { background-color: var(--color-wrong-deep); }
+
+	/* Variant B: missed = hollow (outline of the interval color, paper fill) */
+	.kb .key.hollow-root { background-color: var(--color-paper-bright); box-shadow: inset 0 0 0 4px var(--color-root); }
+	.kb .key.hollow-third { background-color: var(--color-paper-bright); box-shadow: inset 0 0 0 4px var(--color-third); }
+	.kb .key.hollow-fifth { background-color: var(--color-paper-bright); box-shadow: inset 0 0 0 4px var(--color-fifth); }
+	.kb .key.hollow-seventh { background-color: var(--color-paper-bright); box-shadow: inset 0 0 0 4px var(--color-seventh); }
+	.kb .black.hollow-root { background-color: var(--color-ink); box-shadow: inset 0 0 0 4px var(--color-root); }
+	.kb .black.hollow-third { background-color: var(--color-ink); box-shadow: inset 0 0 0 4px var(--color-third); }
+	.kb .black.hollow-fifth { background-color: var(--color-ink); box-shadow: inset 0 0 0 4px var(--color-fifth); }
+	.kb .black.hollow-seventh { background-color: var(--color-ink); box-shadow: inset 0 0 0 4px var(--color-seventh); }
+
+	/* Variant C: hatch kept on keys the user touched */
+	.kb .key.keep-hatch {
+		background-image: repeating-linear-gradient(45deg,
+			rgba(34,30,23,0.18) 0, rgba(34,30,23,0.18) 1px, transparent 1px, transparent 7px);
+	}
+
+	.kb .tag {
+		font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+		pointer-events: none; color: var(--color-ink);
+	}
+	.kb .c-root > .tag, .kb .c-third > .tag { color: #fff; }
+	.kb .black > .tag { color: var(--color-paper-bright); }
+
+	/* stamp animation on reveal */
+	@keyframes stamp-in {
+		0% { transform: scale(0.96); opacity: 0; }
+		60% { transform: scale(1.02); opacity: 1; }
+		100% { transform: scale(1); }
+	}
+	.stamped { animation: stamp-in 240ms ease-out; }
+	@media (prefers-reduced-motion: reduce) { .stamped { animation: none; } }
+
+	/* ── Buttons ── */
+	.btn-row { margin-top: 24px; display: flex; gap: 8px; }
+	.btn {
+		font-family: var(--font-mono); font-size: 13px; font-weight: 700;
+		letter-spacing: 0.1em; text-transform: uppercase;
+		padding: 12px 20px; cursor: pointer; min-height: 44px;
+		transition: transform 0.08s ease;
+	}
+	.btn:active { transform: scale(0.97); }
+	.btn.primary { background: var(--color-ink); color: var(--color-paper-bright); border: 2px solid var(--color-ink); }
+	.btn.ghost { background: transparent; color: var(--color-ink); border: 2px solid var(--color-ink); }
+
+	/* ── Feedback block ── */
+	.feedback { margin-top: 24px; }
+	.headline { background: var(--color-ink); padding: 12px 16px; }
+	.headline p {
+		margin: 0; font-family: var(--font-mono); font-size: 12px; font-weight: 700;
+		letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-mustard);
+	}
+	.legend {
+		margin-top: 12px; display: flex; gap: 16px; flex-wrap: wrap;
+		font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+		color: var(--color-muted);
+	}
+	.legend .sw { display: inline-block; width: 12px; height: 12px; vertical-align: -1px; margin-right: 5px; border: 1px solid var(--color-ink); }
+	.chips { margin-top: 16px; display: flex; gap: 16px; flex-wrap: wrap; }
+	.chip { display: flex; flex-direction: column; align-items: center; gap: 3px; font-family: var(--font-mono); font-size: 11px; }
+	.chip .role {
+		font-weight: 700; padding: 3px 8px; color: #fff; letter-spacing: 0.08em;
+	}
+	.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div id="variant-nav">
+	<button class="variant-tab active" onclick="showVariant('a', this)">A: Colors + Gray ★ Selected</button>
+	<button class="variant-tab" onclick="showVariant('b', this)">B: Hollow Missed</button>
+	<button class="variant-tab" onclick="showVariant('c', this)">C: Hatch Memory</button>
+</div>
+
+<div id="frame">
+
+	<div id="variant-a" class="variant active">
+		<p class="variant-title">Variant A — Colors + Gray</p>
+		<p class="variant-blurb">After Check, all correct notes fill with interval colors. Your wrong extras turn gray. No played-vs-missed distinction: the answer is the message.</p>
+	</div>
+
+	<div id="variant-b" class="variant">
+		<p class="variant-title">Variant B — Hollow Missed</p>
+		<p class="variant-blurb">Correct notes you PLAYED fill solid. Correct notes you MISSED are hollow: paper key with a thick interval-color outline. Extras gray. You see exactly which fingers to add.</p>
+	</div>
+
+	<div id="variant-c" class="variant">
+		<p class="variant-title">Variant C — Hatch Memory</p>
+		<p class="variant-blurb">Interval colors stamp over the answer, but every key YOU touched keeps its selection hatch. Played-correct = color + hatch. Extra = gray + hatch. Missed = clean color. Your fingerprint stays visible under the correction.</p>
+	</div>
+
+	<!-- Shared drill card, re-rendered per variant -->
+	<div class="drill-card">
+		<p class="chord-glyph">Cm7</p>
+		<p class="prompt">Click the notes for Cm7.</p>
+		<div class="kb-wrap"><div class="kb" id="kb"></div></div>
+		<div class="btn-row" id="controls">
+			<button class="btn primary" id="check" onclick="check()">Check</button>
+			<button class="btn ghost" onclick="resetDrill()">Clear</button>
+		</div>
+		<div class="feedback hidden" id="feedback">
+			<div class="headline stamped"><p>Not quite. Fresh ink below.</p></div>
+			<div class="legend" id="legend"></div>
+			<div class="chips">
+				<div class="chip"><span class="role" style="background:var(--color-root)">R</span><span>C</span><span>Do</span></div>
+				<div class="chip"><span class="role" style="background:var(--color-third)">m3</span><span>E♭</span><span>Mi♭</span></div>
+				<div class="chip"><span class="role" style="background:var(--color-fifth);color:var(--color-ink)">P5</span><span>G</span><span>Sol</span></div>
+				<div class="chip"><span class="role" style="background:var(--color-seventh);color:var(--color-ink)">m7</span><span>B♭</span><span>Si♭</span></div>
+			</div>
+			<div class="btn-row">
+				<button class="btn primary" onclick="resetDrill()">Next</button>
+			</div>
+		</div>
+	</div>
+
+</div>
+
+<!-- Sketch toolbar -->
+<div id="sketch-tools" style="position:fixed;bottom:12px;right:12px;z-index:9999;font-family:system-ui;font-size:12px;background:rgba(0,0,0,0.75);color:#fff;padding:8px 12px;border-radius:8px;opacity:0.45;transition:opacity 0.2s;display:flex;gap:8px;align-items:center;"
+	onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.45'">
+	<button onclick="setFrame('phone')" style="cursor:pointer">📱</button>
+	<button onclick="setFrame('tablet')" style="cursor:pointer">💻</button>
+	<button onclick="setFrame('')" style="cursor:pointer">🖥️</button>
+	<select onchange="document.querySelector('link[href*=themes]').href='../themes/'+this.value+'.css'">
+		<option value="default">Print Shop</option>
+	</select>
+</div>
+
+<script>
+// ── Scenario: Cm7 = C(root) Eb(third) G(fifth) Bb(seventh)
+// Pre-seeded wrong answer: user played C, E(wrong), G — missed Eb and Bb.
+const TARGET = { 0:'root', 3:'third', 7:'fifth', 10:'seventh' }; // chroma -> role
+const PRESEED = new Set([0, 4, 7]); // C, E, G
+
+const WHITE = [['C',0],['D',2],['E',4],['F',5],['G',7],['A',9],['B',11]];
+const BLACK = { 'C':['C#',1], 'D':['D#',3], 'F':['F#',6], 'G':['G#',8], 'A':['A#',10] };
+
+let selected = new Set(PRESEED);
+let revealed = false;
+let currentVariant = 'a';
+
+function octaveCount() {
+	const w = document.getElementById('kb').clientWidth;
+	return w >= 660 ? 2 : 1; // responsive octaves per Phase 9 D-01
+}
+
+function renderKb() {
+	const kb = document.getElementById('kb');
+	const oct = octaveCount();
+	const whiteCount = oct * 7 + 1;
+	const w = 100 / whiteCount, bw = w * 0.62;
+	let html = '', idx = 0;
+	const keys = [];
+	for (let o = 0; o < oct; o++) {
+		for (const [letter, chroma] of WHITE) {
+			keys.push({ chroma, left: idx * w, width: w, black: false, letter });
+			if (BLACK[letter]) keys.push({ chroma: BLACK[letter][1], left: (idx + 1) * w - bw / 2, width: bw, black: true, letter: BLACK[letter][0] });
+			idx++;
+		}
+	}
+	keys.push({ chroma: 0, left: idx * w, width: w, black: false, letter: 'C' });
+
+	for (const k of keys) {
+		const cls = keyClasses(k);
+		const tag = keyTag(k);
+		html += `<div class="key ${k.black ? 'black' : 'white'} ${cls}" style="left:${k.left}%;width:${k.width}%"
+			onclick="toggleKey(${k.chroma})">${tag}</div>`;
+	}
+	kb.innerHTML = html;
+}
+
+function keyClasses(k) {
+	const inTarget = TARGET[k.chroma] !== undefined;
+	const played = selected.has(k.chroma);
+	if (!revealed) return played ? 'selected' : '';
+
+	const cls = ['stamped'];
+	if (currentVariant === 'a') {
+		if (inTarget) cls.push('c-' + TARGET[k.chroma]);
+		else if (played) cls.push('c-wrong');
+	} else if (currentVariant === 'b') {
+		if (inTarget && played) cls.push('c-' + TARGET[k.chroma]);
+		else if (inTarget && !played) cls.push('hollow-' + TARGET[k.chroma]);
+		else if (played) cls.push('c-wrong');
+	} else { // c
+		if (inTarget) cls.push('c-' + TARGET[k.chroma]);
+		else if (played) cls.push('c-wrong');
+		if (played) cls.push('keep-hatch');
+	}
+	return cls.join(' ');
+}
+
+function keyTag(k) {
+	if (!revealed) return '';
+	const role = TARGET[k.chroma];
+	const played = selected.has(k.chroma);
+	if (role) {
+		const names = { root: 'C', third: 'E♭', fifth: 'G', seventh: 'B♭' };
+		// avoid tagging the duplicate top-C / second-octave copies twice: tag all, it reads fine
+		return `<span class="tag">${names[role]}</span>`;
+	}
+	if (played) return '<span class="tag">✕</span>';
+	return '';
+}
+
+function toggleKey(chroma) {
+	if (revealed) return;
+	selected.has(chroma) ? selected.delete(chroma) : selected.add(chroma);
+	renderKb();
+}
+
+function check() {
+	revealed = true;
+	document.getElementById('controls').classList.add('hidden');
+	const fb = document.getElementById('feedback');
+	fb.classList.remove('hidden');
+	renderLegend();
+	renderKb();
+}
+
+function resetDrill() {
+	revealed = false;
+	selected = new Set(PRESEED);
+	document.getElementById('controls').classList.remove('hidden');
+	document.getElementById('feedback').classList.add('hidden');
+	renderKb();
+}
+
+function renderLegend() {
+	const l = document.getElementById('legend');
+	if (currentVariant === 'a') {
+		l.innerHTML = `<span><span class="sw" style="background:var(--color-verdigris)"></span>The chord</span>
+			<span><span class="sw" style="background:var(--color-wrong)"></span>Your extra note</span>`;
+	} else if (currentVariant === 'b') {
+		l.innerHTML = `<span><span class="sw" style="background:var(--color-verdigris)"></span>You had it</span>
+			<span><span class="sw" style="background:var(--color-paper-bright);box-shadow:inset 0 0 0 3px var(--color-verdigris)"></span>You missed it</span>
+			<span><span class="sw" style="background:var(--color-wrong)"></span>Your extra note</span>`;
+	} else {
+		l.innerHTML = `<span><span class="sw" style="background:var(--color-verdigris)"></span>The chord</span>
+			<span><span class="sw" style="background:var(--color-wrong)"></span>Your extra note</span>
+			<span><span class="sw" style="background-image:repeating-linear-gradient(45deg,rgba(34,30,23,0.3) 0,rgba(34,30,23,0.3) 1px,transparent 1px,transparent 5px)"></span>Hatch = keys you touched</span>`;
+	}
+}
+
+function showVariant(id, btn) {
+	currentVariant = id;
+	document.querySelectorAll('.variant').forEach(v => v.classList.remove('active'));
+	document.getElementById('variant-' + id).classList.add('active');
+	document.querySelectorAll('.variant-tab').forEach(t => t.classList.remove('active'));
+	btn.classList.add('active');
+	resetDrill();
+	if (revealed) renderLegend();
+}
+
+function setFrame(mode) {
+	const f = document.getElementById('frame');
+	f.className = mode;
+	renderKb();
+}
+
+window.addEventListener('resize', renderKb);
+renderKb();
+</script>
+</body>
+</html>
