@@ -184,7 +184,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. The user can see per-chord and per-scale accuracy stats that highlight their weakest items.
   3. The user can see a daily practice streak counter.
 
-**Plans**: 2/4 plans executed
+**Plans**: 3/4 plans executed
 
 **Wave 1**
 
@@ -196,7 +196,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 08-03-PLAN.md — Stats slice (PROG-02): GET /stats + computeStats, PracticeItemRow/AccuracyTable, Progress page (loading/empty/error/populated) + nav link
+- [x] 08-03-PLAN.md — Stats slice (PROG-02): GET /stats + computeStats, PracticeItemRow/AccuracyTable, Progress page (loading/empty/error/populated) + nav link
 
 **Wave 4** *(blocked on Wave 3: shares progress page, layout, server index)*
 
@@ -233,5 +233,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 5. Smart Drill Design | 0/TBD | Not started | - |
 | 6. Major Scales | 0/TBD | Not started | - |
 | 7. Theory Lessons | 0/TBD | Not started | - |
-| 8. Progress & Streaks | 2/4 | In Progress|  |
+| 8. Progress & Streaks | 3/4 | In Progress|  |
 | 9. Deploy to the Piano | 0/TBD | Not started | - |
