@@ -188,3 +188,12 @@ None - no external service configuration required.
 ---
 *Phase: 03-on-screen-drill-loop*
 *Completed: 2026-07-13*
+
+## Self-Check: PASSED
+
+- FOUND: tests/drills.e2e.test.ts
+- FOUND: src/routes/drills/+page.svelte
+- FOUND: .planning/phases/03-on-screen-drill-loop/03-03-SUMMARY.md
+- FOUND commit: c419db0 (test)
+- FOUND commit: e1ae6e7 (feat)
+- FOUND commit: b21e913 (docs: summary)
