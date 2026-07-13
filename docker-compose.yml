@@ -1,0 +1,33 @@
+# Plain docker compose deployment (D-01): the standalone answer-persistence
+# API runs as its own service with a volume-mounted SQLite file. The
+# SvelteKit app stays adapter-static and is NOT deployed here (its hosting
+# is Phase 9's concern, and is not a docker-compose service at all).
+services:
+  api:
+    build:
+      context: ./server
+    # required: false so `docker compose config` validates cleanly before the
+    # developer creates .env (see .env.example / 08-USER-SETUP.md); the
+    # service itself still fails fast without API_TOKEN (server/src/config.ts).
+    env_file:
+      - path: ./.env
+        required: false
+    environment:
+      DB_PATH: /data/music-learn.db
+    ports:
+      - '${PORT:-8080}:8080'
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:8080/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

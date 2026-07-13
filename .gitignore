@@ -20,3 +20,6 @@ Thumbs.db
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Docker compose SQLite volume (Phase 8 backend)
+/data/
