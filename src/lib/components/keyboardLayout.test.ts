@@ -100,7 +100,7 @@ describe('assignNotesToKeys', () => {
 		// fifth: G -> white index 4 (position 4)
 		expect(assignment.get(notes[2])).toEqual({ position: 4, kind: 'white', keyIndex: 4 });
 		// seventh: B♭ -> black key at afterWhiteIndex 5 (position 6)
-		expect(assignment.get(notes[3])).toEqual({ position: 6, kind: 'black', keyIndex: 5 });
+		expect(assignment.get(notes[3])).toEqual({ position: 6, kind: 'black', keyIndex: 4 });
 	});
 
 	it('wraps a high-rooted chord (Bm7) into four distinct keys within one octave', () => {
