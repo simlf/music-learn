@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 09
 current_phase_name: Deploy to the Piano
-status: executing
-stopped_at: Completed 09-03-PLAN.md (portrait thumb-zone + landscape two-pane drills layout, D-06 scroll-gap fix)
-last_updated: "2026-07-13T23:14:00.671Z"
+status: verifying
+stopped_at: Completed 09-04-PLAN.md (press-cue + guarded haptic + gesture hygiene; haptic device-verification deferred to post-HTTPS-deploy todo)
+last_updated: "2026-07-13T23:36:29.730Z"
 last_activity: 2026-07-13
 last_activity_desc: Phase 09 execution started
 progress:
   total_phases: 9
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 21
-  completed_plans: 20
-  percent: 44
+  completed_plans: 21
+  percent: 56
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 Phase: 09 (Deploy to the Piano) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-13 — Phase 09 execution started
 
 Progress: [████████████████████] 15/15 plans (100%)
@@ -77,6 +77,7 @@ Progress: [████████████████████] 15/15 p
 | Phase 09-deploy-to-the-piano P02 | 35min | 2 tasks | 8 files |
 | Phase 09 P06 | 15min | 3 tasks | 5 files |
 | Phase 09-deploy-to-the-piano P03 | 30min | 2 tasks | 3 files |
+| Phase 09-deploy-to-the-piano P04 | 15min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -128,6 +129,8 @@ Recent decisions affecting current work:
 - [Phase 09-06]: Progress accuracy table KIND column hidden via hidden sm:table-cell (DOM-preserving), not conditional rendering, to keep existing text-query tests green (D-08)
 - [Phase 09-03]: Landscape reflow gates on max-height:600px plus orientation:landscape, so only a genuinely short rotated-phone viewport switches to two-pane (a wide-but-tall desktop window stays single-column)
 - [Phase 09-03]: D-06 fix (post-checkpoint): main's min-h-screen had to be cleared inside the short-landscape media query, not just its padding — The masthead sits above main, so a 100vh floor there always overflowed the viewport by the masthead's own height regardless of how compact main's content became
+- [Phase 09-04]: Press-cue and haptic handlers are wired only on interactive-mode keys (pointerdown), leaving display-mode keys untouched so the existing non-interactive rendering path has zero behavior change
+- [Phase 09-04]: navigator.vibrate call duration kept to a single short (~10ms) pulse, no repeating pattern, per the plan's own DoS mitigation for T-09-04
 
 ### Pending Todos
 
@@ -152,6 +155,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-13T23:14:00.664Z
-Stopped at: Completed 09-03-PLAN.md (portrait thumb-zone + landscape two-pane drills layout, D-06 scroll-gap fix)
+Last session: 2026-07-13T23:36:29.724Z
+Stopped at: Completed 09-04-PLAN.md (press-cue + guarded haptic + gesture hygiene; haptic device-verification deferred to post-HTTPS-deploy todo)
 Resume file: None

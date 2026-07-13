@@ -21,7 +21,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 6: Major Scales** - Drill and see fingerings for all 12 major scales, expanding from G major
 - [ ] **Phase 7: Theory Lessons** - Short shape-first lessons explaining what the symbols mean
 - [x] **Phase 8: Progress & Streaks** - Cross-device answer history, weakness-aware stats, and a daily streak (completed 2026-07-13)
-- [ ] **Phase 9: Deploy to the Piano** - Live on the Oracle server over HTTPS, usable on laptop and phone
+- [x] **Phase 9: Deploy to the Piano** - Live on the Oracle server over HTTPS, usable on laptop and phone (completed 2026-07-13)
 
 ## Phase Details
 
@@ -218,7 +218,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Scope note (Phase 9 planning):** Deployment to the Oracle server over HTTPS (criterion 1, and the cross-device part of criterion 3) is DEFERRED per the phase CONTEXT reframe — the user handles deployment himself outside these plans. These plans deliver criterion 2 in depth (responsive/mobile, PLAT-01); PLAT-02 is not claimed here.
 
-**Plans**: 5/6 plans executed
+**Plans**: 6/6 plans complete
 
 **Wave 1** *(parallel: disjoint file sets)*
 
@@ -233,7 +233,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Wave 3** *(blocked on Wave 2)*
 
 - [x] 09-03-PLAN.md — Mobile drills layout: portrait thumb-zone + landscape two-pane + one-time rotate hint + 2x2 choices (D-05, D-06, D-10, D-13)
-- [ ] 09-04-PLAN.md — Touch ergonomics: press cue + guarded haptic + keyboard gesture hygiene (D-11, D-12)
+- [x] 09-04-PLAN.md — Touch ergonomics: press cue + guarded haptic + keyboard gesture hygiene (D-11, D-12)
 
 **UI hint**: yes
 
@@ -252,4 +252,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 6. Major Scales | 0/TBD | Not started | - |
 | 7. Theory Lessons | 0/TBD | Not started | - |
 | 8. Progress & Streaks | 4/4 | Complete    | 2026-07-13 |
-| 9. Deploy to the Piano | 5/6 | In Progress|  |
+| 9. Deploy to the Piano | 6/6 | Complete   | 2026-07-13 |
