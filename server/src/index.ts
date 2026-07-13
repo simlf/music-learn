@@ -12,6 +12,7 @@ import cors from '@fastify/cors';
 import { bearerAuth } from './auth.js';
 import { registerAnswersRoute } from './routes/answers.js';
 import { registerStatsRoute } from './routes/stats.js';
+import { registerStreakRoute } from './routes/streak.js';
 import type { AnswerStore } from './db.js';
 
 export interface BuildAppOptions {
@@ -64,12 +65,13 @@ export function buildApp({ store, apiToken, corsOrigin }: BuildAppOptions): Fast
 	app.get('/health', async () => ({ status: 'ok' }));
 
 	// Encapsulated authenticated context: the bearer preHandler guards every
-	// route registered inside this plugin (today /answers and /stats; later
-	// /streak) while /health above stays open.
+	// route registered inside this plugin (/answers, /stats, /streak) while
+	// /health above stays open.
 	app.register(async (authenticated) => {
 		authenticated.addHook('preHandler', bearerAuth(apiToken));
 		registerAnswersRoute(authenticated, store);
 		registerStatsRoute(authenticated, store);
+		registerStreakRoute(authenticated, store);
 	});
 
 	return app;
