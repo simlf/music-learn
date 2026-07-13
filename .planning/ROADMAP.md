@@ -96,7 +96,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Every answer produces instant right/wrong feedback; a wrong answer reveals the correct notes and the interval formula in interval colors.
   4. The on-screen keyboard is a fully equivalent input path that works on any browser or device.
 
-**Plans**: 2/4 plans executed
+**Plans**: 3/4 plans executed
 
 **Wave 1** *(parallel: disjoint file sets)*
 
@@ -105,7 +105,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 03-03-PLAN.md — Construction drill vertical slice: /drills page + Drills nav, RED e2e first, keyboard→matcher→elaborative feedback + stamp reward (DRILL-01/03, INPUT-02, D-04/08/09/13)
+- [x] 03-03-PLAN.md — Construction drill vertical slice: /drills page + Drills nav, RED e2e first, keyboard→matcher→elaborative feedback + stamp reward (DRILL-01/03, INPUT-02, D-04/08/09/13)
 
 **Wave 3** *(blocked on Wave 2: shares drills/+page.svelte)*
 
@@ -211,7 +211,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 |-------|----------------|--------|-----------|
 | 1. Print Shop Foundation & Theory Core | 4/4 | Complete    | 2026-07-12 |
 | 2. Chord Lookup Companion | 3/3 | Complete    | 2026-07-12 |
-| 3. On-Screen Drill Loop | 2/4 | In Progress|  |
+| 3. On-Screen Drill Loop | 3/4 | In Progress|  |
 | 4. MIDI Play-to-Answer | 0/TBD | Not started | - |
 | 5. Smart Drill Design | 0/TBD | Not started | - |
 | 6. Major Scales | 0/TBD | Not started | - |

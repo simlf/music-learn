@@ -16,7 +16,7 @@
 
 - [x] **DRILL-01**: User can do construction drills — given a chord symbol, play/click the notes; any inversion or octave accepted as correct
 - [x] **DRILL-02**: User can do identification drills — given highlighted notes on a keyboard, name the chord symbol
-- [ ] **DRILL-03**: User gets instant right/wrong feedback after each answer; wrong answers show the correct notes AND the interval formula in interval colors (elaborative feedback)
+- [x] **DRILL-03**: User gets instant right/wrong feedback after each answer; wrong answers show the correct notes AND the interval formula in interval colors (elaborative feedback)
 - [ ] **DRILL-04**: User can scope a practice session to chosen chord qualities and/or roots (e.g., only m7 chords this session)
 - [ ] **DRILL-05**: Drill sessions interleave chord qualities by default (mixed practice), with scoped/blocked practice as the opt-in exception
 - [ ] **DRILL-06**: Note labels (letters/solfège) fade progressively as the user's accuracy on each item grows — recognition scaffolds removed as recall develops
