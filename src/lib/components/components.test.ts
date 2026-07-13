@@ -50,6 +50,76 @@ describe('PianoKeyboard', () => {
 		expect(keyboard?.getAttribute('onclick')).toBeNull();
 		expect(keyboard?.getAttribute('onkeydown')).toBeNull();
 	});
+
+	it('non-regression: omitting interactive keeps keys free of button semantics', () => {
+		const { notes } = spellChord('Cm7');
+		const { container } = render(PianoKeyboard, { notes });
+
+		const keyboard = container.querySelector('.piano-keyboard');
+		expect(keyboard).toHaveAttribute('role', 'img');
+		expect(keyboard).toHaveAttribute('aria-label', 'Piano keyboard, two octaves');
+
+		const keys = container.querySelectorAll('.piano-keyboard__key');
+		expect(keys.length).toBeGreaterThan(0);
+		keys.forEach((key) => {
+			expect(key.getAttribute('role')).not.toBe('button');
+			expect(key.getAttribute('aria-pressed')).toBeNull();
+			expect(key.getAttribute('tabindex')).toBeNull();
+		});
+
+		// Highlighted key still renders its NoteLabel exactly as before.
+		const rootLetter = screen.getAllByText('C')[0];
+		expect(rootLetter.closest('.piano-keyboard__key')).toHaveClass('piano-keyboard__key--root');
+	});
+
+	it('interactive mode: clicking a white key calls onToggle with its letter', async () => {
+		const onToggle = vi.fn();
+		const { container } = render(PianoKeyboard, {
+			notes: [],
+			interactive: true,
+			selected: new Set(),
+			onToggle
+		});
+
+		const cKey = screen.getByRole('button', { name: 'C key' });
+		await fireEvent.click(cKey);
+
+		expect(onToggle).toHaveBeenCalledWith('C');
+		expect(container).toBeTruthy();
+	});
+
+	it('interactive mode: aria-pressed and aria-label reflect selected state', () => {
+		render(PianoKeyboard, {
+			notes: [],
+			interactive: true,
+			selected: new Set(['C']),
+			onToggle: () => {}
+		});
+
+		const selectedKey = screen.getByRole('button', { name: 'C key, selected' });
+		expect(selectedKey).toHaveAttribute('aria-pressed', 'true');
+
+		const unselectedKey = screen.getByRole('button', { name: 'D key' });
+		expect(unselectedKey).toHaveAttribute('aria-pressed', 'false');
+	});
+
+	it('interactive mode: Enter and Space keydown both toggle a key', async () => {
+		const onToggle = vi.fn();
+		render(PianoKeyboard, {
+			notes: [],
+			interactive: true,
+			selected: new Set(),
+			onToggle
+		});
+
+		const cKey = screen.getByRole('button', { name: 'C key' });
+		await fireEvent.keyDown(cKey, { key: 'Enter' });
+		expect(onToggle).toHaveBeenCalledWith('C');
+
+		onToggle.mockClear();
+		await fireEvent.keyDown(cKey, { key: ' ' });
+		expect(onToggle).toHaveBeenCalledWith('C');
+	});
 });
 
 describe('RecentChipRow', () => {
