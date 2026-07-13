@@ -181,3 +181,174 @@ describe('drills masthead nav link', () => {
 		expect(link).toHaveAttribute('href', '/drills');
 	});
 });
+
+// The scenarios below (Plan 04) force an IDENTIFICATION question instead of a
+// construction one, reusing the same call-indexed Math.random draws array
+// pattern as forceConstructionCm7 above, but flipping the question-type draw
+// to index 1 ('identification'). generateQuestion() for an identification
+// question draws, in order: (1) root index, (2) quality index, (3) question
+// type index, then (4) pickDistractors' internal shuffle draws (near-miss and
+// other candidate shuffles - Fisher-Yates consumes many draws), and finally
+// the top-level shuffle([symbol, ...distractors]) draw. Since exact
+// distractor content isn't asserted (only that 4 choices exist and one is the
+// correct symbol), every draw after the fixed first three can safely return
+// the same trailing value from the draws array (index clamps at the array's
+// last entry), which still yields a valid, parseable set of distractors.
+function forceIdentificationCm7() {
+	const draws = [
+		0 / ROOTS_LENGTH, // root index 0 -> 'C'
+		QUALITY_INDEX / QUALITY_SUFFIXES.length, // quality index -> 'm7'
+		0.99 // question type index 1 -> 'identification'
+	];
+	let call = 0;
+	vi.spyOn(Math, 'random').mockImplementation(() => {
+		const value = draws[Math.min(call, draws.length - 1)];
+		call++;
+		return value;
+	});
+}
+
+describe('drills page identification prompt', () => {
+	it('shows the Name this chord instruction, the interval-colored mystery keyboard, and 4 answer choices with no give-away symbol', () => {
+		forceIdentificationCm7();
+		render(DrillsPage);
+
+		expect(screen.getByText('Name this chord.')).toBeInTheDocument();
+
+		// The mystery chord's notes render on a DISPLAY-mode keyboard in
+		// interval colors (a NoteLabel appears for the root, e.g. "C").
+		const keyboard = screen.getByRole('img', { name: /piano keyboard/i });
+		expect(keyboard).toBeInTheDocument();
+		expect(within(keyboard).getByText('C')).toBeInTheDocument();
+
+		// Exactly 4 answer choices, none of which reveal a give-away
+		// Display-size ChordGlyph symbol for the prompt itself.
+		const choices = screen.getAllByRole('button', { name: /^Answer: / });
+		expect(choices).toHaveLength(4);
+		expect(screen.queryByTestId('chord-glyph-shadow')).not.toBeInTheDocument();
+	});
+});
+
+describe('drills page identification immediate grading', () => {
+	it('grades the correct choice immediately with no separate Check step', async () => {
+		forceIdentificationCm7();
+		render(DrillsPage);
+
+		const correctChoice = screen.getByRole('button', { name: 'Answer: Cm7' });
+		await fireEvent.click(correctChoice);
+
+		const feedback = screen.getByTestId('drill-feedback');
+		expect(
+			within(feedback).getByText(/Nailed it\.|Et voilà\.|Bang on\.|Spot on, mon ami\./)
+		).toBeInTheDocument();
+	});
+
+	it('reveals the correct symbol, interval formula, and wrong-answer headline on an incorrect choice', async () => {
+		forceIdentificationCm7();
+		render(DrillsPage);
+
+		const choices = screen.getAllByRole('button', { name: /^Answer: / });
+		const wrongChoice = choices.find(
+			(button) => button.getAttribute('aria-label') !== 'Answer: Cm7'
+		);
+		expect(wrongChoice).toBeDefined();
+		await fireEvent.click(wrongChoice!);
+
+		const feedback = screen.getByTestId('drill-feedback');
+		expect(
+			within(feedback).getByText(/Not quite\.|Close, but no cigar\.|Not this time\./)
+		).toBeInTheDocument();
+		expect(within(feedback).getByText('Here is the shape:')).toBeInTheDocument();
+
+		const formula = within(feedback).getByTestId('interval-formula');
+		expect(within(formula).getByText('R')).toBeInTheDocument();
+		expect(within(formula).getByText('m3')).toBeInTheDocument();
+		expect(within(formula).getByText('P5')).toBeInTheDocument();
+		expect(within(formula).getByText('m7')).toBeInTheDocument();
+
+		// The correct symbol is revealed since the user was naming it.
+		expect(within(feedback).getByText('Cm7')).toBeInTheDocument();
+	});
+
+	it('locks further choice taps once answered', async () => {
+		forceIdentificationCm7();
+		render(DrillsPage);
+
+		const correctChoice = screen.getByRole('button', { name: 'Answer: Cm7' });
+		await fireEvent.click(correctChoice);
+
+		expect(screen.getByRole('button', { name: 'Answer: Cm7' })).toBeDisabled();
+	});
+});
+
+describe('drills page Next advances the loop', () => {
+	it('is absent before answering and appears only after an answer, clearing feedback on click', async () => {
+		forceConstructionCm7();
+		render(DrillsPage);
+
+		expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(screen.getByTestId('drill-feedback')).toBeInTheDocument();
+		const nextButton = screen.getByRole('button', { name: 'Next' });
+		expect(nextButton).toBeInTheDocument();
+
+		await fireEvent.click(nextButton);
+
+		expect(screen.queryByTestId('drill-feedback')).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
+	});
+
+	it('never auto-advances: feedback persists until Next is pressed', async () => {
+		forceIdentificationCm7();
+		render(DrillsPage);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Answer: Cm7' }));
+
+		expect(screen.getByTestId('drill-feedback')).toBeInTheDocument();
+		expect(screen.getByTestId('drill-feedback')).toBeInTheDocument();
+	});
+});
+
+describe('drills page ScoreRegister', () => {
+	it('reads 0 RIGHT · 0 STREAK on load (literal mid-dot, not an em dash)', () => {
+		forceConstructionCm7();
+		render(DrillsPage);
+
+		expect(screen.getByTestId('score-register')).toHaveTextContent('0 RIGHT · 0 STREAK');
+	});
+
+	it('increments correct and streak after a right answer', async () => {
+		forceIdentificationCm7();
+		render(DrillsPage);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Answer: Cm7' }));
+
+		expect(screen.getByTestId('score-register')).toHaveTextContent('1 RIGHT · 1 STREAK');
+	});
+
+	it('resets the streak to 0 on a wrong answer while keeping the correct count', async () => {
+		forceIdentificationCm7();
+		render(DrillsPage);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Answer: Cm7' }));
+		expect(screen.getByTestId('score-register')).toHaveTextContent('1 RIGHT · 1 STREAK');
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+		forceIdentificationCm7();
+		const choices = screen.getAllByRole('button', { name: /^Answer: / });
+		const wrongChoice = choices.find(
+			(button) => button.getAttribute('aria-label') !== 'Answer: Cm7'
+		);
+		expect(wrongChoice).toBeDefined();
+		await fireEvent.click(wrongChoice!);
+
+		expect(screen.getByTestId('score-register')).toHaveTextContent('1 RIGHT · 0 STREAK');
+	});
+});
