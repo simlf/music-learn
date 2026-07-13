@@ -266,8 +266,10 @@ describe('drills page identification immediate grading', () => {
 		expect(within(formula).getByText('P5')).toBeInTheDocument();
 		expect(within(formula).getByText('m7')).toBeInTheDocument();
 
-		// The correct symbol is revealed since the user was naming it.
-		expect(within(feedback).getByText('Cm7')).toBeInTheDocument();
+		// The correct symbol is revealed since the user was naming it, via a
+		// ChordGlyph (root "C" + superscript quality "m7" as separate nodes).
+		expect(within(feedback).getAllByText('C').length).toBeGreaterThan(0);
+		expect(within(feedback).getAllByText('m7').length).toBeGreaterThan(0);
 	});
 
 	it('locks further choice taps once answered', async () => {
@@ -339,9 +341,11 @@ describe('drills page ScoreRegister', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Answer: Cm7' }));
 		expect(screen.getByTestId('score-register')).toHaveTextContent('1 RIGHT · 1 STREAK');
 
+		// Re-arm the deterministic draws BEFORE clicking Next, since Next's
+		// question draw happens synchronously inside the click handler.
+		forceIdentificationCm7();
 		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
-		forceIdentificationCm7();
 		const choices = screen.getAllByRole('button', { name: /^Answer: / });
 		const wrongChoice = choices.find(
 			(button) => button.getAttribute('aria-label') !== 'Answer: Cm7'
