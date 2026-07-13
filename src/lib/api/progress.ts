@@ -22,6 +22,15 @@ interface QueuedAnswerEvent extends AnswerEvent {
 	clientDate: string;
 }
 
+/** Server-computed per-item accuracy stats (mirrors server/src/stats.ts's StatItem, PROG-02). */
+export interface StatItem {
+	item: string;
+	kind: 'chord' | 'scale';
+	attempts: number;
+	accuracy: number;
+	needsPractice: boolean;
+}
+
 const QUEUE_KEY = 'music-learn:answer-queue';
 
 /** Caps queue growth so a long-offline stretch can't grow storage unbounded; oldest entries drop first. */
@@ -104,4 +113,17 @@ export async function flushQueue(): Promise<void> {
 	}
 
 	writeQueue(queue.slice(sentCount));
+}
+
+/**
+ * Fetches the server-computed per-item accuracy stats and weakest shortlist
+ * (PROG-02, D-02: the client never re-derives accuracy from raw events).
+ * Throws on a non-ok response so the Progress page can enter its error state.
+ */
+export async function fetchStats(): Promise<{ items: StatItem[]; weakest: StatItem[] }> {
+	const response = await apiFetch('/stats');
+	if (!response.ok) {
+		throw new Error('Failed to fetch stats');
+	}
+	return response.json();
 }
