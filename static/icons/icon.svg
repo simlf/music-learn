@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Music Learn">
+	<rect width="512" height="512" fill="#f2ecdd" />
+	<rect x="28" y="28" width="456" height="456" fill="none" stroke="#221e17" stroke-width="14" />
+	<rect x="52" y="52" width="408" height="408" fill="none" stroke="#221e17" stroke-width="4" />
+	<text
+		x="256"
+		y="308"
+		font-family="Georgia, 'Times New Roman', serif"
+		font-weight="700"
+		font-size="216"
+		fill="#221e17"
+		text-anchor="middle"
+	>ML</text>
+	<rect x="176" y="336" width="160" height="14" fill="#c8502e" />
+</svg>
