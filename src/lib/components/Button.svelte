@@ -6,18 +6,29 @@
 	 * Print Shop button. Primary: vermilion fill, offset ink shadow. Ghost:
 	 * transparent, ink border only. Both press into the paper on active
 	 * (translate + reduced shadow) per DESIGN-01.
+	 *
+	 * Pass `href` to render a real `<a>` (e.g. "Start a Drill" / "Practice
+	 * Now" navigating to /drills) instead of a `<button>`, keeping the exact
+	 * same visual treatment either way.
 	 */
 	interface Props extends HTMLButtonAttributes {
 		variant?: 'primary' | 'ghost';
+		href?: string;
 		children: Snippet;
 	}
 
-	let { variant = 'primary', children, ...rest }: Props = $props();
+	let { variant = 'primary', href, children, ...rest }: Props = $props();
 </script>
 
-<button class="ps-button ps-button--{variant}" {...rest}>
-	{@render children()}
-</button>
+{#if href}
+	<a {href} class="ps-button ps-button--{variant}">
+		{@render children()}
+	</a>
+{:else}
+	<button class="ps-button ps-button--{variant}" {...rest}>
+		{@render children()}
+	</button>
+{/if}
 
 <style>
 	.ps-button {
