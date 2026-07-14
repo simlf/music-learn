@@ -34,6 +34,13 @@ vi.mock('$lib/drills/rotateHint', () => ({
 	dismissRotateHint: (...args: unknown[]) => dismissRotateHintMock(...args)
 }));
 
+// PianoKeyboard imports the audio contract for inspect-mode playback; tests
+// never construct a real AudioContext (ARCHITECTURE-CONTRACTS.md rule).
+const playNoteMock = vi.fn();
+vi.mock('$lib/audio/audio', () => ({
+	playNote: (...args: unknown[]) => playNoteMock(...args)
+}));
+
 const { default: RootLayout } = await import('../src/routes/+layout.svelte');
 
 // This suite pins the construction-drill loop (Plan 03). generateQuestion's
@@ -41,24 +48,62 @@ const { default: RootLayout } = await import('../src/routes/+layout.svelte');
 // mocks Math.random to force a deterministic construction question (Cm7)
 // rather than relying on flaky real randomness (03-PATTERNS.md).
 //
-// generateQuestion() internally draws, in order: (1) randomChord's root
-// index, (2) randomChord's quality index, (3) pickQuestionType's 0/1 draw.
-// Returning 0 for all three draws yields root 'C', quality '' ... which is
-// not what we want (a bare C major triad, question type 'construction' only
-// when index 0 maps to 'construction'). We instead force draws precisely:
-// root index -> C (index 0), quality index -> m7 (index 4 in
+// DRAW-ORDER UPDATE (Track C union): the page now drills in MIX mode by
+// default, so generateQuestion('mix') spends ONE leading 50/50 draw on the
+// question family (< 0.5 -> chord, >= 0.5 -> interval) BEFORE the original
+// chord draws. Every chord draw script below therefore starts with a 0
+// (family -> chord); the remaining draws are unchanged: (1) randomChord's
+// root index, (2) randomChord's quality index, (3) pickQuestionType's 0/1
+// draw. Root index -> C (index 0), quality index -> m7 (index 4 in
 // QUALITY_SUFFIXES = ['', 'm', 'dim', 'maj7', 'm7', '7', 'm7b5', 'dim7']),
 // question type -> 'construction' (index 0 of ['construction',
 // 'identification']).
 const ROOTS_LENGTH = 12;
 const QUALITY_SUFFIXES = ['', 'm', 'dim', 'maj7', 'm7', '7', 'm7b5', 'dim7'];
 const QUALITY_INDEX = QUALITY_SUFFIXES.indexOf('m7');
+/** DRILL_INTERVALS order pinned by interval.test.ts; m3 sits at index 2. */
+const DRILL_INTERVALS_LENGTH = 12;
+const M3_INDEX = 2;
 
 function forceConstructionCm7() {
 	const draws = [
+		0, // family draw (MIX mode) -> chord
 		0 / ROOTS_LENGTH, // root index 0 -> 'C'
 		QUALITY_INDEX / QUALITY_SUFFIXES.length, // quality index -> 'm7'
 		0 // question type index 0 -> 'construction'
+	];
+	let call = 0;
+	vi.spyOn(Math, 'random').mockImplementation(() => {
+		const value = draws[Math.min(call, draws.length - 1)];
+		call++;
+		return value;
+	});
+}
+
+// Interval scripts drive generateQuestion('intervals') (the INTERVALS mode
+// button), which has NO family draw: it draws (1) root index over ROOTS,
+// (2) interval index over DRILL_INTERVALS, (3) direction index over
+// ['identification', 'construction'], then distractor/choice shuffle draws
+// (trailing repeats of the last entry, content not asserted).
+function forceIntervalIdentificationCm3() {
+	const draws = [
+		0 / ROOTS_LENGTH, // root index 0 -> 'C'
+		M3_INDEX / DRILL_INTERVALS_LENGTH, // interval index 2 -> 'm3'
+		0 // direction index 0 -> 'identification'
+	];
+	let call = 0;
+	vi.spyOn(Math, 'random').mockImplementation(() => {
+		const value = draws[Math.min(call, draws.length - 1)];
+		call++;
+		return value;
+	});
+}
+
+function forceIntervalConstructionCm3() {
+	const draws = [
+		0 / ROOTS_LENGTH, // root index 0 -> 'C'
+		M3_INDEX / DRILL_INTERVALS_LENGTH, // interval index 2 -> 'm3'
+		0.99 // direction index 1 -> 'construction'
 	];
 	let call = 0;
 	vi.spyOn(Math, 'random').mockImplementation(() => {
@@ -72,6 +117,7 @@ beforeEach(() => {
 	forceConstructionCm7();
 	recordAnswerMock.mockClear();
 	flushQueueMock.mockClear();
+	playNoteMock.mockClear();
 	isRotateHintDismissedMock.mockReset().mockReturnValue(false);
 	dismissRotateHintMock.mockClear();
 });
@@ -296,6 +342,7 @@ describe('drills masthead nav link', () => {
 // last entry), which still yields a valid, parseable set of distractors.
 function forceIdentificationCm7() {
 	const draws = [
+		0, // family draw (MIX mode) -> chord (Track C union update)
 		0 / ROOTS_LENGTH, // root index 0 -> 'C'
 		QUALITY_INDEX / QUALITY_SUFFIXES.length, // quality index -> 'm7'
 		0.99 // question type index 1 -> 'identification'
@@ -493,5 +540,167 @@ describe('drills page answer persistence (PROG-01)', () => {
 		render(DrillsPage);
 
 		expect(flushQueueMock).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('drills page mode row (Track C)', () => {
+	it('shows CHORDS, INTERVALS, and MIX with MIX active by default', () => {
+		forceConstructionCm7();
+		render(DrillsPage);
+
+		const row = screen.getByTestId('drill-mode-row');
+		const chords = within(row).getByRole('button', { name: 'Chords' });
+		const intervals = within(row).getByRole('button', { name: 'Intervals' });
+		const mix = within(row).getByRole('button', { name: 'Mix' });
+
+		expect(chords).toHaveAttribute('aria-pressed', 'false');
+		expect(intervals).toHaveAttribute('aria-pressed', 'false');
+		expect(mix).toHaveAttribute('aria-pressed', 'true');
+	});
+
+	it('switching to INTERVALS draws a fresh interval question immediately', async () => {
+		forceConstructionCm7();
+		render(DrillsPage);
+		expect(screen.getByText('Click the notes for Cm7.')).toBeInTheDocument();
+
+		forceIntervalIdentificationCm3();
+		await fireEvent.click(screen.getByRole('button', { name: 'Intervals' }));
+
+		expect(screen.getByText('Name this interval.')).toBeInTheDocument();
+		expect(screen.queryByText('Click the notes for Cm7.')).not.toBeInTheDocument();
+	});
+});
+
+describe('interval identification drill', () => {
+	async function renderIntervalIdentification() {
+		forceConstructionCm7();
+		render(DrillsPage);
+		forceIntervalIdentificationCm3();
+		await fireEvent.click(screen.getByRole('button', { name: 'Intervals' }));
+	}
+
+	it('highlights the two notes in degree colors and offers 4 choices with French sublabels', async () => {
+		await renderIntervalIdentification();
+
+		const keyboard = screen.getByRole('img', { name: /piano keyboard/i });
+		expect(keyboard.querySelector('.piano-keyboard__key--root')).toBeInTheDocument();
+		expect(keyboard.querySelector('.piano-keyboard__key--third')).toBeInTheDocument();
+
+		const choices = screen.getAllByRole('button', { name: /^Answer: / });
+		expect(choices).toHaveLength(4);
+		const correctChoice = screen.getByRole('button', { name: 'Answer: m3' });
+		expect(within(correctChoice).getByText('tierce mineure')).toBeInTheDocument();
+	});
+
+	it('tapping the correct choice grades immediately and records kind interval', async () => {
+		await renderIntervalIdentification();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Answer: m3' }));
+
+		const feedback = screen.getByTestId('drill-feedback');
+		expect(
+			within(feedback).getByText(/Nailed it\.|Et voilà\.|Bang on\.|Spot on, mon ami\./)
+		).toBeInTheDocument();
+		expect(recordAnswerMock).toHaveBeenCalledTimes(1);
+		expect(recordAnswerMock).toHaveBeenCalledWith({ item: 'm3', kind: 'interval', correct: true });
+	});
+
+	it('a wrong choice reveals the correct name with its French long name', async () => {
+		await renderIntervalIdentification();
+
+		const choices = screen.getAllByRole('button', { name: /^Answer: / });
+		const wrongChoice = choices.find((b) => b.getAttribute('aria-label') !== 'Answer: m3');
+		expect(wrongChoice).toBeDefined();
+		await fireEvent.click(wrongChoice!);
+
+		const feedback = screen.getByTestId('drill-feedback');
+		expect(
+			within(feedback).getByText(/Not quite\.|Close, but no cigar\.|Not this time\./)
+		).toBeInTheDocument();
+		const answerLine = within(feedback).getByTestId('interval-answer-line');
+		expect(answerLine).toHaveTextContent('m3');
+		expect(answerLine).toHaveTextContent('tierce mineure');
+		expect(recordAnswerMock).toHaveBeenCalledWith({ item: 'm3', kind: 'interval', correct: false });
+	});
+
+	it('locks the choices once answered', async () => {
+		await renderIntervalIdentification();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Answer: m3' }));
+
+		expect(screen.getByRole('button', { name: 'Answer: m3' })).toBeDisabled();
+	});
+});
+
+describe('interval construction drill', () => {
+	async function renderIntervalConstruction() {
+		forceConstructionCm7();
+		render(DrillsPage);
+		forceIntervalConstructionCm3();
+		await fireEvent.click(screen.getByRole('button', { name: 'Intervals' }));
+	}
+
+	it('prompts with the shorthand and French long name and shows only the root highlighted', async () => {
+		await renderIntervalConstruction();
+
+		// The prompt interleaves mono spans, so assert on the paragraph's text.
+		const prompt = screen.getByTestId('interval-construction-prompt');
+		expect(prompt).toHaveTextContent('Tap a m3 above C');
+		expect(prompt).toHaveTextContent('Tierce mineure.');
+
+		const keyboard = screen.getByRole('img', { name: /piano keyboard/i });
+		expect(keyboard.querySelector('.piano-keyboard__key--root')).toBeInTheDocument();
+		expect(keyboard.querySelector('.piano-keyboard__key--third')).not.toBeInTheDocument();
+	});
+
+	it('grades the first tap immediately: the enharmonic D♯ key is a correct m3 above C', async () => {
+		await renderIntervalConstruction();
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+
+		const feedback = screen.getByTestId('drill-feedback');
+		expect(
+			within(feedback).getByText(/Nailed it\.|Et voilà\.|Bang on\.|Spot on, mon ami\./)
+		).toBeInTheDocument();
+		expect(recordAnswerMock).toHaveBeenCalledWith({ item: 'm3', kind: 'interval', correct: true });
+
+		// The reveal stamps the target in its degree color.
+		const keyboard = screen.getByRole('img', { name: /piano keyboard/i });
+		expect(keyboard.querySelector('.piano-keyboard__key--third')).toBeInTheDocument();
+	});
+
+	it('a wrong tap gets the gray ✕, the colored reveal, and a You-tapped register line', async () => {
+		await renderIntervalConstruction();
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'E key' })[0]);
+
+		const feedback = screen.getByTestId('drill-feedback');
+		expect(
+			within(feedback).getByText(/Not quite\.|Close, but no cigar\.|Not this time\./)
+		).toBeInTheDocument();
+
+		const tapLine = within(feedback).getByTestId('interval-tap-line');
+		expect(tapLine).toHaveTextContent('You tapped E');
+		expect(tapLine).toHaveTextContent('M3');
+		expect(tapLine).toHaveTextContent('tierce majeure');
+
+		const keyboard = screen.getByRole('img', { name: /piano keyboard/i });
+		expect(keyboard.querySelector('.piano-keyboard__key--third')).toBeInTheDocument();
+		const wrongKeys = keyboard.querySelectorAll('.piano-keyboard__key--wrong');
+		expect(wrongKeys.length).toBeGreaterThan(0);
+
+		expect(recordAnswerMock).toHaveBeenCalledWith({ item: 'm3', kind: 'interval', correct: false });
+	});
+
+	it('Next after an interval answer draws a fresh question from the current mode', async () => {
+		await renderIntervalConstruction();
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+
+		forceIntervalIdentificationCm3();
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+		expect(screen.getByText('Name this interval.')).toBeInTheDocument();
+		expect(screen.queryByTestId('drill-feedback')).not.toBeInTheDocument();
 	});
 });

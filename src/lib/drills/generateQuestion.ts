@@ -1,16 +1,28 @@
 import { spellChord } from '$lib/theory/chord';
 import { randomChord, ROOTS, QUALITY_SUFFIXES } from '$lib/theory/randomChord';
 import { matchChord } from './matchChord';
+import { generateIntervalQuestion, type IntervalQuestion } from './generateIntervalQuestion';
 
-/** A single drill prompt: either "build this chord" or "name this chord". */
-export interface DrillQuestion {
+/** A chord drill prompt: either "build this chord" or "name this chord". */
+export interface ChordQuestion {
+	kind: 'chord';
 	/** Which direction of chord fluency this question drills. */
-	kind: 'construction' | 'identification';
+	direction: 'construction' | 'identification';
 	/** The correct chord symbol for this question. */
 	symbol: string;
 	/** Present only for identification questions: 4 shuffled options including `symbol`. */
 	choices?: string[];
 }
+
+/**
+ * A single drill prompt, discriminated on `kind` (Track C union): chord
+ * questions keep their exact pre-union draw order and behavior; interval
+ * questions come from generateIntervalQuestion.ts.
+ */
+export type DrillQuestion = ChordQuestion | IntervalQuestion;
+
+/** The drills page deck selector: chord-only, interval-only, or an even mix. */
+export type DrillMode = 'chords' | 'intervals' | 'mix';
 
 const QUESTION_TYPES = ['construction', 'identification'] as const;
 
@@ -96,19 +108,34 @@ function shuffle<T>(items: T[]): T[] {
 }
 
 /**
- * Generates one drill question (D-05/D-06): a symbol drawn from the proven
- * randomChord matrix, a construction-or-identification kind, and for
+ * Generates one chord question (D-05/D-06): a symbol drawn from the proven
+ * randomChord matrix, a construction-or-identification direction, and for
  * identification questions, 4 shuffled choices (the correct symbol plus 3
- * plausible, parseable, non-enharmonic-identical distractors).
+ * plausible, parseable, non-enharmonic-identical distractors). Draw order is
+ * unchanged from the pre-union generator: root, quality, direction, then
+ * shuffles.
  */
-export function generateQuestion(): DrillQuestion {
+function generateChordQuestion(): ChordQuestion {
 	const symbol = randomChord();
-	const kind = pickQuestionType();
+	const direction = pickQuestionType();
 
-	if (kind === 'construction') {
-		return { kind, symbol };
+	if (direction === 'construction') {
+		return { kind: 'chord', direction, symbol };
 	}
 
 	const choices = shuffle([symbol, ...pickDistractors(symbol)]);
-	return { kind, symbol, choices };
+	return { kind: 'chord', direction, symbol, choices };
+}
+
+/**
+ * Generates one drill question for the given mode. 'chords' (the default,
+ * preserving the pre-union call signature and draw order exactly) draws a
+ * chord question; 'intervals' draws an interval question; 'mix' spends one
+ * extra leading 50/50 draw on the family, then delegates.
+ */
+export function generateQuestion(mode: DrillMode = 'chords'): DrillQuestion {
+	if (mode === 'intervals') return generateIntervalQuestion();
+	if (mode === 'mix' && Math.random() >= 0.5) return generateIntervalQuestion();
+	if (mode === 'mix') return generateChordQuestion();
+	return generateChordQuestion();
 }

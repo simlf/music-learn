@@ -10,10 +10,10 @@
 
 import { apiFetch } from './client';
 
-/** The client-side answer event shape (item kind is always 'chord' this phase; 'scale' arrives in Phase 6). */
+/** The client-side answer event shape. 'interval' answers use the shorthand name as item (Track C). */
 export interface AnswerEvent {
 	item: string;
-	kind: 'chord' | 'scale';
+	kind: 'chord' | 'scale' | 'interval';
 	correct: boolean;
 }
 

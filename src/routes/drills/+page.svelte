@@ -2,13 +2,18 @@
 	import { onMount } from 'svelte';
 	import { Note } from 'tonal';
 	import { spellChord } from '$lib/theory/chord';
-	import { toAsciiAccidentals } from '$lib/theory/interval';
+	import { intervalFromShort, toAsciiAccidentals } from '$lib/theory/interval';
 	import { formulaFor } from '$lib/lookup/chordPresentation';
 	import { generateQuestion } from '$lib/drills/generateQuestion';
+	import {
+		describeTappedInterval,
+		gradeIntervalTap,
+		intervalQuestionNotes
+	} from '$lib/drills/generateIntervalQuestion';
 	import { matchChord } from '$lib/drills/matchChord';
 	import { dismissRotateHint, isRotateHintDismissed } from '$lib/drills/rotateHint';
 	import { recordAnswer, flushQueue } from '$lib/api/progress';
-	import type { DrillQuestion } from '$lib/drills/generateQuestion';
+	import type { DrillMode, DrillQuestion } from '$lib/drills/generateQuestion';
 	import type { MatchResult } from '$lib/drills/matchChord';
 	import PianoKeyboard from '$lib/components/PianoKeyboard.svelte';
 	import ChordGlyph from '$lib/components/ChordGlyph.svelte';
@@ -38,11 +43,24 @@
 		return [variants[index], index];
 	}
 
-	// Interleaving (D-06): generateQuestion() is drawn directly for BOTH kinds
-	// on load and on every Next - no mode toggle, no loop-until-construction.
-	// Each question is randomly construction or identification.
-	let question = $state<DrillQuestion>(generateQuestion());
-	const target = $derived(spellChord(question.symbol));
+	/** Deck selector (Track C): CHORDS, INTERVALS, or the default even MIX. */
+	const MODES: { value: DrillMode; label: string }[] = [
+		{ value: 'chords', label: 'Chords' },
+		{ value: 'intervals', label: 'Intervals' },
+		{ value: 'mix', label: 'Mix' }
+	];
+	let mode = $state<DrillMode>('mix');
+
+	// Interleaving (D-06): generateQuestion(mode) is drawn directly on load
+	// and on every Next - no setup screen. In MIX (default) each question is
+	// randomly a chord or an interval question; within each family the
+	// direction (construction/identification) stays a 50/50 draw.
+	let question = $state<DrillQuestion>(generateQuestion('mix'));
+	// spellChord('') is the total "no chord" value; interval questions never
+	// read `target`, so the fallback keeps every chord-branch read non-null.
+	const target = $derived(spellChord(question.kind === 'chord' ? question.symbol : ''));
+	/** Both interval-question notes (root + spelled target); construction shows only the root until graded. */
+	const intervalNotes = $derived(question.kind === 'interval' ? intervalQuestionNotes(question) : []);
 
 	let selected = $state<Set<string>>(new Set());
 	let answered = $state(false);
@@ -52,6 +70,15 @@
 
 	/** Snapshot of what the user played (letters, in click order) at grading time, for the diff row. */
 	let playedLetters = $state<string[]>([]);
+
+	/** The single graded tap of an interval construction question (letter as the keyboard reports it). */
+	let tappedLetter = $state<string | null>(null);
+	/** What that tap actually was, named from the question root, for the feedback register line. */
+	const tappedReadout = $derived(
+		question.kind === 'interval' && tappedLetter !== null
+			? describeTappedInterval(question.root, tappedLetter)
+			: null
+	);
 
 	/** In-session running tally (D-10): in-memory only, no localStorage, resets on reload. */
 	let score = $state({ correct: 0, streak: 0 });
@@ -102,9 +129,14 @@
 		}
 
 		// Fire-and-forget persistence (D-04): never awaited, so this cannot
-		// delay the synchronous UI updates above. The item kind is always
-		// 'chord' this phase; scale items arrive in Phase 6.
-		recordAnswer({ item: question.symbol, kind: 'chord', correct });
+		// delay the synchronous UI updates above. Interval answers record
+		// kind 'interval' with the shorthand name as the item, so the
+		// progress page aggregates per interval class for free.
+		recordAnswer({
+			item: question.kind === 'chord' ? question.symbol : question.interval.short,
+			kind: question.kind,
+			correct
+		});
 	}
 
 	function toggleKey(letter: string) {
@@ -135,20 +167,51 @@
 
 	/** Identification grading (D-05): tapping a choice IS the complete answer, no Check step. */
 	function selectChoice(choice: string) {
-		if (answered) return;
+		if (answered || question.kind !== 'chord') return;
 		answered = true;
 		const correct = choice === question.symbol;
 		feedback = { correct, missing: [], extra: [] };
 		recordGrade(correct);
 	}
 
-	/** Next (D-07): draws a fresh interleaved question and clears all per-question state. */
+	/** Interval identification: tapping a shorthand choice IS the complete answer (same D-05 rule). */
+	function selectIntervalChoice(choice: string) {
+		if (answered || question.kind !== 'interval') return;
+		answered = true;
+		const correct = choice === question.interval.short;
+		feedback = { correct, missing: [], extra: [] };
+		recordGrade(correct);
+	}
+
+	/**
+	 * Interval construction: the FIRST tap is the whole answer (no Check
+	 * step; single-note answers need no chord assembly). Graded by chroma
+	 * distance, so enharmonic and octave-duplicate taps are accepted.
+	 */
+	function tapIntervalKey(letter: string) {
+		if (answered || question.kind !== 'interval') return;
+		tappedLetter = letter;
+		answered = true;
+		const correct = gradeIntervalTap(question.root, letter, question.interval.semitones);
+		feedback = { correct, missing: [], extra: [] };
+		recordGrade(correct);
+	}
+
+	/** Mode switch discards the in-flight question and deals from the new deck. */
+	function setMode(next: DrillMode) {
+		if (next === mode) return;
+		mode = next;
+		nextQuestion();
+	}
+
+	/** Next (D-07): draws a fresh question from the current mode and clears all per-question state. */
 	function nextQuestion() {
-		question = generateQuestion();
+		question = generateQuestion(mode);
 		selected = new Set();
 		answered = false;
 		feedback = null;
 		playedLetters = [];
+		tappedLetter = null;
 	}
 
 	/** Whether a played letter's chroma is an extra note (not part of the target chord). */
@@ -165,22 +228,47 @@
 	const wrongLetters = $derived(new Set(playedLetters.filter(isExtraLetter)));
 
 	/**
-	 * True once a wrong CONSTRUCTION answer is graded: the input keyboard
-	 * transforms in place into the reveal (interval colors + wrongLetters),
-	 * replacing the prior separate correct-answer keyboard. Construction-only
-	 * per plan scope; identification's reveal keyboard is unchanged.
+	 * True once a wrong chord CONSTRUCTION answer is graded: the input
+	 * keyboard transforms in place into the reveal (interval colors +
+	 * wrongLetters), replacing the prior separate correct-answer keyboard.
+	 * Construction-only per plan scope; identification's reveal keyboard is
+	 * unchanged.
 	 */
 	const showConstructionReveal = $derived(
-		question.kind === 'construction' && answered && feedback !== null && !feedback.correct
+		question.kind === 'chord' &&
+			question.direction === 'construction' &&
+			answered &&
+			feedback !== null &&
+			!feedback.correct
 	);
+
+	/** Capitalizes the French long name for prompt copy ("tierce mineure" -> "Tierce mineure"). */
+	function capitalizeFr(text: string): string {
+		return text.charAt(0).toUpperCase() + text.slice(1);
+	}
 </script>
 
 <main class="bg-paper text-ink min-h-screen px-2 py-8 font-sans sm:px-8">
 	<h1 class="text-heading mt-2 font-bold">Drills</h1>
 
-	<p class="text-label mt-8 text-right font-mono uppercase" data-testid="score-register">
-		{score.correct} RIGHT · {score.streak} STREAK
-	</p>
+	<div class="mt-8 flex flex-wrap items-center justify-between gap-2">
+		<div class="flex gap-4" data-testid="drill-mode-row" role="group" aria-label="Drill mode">
+			{#each MODES as modeOption (modeOption.value)}
+				<button
+					type="button"
+					class="mode-tab text-label font-mono uppercase"
+					class:mode-tab--active={mode === modeOption.value}
+					aria-pressed={mode === modeOption.value}
+					onclick={() => setMode(modeOption.value)}
+				>
+					{modeOption.label}
+				</button>
+			{/each}
+		</div>
+		<p class="text-label text-right font-mono uppercase" data-testid="score-register">
+			{score.correct} RIGHT · {score.streak} STREAK
+		</p>
+	</div>
 
 	<div
 		class="drill-layout border-ink bg-paper-bright mt-8 border-2 px-2 py-6 sm:px-6"
@@ -195,7 +283,7 @@
 			</p>
 		{/if}
 
-		{#if question.kind === 'construction'}
+		{#if question.kind === 'chord' && question.direction === 'construction'}
 			<div class="drill-layout__prompt">
 				<div class="flex items-start gap-4">
 					<ChordGlyph root={target.root} quality={target.symbol.slice(target.root.length)} />
@@ -228,7 +316,7 @@
 					<Button type="button" variant="ghost" onclick={clearSelection}>Clear</Button>
 				</div>
 			</div>
-		{:else}
+		{:else if question.kind === 'chord'}
 			<div class="drill-layout__prompt">
 				<p class="text-body">Name this chord.</p>
 			</div>
@@ -252,6 +340,55 @@
 					{/each}
 				</div>
 			</div>
+		{:else if question.direction === 'identification'}
+			<div class="drill-layout__prompt">
+				<p class="text-body">Name this interval.</p>
+			</div>
+
+			<div class="drill-layout__keyboard">
+				<PianoKeyboard notes={intervalNotes} />
+			</div>
+
+			<div class="drill-layout__controls">
+				<div class="grid grid-cols-2 gap-2 xl:grid-cols-4" data-testid="interval-choice-grid">
+					{#each question.choices ?? [] as choice (choice)}
+						<Button
+							type="button"
+							variant="ghost"
+							disabled={answered}
+							aria-label={`Answer: ${choice}`}
+							onclick={() => selectIntervalChoice(choice)}
+						>
+							<span class="flex flex-col items-center">
+								<span class="font-mono text-heading font-bold">{choice}</span>
+								<span class="text-label font-mono">{intervalFromShort(choice).longFr}</span>
+							</span>
+						</Button>
+					{/each}
+				</div>
+			</div>
+		{:else}
+			<div class="drill-layout__prompt">
+				<p class="text-body" data-testid="interval-construction-prompt">
+					Tap a <span class="font-mono font-bold">{question.interval.short}</span> above
+					<span class="font-mono font-bold">{question.root}</span>.
+					<span class="text-muted">{capitalizeFr(question.interval.longFr)}.</span>
+				</p>
+			</div>
+
+			<div class="drill-layout__keyboard">
+				<PianoKeyboard
+					notes={answered ? intervalNotes : [intervalNotes[0]]}
+					interactive={!answered}
+					selected={answered ? undefined : new Set()}
+					onToggle={answered ? undefined : tapIntervalKey}
+					wrongLetters={answered
+						? feedback?.correct
+							? new Set()
+							: new Set(tappedLetter === null ? [] : [tappedLetter])
+						: undefined}
+				/>
+			</div>
 		{/if}
 
 		{#if answered && feedback}
@@ -262,44 +399,57 @@
 					<div class="bg-ink p-4">
 						<p class="text-label text-mustard font-mono uppercase">{headlineText}</p>
 					</div>
-					<p class="text-muted mt-4">Here is the shape:</p>
-					{#if question.kind === 'identification'}
-						<div class="mt-4 flex items-start gap-4">
-							<ChordGlyph root={target.root} quality={target.symbol.slice(target.root.length)} />
-						</div>
-						<div class="mt-4">
-							<PianoKeyboard notes={target.notes} />
-						</div>
-					{/if}
-					{#if question.kind === 'construction'}
-						<p class="text-label mt-4 flex gap-4 font-mono" data-testid="feedback-legend">
-							<span class="inline-flex items-center gap-2">
-								<span
-									class="inline-block h-3 w-3"
-									style="background-color: var(--color-third);"
-									aria-hidden="true"
-								></span>
-								The chord
-							</span>
-							<span class="inline-flex items-center gap-2">
-								<span
-									class="inline-block h-3 w-3"
-									style="background-color: var(--color-wrong);"
-									aria-hidden="true"
-								></span>
-								Your extra note
-							</span>
-						</p>
-					{/if}
-					<div class="mt-6 flex gap-4" data-testid="interval-formula">
-						{#each formulaFor(target) as entry (entry.role + entry.letter)}
-							<div class="flex flex-col items-center gap-1">
-								<IntervalChip role={entry.role} label={entry.label} />
-								<span class="text-label font-mono">{entry.letter}</span>
-								<span class="text-label font-mono">{entry.solfege}</span>
+					{#if question.kind === 'chord'}
+						<p class="text-muted mt-4">Here is the shape:</p>
+						{#if question.direction === 'identification'}
+							<div class="mt-4 flex items-start gap-4">
+								<ChordGlyph root={target.root} quality={target.symbol.slice(target.root.length)} />
 							</div>
-						{/each}
-					</div>
+							<div class="mt-4">
+								<PianoKeyboard notes={target.notes} />
+							</div>
+						{/if}
+						{#if question.direction === 'construction'}
+							<p class="text-label mt-4 flex gap-4 font-mono" data-testid="feedback-legend">
+								<span class="inline-flex items-center gap-2">
+									<span
+										class="inline-block h-3 w-3"
+										style="background-color: var(--color-third);"
+										aria-hidden="true"
+									></span>
+									The chord
+								</span>
+								<span class="inline-flex items-center gap-2">
+									<span
+										class="inline-block h-3 w-3"
+										style="background-color: var(--color-wrong);"
+										aria-hidden="true"
+									></span>
+									Your extra note
+								</span>
+							</p>
+						{/if}
+						<div class="mt-6 flex gap-4" data-testid="interval-formula">
+							{#each formulaFor(target) as entry (entry.role + entry.letter)}
+								<div class="flex flex-col items-center gap-1">
+									<IntervalChip role={entry.role} label={entry.label} />
+									<span class="text-label font-mono">{entry.letter}</span>
+									<span class="text-label font-mono">{entry.solfege}</span>
+								</div>
+							{/each}
+						</div>
+					{:else}
+						<p class="text-muted mt-4">Here is the interval:</p>
+						<p class="text-label mt-2 font-mono uppercase" data-testid="interval-answer-line">
+							{question.interval.short} · {question.interval.longFr}
+						</p>
+						{#if question.direction === 'construction' && tappedReadout}
+							<p class="text-label mt-2 font-mono uppercase" data-testid="interval-tap-line">
+								You tapped {tappedReadout.letter} · {tappedReadout.info.short} · {tappedReadout.info
+									.longFr}
+							</p>
+						{/if}
+					{/if}
 				{/if}
 			</div>
 		{/if}
@@ -465,5 +615,37 @@
 	.drill-controls__primary :global(.ps-button),
 	.drill-controls__secondary :global(.ps-button) {
 		width: 100%;
+	}
+
+	/*
+	 * Mode tabs (Track C): masthead-link grammar (mono uppercase, muted until
+	 * active, ink underline when active) rather than boxed buttons, so the
+	 * row shares the score register's line and costs no vertical space in the
+	 * short-landscape layout. The 44px touch floor comes from padding plus
+	 * the negative vertical margin (the .suggestion-tap precedent), keeping
+	 * the visual line height unchanged.
+	 */
+	.mode-tab {
+		min-height: 44px;
+		min-width: 44px;
+		padding: var(--spacing-sm);
+		margin: calc(-1 * var(--spacing-sm)) 0;
+		background: none;
+		border: none;
+		color: var(--color-muted);
+		letter-spacing: 0.08em;
+		cursor: pointer;
+	}
+
+	.mode-tab:hover,
+	.mode-tab:focus {
+		color: var(--color-ink);
+	}
+
+	.mode-tab--active {
+		color: var(--color-ink);
+		text-decoration: underline;
+		text-underline-offset: 4px;
+		text-decoration-thickness: 2px;
 	}
 </style>
