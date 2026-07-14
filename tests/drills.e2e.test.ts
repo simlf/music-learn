@@ -704,3 +704,53 @@ describe('interval construction drill', () => {
 		expect(screen.queryByTestId('drill-feedback')).not.toBeInTheDocument();
 	});
 });
+
+describe('drills wrong-answer reveal is inspectable (Track C)', () => {
+	it('after a wrong construction answer, tapping a revealed key plays it and fills the register', async () => {
+		forceConstructionCm7();
+		render(DrillsPage);
+
+		// Wrong answer: only 3 of the 4 Cm7 notes.
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(screen.queryByTestId('inspect-register')).not.toBeInTheDocument();
+		playNoteMock.mockClear();
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+
+		const register = screen.getByTestId('inspect-register');
+		expect(register).toHaveTextContent('B♭ · Si · m7 · septième mineure · 10 demi-tons');
+		expect(playNoteMock).toHaveBeenCalledWith('Bb4');
+	});
+
+	it('feedback formula chips carry the French tooltip', async () => {
+		forceConstructionCm7();
+		render(DrillsPage);
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		const formula = screen.getByTestId('interval-formula');
+		expect(within(formula).getByText('m3')).toHaveAttribute('title', 'tierce mineure');
+	});
+
+	it('after answering an interval identification question, the prompt keyboard becomes inspectable', async () => {
+		forceConstructionCm7();
+		render(DrillsPage);
+		forceIntervalIdentificationCm3();
+		await fireEvent.click(screen.getByRole('button', { name: 'Intervals' }));
+
+		// Before answering: display-only keyboard, no key buttons.
+		expect(screen.queryAllByRole('button', { name: 'C key' })).toHaveLength(0);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Answer: m3' }));
+		playNoteMock.mockClear();
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		expect(screen.getByTestId('inspect-register')).toHaveTextContent('C · Do · R · fondamentale');
+		expect(playNoteMock).toHaveBeenCalled();
+	});
+});

@@ -15,7 +15,8 @@
 	import { recordAnswer, flushQueue } from '$lib/api/progress';
 	import type { DrillMode, DrillQuestion } from '$lib/drills/generateQuestion';
 	import type { MatchResult } from '$lib/drills/matchChord';
-	import PianoKeyboard from '$lib/components/PianoKeyboard.svelte';
+	import PianoKeyboard, { type InspectPayload } from '$lib/components/PianoKeyboard.svelte';
+	import InspectRegister from '$lib/components/InspectRegister.svelte';
 	import ChordGlyph from '$lib/components/ChordGlyph.svelte';
 	import IntervalChip from '$lib/components/IntervalChip.svelte';
 	import Button from '$lib/components/Button.svelte';
@@ -212,6 +213,18 @@
 		feedback = null;
 		playedLetters = [];
 		tappedLetter = null;
+		drillInspect = null;
+	}
+
+	/**
+	 * Reveal-keyboard inspect taps (R4: the study-the-reveal moment becomes
+	 * active exploration). Filled only after grading, rendered inside the
+	 * feedback block.
+	 */
+	let drillInspect = $state<InspectPayload | null>(null);
+
+	function handleDrillInspect(payload: InspectPayload) {
+		drillInspect = payload;
 	}
 
 	/** Whether a played letter's chroma is an extra note (not part of the target chord). */
@@ -298,6 +311,8 @@
 					selected={showConstructionReveal ? undefined : selected}
 					onToggle={showConstructionReveal ? undefined : toggleKey}
 					wrongLetters={showConstructionReveal ? wrongLetters : undefined}
+					inspectable={showConstructionReveal}
+					onInspect={showConstructionReveal ? handleDrillInspect : undefined}
 				/>
 			</div>
 
@@ -346,7 +361,11 @@
 			</div>
 
 			<div class="drill-layout__keyboard">
-				<PianoKeyboard notes={intervalNotes} />
+				<PianoKeyboard
+					notes={intervalNotes}
+					inspectable={answered}
+					onInspect={answered ? handleDrillInspect : undefined}
+				/>
 			</div>
 
 			<div class="drill-layout__controls">
@@ -387,6 +406,8 @@
 							? new Set()
 							: new Set(tappedLetter === null ? [] : [tappedLetter])
 						: undefined}
+					inspectable={answered}
+					onInspect={answered ? handleDrillInspect : undefined}
 				/>
 			</div>
 		{/if}
@@ -406,7 +427,7 @@
 								<ChordGlyph root={target.root} quality={target.symbol.slice(target.root.length)} />
 							</div>
 							<div class="mt-4">
-								<PianoKeyboard notes={target.notes} />
+								<PianoKeyboard notes={target.notes} inspectable onInspect={handleDrillInspect} />
 							</div>
 						{/if}
 						{#if question.direction === 'construction'}
@@ -432,7 +453,7 @@
 						<div class="mt-6 flex gap-4" data-testid="interval-formula">
 							{#each formulaFor(target) as entry (entry.role + entry.letter)}
 								<div class="flex flex-col items-center gap-1">
-									<IntervalChip role={entry.role} label={entry.label} />
+									<IntervalChip role={entry.role} label={entry.label} longName={entry.longFr} />
 									<span class="text-label font-mono">{entry.letter}</span>
 									<span class="text-label font-mono">{entry.solfege}</span>
 								</div>
@@ -450,6 +471,9 @@
 							</p>
 						{/if}
 					{/if}
+				{/if}
+				{#if drillInspect}
+					<InspectRegister payload={drillInspect} />
 				{/if}
 			</div>
 		{/if}
