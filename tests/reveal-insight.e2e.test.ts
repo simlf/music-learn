@@ -10,11 +10,76 @@ vi.mock('$app/stores', () => ({
 	page: readable({ url: new URL('http://localhost/') })
 }));
 
-const recordAnswerMock = vi.fn();
+// Mock scaffolding mirrors tests/drills.e2e.test.ts post practice-engine
+// merge: the pool draw pins the question SYMBOL (Cm7) and Math.random only
+// steers pickQuestionType's kind draw plus cosmetic downstream draws.
 const flushQueueMock = vi.fn();
+const fetchStatsMock = vi.fn((..._args: unknown[]) =>
+	Promise.resolve({ items: [], weakest: [] })
+);
 vi.mock('$lib/api/progress', () => ({
-	recordAnswer: (...args: unknown[]) => recordAnswerMock(...args),
-	flushQueue: (...args: unknown[]) => flushQueueMock(...args)
+	flushQueue: (...args: unknown[]) => flushQueueMock(...args),
+	fetchStats: (...args: unknown[]) => fetchStatsMock(...args),
+	localDateString: () => '2026-07-14'
+}));
+
+const recordPracticeAnswerMock = vi.fn();
+vi.mock('$lib/practice/answerTelemetry', () => ({
+	recordPracticeAnswer: (...args: unknown[]) => recordPracticeAnswerMock(...args)
+}));
+
+const drawFromPoolMock = vi.fn((..._args: unknown[]) => ({
+	symbol: 'Cm7',
+	bucket: 'tier',
+	scaffoldStage: null
+}));
+vi.mock('$lib/practice/pool', () => ({
+	drawFromPool: (...args: unknown[]) => drawFromPoolMock(...args),
+	scaffoldStageForSymbol: (..._args: unknown[]) => null
+}));
+
+vi.mock('$lib/practice/practiceLog', () => ({
+	recentMisses: (): string[] => [],
+	appendPracticeAnswer: () => {},
+	readPracticeLog: () => [],
+	practiceDaysSince: () => 99
+}));
+
+vi.mock('$lib/practice/levelState', () => ({
+	getLevelState: () => ({ currentTier: 1, unlockedTiers: [1] }),
+	checkUnlock: () => ({
+		tier: 1,
+		nextTier: 2,
+		eligible: false,
+		rollingAccuracy: 0,
+		rollingCount: 0,
+		lifetimeAttempts: 0,
+		distinctDays: 0,
+		perQuality: []
+	}),
+	isSnoozed: () => false,
+	setCurrentTier: () => {},
+	snoozeSuggestion: () => {}
+}));
+
+vi.mock('$lib/practice/songs', () => ({
+	activeSongChordSymbols: (): string[] => []
+}));
+
+vi.mock('$lib/practice/scaffold', () => ({
+	readScaffolds: () => ({}),
+	writeScaffold: () => {},
+	recordScaffoldAnswer: (state: unknown) => state
+}));
+
+vi.mock('$lib/practice/drillSeeds', () => ({
+	consumeDrillSeeds: (): string[] => []
+}));
+
+vi.mock('$lib/audio/audio', () => ({
+	playChord: () => {},
+	playNote: () => {},
+	ensureAudioReady: async () => {}
 }));
 
 const isRotateHintDismissedMock = vi.fn(() => true);
@@ -24,30 +89,21 @@ vi.mock('$lib/drills/rotateHint', () => ({
 	dismissRotateHint: (...args: unknown[]) => dismissRotateHintMock(...args)
 }));
 
-// generateQuestion() draws, in order: (1) randomChord root index,
-// (2) randomChord quality index, (3) pickQuestionType 0/1. Identification
-// additionally consumes shuffle draws, which safely clamp to the trailing
-// value (see drills.e2e.test.ts for the full explanation of this pattern).
-const ROOTS_LENGTH = 12;
-const QUALITY_SUFFIXES = ['', 'm', 'dim', 'maj7', 'm7', '7', 'm7b5', 'dim7'];
-const QUALITY_INDEX = QUALITY_SUFFIXES.indexOf('m7');
-
-function forceQuestion(kindDraw: number) {
-	const draws = [0 / ROOTS_LENGTH, QUALITY_INDEX / QUALITY_SUFFIXES.length, kindDraw];
-	let call = 0;
-	vi.spyOn(Math, 'random').mockImplementation(() => {
-		const value = draws[Math.min(call, draws.length - 1)];
-		call++;
-		return value;
-	});
-}
-
-const forceConstructionCm7 = () => forceQuestion(0);
-const forceIdentificationCm7 = () => forceQuestion(0.99);
+// The pool mock pins the symbol, so a constant Math.random steers only the
+// kind draw: 0 -> construction, 0.99 -> identification (shuffle and copy
+// variant draws tolerate the constant).
+const forceConstructionCm7 = () => {
+	vi.spyOn(Math, 'random').mockReturnValue(0);
+};
+const forceIdentificationCm7 = () => {
+	vi.spyOn(Math, 'random').mockReturnValue(0.99);
+};
 
 beforeEach(() => {
-	recordAnswerMock.mockClear();
+	recordPracticeAnswerMock.mockClear();
 	flushQueueMock.mockClear();
+	fetchStatsMock.mockClear();
+	drawFromPoolMock.mockClear();
 });
 
 afterEach(() => {
