@@ -1,8 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { fetchStats, fetchStreak, localDateString, type StatItem } from '$lib/api/progress';
 	import { getApiToken, setApiToken } from '$lib/api/client';
+	import { setSoundEnabled, soundEnabled } from '$lib/audio/audio';
 	import { pickStreakLine } from '$lib/copy/streak';
+	import { setDrillSeeds } from '$lib/practice/drillSeeds';
+	import { getLevelState, setCurrentTier } from '$lib/practice/levelState';
+	import { TIERS, tierById, type TierId } from '$lib/practice/tiers';
 	import PracticeItemRow from '$lib/components/PracticeItemRow.svelte';
 	import AccuracyTable from '$lib/components/AccuracyTable.svelte';
 	import StreakBadge from '$lib/components/StreakBadge.svelte';
@@ -68,6 +73,28 @@
 	onMount(() => {
 		void load();
 	});
+
+	// ---- Practice settings (Track B): device-local, independent of the
+	// stats fetch state machine above, so they render in every page state.
+
+	let levelState = $state(getLevelState());
+	let sound = $state(soundEnabled());
+
+	/** Manual tier override (R3): no confirmation friction, always available. */
+	function selectTier(tier: TierId): void {
+		levelState = setCurrentTier(tier);
+	}
+
+	function toggleSound(): void {
+		sound = !sound;
+		setSoundEnabled(sound);
+	}
+
+	/** Seeds a drill session from the weakest chord items (R6 proposal 2). */
+	function drillThese(): void {
+		setDrillSeeds(weakest.filter((item) => item.kind === 'chord').map((item) => item.item));
+		void goto('/drills');
+	}
 </script>
 
 <main class="bg-paper text-ink min-h-screen p-8 font-sans">
@@ -133,6 +160,11 @@
 					{/each}
 				</tbody>
 			</table>
+			{#if weakest.some((item) => item.kind === 'chord')}
+				<div class="mt-4">
+					<Button type="button" variant="primary" onclick={drillThese}>Drill these</Button>
+				</div>
+			{/if}
 		</div>
 
 		<div class="mt-8">
@@ -142,6 +174,40 @@
 			</div>
 		</div>
 	{/if}
+
+	<div class="border-ink bg-paper-bright mt-8 border-2 p-6" data-testid="practice-settings">
+		<h2 class="text-heading font-bold">Practice Settings</h2>
+
+		<p class="text-label mt-4 font-mono uppercase" data-testid="current-tier-line">
+			TIER {levelState.currentTier}: {tierById(levelState.currentTier).name.toUpperCase()}
+		</p>
+		<p class="text-body mt-2">
+			Unlocking early is fine. The drill mixes in scaffolding for new chord types.
+		</p>
+		<div class="mt-4 flex flex-wrap gap-2">
+			{#each TIERS as tier (tier.id)}
+				<Button
+					type="button"
+					variant={tier.id === levelState.currentTier ? 'primary' : 'ghost'}
+					disabled={!tier.available}
+					aria-label={`Set tier ${tier.id}`}
+					onclick={() => selectTier(tier.id)}
+				>
+					{tier.id}
+				</Button>
+			{/each}
+		</div>
+		<p class="text-label text-muted mt-2 font-mono uppercase">TIERS 5 AND 6: COMING LATER</p>
+
+		<div class="mt-6">
+			<p class="text-label font-mono uppercase">SOUND</p>
+			<div class="mt-2">
+				<Button type="button" variant="ghost" aria-label="Toggle sound" onclick={toggleSound}>
+					{sound ? 'SOUND ON' : 'SOUND OFF'}
+				</Button>
+			</div>
+		</div>
+	</div>
 </main>
 
 <style>

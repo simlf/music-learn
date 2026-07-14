@@ -14,14 +14,86 @@ vi.mock('$app/stores', () => ({
 }));
 
 // The drills page now fire-and-forgets every graded answer to the backend
-// (PROG-01) via $lib/api/progress. Mocked here so this suite never touches
-// real fetch/localStorage and the existing timing-sensitive assertions stay
-// unaffected.
-const recordAnswerMock = vi.fn();
+// (PROG-01) via the tolerant practice-telemetry wrapper, and fetches stats
+// on mount for the practice pool (D-02). Mocked here so this suite never
+// touches real fetch/localStorage and the existing timing-sensitive
+// assertions stay unaffected.
 const flushQueueMock = vi.fn();
+const fetchStatsMock = vi.fn((..._args: unknown[]) =>
+	Promise.resolve({ items: [], weakest: [] })
+);
 vi.mock('$lib/api/progress', () => ({
-	recordAnswer: (...args: unknown[]) => recordAnswerMock(...args),
-	flushQueue: (...args: unknown[]) => flushQueueMock(...args)
+	flushQueue: (...args: unknown[]) => flushQueueMock(...args),
+	fetchStats: (...args: unknown[]) => fetchStatsMock(...args),
+	localDateString: () => '2026-07-14'
+}));
+
+const recordPracticeAnswerMock = vi.fn();
+vi.mock('$lib/practice/answerTelemetry', () => ({
+	recordPracticeAnswer: (...args: unknown[]) => recordPracticeAnswerMock(...args)
+}));
+
+// Practice-engine modules (Track B): the pool draw is mocked to pin the
+// question SYMBOL deterministically (replacing the old root/quality
+// Math.random draw-order script, which the pool integration removed), and
+// the persistence modules are mocked so no real localStorage is touched.
+// The session module stays REAL: its transitions are pure and deterministic.
+interface PoolDrawStub {
+	symbol: string;
+	bucket: string;
+	scaffoldStage: string | null;
+}
+const drawFromPoolMock = vi.fn(
+	(..._args: unknown[]): PoolDrawStub => ({ symbol: 'Cm7', bucket: 'tier', scaffoldStage: null })
+);
+const scaffoldStageForSymbolMock = vi.fn((..._args: unknown[]): string | null => null);
+vi.mock('$lib/practice/pool', () => ({
+	drawFromPool: (...args: unknown[]) => drawFromPoolMock(...args),
+	scaffoldStageForSymbol: (...args: unknown[]) => scaffoldStageForSymbolMock(...args)
+}));
+
+const recentMissesMock = vi.fn((..._args: unknown[]): string[] => []);
+const appendPracticeAnswerMock = vi.fn();
+vi.mock('$lib/practice/practiceLog', () => ({
+	recentMisses: (...args: unknown[]) => recentMissesMock(...args),
+	appendPracticeAnswer: (...args: unknown[]) => appendPracticeAnswerMock(...args),
+	readPracticeLog: () => [],
+	practiceDaysSince: () => 99
+}));
+
+const checkUnlockMock = vi.fn((..._args: unknown[]) => ({
+	tier: 1,
+	nextTier: 2,
+	eligible: false,
+	rollingAccuracy: 0,
+	rollingCount: 0,
+	lifetimeAttempts: 0,
+	distinctDays: 0,
+	perQuality: []
+}));
+const setCurrentTierMock = vi.fn();
+const snoozeSuggestionMock = vi.fn();
+vi.mock('$lib/practice/levelState', () => ({
+	getLevelState: () => ({ currentTier: 1, unlockedTiers: [1] }),
+	checkUnlock: (...args: unknown[]) => checkUnlockMock(...args),
+	isSnoozed: () => false,
+	setCurrentTier: (...args: unknown[]) => setCurrentTierMock(...args),
+	snoozeSuggestion: (...args: unknown[]) => snoozeSuggestionMock(...args)
+}));
+
+vi.mock('$lib/practice/songs', () => ({
+	activeSongChordSymbols: (): string[] => []
+}));
+
+const writeScaffoldMock = vi.fn();
+vi.mock('$lib/practice/scaffold', () => ({
+	readScaffolds: () => ({}),
+	writeScaffold: (...args: unknown[]) => writeScaffoldMock(...args),
+	recordScaffoldAnswer: (state: unknown) => state
+}));
+
+vi.mock('$lib/practice/drillSeeds', () => ({
+	consumeDrillSeeds: (): string[] => []
 }));
 
 // The drills page now plays sound through the Track A audio engine: a
@@ -50,45 +122,27 @@ vi.mock('$lib/drills/rotateHint', () => ({
 
 const { default: RootLayout } = await import('../src/routes/+layout.svelte');
 
-// This suite pins the construction-drill loop (Plan 03). generateQuestion's
-// question type and symbol are drawn via Math.random(), so every test here
-// mocks Math.random to force a deterministic construction question (Cm7)
-// rather than relying on flaky real randomness (03-PATTERNS.md).
-//
-// generateQuestion() internally draws, in order: (1) randomChord's root
-// index, (2) randomChord's quality index, (3) pickQuestionType's 0/1 draw.
-// Returning 0 for all three draws yields root 'C', quality '' ... which is
-// not what we want (a bare C major triad, question type 'construction' only
-// when index 0 maps to 'construction'). We instead force draws precisely:
-// root index -> C (index 0), quality index -> m7 (index 4 in
-// QUALITY_SUFFIXES = ['', 'm', 'dim', 'maj7', 'm7', '7', 'm7b5', 'dim7']),
-// question type -> 'construction' (index 0 of ['construction',
-// 'identification']).
-const ROOTS_LENGTH = 12;
-const QUALITY_SUFFIXES = ['', 'm', 'dim', 'maj7', 'm7', '7', 'm7b5', 'dim7'];
-const QUALITY_INDEX = QUALITY_SUFFIXES.indexOf('m7');
-
+// This suite pins the construction-drill loop (Plan 03). The question SYMBOL
+// is now supplied by the mocked practice pool (drawFromPoolMock returns Cm7),
+// so Math.random only controls pickQuestionType's 0/1 kind draw plus
+// downstream cosmetic draws (distractor shuffles, feedback-copy variant
+// picks), all of which tolerate a constant value. This replaces the old
+// 3-draw root/quality/kind Math.random script, deliberately: the pool draw
+// removed the root and quality draws from generateQuestion's path.
 function forceConstructionCm7() {
-	const draws = [
-		0 / ROOTS_LENGTH, // root index 0 -> 'C'
-		QUALITY_INDEX / QUALITY_SUFFIXES.length, // quality index -> 'm7'
-		0 // question type index 0 -> 'construction'
-	];
-	let call = 0;
-	vi.spyOn(Math, 'random').mockImplementation(() => {
-		const value = draws[Math.min(call, draws.length - 1)];
-		call++;
-		return value;
-	});
+	vi.spyOn(Math, 'random').mockReturnValue(0); // kind index 0 -> 'construction'
 }
 
 beforeEach(() => {
 	forceConstructionCm7();
-	recordAnswerMock.mockClear();
+	recordPracticeAnswerMock.mockClear();
+	appendPracticeAnswerMock.mockClear();
 	flushQueueMock.mockClear();
 	playChordMock.mockClear();
 	playNoteMock.mockClear();
 	ensureAudioReadyMock.mockClear();
+	fetchStatsMock.mockClear();
+	drawFromPoolMock.mockClear();
 	isRotateHintDismissedMock.mockReset().mockReturnValue(false);
 	dismissRotateHintMock.mockClear();
 });
@@ -299,30 +353,15 @@ describe('drills masthead nav link', () => {
 	});
 });
 
-// The scenarios below (Plan 04) force an IDENTIFICATION question instead of a
-// construction one, reusing the same call-indexed Math.random draws array
-// pattern as forceConstructionCm7 above, but flipping the question-type draw
-// to index 1 ('identification'). generateQuestion() for an identification
-// question draws, in order: (1) root index, (2) quality index, (3) question
-// type index, then (4) pickDistractors' internal shuffle draws (near-miss and
-// other candidate shuffles - Fisher-Yates consumes many draws), and finally
-// the top-level shuffle([symbol, ...distractors]) draw. Since exact
-// distractor content isn't asserted (only that 4 choices exist and one is the
-// correct symbol), every draw after the fixed first three can safely return
-// the same trailing value from the draws array (index clamps at the array's
-// last entry), which still yields a valid, parseable set of distractors.
+// The scenarios below (Plan 04) force an IDENTIFICATION question instead of
+// a construction one: the mocked pool still supplies Cm7, and a constant
+// 0.99 Math.random flips pickQuestionType to index 1 ('identification').
+// pickDistractors' internal Fisher-Yates shuffles and the top-level
+// shuffle([symbol, ...distractors]) also consume this constant, which still
+// yields a valid, parseable 4-choice set (exact distractor content is never
+// asserted here).
 function forceIdentificationCm7() {
-	const draws = [
-		0 / ROOTS_LENGTH, // root index 0 -> 'C'
-		QUALITY_INDEX / QUALITY_SUFFIXES.length, // quality index -> 'm7'
-		0.99 // question type index 1 -> 'identification'
-	];
-	let call = 0;
-	vi.spyOn(Math, 'random').mockImplementation(() => {
-		const value = draws[Math.min(call, draws.length - 1)];
-		call++;
-		return value;
-	});
+	vi.spyOn(Math, 'random').mockReturnValue(0.99); // kind index 1 -> 'identification'
 }
 
 describe('drills page identification prompt', () => {
@@ -479,18 +518,24 @@ describe('drills page ScoreRegister', () => {
 	});
 });
 
-describe('drills page answer persistence (PROG-01)', () => {
-	it('calls recordAnswer once with the question symbol, kind chord, and correct true after a right answer', async () => {
+describe('drills page answer persistence (PROG-01 + telemetry)', () => {
+	it('records a right identification answer with the given choice and a duration', async () => {
 		forceIdentificationCm7();
 		render(DrillsPage);
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Answer: Cm7' }));
 
-		expect(recordAnswerMock).toHaveBeenCalledTimes(1);
-		expect(recordAnswerMock).toHaveBeenCalledWith({ item: 'Cm7', kind: 'chord', correct: true });
+		expect(recordPracticeAnswerMock).toHaveBeenCalledTimes(1);
+		expect(recordPracticeAnswerMock).toHaveBeenCalledWith({
+			item: 'Cm7',
+			kind: 'chord',
+			correct: true,
+			durationMs: expect.any(Number),
+			given: 'Cm7'
+		});
 	});
 
-	it('calls recordAnswer with correct false after a wrong answer', async () => {
+	it('records a wrong identification answer with the picked symbol as given', async () => {
 		forceIdentificationCm7();
 		render(DrillsPage);
 
@@ -501,8 +546,47 @@ describe('drills page answer persistence (PROG-01)', () => {
 		expect(wrongChoice).toBeDefined();
 		await fireEvent.click(wrongChoice!);
 
-		expect(recordAnswerMock).toHaveBeenCalledTimes(1);
-		expect(recordAnswerMock).toHaveBeenCalledWith({ item: 'Cm7', kind: 'chord', correct: false });
+		const picked = wrongChoice!.getAttribute('aria-label')!.replace('Answer: ', '');
+		expect(recordPracticeAnswerMock).toHaveBeenCalledTimes(1);
+		expect(recordPracticeAnswerMock).toHaveBeenCalledWith({
+			item: 'Cm7',
+			kind: 'chord',
+			correct: false,
+			durationMs: expect.any(Number),
+			given: picked
+		});
+	});
+
+	it('records a construction answer with a duration and no given field', async () => {
+		forceConstructionCm7();
+		render(DrillsPage);
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(recordPracticeAnswerMock).toHaveBeenCalledTimes(1);
+		expect(recordPracticeAnswerMock).toHaveBeenCalledWith({
+			item: 'Cm7',
+			kind: 'chord',
+			correct: false,
+			durationMs: expect.any(Number),
+			given: undefined
+		});
+	});
+
+	it('appends every graded answer to the local practice log (unlock windows, warm-up)', async () => {
+		forceIdentificationCm7();
+		render(DrillsPage);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Answer: Cm7' }));
+
+		expect(appendPracticeAnswerMock).toHaveBeenCalledTimes(1);
+		expect(appendPracticeAnswerMock).toHaveBeenCalledWith({
+			item: 'Cm7',
+			correct: true,
+			assisted: false,
+			date: '2026-07-14'
+		});
 	});
 
 	it('flushes the queue on mount', () => {

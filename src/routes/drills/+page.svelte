@@ -6,9 +6,44 @@
 	import { generateQuestion } from '$lib/drills/generateQuestion';
 	import { matchChord } from '$lib/drills/matchChord';
 	import { dismissRotateHint, isRotateHintDismissed } from '$lib/drills/rotateHint';
-	import { recordAnswer, flushQueue } from '$lib/api/progress';
+	import { fetchStats, flushQueue, localDateString, type StatItem } from '$lib/api/progress';
 	import { ensureAudioReady, playChord, playNote } from '$lib/audio/audio';
 	import { toPitch } from '$lib/audio/voicing';
+	import { recordPracticeAnswer } from '$lib/practice/answerTelemetry';
+	import { consumeDrillSeeds } from '$lib/practice/drillSeeds';
+	import {
+		checkUnlock,
+		getLevelState,
+		isSnoozed,
+		setCurrentTier,
+		snoozeSuggestion,
+		type UnlockCheck
+	} from '$lib/practice/levelState';
+	import {
+		appendPracticeAnswer,
+		practiceDaysSince,
+		readPracticeLog,
+		recentMisses
+	} from '$lib/practice/practiceLog';
+	import { drawFromPool, scaffoldStageForSymbol, type PoolContext } from '$lib/practice/pool';
+	import {
+		readScaffolds,
+		recordScaffoldAnswer,
+		writeScaffold,
+		type ScaffoldStage
+	} from '$lib/practice/scaffold';
+	import {
+		createSession,
+		isComplete,
+		mergeWarmupCandidates,
+		nextQuestion as advanceSession,
+		recordSessionAnswer,
+		summarize,
+		type QuestionSource,
+		type Session
+	} from '$lib/practice/session';
+	import { activeSongChordSymbols } from '$lib/practice/songs';
+	import { splitSymbol, tierById } from '$lib/practice/tiers';
 	import type { DrillQuestion } from '$lib/drills/generateQuestion';
 	import type { MatchResult } from '$lib/drills/matchChord';
 	import PianoKeyboard from '$lib/components/PianoKeyboard.svelte';
@@ -30,12 +65,16 @@
 	let lastCorrectIndex = -1;
 	let lastWrongIndex = -1;
 
-	/** Picks a variant, avoiding an immediate repeat, mirroring pickHint's anti-repeat logic. */
+	/**
+	 * Picks a variant, avoiding an immediate repeat, mirroring pickHint's
+	 * anti-repeat logic. Loop-free (a repeat draw just steps to the next
+	 * variant) so a deterministic Math.random in tests can never spin forever.
+	 */
 	function pickVariant(variants: string[], lastIndex: number): [string, number] {
 		if (variants.length === 1) return [variants[0], 0];
 		let index = Math.floor(Math.random() * variants.length);
-		while (index === lastIndex) {
-			index = Math.floor(Math.random() * variants.length);
+		if (index === lastIndex) {
+			index = (index + 1) % variants.length;
 		}
 		return [variants[index], index];
 	}
@@ -45,11 +84,76 @@
 		return letter.replace(/♯/g, '#').replace(/♭/g, 'b');
 	}
 
-	// Interleaving (D-06): generateQuestion() is drawn directly for BOTH kinds
-	// on load and on every Next - no mode toggle, no loop-until-construction.
-	// Each question is randomly construction or identification.
-	let question = $state<DrillQuestion>(generateQuestion());
+	// ---- Practice engine state (Track B) -----------------------------------
+	// The level gate, weighted pool, and micro-session drive every question
+	// draw. All logic lives in $lib/practice/*; this page only holds the
+	// reactive glue.
+
+	let levelState = $state(getLevelState());
+	let stats = $state<StatItem[] | null>(null);
+	let weakest = $state<StatItem[]>([]);
+	let showEndCard = $state(false);
+	let unlockSuggestion = $state<UnlockCheck | null>(null);
+	let unlockDismissed = $state(false);
+
+	/** Scaffolding stage of the CURRENT question (above-tier song chords), null for normal items. */
+	let scaffoldStage = $state<ScaffoldStage | null>(null);
+	let hintTaken = $state(false);
+	let questionSource = $state<QuestionSource>('pool');
+
+	/** Qualities of recent draws, most recent last (interleaving constraint input). */
+	let lastQualities: string[] = [];
+	/** Timestamp when the current question appeared (duration_ms telemetry). */
+	let questionShownAt = Date.now();
+
+	let session = $state<Session>(
+		createSession({ seeds: consumeDrillSeeds(), warmupCandidates: recentMisses(5) })
+	);
+
+	function poolContext(): PoolContext {
+		return {
+			songSymbols: activeSongChordSymbols(),
+			currentTier: levelState.currentTier,
+			unlockedTiers: levelState.unlockedTiers,
+			stats,
+			weakest,
+			recentMisses: recentMisses(8),
+			scaffolds: readScaffolds(),
+			lastQualities,
+			log: readPracticeLog(),
+			today: localDateString()
+		};
+	}
+
+	/**
+	 * Draws the next question: the session decides the source (due retry >
+	 * Drill-these seed > warm-up > pool) and the pool supplies weighted
+	 * symbols; scaffolded chords force a guided construction on their
+	 * formula-first exposures.
+	 */
+	function drawNextQuestion(): DrillQuestion {
+		const { plan, session: consumed } = advanceSession(session);
+		session = consumed;
+		questionSource = plan.source;
+		const symbol = plan.symbol ?? drawFromPool(poolContext()).symbol;
+		scaffoldStage = scaffoldStageForSymbol(poolContext(), symbol);
+		hintTaken = false;
+		questionShownAt = Date.now();
+		lastQualities = [...lastQualities.slice(-1), splitSymbol(symbol)?.quality ?? ''];
+		return generateQuestion({
+			symbol,
+			kind: scaffoldStage === 'formula-first' ? 'construction' : undefined
+		});
+	}
+
+	// Interleaving (D-06): a question is drawn for BOTH kinds on load and on
+	// every Next - no mode toggle, no loop-until-construction. Each question
+	// is randomly construction or identification (scaffolding may force
+	// construction for formula-first exposures).
+	let question = $state<DrillQuestion>(drawNextQuestion());
 	const target = $derived(spellChord(question.symbol));
+
+	const sessionSummary = $derived(summarize(session));
 
 	let selected = $state<Set<string>>(new Set());
 	let answered = $state(false);
@@ -83,6 +187,25 @@
 		flushQueue();
 	});
 
+	// Server-derived stats (D-02): need-weighting, the review bucket, and the
+	// unlock check all improve once these land; the drill loop never waits on
+	// them and works offline/tokenless without them.
+	onMount(() => {
+		fetchStats()
+			.then((result) => {
+				stats = result.items;
+				weakest = result.weakest;
+				session = mergeWarmupCandidates(
+					session,
+					result.weakest.filter((item) => item.kind === 'chord').map((item) => item.item)
+				);
+			})
+			.catch(() => {
+				// Offline or tokenless: the pool falls back to tier-uniform
+				// weighting and the unlock suggestion simply never fires.
+			});
+	});
+
 	// D-05 "first rotation" clause: entering landscape counts as an implicit
 	// dismissal, same as tapping the hint's dismiss control. Feature-detected
 	// (matchMedia isn't implemented by jsdom, so this is a silent no-op in
@@ -107,7 +230,7 @@
 		playNote(toPitch(letter, octave));
 	}
 
-	function recordGrade(correct: boolean) {
+	function recordGrade(correct: boolean, given?: string) {
 		// Reveal rule (Track A): EVERY answer reveal plays the correct chord,
 		// correct answers included; on a miss this is the correct one, never
 		// the user's. Voicing and engine live in $lib/audio.
@@ -125,10 +248,43 @@
 			lastWrongIndex = index;
 		}
 
+		const durationMs = Date.now() - questionShownAt;
+		// Formula-first exposures and taken hints are assisted: they count for
+		// the song's own progress but never toward tier unlock accuracy (R3).
+		const assisted = scaffoldStage === 'formula-first' || hintTaken;
+
+		session = recordSessionAnswer(session, {
+			symbol: question.symbol,
+			kind: question.kind,
+			correct,
+			assisted,
+			durationMs,
+			source: questionSource
+		});
+
+		appendPracticeAnswer({ item: question.symbol, correct, assisted, date: localDateString() });
+
+		if (scaffoldStage !== null) {
+			const scaffolds = readScaffolds();
+			const current = scaffolds[question.symbol] ?? {
+				symbol: question.symbol,
+				exposures: 0,
+				coldCorrectConstructions: 0
+			};
+			writeScaffold(recordScaffoldAnswer(current, { correct, assisted, kind: question.kind }));
+		}
+
 		// Fire-and-forget persistence (D-04): never awaited, so this cannot
-		// delay the synchronous UI updates above. The item kind is always
-		// 'chord' this phase; scale items arrive in Phase 6.
-		recordAnswer({ item: question.symbol, kind: 'chord', correct });
+		// delay the synchronous UI updates above. duration_ms and the given
+		// identification answer ride along tolerantly (answerTelemetry strips
+		// them if the deployed server rejects unknown fields).
+		recordPracticeAnswer({
+			item: question.symbol,
+			kind: 'chord',
+			correct,
+			durationMs,
+			given: question.kind === 'identification' ? given : undefined
+		});
 	}
 
 	function toggleKey(letter: string) {
@@ -164,17 +320,99 @@
 		const correct = choice === question.symbol;
 		givenSymbol = choice;
 		feedback = { correct, missing: [], extra: [] };
-		recordGrade(correct);
+		recordGrade(correct, choice);
 	}
 
-	/** Next (D-07): draws a fresh interleaved question and clears all per-question state. */
+	/**
+	 * Next (D-07): draws a fresh question and clears all per-question state.
+	 * At the round boundary (10 answers) the end card takes over instead,
+	 * which is also the ONLY moment the unlock suggestion may appear (R3:
+	 * never mid-question).
+	 */
 	function nextQuestion() {
-		question = generateQuestion();
+		if (isComplete(session)) {
+			unlockSuggestion = computeUnlockSuggestion();
+			showEndCard = true;
+			return;
+		}
+		question = drawNextQuestion();
 		selected = new Set();
 		answered = false;
 		feedback = null;
 		playedLetters = [];
 		givenSymbol = undefined;
+	}
+
+	/**
+	 * Round-boundary unlock check (R3 section 2): eligible per the exact
+	 * criteria, and not snoozed within the last 3 practice days.
+	 */
+	function computeUnlockSuggestion(): UnlockCheck | null {
+		const check = checkUnlock({
+			tier: levelState.currentTier,
+			stats,
+			log: readPracticeLog()
+		});
+		if (!check.eligible || check.nextTier === null) return null;
+		const snoozedOn = levelState.snooze?.snoozedOn;
+		const daysSince = snoozedOn === undefined ? Number.POSITIVE_INFINITY : practiceDaysSince(snoozedOn);
+		if (isSnoozed(levelState, check.nextTier, daysSince)) return null;
+		return check;
+	}
+
+	function unlockNextTier() {
+		if (unlockSuggestion?.nextTier == null) return;
+		levelState = setCurrentTier(unlockSuggestion.nextTier);
+		unlockDismissed = true;
+	}
+
+	function snoozeUnlock() {
+		if (unlockSuggestion?.nextTier == null) return;
+		levelState = snoozeSuggestion(unlockSuggestion.nextTier, localDateString());
+		unlockDismissed = true;
+	}
+
+	/** Starts a fresh round; seeds (tap-to-redrill, Drill these) suppress the warm-up. */
+	function startNewRound(seeds: string[] = []) {
+		session = createSession({
+			seeds,
+			warmupCandidates: seeds.length > 0 ? [] : recentMisses(5)
+		});
+		if (seeds.length === 0 && weakest.length > 0) {
+			session = mergeWarmupCandidates(
+				session,
+				weakest.filter((item) => item.kind === 'chord').map((item) => item.item)
+			);
+		}
+		showEndCard = false;
+		unlockSuggestion = null;
+		unlockDismissed = false;
+		question = drawNextQuestion();
+		selected = new Set();
+		answered = false;
+		feedback = null;
+		playedLetters = [];
+	}
+
+	/** Tap-to-redrill from the end card: the tapped miss leads, the others follow. */
+	function redrillMiss(symbol: string) {
+		startNewRound([symbol, ...sessionSummary.missedSymbols.filter((missed) => missed !== symbol)]);
+	}
+
+	/** Human-readable quality for unlock-card copy ('' is a major triad). */
+	function qualityLabel(quality: string): string {
+		return quality === '' ? 'maj' : quality;
+	}
+
+	const SOURCE_TAGS: Partial<Record<QuestionSource, string>> = {
+		warmup: 'BACK FOR ANOTHER GO',
+		retry: 'ONE MORE TIME',
+		seeded: 'FROM YOUR WEAK LIST'
+	};
+
+	/** Hinted scaffolding stage: taking the hint reveals the formula and marks the answer assisted. */
+	function takeHint() {
+		hintTaken = true;
 	}
 
 	/** Whether a played letter's chroma is an extra note (not part of the target chord). */
@@ -205,9 +443,71 @@
 	<h1 class="text-heading mt-2 font-bold">Drills</h1>
 
 	<p class="text-label mt-8 text-right font-mono uppercase" data-testid="score-register">
-		{score.correct} RIGHT · {score.streak} STREAK
+		{Math.min(session.asked + 1, session.length)} OF {session.length} · {score.correct} RIGHT · {score.streak}
+		STREAK
 	</p>
 
+	{#if showEndCard}
+		<div
+			class="border-ink bg-paper-bright stamp mt-8 border-2 px-2 py-6 sm:px-6"
+			data-testid="session-end-card"
+		>
+			<p class="text-label font-mono uppercase">ROUND COMPLETE</p>
+			<p class="text-display mt-2 font-mono font-bold">
+				{sessionSummary.correct} / {sessionSummary.total}
+			</p>
+			<p class="text-label font-mono uppercase" data-testid="end-card-streak">
+				BEST RUN: {sessionSummary.bestStreak} IN A ROW
+			</p>
+
+			{#if sessionSummary.missedSymbols.length > 0}
+				<p class="text-body mt-6">Worth another look:</p>
+				<div class="mt-2 flex flex-wrap gap-2" data-testid="end-card-misses">
+					{#each sessionSummary.missedSymbols as missed (missed)}
+						<Button
+							type="button"
+							variant="ghost"
+							aria-label={`Redrill ${missed}`}
+							onclick={() => redrillMiss(missed)}
+						>
+							<span class="font-serif font-bold">{missed}</span>
+						</Button>
+					{/each}
+				</div>
+			{:else}
+				<p class="text-body mt-6">Clean sheet. The press ran true, mon ami.</p>
+			{/if}
+
+			{#if unlockSuggestion !== null && unlockSuggestion.nextTier !== null && !unlockDismissed}
+				<div class="border-ink mt-6 border-2 p-4" data-testid="unlock-card">
+					<p class="text-label font-mono uppercase">
+						TIER {unlockSuggestion.nextTier} LOOKS READY
+					</p>
+					<p class="text-body mt-2">
+						Your last {unlockSuggestion.rollingCount} answers are {Math.round(
+							unlockSuggestion.rollingAccuracy * 100
+						)}% correct across {unlockSuggestion.distinctDays} days. Unlock {tierById(
+							unlockSuggestion.nextTier
+						).name.toLowerCase()}: {tierById(unlockSuggestion.nextTier)
+							.qualities.map(qualityLabel)
+							.join(', ')}?
+					</p>
+					<div class="mt-4 flex flex-wrap gap-4">
+						<Button type="button" variant="primary" onclick={unlockNextTier}>
+							Unlock Tier {unlockSuggestion.nextTier}
+						</Button>
+						<Button type="button" variant="ghost" onclick={snoozeUnlock}>Not yet</Button>
+					</div>
+				</div>
+			{/if}
+
+			<div class="mt-6">
+				<Button type="button" variant="primary" onclick={() => startNewRound()}>
+					Run it again
+				</Button>
+			</div>
+		</div>
+	{:else}
 	<div
 		class="drill-layout border-ink bg-paper-bright mt-8 border-2 px-2 py-6 sm:px-6"
 		data-testid="drill-card"
@@ -223,10 +523,47 @@
 
 		{#if question.kind === 'construction'}
 			<div class="drill-layout__prompt">
+				{#if SOURCE_TAGS[questionSource]}
+					<p class="text-label text-muted mb-2 font-mono uppercase" data-testid="question-source-tag">
+						{SOURCE_TAGS[questionSource]}
+					</p>
+				{/if}
 				<div class="flex items-start gap-4">
 					<ChordGlyph root={target.root} quality={target.symbol.slice(target.root.length)} />
 				</div>
 				<p class="text-body mt-4">Click the notes for {question.symbol}.</p>
+
+				{#if scaffoldStage === 'formula-first'}
+					<div class="border-ink mt-4 border-2 p-4" data-testid="scaffold-card">
+						<p class="text-label font-mono uppercase">NEW CHORD. FORMULA FIRST.</p>
+						<div class="mt-3 flex flex-wrap gap-4">
+							{#each formulaFor(target) as entry (entry.role + entry.letter)}
+								<div class="flex flex-col items-center gap-1">
+									<IntervalChip role={entry.role} label={entry.label} />
+									<span class="text-label font-mono">{entry.letter}</span>
+									<span class="text-label font-mono">{entry.solfege}</span>
+								</div>
+							{/each}
+						</div>
+						<p class="text-muted mt-3">Read it, then play it. This one counts as assisted.</p>
+					</div>
+				{:else if scaffoldStage === 'hinted' && !answered}
+					{#if hintTaken}
+						<div class="mt-4 flex flex-wrap gap-4" data-testid="hint-formula">
+							{#each formulaFor(target) as entry (entry.role + entry.letter)}
+								<div class="flex flex-col items-center gap-1">
+									<IntervalChip role={entry.role} label={entry.label} />
+									<span class="text-label font-mono">{entry.letter}</span>
+									<span class="text-label font-mono">{entry.solfege}</span>
+								</div>
+							{/each}
+						</div>
+					{:else}
+						<div class="mt-4">
+							<Button type="button" variant="ghost" onclick={takeHint}>Show formula</Button>
+						</div>
+					{/if}
+				{/if}
 			</div>
 
 			<div class="drill-layout__keyboard">
@@ -257,6 +594,11 @@
 			</div>
 		{:else}
 			<div class="drill-layout__prompt">
+				{#if SOURCE_TAGS[questionSource]}
+					<p class="text-label text-muted mb-2 font-mono uppercase" data-testid="question-source-tag">
+						{SOURCE_TAGS[questionSource]}
+					</p>
+				{/if}
 				<p class="text-body">Name this chord.</p>
 			</div>
 
@@ -341,6 +683,7 @@
 			</div>
 		{/if}
 	</div>
+	{/if}
 </main>
 
 <style>

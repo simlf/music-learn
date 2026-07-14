@@ -88,3 +88,28 @@ describe('generateQuestion', () => {
 		}
 	});
 });
+
+describe('generateQuestion practice-pool seam (Track B)', () => {
+	it('uses the provided symbol instead of drawing from randomChord', () => {
+		const question = generateQuestion({ symbol: 'F#m7b5', kind: 'construction' });
+		expect(question.symbol).toBe('F#m7b5');
+		expect(question.kind).toBe('construction');
+		expect(question.choices).toBeUndefined();
+	});
+
+	it('builds identification choices around a provided symbol', () => {
+		const question = generateQuestion({ symbol: 'Cm7', kind: 'identification' });
+		expect(question.symbol).toBe('Cm7');
+		expect(question.choices).toHaveLength(4);
+		expect(question.choices).toContain('Cm7');
+	});
+
+	it('a provided symbol with a random kind still yields a valid question', () => {
+		const question = generateQuestion({ symbol: 'Bbmaj7' });
+		expect(question.symbol).toBe('Bbmaj7');
+		expect(['construction', 'identification']).toContain(question.kind);
+		if (question.kind === 'identification') {
+			expect(question.choices).toContain('Bbmaj7');
+		}
+	});
+});

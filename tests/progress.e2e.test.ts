@@ -31,15 +31,56 @@ vi.mock('$lib/api/client', () => ({
 	setApiToken: (token: string) => setApiTokenMock(token)
 }));
 
+// Practice settings (Track B): stateful level mock so the tier override flow
+// updates the display, plus the audio contract's sound toggle and the
+// Drill-these seeding handoff.
+let currentTier = 1;
+const setCurrentTierMock = vi.fn((tier: number) => {
+	currentTier = tier;
+	return { currentTier, unlockedTiers: [1, 2, 3, 4].filter((id) => id <= tier) };
+});
+vi.mock('$lib/practice/levelState', () => ({
+	getLevelState: () => ({
+		currentTier,
+		unlockedTiers: [1, 2, 3, 4].filter((id) => id <= currentTier)
+	}),
+	setCurrentTier: (tier: number) => setCurrentTierMock(tier)
+}));
+
+let soundOn = true;
+const setSoundEnabledMock = vi.fn((enabled: boolean) => {
+	soundOn = enabled;
+});
+vi.mock('$lib/audio/audio', () => ({
+	soundEnabled: () => soundOn,
+	setSoundEnabled: (enabled: boolean) => setSoundEnabledMock(enabled)
+}));
+
+const setDrillSeedsMock = vi.fn();
+vi.mock('$lib/practice/drillSeeds', () => ({
+	setDrillSeeds: (...args: unknown[]) => setDrillSeedsMock(...args)
+}));
+
+const gotoMock = vi.fn((..._args: unknown[]) => Promise.resolve());
+vi.mock('$app/navigation', () => ({
+	goto: (...args: unknown[]) => gotoMock(...args)
+}));
+
 const { default: RootLayout } = await import('../src/routes/+layout.svelte');
 
 beforeEach(() => {
 	storedToken = '';
+	currentTier = 1;
+	soundOn = true;
 	fetchStatsMock.mockReset();
 	fetchStreakMock.mockReset();
 	fetchStreakMock.mockResolvedValue({ streak: 0, practicedToday: false });
 	getApiTokenMock.mockClear();
 	setApiTokenMock.mockClear();
+	setCurrentTierMock.mockClear();
+	setSoundEnabledMock.mockClear();
+	setDrillSeedsMock.mockClear();
+	gotoMock.mockClear();
 });
 
 afterEach(() => {
@@ -181,5 +222,79 @@ describe('progress masthead nav link', () => {
 		const link = screen.getByRole('link', { name: 'Progress' });
 		expect(link).toBeInTheDocument();
 		expect(link).toHaveAttribute('href', '/progress');
+	});
+});
+
+describe('practice settings section (Track B)', () => {
+	it('renders even without a token: settings are device-local', () => {
+		storedToken = '';
+		render(ProgressPage);
+
+		const settings = screen.getByTestId('practice-settings');
+		expect(settings).toBeInTheDocument();
+		expect(within(settings).getByTestId('current-tier-line')).toHaveTextContent(
+			'TIER 1: WHITE-KEY TRIADS'
+		);
+	});
+
+	it('offers all 6 tiers with 5 and 6 locked as coming later', () => {
+		render(ProgressPage);
+
+		const settings = screen.getByTestId('practice-settings');
+		for (const tier of [1, 2, 3, 4]) {
+			expect(within(settings).getByRole('button', { name: `Set tier ${tier}` })).toBeEnabled();
+		}
+		for (const tier of [5, 6]) {
+			expect(within(settings).getByRole('button', { name: `Set tier ${tier}` })).toBeDisabled();
+		}
+		expect(settings).toHaveTextContent('TIERS 5 AND 6: COMING LATER');
+	});
+
+	it('manual tier override applies immediately and updates the display', async () => {
+		render(ProgressPage);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Set tier 3' }));
+
+		expect(setCurrentTierMock).toHaveBeenCalledWith(3);
+		expect(screen.getByTestId('current-tier-line')).toHaveTextContent(
+			'TIER 3: THE BIG THREE SEVENTHS'
+		);
+	});
+
+	it('the sound toggle reflects the audio contract state and flips it', async () => {
+		render(ProgressPage);
+
+		const toggle = screen.getByRole('button', { name: 'Toggle sound' });
+		expect(toggle).toHaveTextContent('SOUND ON');
+
+		await fireEvent.click(toggle);
+
+		expect(setSoundEnabledMock).toHaveBeenCalledWith(false);
+		expect(toggle).toHaveTextContent('SOUND OFF');
+	});
+});
+
+describe('Drill these button (weakest spots -> seeded session)', () => {
+	it('seeds the drill session with the weakest chord items and navigates to /drills', async () => {
+		storedToken = 'secret';
+		fetchStatsMock.mockResolvedValue({
+			items: [
+				{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4, needsPractice: true },
+				{ item: 'F#m7b5', kind: 'chord', attempts: 4, accuracy: 0.25, needsPractice: true }
+			],
+			weakest: [
+				{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4, needsPractice: true },
+				{ item: 'F#m7b5', kind: 'chord', attempts: 4, accuracy: 0.25, needsPractice: true }
+			]
+		});
+
+		render(ProgressPage);
+		await waitFor(() => expect(screen.getByTestId('weakest-spots')).toBeInTheDocument());
+
+		const weakestSection = screen.getByTestId('weakest-spots');
+		await fireEvent.click(within(weakestSection).getByRole('button', { name: 'Drill these' }));
+
+		expect(setDrillSeedsMock).toHaveBeenCalledWith(['Cm7', 'F#m7b5']);
+		expect(gotoMock).toHaveBeenCalledWith('/drills');
 	});
 });
