@@ -41,24 +41,42 @@ describe('scales page tonic picker', () => {
 		expect(screen.getByTestId('scale-title')).toHaveTextContent('C major');
 	});
 
-	it('highlights the seven C major degrees in their degree-class colors', () => {
+	it('renders the seven C major degrees in their degree-class colors, tonic first', () => {
 		render(ScalesPage);
 
-		const keyboard = screen.getByRole('img', { name: /piano keyboard/i });
+		const strip = screen.getByTestId('degree-strip');
 		for (const role of ['root', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh']) {
-			expect(keyboard.querySelector(`.piano-keyboard__key--${role}`)).not.toBeNull();
+			expect(strip.querySelector(`.cell--${role}`)).not.toBeNull();
 		}
+		// Degree 1 (the tonic) is the first cell: the anchored-run fix.
+		const cells = within(strip).getAllByRole('button');
+		expect(cells).toHaveLength(7);
+		expect(cells[0]).toHaveClass('cell--root');
+		expect(cells[0]).toHaveAttribute('aria-label', 'C degree 1');
 	});
 
-	it('switching tonic re-spells the keyboard (D♭ major shows G♭, drops B)', async () => {
+	it('a non-C scale reads left to right from its tonic, not scattered (E major: E first, D# last)', async () => {
+		render(ScalesPage);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'E major' }));
+
+		expect(screen.getByTestId('scale-title')).toHaveTextContent('E major');
+		const cells = within(screen.getByTestId('degree-strip')).getAllByRole('button');
+		// The live bug put E's 6th/7th (C#, D#) at the far LEFT; anchored, E is
+		// first and D# is last.
+		expect(cells[0]).toHaveAttribute('aria-label', 'E degree 1');
+		expect(cells[6]).toHaveAttribute('aria-label', 'D♯ degree 7');
+	});
+
+	it('switching tonic re-spells the strip (D♭ major shows G♭, drops B)', async () => {
 		render(ScalesPage);
 
 		await fireEvent.click(screen.getByRole('button', { name: 'D♭ major' }));
 
 		expect(screen.getByTestId('scale-title')).toHaveTextContent('D♭ major');
-		const keyboard = screen.getByRole('img', { name: /piano keyboard/i });
-		expect(within(keyboard).getAllByText('G♭').length).toBeGreaterThan(0);
-		expect(within(keyboard).queryByText('B')).not.toBeInTheDocument();
+		const strip = screen.getByTestId('degree-strip');
+		expect(within(strip).getAllByText('G♭').length).toBeGreaterThan(0);
+		expect(within(strip).queryByText('B')).not.toBeInTheDocument();
 	});
 });
 
@@ -72,19 +90,23 @@ describe('scales page inspect flow', () => {
 	it('tapping a scale degree plays it and names its interval from the tonic', async () => {
 		render(ScalesPage);
 
-		await fireEvent.click(screen.getAllByRole('button', { name: 'A key' })[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'A degree 6' }));
 
 		const register = screen.getByTestId('inspect-register');
 		expect(register).toHaveTextContent('A · La · M6 · sixte majeure · 9 demi-tons');
 		expect(playNoteMock).toHaveBeenCalledWith('A4');
 	});
 
-	it('tapping a non-scale black key still reads from the tonic with the simpler enharmonic', async () => {
+	it('plays a degree that crosses the octave at its true ascending pitch (E major D# sounds D#5)', async () => {
 		render(ScalesPage);
 
-		await fireEvent.click(screen.getAllByRole('button', { name: 'F♯ key' })[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'E major' }));
+		playNoteMock.mockClear();
+		await fireEvent.click(screen.getByRole('button', { name: 'D♯ degree 7' }));
 
-		expect(screen.getByTestId('inspect-register')).toHaveTextContent('quarte augmentée');
+		// D# is the 7th of E major: higher in pitch than the tonic E4, so it
+		// must sound in octave 5, not fall back to octave 4.
+		expect(playNoteMock).toHaveBeenCalledWith('D#5');
 	});
 });
 
