@@ -11,6 +11,7 @@
 	import ChordGlyph from '$lib/components/ChordGlyph.svelte';
 	import IntervalChip from '$lib/components/IntervalChip.svelte';
 	import InspectRegister from '$lib/components/InspectRegister.svelte';
+	import SongHook from '$lib/components/SongHook.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import RecentChipRow from '$lib/components/RecentChipRow.svelte';
 
@@ -222,6 +223,7 @@
 			</div>
 
 			<InspectRegister payload={inspectPayload} />
+			<SongHook short={inspectPayload?.info?.short ?? ''} />
 
 			<div class="mt-6 flex gap-4" data-testid="interval-formula">
 				{#each formulaFor(result) as entry (entry.role + entry.letter)}

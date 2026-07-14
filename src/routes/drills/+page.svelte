@@ -59,6 +59,7 @@
 	import ChordGlyph from '$lib/components/ChordGlyph.svelte';
 	import IntervalChip from '$lib/components/IntervalChip.svelte';
 	import RevealInsight from '$lib/components/RevealInsight.svelte';
+	import SongHook from '$lib/components/SongHook.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import LevelPicker from '$lib/components/LevelPicker.svelte';
 	import IntervalScaffold from '$lib/components/IntervalScaffold.svelte';
@@ -970,6 +971,7 @@
 									.longFr}
 							</p>
 						{/if}
+						<SongHook short={question.interval.short} />
 					{/if}
 				{/if}
 				{#if drillInspect}
