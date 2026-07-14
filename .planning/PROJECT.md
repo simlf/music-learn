@@ -8,6 +8,20 @@ A personal web app that teaches jazz piano theory to a returning classical piani
 
 Chord symbol fluency: see a jazz chord symbol like `Cm7` or `F♯ø7` in sheet music and know instantly what notes to play with the left hand — without stopping to think.
 
+## Current Milestone: v2.0 Learning Upgrade
+
+**Goal:** Make jazz theory stick in the brain, not just be lookup-able. Turn the app from a chord dictionary into a memory trainer, grounded in validated spikes 006-009.
+
+**Target features:**
+- Memorization engine: real spaced repetition (ts-fsrs), card unit = (fact, mode), day-scale scheduling. Realizes the long-deferred "smart practice / spaced repetition" requirement.
+- Build-it construction mode: derive chords and scales from the interval formula so the learner earns the notes (teach WHY, not rote). Supersedes the passive Theory Lessons idea.
+- Multi-modal recall: one fact drilled across modes (see the symbol then play, hear then name, formula then build). Supersedes the Smart Drill Design phase (interleaving, fading scaffolds).
+- Scale keyboard drill: replace the confusing /scales ladder with a movable tonic-anchored piano keyboard, graded by chroma. Supersedes the Major Scales phase.
+
+**Locked requirements (from spikes):** grade notes by chroma/MIDI never letter strings; FSRS `enable_short_term:false`; scales stay a dedicated multi-tap drill (not the one-shot drill union); ear-naming is multiple-choice and never gates progress; local-first persistence (localStorage then Dexie). No em dashes in copy. See `.claude/skills/spike-findings-music-learn/` and `.planning/spikes/MANIFEST.md` (Session 2).
+
+**Superseded / deferred:** old Phase 4 (MIDI Play-to-Answer) stays deferred (needs hardware present). Old Phases 5 (Smart Drill Design), 6 (Major Scales), 7 (Theory Lessons) are superseded by the v2 pillars above.
+
 ## Requirements
 
 ### Validated
@@ -84,4 +98,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-13 after Phase 8*
+*Last updated: 2026-07-14 — started milestone v2.0 Learning Upgrade*

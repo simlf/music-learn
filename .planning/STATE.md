@@ -1,20 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-current_phase: 09
-current_phase_name: Deploy to the Piano
-status: verifying
-stopped_at: Completed 09-04-PLAN.md (press-cue + guarded haptic + gesture hygiene; haptic device-verification deferred to post-HTTPS-deploy todo)
-last_updated: "2026-07-13T23:36:29.730Z"
-last_activity: 2026-07-13
-last_activity_desc: Phase 09 execution started
+milestone: v2.0
+milestone_name: Learning Upgrade
+status: planning
+last_updated: "2026-07-14T20:25:21.793Z"
+last_activity: 2026-07-14
 progress:
-  total_phases: 9
-  completed_phases: 5
-  total_plans: 21
-  completed_plans: 21
-  percent: 56
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -28,12 +24,10 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 
 ## Current Position
 
-Phase: 09 (Deploy to the Piano) — EXECUTING
-Plan: 6 of 6
-Status: Phase complete — ready for verification
-Last activity: 2026-07-13 — Phase 09 execution started
-
-Progress: [████████████████████] 15/15 plans (100%)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-07-14 — Milestone v2.0 started
 
 ## Performance Metrics
 
