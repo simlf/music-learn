@@ -112,7 +112,7 @@
 			{/if}
 
 			<div class="mt-6">
-				<PianoKeyboard notes={result.notes} />
+				<PianoKeyboard notes={result.notes} inspectable />
 			</div>
 
 			<div class="mt-6 flex gap-4" data-testid="interval-formula">

@@ -20,7 +20,7 @@ afterEach(() => {
 });
 
 describe('ChordExample: a shape-first lesson example', () => {
-	it('renders the chord name, a display keyboard with the spelled notes, and the formula chips', () => {
+	it('renders the chord name, a playable keyboard with the spelled notes, and the formula chips', () => {
 		render(ChordExample, { symbol: 'Cmaj7' });
 
 		const example = screen.getByTestId('chord-example');
@@ -28,8 +28,9 @@ describe('ChordExample: a shape-first lesson example', () => {
 
 		const keyboard = within(example).getByRole('img', { name: /piano keyboard/i });
 		expect(keyboard).toBeInTheDocument();
-		// Display-only: no interactive key buttons inside the keyboard.
-		expect(within(keyboard).queryAllByRole('button')).toHaveLength(0);
+		// Playable (inspectable): every key sounds its note on tap, so keys carry
+		// button semantics. This is the "keys always make a sound" behavior.
+		expect(within(keyboard).queryAllByRole('button').length).toBeGreaterThan(0);
 		// All four chord tones carry their interval-role fills.
 		const highlighted = keyboard.querySelectorAll(
 			'.piano-keyboard__key--root, .piano-keyboard__key--third, .piano-keyboard__key--fifth, .piano-keyboard__key--seventh'

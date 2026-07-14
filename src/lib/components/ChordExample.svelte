@@ -47,7 +47,8 @@
 			<Button type="button" variant="ghost" onclick={hearIt}>Hear it</Button>
 		</div>
 
-		<PianoKeyboard notes={chord.notes} />
+		<!-- Lesson keys play on tap (inspectable, no register) so each note is audible. -->
+		<PianoKeyboard notes={chord.notes} inspectable />
 
 		<div class="flex flex-wrap gap-4" data-testid="example-formula">
 			{#each formulaFor(chord) as entry (entry.role + entry.letter)}

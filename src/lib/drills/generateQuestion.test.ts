@@ -48,6 +48,40 @@ describe('pickDistractors', () => {
 		const distractors = pickDistractors('Bbmaj7');
 		expect(new Set(distractors).size).toBe(distractors.length);
 	});
+
+	// Shared-root rule (Sketch 002 session): all four "Name this chord" options
+	// share the correct answer's root, differing only in quality. The keyboard
+	// reveals the root, so mixed-root options let the user deduce the answer
+	// without identifying the quality - which is the whole skill. Same root
+	// forces a real quality read.
+	// Longest-match so a bare "F" prefix does not shadow "F#"/"Bb".
+	function rootOf(symbol: string): string {
+		const matches = ROOTS.filter((r) => symbol.startsWith(r)).sort((a, b) => b.length - a.length);
+		if (matches.length === 0) throw new Error(`no root in ${symbol}`);
+		return matches[0];
+	}
+
+	it('every distractor shares the correct answer root, differing only in quality', () => {
+		for (const correct of ['Cm7', 'F#maj7', 'Bb7', 'G', 'Abm7b5', 'Ddim7']) {
+			const root = rootOf(correct);
+			const correctQuality = correct.slice(root.length);
+			const distractors = pickDistractors(correct);
+			expect(distractors).toHaveLength(3);
+			for (const d of distractors) {
+				expect(rootOf(d)).toBe(root);
+				expect(d.slice(root.length)).not.toBe(correctQuality);
+			}
+			// and they remain distinct qualities from each other
+			expect(new Set(distractors.map((d) => d.slice(root.length))).size).toBe(distractors.length);
+		}
+	});
+
+	it('handles two-character roots (sharps/flats) without leaking a different root', () => {
+		const distractors = pickDistractors('F#m7');
+		for (const d of distractors) {
+			expect(d.startsWith('F#')).toBe(true);
+		}
+	});
 });
 
 describe('pickQuestionType', () => {

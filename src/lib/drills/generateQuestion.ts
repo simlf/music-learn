@@ -51,42 +51,59 @@ function sameChromaSet(a: Set<number>, b: Set<number>): boolean {
 const MAX_DISTRACTOR_ATTEMPTS = 200;
 
 /**
- * Draws `count` plausible, parseable, non-enharmonic-identical distractors
- * for a multiple-choice identification question (D-05, D-06). Candidates are
- * drawn from the same proven ROOTS x QUALITY_SUFFIXES matrix as `randomChord`
- * rather than a redefined space, and are excluded when unparseable, already
- * chosen, or enharmonically identical to the correct answer (same chroma set).
+ * Draws `count` plausible, parseable distractors for a multiple-choice
+ * identification question (D-05, D-06).
  *
- * Prefers plausible near-misses (same root, different quality; or same
- * quality, different root) before falling back to any other supported
- * symbol, so the 3 options are pedagogically meaningful rather than random
- * noise. Total function: always returns `count` distractors from the finite
- * 96-cell space, bounded by an attempt cap rather than looping unbounded.
+ * Shared-root rule (Sketch 002 session): all options share the correct
+ * answer's ROOT, differing only in quality (Gm7 vs G7 vs Gmaj7 vs Gm7b5).
+ * The identification keyboard reveals the root, so mixed-root options would
+ * let the user pick by matching the visible root without ever identifying
+ * the quality - which is the app's core skill. Same-root distractors force a
+ * genuine quality read. Two different qualities on one root never share a
+ * chroma set, so the enharmonic-identity guard is moot here but kept for
+ * safety.
+ *
+ * Same-root candidates are drawn from the proven QUALITY_SUFFIXES matrix
+ * (7 alternatives per root), so `count` = 3 is always satisfiable. A
+ * cross-root fallback only fires in the theoretical case of too few parseable
+ * same-root qualities, keeping the function total.
  */
 export function pickDistractors(correctSymbol: string, count = 3): string[] {
 	const correctChroma = chromaSetFor(correctSymbol);
-	const correctRoot = ROOTS.find((root) => correctSymbol.startsWith(root));
+	// Longest-match: a bare "F" prefix must not shadow the two-char "F#"/"Bb"
+	// roots (ROOTS lists "F" before "F#"), or a sharp/flat chord's distractors
+	// would silently switch to the natural root.
+	const correctRoot = ROOTS.filter((root) => correctSymbol.startsWith(root)).sort(
+		(a, b) => b.length - a.length
+	)[0];
 	const correctQuality =
 		correctRoot !== undefined ? correctSymbol.slice(correctRoot.length) : undefined;
 
-	const nearMissCandidates: string[] = [];
-	const otherCandidates: string[] = [];
-	for (const root of ROOTS) {
+	const sameRoot: string[] = [];
+	const crossRoot: string[] = [];
+	if (correctRoot !== undefined) {
 		for (const quality of QUALITY_SUFFIXES) {
-			const candidate = `${root}${quality}`;
-			if (candidate === correctSymbol) continue;
-			const isNearMiss = root === correctRoot || quality === correctQuality;
-			(isNearMiss ? nearMissCandidates : otherCandidates).push(candidate);
+			if (quality === correctQuality) continue;
+			sameRoot.push(`${correctRoot}${quality}`);
+		}
+	}
+	// Fallback pool only used if same-root cannot supply `count` (never with
+	// the current 8-quality matrix, but keeps this total for smaller matrices).
+	for (const root of ROOTS) {
+		if (root === correctRoot) continue;
+		for (const quality of QUALITY_SUFFIXES) {
+			crossRoot.push(`${root}${quality}`);
 		}
 	}
 
-	const orderedCandidates = [...shuffle(nearMissCandidates), ...shuffle(otherCandidates)];
+	const orderedCandidates = [...shuffle(sameRoot), ...shuffle(crossRoot)];
 
 	const chosen: string[] = [];
 	let attempts = 0;
 	for (const candidate of orderedCandidates) {
 		if (chosen.length >= count || attempts >= MAX_DISTRACTOR_ATTEMPTS) break;
 		attempts++;
+		if (candidate === correctSymbol) continue;
 		if (chosen.includes(candidate)) continue;
 		const chord = spellChord(candidate);
 		if (!chord.recognized) continue;

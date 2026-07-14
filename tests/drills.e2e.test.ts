@@ -955,18 +955,24 @@ describe('drills wrong-answer reveal is inspectable (Track C)', () => {
 		expect(within(formula).getByText('m3')).toHaveAttribute('title', 'tierce mineure');
 	});
 
-	it('after answering an interval identification question, the prompt keyboard becomes inspectable', async () => {
+	it('interval keys always play on tap, but only report the interval register once answered', async () => {
 		forceConstructionCm7();
 		render(DrillsPage);
 		forceIntervalIdentificationCm3();
 		await fireEvent.click(screen.getByRole('button', { name: 'Intervals' }));
 
-		// Before answering: display-only keyboard, no key buttons.
-		expect(screen.queryAllByRole('button', { name: 'C key' })).toHaveLength(0);
+		// Before answering: keys are playable (sound on tap, "always make a
+		// sound" behavior) but the interval register stays hidden so tapping to
+		// hear the pitches never spoils the answer.
+		playNoteMock.mockClear();
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		expect(playNoteMock).toHaveBeenCalled();
+		expect(screen.queryByTestId('inspect-register')).not.toBeInTheDocument();
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Answer: m3' }));
 		playNoteMock.mockClear();
 
+		// After answering: tapping plays AND prints the interval register.
 		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
 		expect(screen.getByTestId('inspect-register')).toHaveTextContent('C · Do · R · fondamentale');
 		expect(playNoteMock).toHaveBeenCalled();

@@ -775,7 +775,12 @@
 			</div>
 
 			<div class="drill-layout__keyboard">
-				<PianoKeyboard notes={target.notes} />
+				<!--
+					Identification: keys play on tap (inspectable) but pass no
+					onInspect, so tapping sounds the note for ear support without
+					printing the interval register that would spoil the answer.
+				-->
+				<PianoKeyboard notes={target.notes} inspectable />
 			</div>
 
 			<div class="drill-layout__controls">
@@ -804,9 +809,14 @@
 			</div>
 
 			<div class="drill-layout__keyboard">
+				<!--
+					Interval question: keys always play on tap (ear support), but the
+					inspect register that names the interval only wires up once
+					answered, so tapping to hear the pitches never spoils the answer.
+				-->
 				<PianoKeyboard
 					notes={intervalNotes}
-					inspectable={answered}
+					inspectable
 					onInspect={answered ? handleDrillInspect : undefined}
 				/>
 			</div>
