@@ -96,14 +96,27 @@ function shuffle<T>(items: T[]): T[] {
 }
 
 /**
- * Generates one drill question (D-05/D-06): a symbol drawn from the proven
- * randomChord matrix, a construction-or-identification kind, and for
- * identification questions, 4 shuffled choices (the correct symbol plus 3
- * plausible, parseable, non-enharmonic-identical distractors).
+ * Practice-pool seam (Track B): when the practice engine has already drawn
+ * a symbol (the weighted 60/25/15 song/tier/review mix in $lib/practice/pool)
+ * or a scaffold stage forces a question kind, both are passed in here and the
+ * corresponding random draws are skipped. With no options the behavior is
+ * exactly the original uniform randomChord + 50/50 kind draw.
  */
-export function generateQuestion(): DrillQuestion {
-	const symbol = randomChord();
-	const kind = pickQuestionType();
+export interface GenerateQuestionOptions {
+	symbol?: string;
+	kind?: 'construction' | 'identification';
+}
+
+/**
+ * Generates one drill question (D-05/D-06): a symbol drawn from the proven
+ * randomChord matrix (or provided by the practice pool), a
+ * construction-or-identification kind, and for identification questions, 4
+ * shuffled choices (the correct symbol plus 3 plausible, parseable,
+ * non-enharmonic-identical distractors).
+ */
+export function generateQuestion(options: GenerateQuestionOptions = {}): DrillQuestion {
+	const symbol = options.symbol ?? randomChord();
+	const kind = options.kind ?? pickQuestionType();
 
 	if (kind === 'construction') {
 		return { kind, symbol };
