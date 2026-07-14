@@ -14,7 +14,7 @@
 	 */
 	interface PracticeItem {
 		item: string;
-		kind: 'chord' | 'scale';
+		kind: 'chord' | 'scale' | 'interval';
 		attempts: number;
 		accuracy: number;
 	}
