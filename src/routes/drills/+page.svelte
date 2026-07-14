@@ -61,6 +61,8 @@
 	import RevealInsight from '$lib/components/RevealInsight.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import LevelPicker from '$lib/components/LevelPicker.svelte';
+	import IntervalScaffold from '$lib/components/IntervalScaffold.svelte';
+	import { intervalScaffoldLevel } from '$lib/practice/scaffoldLevel';
 
 	/**
 	 * Right-answer confirmation variants (D-08): the stamp beat is the reward,
@@ -749,6 +751,19 @@
 							<Button type="button" variant="ghost" onclick={takeHint}>Show formula</Button>
 						</div>
 					{/if}
+				{/if}
+
+				<!--
+					Always-on interval scaffold (sketch 005): on normal tier questions
+					(no song-chord scaffold card), show the interval recipe while
+					answering, fading by tier. Intervals only, never the answer notes,
+					so it never gives the construction away.
+				-->
+				{#if scaffoldStage === null && !answered}
+					<IntervalScaffold
+						entries={formulaFor(target)}
+						level={intervalScaffoldLevel(levelState.currentTier)}
+					/>
 				{/if}
 			</div>
 
