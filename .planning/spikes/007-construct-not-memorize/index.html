@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Spike 007: Construct, Don't Memorize</title>
+<style>
+  :root {
+    --color-paper: #f2ecdd;
+    --color-paper-bright: #faf6ea;
+    --color-ink: #221e17;
+    --color-root: #c8502e;
+    --color-third: #3e7d6b;
+    --color-fifth: #a89a7f;
+    --color-seventh: #f0c948;
+    --color-second: #5b7a8c;
+    --color-fourth: #7d5a72;
+    --color-sixth: #6b7135;
+    --color-wrong: #b8b0a0;
+    --color-wrong-deep: #8f877a;
+    --font-mono: "SFMono-Regular", ui-monospace, "Menlo", monospace;
+    --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 1rem;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    max-width: 720px;
+    margin-inline: auto;
+  }
+  h1 { font-size: 1.25rem; margin: 0 0 0.25rem; }
+  .sub { font-family: var(--font-mono); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.7; margin: 0 0 1rem; }
+  .card { background: var(--color-paper-bright); border: 1.5px solid var(--color-ink); padding: 1rem; margin-bottom: 1rem; }
+  .picker { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .chip {
+    font-family: var(--font-mono); font-size: 0.95rem; font-weight: 700;
+    padding: 0.4rem 0.7rem; background: var(--color-paper-bright);
+    border: 1.5px solid var(--color-ink); cursor: pointer; color: var(--color-ink);
+  }
+  .chip[aria-pressed="true"] { background: var(--color-ink); color: var(--color-paper-bright); }
+  .chip small { font-weight: 400; opacity: 0.7; }
+
+  .prompt-symbol { font-family: var(--font-mono); font-size: 2rem; font-weight: 700; }
+  .step-line { font-size: 1.05rem; margin: 0.5rem 0 0.25rem; min-height: 1.6em; }
+  .why-line { font-size: 0.9rem; opacity: 0.85; min-height: 1.4em; }
+  .why-line code { font-family: var(--font-mono); background: var(--color-paper); padding: 0 0.2em; }
+  .feedback { font-family: var(--font-mono); font-size: 0.85rem; min-height: 1.4em; margin-top: 0.35rem; font-weight: 700; }
+  .feedback.ok { color: var(--color-third); }
+  .feedback.bad { color: var(--color-root); }
+
+  /* keyboard */
+  .keyboard { position: relative; width: 100%; height: 170px; user-select: none; touch-action: manipulation; margin-top: 0.5rem; }
+  .key { position: absolute; top: 0; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 6px; cursor: pointer; transition: transform 90ms ease-out, filter 90ms ease-out; }
+  .key.white { height: 100%; background: var(--color-paper-bright); border: 1.5px solid var(--color-ink); z-index: 1; }
+  .key.black { height: 60%; background: var(--color-ink); z-index: 2; }
+  .key.pressed { transform: scale(0.95); filter: brightness(0.88); }
+  .key.role-root { background: var(--color-root); }
+  .key.role-third { background: var(--color-third); }
+  .key.role-fifth { background: var(--color-fifth); }
+  .key.role-seventh { background: var(--color-seventh); }
+  .key.role-second { background: var(--color-second); }
+  .key.role-fourth { background: var(--color-fourth); }
+  .key.role-sixth { background: var(--color-sixth); }
+  .key.wrong { background: var(--color-wrong); }
+  .key.black.wrong { background: var(--color-wrong-deep); }
+  .key.target { box-shadow: inset 0 0 0 3px var(--color-ink); }
+  .key.black.target { box-shadow: inset 0 0 0 3px var(--color-paper-bright); }
+  .key .lbl { font-family: var(--font-mono); font-size: 0.7rem; font-weight: 700; pointer-events: none; }
+  .key.white .lbl { color: var(--color-ink); }
+  .key.black .lbl { color: var(--color-paper-bright); }
+  .key .mark { font-weight: 700; font-size: 1rem; pointer-events: none; }
+
+  .formula { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; font-family: var(--font-mono); margin-top: 0.5rem; }
+  .formula .tok { padding: 0.2rem 0.45rem; border: 1.5px solid var(--color-ink); font-weight: 700; }
+  .formula .arrow { opacity: 0.55; }
+  .done-summary { margin-top: 0.75rem; }
+  .btn { font-family: var(--font-mono); font-weight: 700; padding: 0.5rem 0.9rem; border: 1.5px solid var(--color-ink); background: var(--color-paper-bright); cursor: pointer; margin-top: 0.5rem; }
+  .muted { opacity: 0.7; font-size: 0.85rem; }
+  .hint-toggle { font-size: 0.85rem; text-decoration: underline; cursor: pointer; background: none; border: none; color: var(--color-ink); padding: 0; }
+</style>
+</head>
+<body>
+  <h1>Construct, don't memorize</h1>
+  <p class="sub">Spike 007 &middot; build the chord from its interval formula</p>
+
+  <div class="card">
+    <p class="muted" style="margin-top:0">Pick a symbol. You place the root, then stack each interval yourself. The app tells you WHY each note belongs, verifies your tap, and never shows you the answer list up front.</p>
+    <div class="picker" id="picker"></div>
+  </div>
+
+  <div class="card" id="stage" hidden>
+    <div>
+      <span class="prompt-symbol" id="symbol"></span>
+      <span class="muted" id="kind"></span>
+    </div>
+    <p class="step-line" id="stepLine"></p>
+    <p class="why-line" id="whyLine"></p>
+    <button class="hint-toggle" id="hintBtn" hidden>Show the count-up hint</button>
+    <p class="why-line" id="hintLine"></p>
+    <p class="feedback" id="feedback">&nbsp;</p>
+
+    <div class="keyboard" id="keyboard"></div>
+
+    <div class="formula" id="formula"></div>
+    <div class="done-summary" id="doneSummary" hidden></div>
+  </div>
+
+  <script type="module">
+    import { Chord, Scale, Note, Interval } from "https://esm.sh/tonal@6.4.3";
+
+    // ---- audio: bare WebAudio oscillator, zero deps, offline-safe ----
+    let actx = null;
+    function beep(midi, ms = 260) {
+      try {
+        actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+        const freq = 440 * Math.pow(2, (midi - 69) / 12);
+        const osc = actx.createOscillator();
+        const gain = actx.createGain();
+        osc.type = "triangle";
+        osc.frequency.value = freq;
+        osc.connect(gain); gain.connect(actx.destination);
+        const t = actx.currentTime;
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.3, t + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + ms / 1000);
+        osc.start(t); osc.stop(t + ms / 1000 + 0.02);
+      } catch (e) { /* audio is enhancement, never break the drill */ }
+    }
+
+    // ---- catalog: chords + scales, proving derivation generalizes ----
+    const ITEMS = [
+      { symbol: "Cm7",     kind: "chord", label: "minor 7th" },
+      { symbol: "F7",      kind: "chord", label: "dominant 7th" },
+      { symbol: "Bbmaj7",  kind: "chord", label: "major 7th" },
+      { symbol: "Bm7b5",   kind: "chord", label: "half-diminished" },
+      { symbol: "Cdim7",   kind: "chord", label: "diminished 7th" },
+      { symbol: "C major", kind: "scale", label: "major scale (W-W-H-W-W-W-H)" },
+      { symbol: "D dorian",kind: "scale", label: "dorian mode" },
+    ];
+
+    // English phrasing for a tonal interval name like "3m", "2M".
+    const QUAL_EN = { P: "perfect", M: "major", m: "minor", A: "augmented", d: "diminished", AA: "doubly augmented", dd: "doubly diminished" };
+    const ORD = { 2: "2nd", 3: "3rd", 4: "4th", 5: "5th", 6: "6th", 7: "7th", 8: "octave" };
+    function phraseInterval(tonalName) {
+      const iv = Interval.get(tonalName);
+      const deg = Math.abs(iv.num);
+      const q = iv.q;
+      if (deg === 2 && q === "M") return "whole step";
+      if (deg === 2 && q === "m") return "half step";
+      const en = QUAL_EN[q] || q;
+      return `${en} ${ORD[deg] || deg + "th"}`;
+    }
+    function glyph(s) { return s.replace(/#/g, "♯").replace(/b/g, "♭"); }
+
+    const ROLES = ["root", "second", "third", "fourth", "fifth", "sixth", "seventh"];
+    function roleForIndex(kind, i, intervalFromRoot) {
+      if (kind === "scale") return ROLES[i % 7];
+      // chords: map the interval degree from root to a role class
+      const deg = Math.abs(Interval.get(intervalFromRoot).num);
+      const simple = ((deg - 1) % 7) + 1;
+      return ROLES[simple - 1];
+    }
+
+    // Build the ascending target sequence for an item.
+    // Each entry: {spelled, glyph, midi, role, stepFromPrev (tonal name|null), fromRootTonal}
+    function buildSequence(item) {
+      let notes, intervalsFromRoot, rootName;
+      if (item.kind === "chord") {
+        const c = Chord.get(item.symbol);
+        notes = c.notes;            // e.g. ["C","Eb","G","Bb"]
+        intervalsFromRoot = c.intervals;
+        rootName = c.tonic;
+      } else {
+        const s = Scale.get(item.symbol);
+        notes = s.notes.concat([Note.transpose(s.tonic, "8P")]); // add the octave to close the scale
+        intervalsFromRoot = s.intervals.concat(["8P"]);
+        rootName = s.tonic;
+      }
+      const seq = [];
+      let prevMidi = Note.midi(rootName + "4");
+      for (let i = 0; i < notes.length; i++) {
+        const spelled = notes[i];
+        // ascending voicing: smallest midi with this chroma that is >= prevMidi (strictly > after the root)
+        const chroma = Note.chroma(spelled);
+        let midi;
+        if (i === 0) {
+          midi = prevMidi; // root anchored at octave 4
+        } else {
+          midi = prevMidi + 1;
+          while (((midi % 12) + 12) % 12 !== chroma) midi++;
+        }
+        const stepFromPrev = i === 0 ? null : Interval.distance(notes[i - 1], notes[i]);
+        seq.push({
+          spelled,
+          glyph: glyph(spelled),
+          midi,
+          role: roleForIndex(item.kind, i, intervalsFromRoot[i]),
+          stepFromPrev,
+          fromRootTonal: intervalsFromRoot[i],
+        });
+        prevMidi = midi;
+      }
+      return { rootName, seq };
+    }
+
+    // ---- keyboard: C4..C6 (2 octaves + closing C), letter/black layout math ----
+    const WHITE = ["C", "D", "E", "F", "G", "A", "B"];
+    // black key sits after these white indices within an octave (C#,D#,F#,G#,A#)
+    const BLACK_AFTER = [0, 1, 3, 4, 5];
+    const BLACK_SHARP = ["C#", "D#", "F#", "G#", "A#"];
+    const BLACK_FLAT  = ["Db", "Eb", "Gb", "Ab", "Bb"];
+    const N_OCT = 2;
+    const kbEl = document.getElementById("keyboard");
+
+    let keysByMidi = new Map(); // midi -> element (canonical; chroma resolves enharmonics)
+
+    function renderKeyboard() {
+      kbEl.innerHTML = "";
+      keysByMidi = new Map();
+      // total white keys: 2 octaves (14) + closing C = 15
+      const whiteCount = N_OCT * 7 + 1;
+      const whitePct = 100 / whiteCount;
+      const blackPct = whitePct * 0.6;
+
+      let whiteIndex = 0;
+      for (let oct = 0; oct < N_OCT; oct++) {
+        for (let w = 0; w < 7; w++) {
+          const letter = WHITE[w];
+          const midi = Note.midi(letter + (4 + oct));
+          addKey("white", letter, midi, whiteIndex * whitePct, whitePct);
+          whiteIndex++;
+        }
+      }
+      // closing C
+      const closeMidi = Note.midi("C" + (4 + N_OCT));
+      addKey("white", "C", closeMidi, whiteIndex * whitePct, whitePct);
+
+      // black keys
+      for (let oct = 0; oct < N_OCT; oct++) {
+        for (let b = 0; b < BLACK_AFTER.length; b++) {
+          const afterWhite = oct * 7 + BLACK_AFTER[b];
+          const left = (afterWhite + 1) * whitePct - blackPct / 2;
+          const midi = Note.midi(BLACK_SHARP[b] + (4 + oct));
+          addKey("black", BLACK_SHARP[b], midi, left, blackPct, BLACK_FLAT[b]);
+        }
+      }
+    }
+
+    function addKey(color, sharpName, midi, leftPct, widthPct, flatName) {
+      const el = document.createElement("div");
+      el.className = "key " + color;
+      el.style.left = leftPct + "%";
+      el.style.width = widthPct + "%";
+      el.dataset.midi = String(midi);
+      el.dataset.chroma = String(((midi % 12) + 12) % 12);
+      const lbl = document.createElement("span");
+      lbl.className = "lbl";
+      lbl.textContent = color === "black" ? glyph(sharpName) + "/" + glyph(flatName) : sharpName;
+      el.appendChild(lbl);
+      el.addEventListener("pointerdown", () => {
+        el.classList.add("pressed");
+        onKeyTap(midi, ((midi % 12) + 12) % 12);
+      });
+      const clear = () => el.classList.remove("pressed");
+      el.addEventListener("pointerup", clear);
+      el.addEventListener("pointerleave", clear);
+      el.addEventListener("pointercancel", clear);
+      kbEl.appendChild(el);
+      keysByMidi.set(midi, el);
+    }
+
+    // ---- game state ----
+    let current = null;   // {item, rootName, seq}
+    let stepIdx = 0;      // which target we are asking for (1..seq.length-1); 0 is the pre-placed root
+
+    const els = {
+      picker: document.getElementById("picker"),
+      stage: document.getElementById("stage"),
+      symbol: document.getElementById("symbol"),
+      kind: document.getElementById("kind"),
+      stepLine: document.getElementById("stepLine"),
+      whyLine: document.getElementById("whyLine"),
+      hintBtn: document.getElementById("hintBtn"),
+      hintLine: document.getElementById("hintLine"),
+      feedback: document.getElementById("feedback"),
+      formula: document.getElementById("formula"),
+      doneSummary: document.getElementById("doneSummary"),
+    };
+
+    function buildPicker() {
+      ITEMS.forEach((item) => {
+        const b = document.createElement("button");
+        b.className = "chip";
+        b.setAttribute("aria-pressed", "false");
+        b.innerHTML = `${glyph(item.symbol)} <small>${item.label}</small>`;
+        b.addEventListener("click", () => start(item, b));
+        els.picker.appendChild(b);
+      });
+    }
+
+    function start(item, chipEl) {
+      document.querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-pressed", "false"));
+      chipEl.setAttribute("aria-pressed", "true");
+      current = buildSequence(item);
+      current.item = item;
+      stepIdx = 0;
+      els.stage.hidden = false;
+      els.symbol.textContent = glyph(item.symbol);
+      els.kind.textContent = item.kind === "scale" ? "  scale" : "  chord";
+      els.doneSummary.hidden = true;
+      els.doneSummary.innerHTML = "";
+      renderKeyboard();
+      // place the root
+      const root = current.seq[0];
+      markKey(root.midi, root.role);
+      current.seq[0].placed = true;
+      renderFormula();
+      advance();
+    }
+
+    function markKey(midi, role, cls) {
+      const el = keysByMidi.get(midi);
+      if (!el) return;
+      el.classList.add(cls || ("role-" + role));
+    }
+
+    function clearTarget() {
+      document.querySelectorAll(".key.target").forEach((k) => k.classList.remove("target"));
+    }
+
+    function advance() {
+      stepIdx++;
+      els.feedback.innerHTML = "&nbsp;";
+      els.feedback.className = "feedback";
+      els.hintLine.textContent = "";
+      els.hintBtn.hidden = false;
+      clearTarget();
+      if (stepIdx >= current.seq.length) return finish();
+
+      const target = current.seq[stepIdx];
+      const prev = current.seq[stepIdx - 1];
+      const phrase = phraseInterval(target.stepFromPrev);
+      const semis = Math.abs(Interval.get(target.stepFromPrev).semitones);
+      const dir = current.item.kind === "scale" ? "up" : "up";
+      els.stepLine.innerHTML = `Step ${stepIdx}: stack a <strong>${phrase}</strong> (${semis} half step${semis === 1 ? "" : "s"}) ${dir} from <strong>${prev.glyph}</strong>.`;
+      els.whyLine.innerHTML = whyFor(target, prev);
+
+      // count-up hint prepared lazily
+      els.hintBtn.onclick = () => {
+        els.hintLine.innerHTML = countUp(prev.midi, target.midi, prev.glyph, target.glyph);
+        els.hintBtn.hidden = true;
+      };
+    }
+
+    function whyFor(target, prev) {
+      if (current.item.kind === "scale") {
+        const acc = current.seq.slice(1, stepIdx + 1).map((n) => (Math.abs(Interval.get(n.stepFromPrev).semitones) === 2 ? "W" : "H")).join("-");
+        return `Scales are built by steps, not stacked thirds. Pattern so far: <code>${acc}</code>. The note you want is <strong>${target.glyph}</strong> (${target.role}).`;
+      }
+      const rp = phraseInterval(target.fromRootTonal);
+      return `That lands on <strong>${target.glyph}</strong> — the <strong>${rp}</strong> above the root, the ${target.role} of ${glyph(current.item.symbol)}.`;
+    }
+
+    function countUp(fromMidi, toMidi, fromGlyph, toGlyph) {
+      const names = [];
+      for (let m = fromMidi; m <= toMidi; m++) {
+        // prefer sharp spelling for the walk; it is just a half-step counter
+        names.push(Note.fromMidiSharps ? Note.fromMidiSharps(m) : Note.fromMidi(m));
+      }
+      const walk = names.map(glyph).join(" → ");
+      return `Count up in half steps: ${walk}. Land on <strong>${toGlyph}</strong>.`;
+    }
+
+    function onKeyTap(midi, chroma) {
+      beep(midi);
+      if (!current || stepIdx >= current.seq.length) return;
+      const target = current.seq[stepIdx];
+      const targetChroma = ((target.midi % 12) + 12) % 12;
+
+      if (midi === target.midi) {
+        // exact ascending position: correct
+        markKey(target.midi, target.role);
+        target.placed = true;
+        current.enharmonicNote = maybeEnharmonicNote(target, midi);
+        els.feedback.className = "feedback ok";
+        els.feedback.innerHTML = "Correct: " + target.glyph + ". " + (current.enharmonicNote || "");
+        renderFormula();
+        setTimeout(advance, 650);
+        return;
+      }
+
+      if (chroma === targetChroma) {
+        // right pitch class, wrong octave: teach the upward-stacking idea
+        els.feedback.className = "feedback bad";
+        els.feedback.innerHTML = "Right note (" + target.glyph + "), wrong octave. You are stacking UPWARD — pick the " + target.glyph + " just above " + current.seq[stepIdx - 1].glyph + ".";
+        flashWrong(midi);
+        return;
+      }
+
+      // genuinely wrong: say how far off, in which direction
+      const off = midi - target.midi;
+      const absOff = Math.abs(off);
+      els.feedback.className = "feedback bad";
+      els.feedback.innerHTML = `Not quite. That is ${absOff} half step${absOff === 1 ? "" : "s"} too ${off > 0 ? "high" : "low"}. A ${phraseInterval(target.stepFromPrev)} from ${current.seq[stepIdx - 1].glyph} is ${Math.abs(Interval.get(target.stepFromPrev).semitones)} half steps.`;
+      flashWrong(midi);
+    }
+
+    function maybeEnharmonicNote(target, midi) {
+      // Does the correct spelling differ from the "obvious" piano name of this key?
+      const sharpName = Note.fromMidiSharps ? Note.fromMidiSharps(midi) : Note.fromMidi(midi);
+      const sharpPc = sharpName.replace(/\d/g, "");
+      const targetPc = target.spelled;
+      if (Note.chroma(sharpPc) === Note.chroma(targetPc) && sharpPc !== targetPc) {
+        return `This key is often called ${glyph(sharpPc)}, but ${glyph(current.item.symbol)} spells it ${target.glyph} so the ${current.item.kind === "scale" ? "scale keeps one of each letter" : "chord reads as a clean stack of thirds"}.`;
+      }
+      return "";
+    }
+
+    function flashWrong(midi) {
+      const el = keysByMidi.get(midi);
+      if (!el) return;
+      el.classList.add("wrong");
+      setTimeout(() => el.classList.remove("wrong"), 500);
+    }
+
+    function renderFormula() {
+      els.formula.innerHTML = "";
+      current.seq.forEach((n, i) => {
+        if (i > 0) {
+          const a = document.createElement("span");
+          a.className = "arrow";
+          a.textContent = phraseInterval(n.stepFromPrev) + " ↗";
+          els.formula.appendChild(a);
+        }
+        const tok = document.createElement("span");
+        tok.className = "tok";
+        tok.textContent = n.placed ? n.glyph : "?";
+        tok.style.opacity = n.placed ? "1" : "0.4";
+        els.formula.appendChild(tok);
+      });
+    }
+
+    function finish() {
+      clearTarget();
+      els.stepLine.innerHTML = `Done. You built <strong>${glyph(current.item.symbol)}</strong> yourself.`;
+      els.whyLine.textContent = "";
+      els.hintBtn.hidden = true;
+      els.feedback.innerHTML = "&nbsp;";
+      els.feedback.className = "feedback";
+      const notes = current.seq.map((n) => n.glyph);
+      const steps = current.seq.slice(1).map((n) => phraseInterval(n.stepFromPrev));
+      let formulaText;
+      if (current.item.kind === "scale") {
+        formulaText = current.seq.slice(1).map((n) => (Math.abs(Interval.get(n.stepFromPrev).semitones) === 2 ? "W" : "H")).join(" ");
+      } else {
+        formulaText = steps.join(", then ");
+      }
+      els.doneSummary.hidden = false;
+      els.doneSummary.innerHTML =
+        `<p><strong>The rule you just used:</strong> start on ${current.seq[0].glyph}, then ${current.item.kind === "scale" ? "step " + formulaText : "stack " + formulaText}.</p>` +
+        `<p><strong>Spelled ${current.item.kind}:</strong> ${notes.join(" ")}</p>` +
+        `<p class="muted">Next time you see ${glyph(current.item.symbol)}, you can rebuild it from the formula instead of recalling a list.</p>`;
+    }
+
+    buildPicker();
+  </script>
+</body>
+</html>
