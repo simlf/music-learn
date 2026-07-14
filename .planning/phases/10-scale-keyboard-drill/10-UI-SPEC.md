@@ -111,7 +111,7 @@ Tone: warm print-shop-clerk voice, unchanged from every prior phase (fun, witty,
 |---------|------|
 | Instruction line (drill start) | `Play {tonic} major ascending, then descending.` |
 | Position register, ascending | `DEGREE {n} OF 8 · ASCENDING` (n counts 1 to 8) |
-| Position register, descending | `DEGREE {n} OF 8 · DESCENDING` (n counts 8 down to 1) |
+| Position register, descending | `DEGREE {n} OF 8 · DESCENDING` (n counts 7 down to 1) |
 | Wrong tap | none — visual flash only, no text, per Success Criterion 4 and existing `ScalePractice` precedent |
 | Completion status line | `Voila. {tonic} major, up and down, clean.` (echoes `ScalePractice`'s existing `Voila. {tonic} major, clean.`, extended for the new ascending-and-descending scope) |
 | Reset/replay button | `Run it again` (verbatim reuse of the existing Drills end-card phrase, not a new string) |
