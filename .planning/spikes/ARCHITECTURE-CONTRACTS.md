@@ -9,7 +9,8 @@ Merge order (architect merges into main sequentially, fixing conflicts):
 1. **Track A — audio** (branch `build/audio`): sampled piano engine, key-touch sound, answer-reveal sound.
 2. **Track C — intervals + scales** (branch `build/intervals`): interval module, IntervalRole extension, inspectable keyboard, interval drill, light /scales explorer, server kind migration.
 3. **Track D — theory content** (branch `build/theory`): /theory route, mnemonics lib, confusion-contrast lib, reveal-card integration.
-4. **Track B — levels + songs + sessions** (branch `build/practice`): tiers, hybrid unlock, song builder + presets, weighted question pool, warm-up queue, micro-sessions, settings.
+4. **Track B1 — songs** (branch `build/songs`): `src/lib/practice/songs.ts` (model, localStorage, presets from R5), `/songs` route (list, create with validation + did-you-mean, edit, active toggles, preset shelf), nav link.
+5. **Track B2 — practice engine** (branch `build/practice`): tiers, hybrid unlock, weighted question pool (imports `songs.ts` per contract), warm-up queue, micro-sessions with end card, weakness "Drill these" button, settings section on Progress. B2 codes against the `songs.ts` contract; merges after B1.
 
 Later tracks merge onto earlier ones; architect resolves conflicts with the full test suite as the net.
 
@@ -45,6 +46,8 @@ export function noteOff(note: string): void;
 export function playChord(notes: string[], opts?: PlayOpts): void; // octave voicing resolved internally via voicing.ts
 export function releaseAll(): void;
 export function audioState(): { instrument: InstrumentKind; samplesLoaded: boolean };
+export function setSoundEnabled(enabled: boolean): void; // persisted to localStorage "music-learn:sound"; when false all play* are no-ops
+export function soundEnabled(): boolean;                  // default true
 ```
 
 - Behavior: synth (existing PolySynth path) plays instantly; Salamander sampler swaps in transparently once loaded. Never silence. `Tone.getContext().lookAhead = 0`.
@@ -90,8 +93,12 @@ export function mnemonicFor(qualitySuffix: string): string | null; // null = non
 export interface Song { id: string; name: string; chordSymbols: string[]; createdAt: string; source: 'preset' | 'custom'; active: boolean; presetId?: string; }
 // tiers.ts: TierDef[] per R3 (6 tiers; tiers 1-4 need zero engine work)
 // levelState.ts: localStorage key "music-learn:level"; unlock check computed from fetchStats (client never re-derives accuracy)
-// songs.ts: localStorage key "music-learn:songs"; presets are code constants copied on add
-// pool.ts: buildQuestionPool(...) implementing 60/25/15 song/tier/review mix, scaffolding for above-tier song chords
+// songs.ts (B1): localStorage key "music-learn:songs"; presets are code constants copied on add
+export function listSongs(): Song[];
+export function saveSong(song: Song): void;
+export function deleteSong(id: string): void;
+export function activeSongChordSymbols(): string[]; // deduped union across active songs, B2's pool input
+// pool.ts (B2): buildQuestionPool(...) implementing 60/25/15 song/tier/review mix, scaffolding for above-tier song chords
 ```
 
 - Persistence tonight: localStorage for level state and songs (established `music-learn:*` pattern). No new backend tables tonight.
