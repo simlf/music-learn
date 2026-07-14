@@ -106,6 +106,73 @@ describe('progress', () => {
 			expect(fetchMock).toHaveBeenCalledTimes(2);
 			expect(readQueueFromStorage()).toEqual([]);
 		});
+
+		it('drops 400-rejected events (old deployed server), keeps draining, and warns once per session', async () => {
+			// The deployed production server predates kind 'interval' and the
+			// durationMs/given fields: it answers 400 to those events forever,
+			// so retrying can never succeed. They must be dropped (with one
+			// console.warn per session) WITHOUT blocking the chord events
+			// queued behind them, or the drill loop's persistence would wedge
+			// on the first interval answer.
+			const seeded = [
+				{ item: 'm3', kind: 'interval', correct: true, clientDate: '2026-01-01' },
+				{ item: 'M6', kind: 'interval', correct: false, clientDate: '2026-01-01' },
+				{ item: 'Cm7', kind: 'chord', correct: true, clientDate: '2026-01-02' }
+			];
+			localStorage.setItem(QUEUE_KEY, JSON.stringify(seeded));
+
+			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+			const fetchMock = vi
+				.fn()
+				.mockResolvedValueOnce(new Response(null, { status: 400 }))
+				.mockResolvedValueOnce(new Response(null, { status: 400 }))
+				.mockResolvedValueOnce(new Response(null, { status: 201 }));
+			vi.stubGlobal('fetch', fetchMock);
+
+			await flushQueue();
+
+			expect(fetchMock).toHaveBeenCalledTimes(3);
+			expect(readQueueFromStorage()).toEqual([]);
+			expect(warnSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('still stops and retains everything from the first transient failure on', async () => {
+			const seeded = [
+				{ item: 'Cm7', kind: 'chord', correct: true, clientDate: '2026-01-01' },
+				{ item: 'm3', kind: 'interval', correct: true, clientDate: '2026-01-01' }
+			];
+			localStorage.setItem(QUEUE_KEY, JSON.stringify(seeded));
+
+			const fetchMock = vi.fn().mockRejectedValue(new Error('network down'));
+			vi.stubGlobal('fetch', fetchMock);
+
+			await flushQueue();
+
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+			expect(readQueueFromStorage()).toEqual(seeded);
+		});
+	});
+
+	describe('recordAnswer optional fields (Track B consumes)', () => {
+		it('passes durationMs and given through to the POST body', async () => {
+			setApiToken('abc');
+			const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 201 }));
+			vi.stubGlobal('fetch', fetchMock);
+
+			recordAnswer({ item: 'm3', kind: 'interval', correct: false, durationMs: 4200, given: 'M3' });
+
+			await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+			const [, init] = fetchMock.mock.calls[0];
+			const body = JSON.parse(init.body as string);
+			expect(body).toMatchObject({
+				item: 'm3',
+				kind: 'interval',
+				correct: false,
+				durationMs: 4200,
+				given: 'M3'
+			});
+		});
 	});
 
 	describe('fetchStats', () => {

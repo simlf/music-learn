@@ -17,9 +17,14 @@ const answerBodySchema = {
 	required: ['item', 'kind', 'correct', 'clientDate'],
 	properties: {
 		item: { type: 'string', minLength: 1, maxLength: 64 },
-		kind: { type: 'string', enum: ['chord', 'scale'] },
+		kind: { type: 'string', enum: ['chord', 'scale', 'interval'] },
 		correct: { type: 'boolean' },
-		clientDate: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' }
+		clientDate: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
+		// Optional v1 fields (Track C): answer duration for future spaced
+		// repetition, and what the user actually answered on a miss. Bounded
+		// like `item` so a hostile payload cannot bloat rows.
+		durationMs: { type: 'integer', minimum: 0, maximum: 3600000 },
+		given: { type: 'string', maxLength: 64 }
 	}
 } as const;
 

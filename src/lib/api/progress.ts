@@ -15,6 +15,10 @@ export interface AnswerEvent {
 	item: string;
 	kind: 'chord' | 'scale' | 'interval';
 	correct: boolean;
+	/** Time to answer in milliseconds (recorded now to feed future spaced repetition; Track B sends it). */
+	durationMs?: number;
+	/** What the user actually answered on a miss (choice symbol, tapped note, interval name). */
+	given?: string;
 }
 
 /** The queued/sent payload: the event plus the browser-local calendar date it was graded on. */
@@ -25,7 +29,7 @@ interface QueuedAnswerEvent extends AnswerEvent {
 /** Server-computed per-item accuracy stats (mirrors server/src/stats.ts's StatItem, PROG-02). */
 export interface StatItem {
 	item: string;
-	kind: 'chord' | 'scale';
+	kind: 'chord' | 'scale' | 'interval';
 	attempts: number;
 	accuracy: number;
 	needsPractice: boolean;
@@ -98,27 +102,53 @@ export function recordAnswer(event: AnswerEvent): void {
 	void flushQueue();
 }
 
+/** One warning per session when the deployed server rejects a payload it does not know yet. */
+let warnedAboutRejectedEvents = false;
+
 /**
- * Drains the queue oldest-first, POSTing each event to /answers. Stops on
- * the first failure (non-ok response or a thrown/rejected fetch) and
- * persists the remaining, still-unsent events - availability over
- * durability, mirroring recentLookups' swallow-and-continue degradation.
+ * Drains the queue oldest-first, POSTing each event to /answers.
+ *
+ * Two failure classes (Track C server-tolerance contract):
+ * - HTTP 400 is a deterministic validation rejection: the deployed
+ *   production server may predate kind 'interval' and the durationMs/given
+ *   fields, and retrying can never succeed. The event is DROPPED (logged
+ *   once per session) and draining continues, so an interval answer can
+ *   never wedge the chord answers queued behind it.
+ * - Anything else (network failure, 401, 5xx) is treated as transient:
+ *   stop and persist everything from that event on, mirroring
+ *   recentLookups' availability-over-durability degradation.
  */
 export async function flushQueue(): Promise<void> {
 	const queue = readQueue();
-	let sentCount = 0;
+	const remaining: QueuedAnswerEvent[] = [];
+	let stopped = false;
 
 	for (const event of queue) {
+		if (stopped) {
+			remaining.push(event);
+			continue;
+		}
 		try {
 			const response = await apiFetch('/answers', { method: 'POST', body: event });
-			if (!response.ok) break;
-			sentCount++;
+			if (response.ok) continue;
+			if (response.status === 400) {
+				if (!warnedAboutRejectedEvents) {
+					console.warn(
+						'music-learn: the server rejected an answer event (likely an older deployment that does not know this answer kind yet). Dropping it; drills keep working.'
+					);
+					warnedAboutRejectedEvents = true;
+				}
+				continue;
+			}
+			stopped = true;
+			remaining.push(event);
 		} catch {
-			break;
+			stopped = true;
+			remaining.push(event);
 		}
 	}
 
-	writeQueue(queue.slice(sentCount));
+	writeQueue(remaining);
 }
 
 /**

@@ -140,3 +140,73 @@ describe('GET /health', () => {
 		expect(response.statusCode).toBe(200);
 	});
 });
+
+describe('POST /answers (Track C: kind interval + optional durationMs/given)', () => {
+	it('accepts kind interval and persists the row', async () => {
+		const response = await app.inject({
+			method: 'POST',
+			url: '/answers',
+			headers: AUTH_HEADER,
+			payload: { ...VALID_BODY, item: 'm3', kind: 'interval' }
+		});
+
+		expect(response.statusCode).toBe(201);
+		const rows = store.getAllAnswers();
+		expect(rows).toHaveLength(1);
+		expect(rows[0].kind).toBe('interval');
+		expect(rows[0].item).toBe('m3');
+	});
+
+	it('accepts and persists durationMs and given', async () => {
+		const response = await app.inject({
+			method: 'POST',
+			url: '/answers',
+			headers: AUTH_HEADER,
+			payload: { ...VALID_BODY, durationMs: 5200, given: 'Cm' }
+		});
+
+		expect(response.statusCode).toBe(201);
+		const rows = store.getAllAnswers();
+		expect(rows[0].duration_ms).toBe(5200);
+		expect(rows[0].given).toBe('Cm');
+	});
+
+	it('stores nulls when the optional fields are omitted', async () => {
+		const response = await app.inject({
+			method: 'POST',
+			url: '/answers',
+			headers: AUTH_HEADER,
+			payload: VALID_BODY
+		});
+
+		expect(response.statusCode).toBe(201);
+		const rows = store.getAllAnswers();
+		expect(rows[0].duration_ms).toBeNull();
+		expect(rows[0].given).toBeNull();
+	});
+
+	it('returns 400 for a negative or non-integer durationMs and writes nothing', async () => {
+		for (const durationMs of [-1, 1.5, 'fast']) {
+			const response = await app.inject({
+				method: 'POST',
+				url: '/answers',
+				headers: AUTH_HEADER,
+				payload: { ...VALID_BODY, durationMs }
+			});
+			expect(response.statusCode).toBe(400);
+		}
+		expect(store.getAllAnswers()).toHaveLength(0);
+	});
+
+	it('returns 400 for an oversized given and writes nothing', async () => {
+		const response = await app.inject({
+			method: 'POST',
+			url: '/answers',
+			headers: AUTH_HEADER,
+			payload: { ...VALID_BODY, given: 'x'.repeat(65) }
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(store.getAllAnswers()).toHaveLength(0);
+	});
+});

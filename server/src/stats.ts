@@ -8,11 +8,11 @@
  * spaced-repetition work (v1.x) to reweight however it needs.
  */
 
-import type { AnswerRow } from './db.js';
+import type { AnswerKind, AnswerRow } from './db.js';
 
 export interface StatItem {
 	item: string;
-	kind: 'chord' | 'scale';
+	kind: AnswerKind;
 	attempts: number;
 	accuracy: number;
 	needsPractice: boolean;
@@ -29,7 +29,7 @@ const MAX_WEAKEST = 5;
  * below the minimum-attempts floor).
  */
 export function computeStats(rows: AnswerRow[]): { items: StatItem[]; weakest: StatItem[] } {
-	const groups = new Map<string, { item: string; kind: 'chord' | 'scale'; correct: number; attempts: number }>();
+	const groups = new Map<string, { item: string; kind: AnswerKind; correct: number; attempts: number }>();
 
 	for (const row of rows) {
 		const key = `${row.item}|${row.kind}`;
