@@ -2,6 +2,7 @@
 	import { MAJOR_SCALE_ROOTS, majorScaleNotes } from '$lib/theory/scale';
 	import ScaleDegreeStrip, { type InspectPayload } from '$lib/components/ScaleDegreeStrip.svelte';
 	import InspectRegister from '$lib/components/InspectRegister.svelte';
+	import ScalePractice from '$lib/components/ScalePractice.svelte';
 	import Button from '$lib/components/Button.svelte';
 
 	/**
@@ -11,8 +12,16 @@
 	 * + shorthand + French long name). The strip replaced the piano keyboard,
 	 * which stranded non-C scales across a fixed C-to-C octave span. Fully
 	 * client-side and prerender-safe.
+	 *
+	 * A mode toggle (sketch 004) adds a Practice tab alongside Explore: the
+	 * same tonic drives ScalePractice's ascending tap drill (degree ladder,
+	 * winner A). Explore stays the default so the existing degree-strip
+	 * behavior (and its tests) are unaffected.
 	 */
+	type Mode = 'explore' | 'practice';
+
 	let tonic = $state('C');
+	let mode = $state<Mode>('explore');
 	const notes = $derived(majorScaleNotes(tonic));
 
 	/** The latest inspect tap; reset when the tonic changes. */
@@ -53,10 +62,35 @@
 			{tonic} major · gamme majeure
 		</p>
 
-		<div class="mt-4">
-			<ScaleDegreeStrip {notes} {tonic} onInspect={handleInspect} />
+		<div class="mt-4 flex gap-2" data-testid="mode-toggle" role="group" aria-label="Scale mode">
+			<Button
+				type="button"
+				variant={mode === 'explore' ? 'primary' : 'ghost'}
+				aria-pressed={mode === 'explore'}
+				onclick={() => (mode = 'explore')}
+			>
+				Explore
+			</Button>
+			<Button
+				type="button"
+				variant={mode === 'practice' ? 'primary' : 'ghost'}
+				aria-pressed={mode === 'practice'}
+				onclick={() => (mode = 'practice')}
+			>
+				Practice
+			</Button>
 		</div>
 
-		<InspectRegister payload={inspectPayload} />
+		{#if mode === 'explore'}
+			<div class="mt-4">
+				<ScaleDegreeStrip {notes} {tonic} onInspect={handleInspect} />
+			</div>
+
+			<InspectRegister payload={inspectPayload} />
+		{:else}
+			<div class="mt-4">
+				<ScalePractice {notes} {tonic} />
+			</div>
+		{/if}
 	</div>
 </main>
