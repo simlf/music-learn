@@ -19,7 +19,9 @@ vi.mock('$app/stores', () => ({
 // touches real fetch/localStorage and the existing timing-sensitive
 // assertions stay unaffected.
 const flushQueueMock = vi.fn();
-const fetchStatsMock = vi.fn(() => Promise.resolve({ items: [], weakest: [] }));
+const fetchStatsMock = vi.fn((..._args: unknown[]) =>
+	Promise.resolve({ items: [], weakest: [] })
+);
 vi.mock('$lib/api/progress', () => ({
 	flushQueue: (...args: unknown[]) => flushQueueMock(...args),
 	fetchStats: (...args: unknown[]) => fetchStatsMock(...args),
@@ -36,14 +38,21 @@ vi.mock('$lib/practice/answerTelemetry', () => ({
 // Math.random draw-order script, which the pool integration removed), and
 // the persistence modules are mocked so no real localStorage is touched.
 // The session module stays REAL: its transitions are pure and deterministic.
-const drawFromPoolMock = vi.fn(() => ({ symbol: 'Cm7', bucket: 'tier', scaffoldStage: null }));
-const scaffoldStageForSymbolMock = vi.fn((): string | null => null);
+interface PoolDrawStub {
+	symbol: string;
+	bucket: string;
+	scaffoldStage: string | null;
+}
+const drawFromPoolMock = vi.fn(
+	(..._args: unknown[]): PoolDrawStub => ({ symbol: 'Cm7', bucket: 'tier', scaffoldStage: null })
+);
+const scaffoldStageForSymbolMock = vi.fn((..._args: unknown[]): string | null => null);
 vi.mock('$lib/practice/pool', () => ({
 	drawFromPool: (...args: unknown[]) => drawFromPoolMock(...args),
 	scaffoldStageForSymbol: (...args: unknown[]) => scaffoldStageForSymbolMock(...args)
 }));
 
-const recentMissesMock = vi.fn((): string[] => []);
+const recentMissesMock = vi.fn((..._args: unknown[]): string[] => []);
 const appendPracticeAnswerMock = vi.fn();
 vi.mock('$lib/practice/practiceLog', () => ({
 	recentMisses: (...args: unknown[]) => recentMissesMock(...args),
@@ -52,7 +61,7 @@ vi.mock('$lib/practice/practiceLog', () => ({
 	practiceDaysSince: () => 99
 }));
 
-const checkUnlockMock = vi.fn(() => ({
+const checkUnlockMock = vi.fn((..._args: unknown[]) => ({
 	tier: 1,
 	nextTier: 2,
 	eligible: false,

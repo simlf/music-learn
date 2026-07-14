@@ -14,7 +14,9 @@ vi.mock('$app/stores', () => ({
 }));
 
 const flushQueueMock = vi.fn();
-const fetchStatsMock = vi.fn(() => Promise.resolve({ items: [], weakest: [] }));
+const fetchStatsMock = vi.fn((..._args: unknown[]) =>
+	Promise.resolve({ items: [], weakest: [] })
+);
 vi.mock('$lib/api/progress', () => ({
 	flushQueue: (...args: unknown[]) => flushQueueMock(...args),
 	fetchStats: (...args: unknown[]) => fetchStatsMock(...args),
@@ -26,14 +28,21 @@ vi.mock('$lib/practice/answerTelemetry', () => ({
 	recordPracticeAnswer: (...args: unknown[]) => recordPracticeAnswerMock(...args)
 }));
 
-const drawFromPoolMock = vi.fn(() => ({ symbol: 'Cm7', bucket: 'tier', scaffoldStage: null }));
-const scaffoldStageForSymbolMock = vi.fn((): string | null => null);
+interface PoolDrawStub {
+	symbol: string;
+	bucket: string;
+	scaffoldStage: string | null;
+}
+const drawFromPoolMock = vi.fn(
+	(..._args: unknown[]): PoolDrawStub => ({ symbol: 'Cm7', bucket: 'tier', scaffoldStage: null })
+);
+const scaffoldStageForSymbolMock = vi.fn((..._args: unknown[]): string | null => null);
 vi.mock('$lib/practice/pool', () => ({
 	drawFromPool: (...args: unknown[]) => drawFromPoolMock(...args),
 	scaffoldStageForSymbol: (...args: unknown[]) => scaffoldStageForSymbolMock(...args)
 }));
 
-const recentMissesMock = vi.fn((): string[] => []);
+const recentMissesMock = vi.fn((..._args: unknown[]): string[] => []);
 const appendPracticeAnswerMock = vi.fn();
 vi.mock('$lib/practice/practiceLog', () => ({
 	recentMisses: (...args: unknown[]) => recentMissesMock(...args),
@@ -52,10 +61,16 @@ const notEligible = {
 	distinctDays: 0,
 	perQuality: []
 };
-const checkUnlockMock = vi.fn(() => notEligible);
-const setCurrentTierMock = vi.fn(() => ({ currentTier: 2, unlockedTiers: [1, 2] }));
-const snoozeSuggestionMock = vi.fn(() => ({ currentTier: 1, unlockedTiers: [1] }));
-const isSnoozedMock = vi.fn(() => false);
+const checkUnlockMock = vi.fn((..._args: unknown[]) => notEligible);
+const setCurrentTierMock = vi.fn((..._args: unknown[]) => ({
+	currentTier: 2,
+	unlockedTiers: [1, 2]
+}));
+const snoozeSuggestionMock = vi.fn((..._args: unknown[]) => ({
+	currentTier: 1,
+	unlockedTiers: [1]
+}));
+const isSnoozedMock = vi.fn((..._args: unknown[]) => false);
 vi.mock('$lib/practice/levelState', () => ({
 	getLevelState: () => ({ currentTier: 1, unlockedTiers: [1] }),
 	checkUnlock: (...args: unknown[]) => checkUnlockMock(...args),
@@ -75,7 +90,7 @@ vi.mock('$lib/practice/scaffold', () => ({
 	recordScaffoldAnswer: (state: unknown) => state
 }));
 
-const consumeDrillSeedsMock = vi.fn((): string[] => []);
+const consumeDrillSeedsMock = vi.fn((..._args: unknown[]): string[] => []);
 vi.mock('$lib/practice/drillSeeds', () => ({
 	consumeDrillSeeds: (...args: unknown[]) => consumeDrillSeedsMock(...args)
 }));

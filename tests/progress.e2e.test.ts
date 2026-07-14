@@ -61,7 +61,7 @@ vi.mock('$lib/practice/drillSeeds', () => ({
 	setDrillSeeds: (...args: unknown[]) => setDrillSeedsMock(...args)
 }));
 
-const gotoMock = vi.fn(() => Promise.resolve());
+const gotoMock = vi.fn((..._args: unknown[]) => Promise.resolve());
 vi.mock('$app/navigation', () => ({
 	goto: (...args: unknown[]) => gotoMock(...args)
 }));

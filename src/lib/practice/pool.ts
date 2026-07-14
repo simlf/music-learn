@@ -248,7 +248,7 @@ export function drawFromPool(
 	const review = reviewCandidates(ctx, config);
 
 	const hasSong = song.length > 0;
-	const buckets: { bucket: Bucket; weight: number }[] = [
+	const allBuckets: { bucket: Bucket; weight: number }[] = [
 		{ bucket: 'song', weight: hasSong ? config.songWeight : 0 },
 		{ bucket: 'tier', weight: hasSong ? config.tierWeight : config.noSongTierWeight },
 		{
@@ -260,7 +260,8 @@ export function drawFromPool(
 						? config.reviewWeight
 						: config.noSongReviewWeight
 		}
-	].filter((entry) => entry.weight > 0);
+	];
+	const buckets = allBuckets.filter((entry) => entry.weight > 0);
 
 	const chosen = weightedDraw(
 		buckets.map((entry) => entry.bucket),
