@@ -266,11 +266,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. The degree-ladder Practice surface is gone, replaced by the keyboard with no keyboard-vs-ladder toggle; the Explore surface (degree strip + interval inspect) is unchanged.
   4. A wrong tap gives immediate feedback (wrong-key flash) and the drill reports a clean pass when the full ascending-and-descending scale is completed.
 
-**Plans**: 2 plans
+**Plans**: 1/2 plans executed
 
 **Wave 1**
 
-- [ ] 10-01-PLAN.md — Pure chroma scale-drill sequence + ascending key placement (TDD): 15-target up-and-down run graded by pitch class, with a distinct octave key
+- [x] 10-01-PLAN.md — Pure chroma scale-drill sequence + ascending key placement (TDD): 15-target up-and-down run graded by pitch class, with a distinct octave key
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -341,7 +341,7 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 | 7. Theory Lessons | 0/TBD | Superseded (Phase 12) | - |
 | 8. Progress & Streaks | 4/4 | Complete    | 2026-07-13 |
 | 9. Deploy to the Piano | 6/6 | Complete   | 2026-07-13 |
-| 10. Scale Keyboard Drill | 0/2 | Not started | - |
+| 10. Scale Keyboard Drill | 1/2 | In Progress|  |
 | 11. Memorization Engine | 0/TBD | Not started | - |
 | 12. Build-it Construction | 0/TBD | Not started | - |
 | 13. Multi-modal Recall | 0/TBD | Not started | - |

@@ -2,15 +2,19 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Learning Upgrade
-status: planning
-last_updated: "2026-07-14T20:45:00.000Z"
+current_phase: 10
+current_phase_name: scale-keyboard-drill
+status: executing
+stopped_at: v2.0 Learning Upgrade roadmap created (Phases 10-13; 13/13 v2 requirements mapped; old Phases 4-7 marked deferred/superseded in place)
+last_updated: "2026-07-14T22:14:25.505Z"
 last_activity: 2026-07-14
+last_activity_desc: Phase 10 execution started
 progress:
-  total_phases: 4
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_phases: 13
+  completed_phases: 5
+  total_plans: 23
+  completed_plans: 22
+  percent: 38
 ---
 
 # Project State
@@ -20,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-14)
 
 **Core value:** See a jazz chord symbol and know instantly what to play with the left hand.
-**Current focus:** Phase 10 — Scale Keyboard Drill (v2.0 Learning Upgrade, roadmap created)
+**Current focus:** Phase 10 — scale-keyboard-drill
 
 ## Current Position
 
-Phase: 10 — Scale Keyboard Drill (not started)
-Plan: —
-Status: v2.0 roadmap created; ready to plan Phase 10
-Last activity: 2026-07-14 — v2.0 roadmap drafted (Phases 10-13), 13/13 v2 requirements mapped
+Phase: 10 (scale-keyboard-drill) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-07-14 — Phase 10 execution started
 
 **v2.0 phases (execution order 10 → 11 → 12 → 13):**
 
@@ -79,6 +83,7 @@ Last activity: 2026-07-14 — v2.0 roadmap drafted (Phases 10-13), 13/13 v2 requ
 | Phase 09 P06 | 15min | 3 tasks | 5 files |
 | Phase 09-deploy-to-the-piano P03 | 30min | 2 tasks | 3 files |
 | Phase 09-deploy-to-the-piano P04 | 15min | 2 tasks | 3 files |
+| Phase 10 P01 | 15min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -136,6 +141,8 @@ Recent decisions affecting current work:
 - [Phase 09-03]: D-06 fix (post-checkpoint): main's min-h-screen had to be cleared inside the short-landscape media query, not just its padding — The masthead sits above main, so a 100vh floor there always overflowed the viewport by the masthead's own height regardless of how compact main's content became
 - [Phase 09-04]: Press-cue and haptic handlers are wired only on interactive-mode keys (pointerdown), leaving display-mode keys untouched so the existing non-interactive rendering path has zero behavior change
 - [Phase 09-04]: navigator.vibrate call duration kept to a single short (~10ms) pulse, no repeating pattern, per the plan's own DoS mitigation for T-09-04
+- [Phase 10-01]: Grading scope is chroma/pitch-class, octave-agnostic: any visible key matching the expected degree's chroma is accepted (2-octave board can show a pitch class twice).
+- [Phase 10-01]: placeAscendingScaleKeys builds its own unified ascending key ordinal rather than reusing assignNotesToKeys, to guarantee the returning octave lands on a key distinct from the tonic.
 
 ### Pending Todos
 
@@ -160,7 +167,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-14T20:45:00.000Z
+Last session: 2026-07-14T22:13:38.093Z
 Stopped at: v2.0 Learning Upgrade roadmap created (Phases 10-13; 13/13 v2 requirements mapped; old Phases 4-7 marked deferred/superseded in place)
 Resume file: None
 Next: /gsd-plan-phase 10

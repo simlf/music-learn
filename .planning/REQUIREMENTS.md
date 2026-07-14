@@ -83,7 +83,7 @@ Grounded in validated spikes 006-009 (`.planning/spikes/MANIFEST.md` Session 2, 
 
 ### Scale Practice
 
-- [ ] **SCALE-04**: User practices a scale by playing it ascending and descending on a movable piano keyboard whose leftmost key is the tonic, graded by pitch class, ending on the octave
+- [x] **SCALE-04**: User practices a scale by playing it ascending and descending on a movable piano keyboard whose leftmost key is the tonic, graded by pitch class, ending on the octave
 - [ ] **SCALE-05**: The confusing degree-ladder Practice surface is replaced by the keyboard drill; the Explore surface (degree strip + interval inspect) stays
 
 ## Future Requirements
