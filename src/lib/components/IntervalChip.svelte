@@ -11,12 +11,22 @@
 		role: IntervalRole;
 		/** Short label to render, e.g. "R", "3", "5", "7". */
 		label: string;
+		/**
+		 * Optional French long name ("tierce mineure"), surfaced as tooltip +
+		 * aria-label. Omitted keeps the chip byte-identical to before this
+		 * prop existed (gated-prop compatibility contract).
+		 */
+		longName?: string;
 	}
 
-	let { role, label }: Props = $props();
+	let { role, label, longName }: Props = $props();
 </script>
 
-<span class="interval-chip interval-chip--{role}">{label}</span>
+<span
+	class="interval-chip interval-chip--{role}"
+	title={longName}
+	aria-label={longName ? `${label}: ${longName}` : undefined}>{label}</span
+>
 
 <style>
 	.interval-chip {

@@ -3,12 +3,15 @@
 	import { pickHint, pickSuggestionHint } from '$lib/copy/hints';
 	import { didYouMean } from '$lib/theory/didYouMean';
 	import { playChord } from '$lib/audio/playChord';
-	import { formulaFor, aliasLine } from '$lib/lookup/chordPresentation';
+	import { playNote } from '$lib/audio/audio';
+	import { intervalFromRoot, toAsciiAccidentals } from '$lib/theory/interval';
+	import { formulaFor, aliasLine, type FormulaEntry } from '$lib/lookup/chordPresentation';
 	import { getRecentLookups, addRecentLookup } from '$lib/lookup/recentLookups';
 	import type { ChordResult } from '$lib/theory/types';
-	import PianoKeyboard from '$lib/components/PianoKeyboard.svelte';
+	import PianoKeyboard, { type InspectPayload } from '$lib/components/PianoKeyboard.svelte';
 	import ChordGlyph from '$lib/components/ChordGlyph.svelte';
 	import IntervalChip from '$lib/components/IntervalChip.svelte';
+	import InspectRegister from '$lib/components/InspectRegister.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import RecentChipRow from '$lib/components/RecentChipRow.svelte';
 
@@ -40,6 +43,26 @@
 		inputEl?.select();
 	}
 
+	/** The latest keyboard/formula inspect tap (Track C register); reset per chord. */
+	let inspectPayload = $state<InspectPayload | null>(null);
+
+	function handleInspect(payload: InspectPayload) {
+		inspectPayload = payload;
+	}
+
+	/** Tapping a formula column does the same as tapping its key: play + fill the register. */
+	function inspectFormulaEntry(entry: FormulaEntry) {
+		if (!result) return;
+		playNote(`${toAsciiAccidentals(entry.letter)}4`);
+		inspectPayload = {
+			letter: entry.letter,
+			solfege: entry.solfege,
+			octave: 4,
+			info: intervalFromRoot(result.root, entry.letter),
+			inChord: true
+		};
+	}
+
 	function showChord(input: string) {
 		// Trim once at the entry point: mobile keyboards routinely append a
 		// trailing space via autocomplete, and tonal rejects "Cm7 " outright.
@@ -50,6 +73,7 @@
 			result = spelled;
 			hint = '';
 			suggestion = null;
+			inspectPayload = null;
 			recent = addRecentLookup(spelled.symbol);
 			focusAndSelectInput();
 		} else {
@@ -186,16 +210,23 @@
 			{/if}
 
 			<div class="mt-6">
-				<PianoKeyboard notes={result.notes} />
+				<PianoKeyboard notes={result.notes} inspectable onInspect={handleInspect} />
 			</div>
+
+			<InspectRegister payload={inspectPayload} />
 
 			<div class="mt-6 flex gap-4" data-testid="interval-formula">
 				{#each formulaFor(result) as entry (entry.role + entry.letter)}
-					<div class="flex flex-col items-center gap-1">
-						<IntervalChip role={entry.role} label={entry.label} />
+					<button
+						type="button"
+						class="formula-tap flex flex-col items-center gap-1"
+						aria-label={`Inspect ${entry.letter}`}
+						onclick={() => inspectFormulaEntry(entry)}
+					>
+						<IntervalChip role={entry.role} label={entry.label} longName={entry.longFr} />
 						<span class="text-label font-mono">{entry.letter}</span>
 						<span class="text-label font-mono">{entry.solfege}</span>
-					</div>
+					</button>
 				{/each}
 			</div>
 		</div>
@@ -214,6 +245,21 @@
 		margin: calc(-1 * var(--spacing-sm));
 		vertical-align: middle;
 		cursor: pointer;
+	}
+
+	/* Formula columns are tap targets (Track C): visually the same stacked
+	   chip + letter + solfège column, now playing/inspecting like the key it
+	   names. Plain button reset; the column stack already clears 44px tall,
+	   min-width covers the narrow "R" column. */
+	.formula-tap {
+		background: none;
+		border: none;
+		padding: 0;
+		min-width: 44px;
+		min-height: 44px;
+		cursor: pointer;
+		font: inherit;
+		color: inherit;
 	}
 
 	.stamp {

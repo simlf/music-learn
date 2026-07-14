@@ -2,6 +2,7 @@ import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import PianoKeyboard from './PianoKeyboard.svelte';
 import IntervalChip from './IntervalChip.svelte';
+import InspectRegister from './InspectRegister.svelte';
 import RecentChipRow from './RecentChipRow.svelte';
 import { spellChord } from '$lib/theory/chord';
 
@@ -417,5 +418,88 @@ describe('degree-class color extension (second/fourth/sixth)', () => {
 			expect(container.querySelector(`.interval-chip--${role}`)).not.toBeNull();
 			unmount();
 		}
+	});
+});
+
+describe('IntervalChip longName tooltip (Track C)', () => {
+	it('adds title and aria-label when longName is provided', () => {
+		const { container } = render(IntervalChip, { role: 'third', label: 'm3', longName: 'tierce mineure' });
+
+		const chip = container.querySelector('.interval-chip');
+		expect(chip).toHaveAttribute('title', 'tierce mineure');
+		expect(chip).toHaveAttribute('aria-label', 'm3: tierce mineure');
+	});
+
+	it('omitting longName keeps the chip free of title and aria-label (byte-identical contract)', () => {
+		const { container } = render(IntervalChip, { role: 'third', label: 'm3' });
+
+		const chip = container.querySelector('.interval-chip');
+		expect(chip).not.toHaveAttribute('title');
+		expect(chip).not.toHaveAttribute('aria-label');
+	});
+});
+
+describe('InspectRegister', () => {
+	it('shows the idle invitation when no payload is set', () => {
+		render(InspectRegister, { payload: null });
+
+		expect(screen.getByTestId('inspect-register')).toHaveTextContent('Tap a key to inspect it.');
+	});
+
+	it('renders the one-line register: letter, solfege, short, French, semitone count', () => {
+		render(InspectRegister, {
+			payload: {
+				letter: 'E♭',
+				solfege: 'Mi',
+				octave: 4,
+				inChord: true,
+				info: {
+					short: 'm3',
+					long: 'minor 3rd',
+					longFr: 'tierce mineure',
+					degree: 3,
+					quality: 'm',
+					semitones: 3,
+					role: 'third',
+					tonalName: '3m'
+				}
+			}
+		});
+
+		const register = screen.getByTestId('inspect-register');
+		expect(register).toHaveTextContent('E♭ · Mi · m3 · tierce mineure · 3 demi-tons');
+	});
+
+	it('uses the singular demi-ton for one semitone', () => {
+		render(InspectRegister, {
+			payload: {
+				letter: 'D♭',
+				solfege: 'Ré',
+				octave: 4,
+				inChord: false,
+				info: {
+					short: 'm2',
+					long: 'minor 2nd',
+					longFr: 'seconde mineure',
+					degree: 2,
+					quality: 'm',
+					semitones: 1,
+					role: 'second',
+					tonalName: '2m'
+				}
+			}
+		});
+
+		expect(screen.getByTestId('inspect-register')).toHaveTextContent('1 demi-ton');
+		expect(screen.getByTestId('inspect-register')).not.toHaveTextContent('demi-tons');
+	});
+
+	it('falls back to letter and solfege alone when there is no interval info', () => {
+		render(InspectRegister, {
+			payload: { letter: 'D', solfege: 'Ré', octave: 4, inChord: false, info: null }
+		});
+
+		expect(screen.getByTestId('inspect-register')).toHaveTextContent('D · Ré');
+		expect(screen.getByTestId('inspect-register')).not.toHaveTextContent('demi-ton');
 	});
 });

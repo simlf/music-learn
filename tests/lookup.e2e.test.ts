@@ -1,6 +1,14 @@
 import { render, screen, fireEvent, within } from '@testing-library/svelte';
-import { beforeEach, describe, expect, it } from 'vitest';
-import LookupPage from '../src/routes/+page.svelte';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+// The lookup keyboard is now inspectable (Track C): taps play through the
+// audio contract, mocked so tests never construct a real AudioContext.
+const playNoteMock = vi.fn();
+vi.mock('$lib/audio/audio', () => ({
+	playNote: (...args: unknown[]) => playNoteMock(...args)
+}));
+
+const { default: LookupPage } = await import('../src/routes/+page.svelte');
 
 // Note: masthead assertions intentionally live outside this file. The masthead
 // is rendered by +layout.svelte, not +page.svelte, and this suite renders the
@@ -12,6 +20,7 @@ import LookupPage from '../src/routes/+page.svelte';
 // test in this file needs a clean store to stay deterministic and
 // independent of test execution order.
 beforeEach(() => {
+	playNoteMock.mockClear();
 	localStorage.clear();
 });
 
@@ -267,5 +276,70 @@ describe('lookup page focus behavior', () => {
 		expect(document.activeElement).toBe(input);
 		expect(input.selectionStart).toBe(0);
 		expect(input.selectionEnd).toBe(input.value.length);
+	});
+});
+
+describe('lookup page interval register (Track C)', () => {
+	it('shows the idle register line under the keyboard after a stamp', async () => {
+		render(LookupPage);
+
+		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'Cm7' } });
+		await fireEvent.click(screen.getByRole('button', { name: /stamp/i }));
+
+		expect(screen.getByTestId('inspect-register')).toHaveTextContent('Tap a key to inspect it.');
+	});
+
+	it('tapping a highlighted key plays it and fills the register with its full naming', async () => {
+		render(LookupPage);
+
+		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'Cm7' } });
+		await fireEvent.click(screen.getByRole('button', { name: /stamp/i }));
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+
+		const register = screen.getByTestId('inspect-register');
+		expect(register).toHaveTextContent('E♭ · Mi · m3 · tierce mineure · 3 demi-tons');
+		expect(playNoteMock).toHaveBeenCalledWith('Eb4');
+	});
+
+	it('tapping a formula column does the same as tapping its key', async () => {
+		render(LookupPage);
+
+		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'Cm7' } });
+		await fireEvent.click(screen.getByRole('button', { name: /stamp/i }));
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Inspect B♭' }));
+
+		const register = screen.getByTestId('inspect-register');
+		expect(register).toHaveTextContent('B♭ · Si · m7 · septième mineure · 10 demi-tons');
+		expect(playNoteMock).toHaveBeenCalledWith('Bb4');
+	});
+
+	it('clears the register back to idle when a new chord is stamped', async () => {
+		render(LookupPage);
+
+		const input = screen.getByRole('textbox');
+		const stamp = screen.getByRole('button', { name: /stamp/i });
+
+		await fireEvent.input(input, { target: { value: 'Cm7' } });
+		await fireEvent.click(stamp);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		expect(screen.getByTestId('inspect-register')).toHaveTextContent('tierce mineure');
+
+		await fireEvent.input(input, { target: { value: 'Fmaj7' } });
+		await fireEvent.click(stamp);
+
+		expect(screen.getByTestId('inspect-register')).toHaveTextContent('Tap a key to inspect it.');
+	});
+
+	it('interval chips carry the French long name as tooltip and aria-label', async () => {
+		render(LookupPage);
+
+		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'Cm7' } });
+		await fireEvent.click(screen.getByRole('button', { name: /stamp/i }));
+
+		const formula = screen.getByTestId('interval-formula');
+		const chip = within(formula).getByText('m3');
+		expect(chip).toHaveAttribute('title', 'tierce mineure');
 	});
 });
