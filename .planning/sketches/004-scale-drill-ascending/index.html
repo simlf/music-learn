@@ -1,0 +1,161 @@
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../themes/default.css" />
+<style>
+	* { box-sizing: border-box; }
+	body { margin: 0; background: var(--color-paper); color: var(--color-ink); font-family: var(--font-sans); padding: var(--space-6); }
+	h1 { font-size: var(--text-heading); margin: 0 0 var(--space-1); }
+	.sub { color: var(--color-muted); margin: 0 0 var(--space-6); }
+	.tabs { display: flex; gap: var(--space-2); margin: 0 0 var(--space-4); flex-wrap: wrap; }
+	.tab { font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; border: 2px solid var(--color-ink); background: var(--color-paper-bright); cursor: pointer; padding: var(--space-2) var(--space-4); }
+	.tab[aria-selected="true"] { background: var(--color-ink); color: var(--color-paper-bright); }
+	.panel { display: none; } .panel[data-active="true"] { display: block; }
+	.card { border: 2px solid var(--color-ink); background: var(--color-paper-bright); padding: var(--space-6); }
+	.prompt { font: 700 var(--text-heading)/1.1 var(--font-sans); margin: 0 0 var(--space-1); }
+	.prompt .glyph { font-family: var(--font-serif); }
+	.origin { font: 700 var(--text-label)/1.4 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-vermilion); margin: 0 0 var(--space-4); }
+	.reg { font: 700 var(--text-label)/1.4 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-muted); }
+	.note-sm { font-size: 13px; color: var(--color-muted); margin-top: var(--space-4); }
+
+	.ladder { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; margin-bottom: var(--space-4); }
+	.rung { border: 2px solid var(--color-ink); min-height: 40px; display: flex; align-items: center; justify-content: center; font: 700 var(--text-body)/1 var(--font-mono); background: var(--color-paper-bright); color: var(--color-faint); }
+	.rung.done { background: var(--color-root); color: var(--color-on-root); }
+	.rung.now { box-shadow: inset 0 0 0 3px var(--color-vermilion); color: var(--color-ink); }
+
+	.kbd { position: relative; height: 170px; width: 100%; margin: var(--space-4) 0 0; }
+	.wk, .bk { position: absolute; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: var(--space-1); cursor: pointer; }
+	.wk { height: 100%; background: var(--color-paper-bright); border: 1.5px solid var(--color-ink); z-index: 1; }
+	.bk { height: 60%; background: var(--color-ink); z-index: 2; color: var(--color-paper-bright); }
+	.wk.done, .bk.done { background: var(--color-root); color: var(--color-on-root); }
+	.wk.next-ghost { box-shadow: inset 0 0 0 3px var(--color-vermilion); }
+	.bk.next-ghost { box-shadow: inset 0 0 0 3px var(--color-mustard); }
+	.wk.bad, .bk.bad { background: var(--color-wrong-deep); color: #fff; }
+	.note { font: 700 var(--text-body)/1 var(--font-serif); }
+	.solf { font: 400 11px/1 var(--font-mono); opacity: 0.85; }
+	.counter { font: 700 28px/1 var(--font-mono); }
+	.hint { font-size: 13px; color: var(--color-muted); margin-top: var(--space-2); }
+	.done-msg { font: 700 var(--text-heading)/1.2 var(--font-serif); color: var(--color-verdigris); margin-top: var(--space-4); }
+	button.reset { margin-top: var(--space-4); font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; border: 2px solid var(--color-ink); background: var(--color-vermilion); color: #fff; padding: var(--space-2) var(--space-4); cursor: pointer; }
+</style>
+
+<h1>Sketch 004 — Scale drill, play ascending</h1>
+<p class="sub">Easy scale-learning drill, biased to your active song's key. Tap the scale bottom to top. Three ways to show progress and the next step.</p>
+
+<div class="tabs" role="tablist">
+	<button class="tab" role="tab" aria-selected="true" data-tab="A">A · Degree ladder</button>
+	<button class="tab" role="tab" aria-selected="false" data-tab="B">B · Ghost next key</button>
+	<button class="tab" role="tab" aria-selected="false" data-tab="C">C · Minimal register</button>
+</div>
+
+<div class="panel" data-tab="A" data-active="true"><div class="card">
+	<p class="origin">From Autumn Leaves · your active song</p>
+	<p class="prompt">Play <span class="glyph">G</span> major, bottom to top</p>
+	<div class="ladder" id="ladderA"></div>
+	<div class="kbd" id="kA"></div>
+	<div id="msgA"></div>
+	<p class="note-sm">A degree ladder (1 to 8) fills vermilion as you go and outlines the next rung. Progress and target are both legible without reading the keys.</p>
+</div></div>
+
+<div class="panel" data-tab="B" data-active="false"><div class="card">
+	<p class="origin">From Autumn Leaves · your active song</p>
+	<p class="prompt">Play <span class="glyph">G</span> major, bottom to top</p>
+	<p class="reg"><span class="counter" id="ctrB">0</span> / 8</p>
+	<div class="kbd" id="kB"></div>
+	<div id="msgB"></div>
+	<p class="note-sm">No ladder. The next expected key wears a faint outline (the only hint), plus a step counter. Closest to playing a real instrument.</p>
+</div></div>
+
+<div class="panel" data-tab="C" data-active="false"><div class="card">
+	<p class="origin">From Autumn Leaves · your active song</p>
+	<p class="prompt">Play <span class="glyph">G</span> major, bottom to top</p>
+	<p class="reg" id="regC">STEP 1 OF 8 · PLAY THE ROOT</p>
+	<div class="kbd" id="kC"></div>
+	<div id="msgC"></div>
+	<p class="note-sm">Bare drill chrome: one mono register line, no ladder, no ghost. Matches the existing drill surface exactly, least new furniture.</p>
+</div></div>
+
+<script>
+	// G major, G-anchored octave (G is a white key: clean left edge, no wrap).
+	// order = the ascending scale tap sequence.
+	const SCALE = ['G','A','B','C','D','E','F♯','G'];
+	const SOLF = {G:'Sol',A:'La',B:'Si',C:'Do',D:'Ré',E:'Mi','F♯':'Fa♯'};
+	// keyboard geometry for a G-to-G octave: whites then blacks
+	const WHITES = ['G','A','B','C','D','E','F','G']; // F natural is out-of-scale
+	const WW = 100/WHITES.length;
+	// blacks after white index: G♯(0.5) A♯(1.5) C♯(3.5) D♯(4.5) F♯(6.5) — only F♯ is in-scale
+	const BLACKS = [
+		{after:0, name:'G♯'}, {after:1, name:'A♯'}, {after:3, name:'C♯'}, {after:4, name:'D♯'}, {after:6, name:'F♯'}
+	];
+
+	function makeState(){ return { step:0, done:false }; }
+	const states = { A:makeState(), B:makeState(), C:makeState() };
+
+	function buildKbd(el, variant){
+		el.innerHTML = '';
+		WHITES.forEach((L,i)=>{
+			const d=document.createElement('div'); d.className='wk'; d.style.left=(i*WW)+'%'; d.style.width=WW+'%';
+			d.dataset.name=L; d.dataset.slot='w'+i;
+			d.innerHTML=`<span class="note">${L}</span><span class="solf">${SOLF[L]||''}</span>`;
+			d.onclick=()=>tap(variant, L, d);
+			el.appendChild(d);
+		});
+		BLACKS.forEach(b=>{
+			const d=document.createElement('div'); d.className='bk';
+			d.style.left=((b.after+1)*WW-(WW*0.6)/2)+'%'; d.style.width=(WW*0.6)+'%';
+			d.dataset.name=b.name;
+			d.innerHTML=`<span class="note">${b.name}</span>`;
+			d.onclick=()=>tap(variant, b.name, d);
+			el.appendChild(d);
+		});
+	}
+
+	function expected(st){ return SCALE[st.step]; }
+
+	function tap(variant, name, keyEl){
+		const st = states[variant];
+		if (st.done) return;
+		if (name === expected(st)){
+			keyEl.classList.remove('bad'); keyEl.classList.add('done');
+			st.step++;
+			if (st.step >= SCALE.length){ st.done = true; }
+		} else {
+			keyEl.classList.add('bad');
+			setTimeout(()=>keyEl.classList.remove('bad'), 320);
+		}
+		render(variant);
+	}
+
+	function render(variant){
+		const st = states[variant];
+		const el = document.getElementById('k'+variant);
+		// clear ghosts
+		[...el.children].forEach(c=>c.classList.remove('next-ghost'));
+		// ghost next (variant B only) on the expected key
+		if (variant==='B' && !st.done){
+			const exp = expected(st);
+			// prefer a not-yet-done key with this name
+			const k = [...el.children].find(c=>c.dataset.name===exp && !c.classList.contains('done'));
+			if (k) k.classList.add('next-ghost');
+		}
+		if (variant==='A'){
+			const ladder = document.getElementById('ladderA');
+			ladder.innerHTML='';
+			SCALE.forEach((n,i)=>{
+				const r=document.createElement('div'); r.className='rung'+(i<st.step?' done':'')+(i===st.step&&!st.done?' now':'');
+				r.textContent = i+1; ladder.appendChild(r);
+			});
+		}
+		if (variant==='B'){ document.getElementById('ctrB').textContent = st.step; }
+		if (variant==='C'){
+			const reg = document.getElementById('regC');
+			reg.textContent = st.done ? 'SCALE COMPLETE' : `STEP ${st.step+1} OF 8 · PLAY ${SOLF[expected(st)]?expected(st):expected(st)}`;
+		}
+		const msg = document.getElementById('msg'+variant);
+		msg.innerHTML = st.done ? `<p class="done-msg">Voilà. G major, clean.</p><button class="reset" onclick="resetV('${variant}')">Run it again</button>` : '';
+	}
+
+	function resetV(variant){ states[variant]=makeState(); buildKbd(document.getElementById('k'+variant), variant); render(variant); }
+	window.resetV = resetV;
+
+	['A','B','C'].forEach(v=>{ buildKbd(document.getElementById('k'+v), v); render(v); });
+	document.querySelectorAll('.tab').forEach(tab=>{ tab.onclick=()=>{ const id=tab.dataset.tab; document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',String(t===tab))); document.querySelectorAll('.panel').forEach(p=>p.setAttribute('data-active',String(p.dataset.tab===id))); }; });
+</script>

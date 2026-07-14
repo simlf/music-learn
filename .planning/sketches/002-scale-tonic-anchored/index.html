@@ -1,0 +1,231 @@
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../themes/default.css" />
+<style>
+	* { box-sizing: border-box; }
+	body {
+		margin: 0;
+		background: var(--color-paper);
+		color: var(--color-ink);
+		font-family: var(--font-sans);
+		padding: var(--space-6);
+	}
+	h1 { font-size: var(--text-heading); margin: 0 0 var(--space-1); }
+	.sub { color: var(--color-muted); margin: 0 0 var(--space-6); font-size: var(--text-body); }
+	.tabs { display: flex; gap: var(--space-2); margin-bottom: var(--space-6); flex-wrap: wrap; }
+	.tab {
+		font: 700 var(--text-label)/1 var(--font-mono);
+		letter-spacing: 0.12em; text-transform: uppercase;
+		padding: var(--space-2) var(--space-4); border: 2px solid var(--color-ink);
+		background: var(--color-paper-bright); cursor: pointer;
+	}
+	.tab[aria-selected="true"] { background: var(--color-ink); color: var(--color-paper-bright); }
+	.panel { display: none; }
+	.panel[data-active="true"] { display: block; }
+	.card { border: 2px solid var(--color-ink); background: var(--color-paper-bright); padding: var(--space-6); }
+	.reg { font: 700 var(--text-label)/1.4 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-muted); }
+	.picker { display: flex; gap: var(--space-1); flex-wrap: wrap; margin-bottom: var(--space-6); }
+	.picker button {
+		font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.08em;
+		min-width: 44px; min-height: 44px; border: 2px solid var(--color-ink);
+		background: var(--color-paper-bright); cursor: pointer;
+	}
+	.picker button[aria-pressed="true"] { background: var(--color-root); color: var(--color-on-root); }
+
+	/* --- literal piano octave (variant A / C) --- */
+	.kbd { position: relative; height: 170px; width: 100%; margin: var(--space-4) 0; }
+	.wk, .bk { position: absolute; top: 0; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: var(--space-1); }
+	.wk { height: 100%; background: var(--color-paper-bright); border: 1.5px solid var(--color-ink); z-index: 1; }
+	.bk { height: 60%; background: var(--color-ink); z-index: 2; color: var(--color-paper-bright); }
+	.deg-root { background: var(--color-root); color: var(--color-on-root); }
+	.deg-second { background: var(--color-second); color: var(--color-on-second); }
+	.deg-third { background: var(--color-third); color: var(--color-on-third); }
+	.deg-fourth { background: var(--color-fourth); color: var(--color-on-fourth); }
+	.deg-fifth { background: var(--color-fifth); color: var(--color-on-fifth); }
+	.deg-sixth { background: var(--color-sixth); color: var(--color-on-sixth); }
+	.deg-seventh { background: var(--color-seventh); color: var(--color-on-seventh); }
+	.note { font: 700 var(--text-body)/1 var(--font-serif); }
+	.solf { font: 400 11px/1 var(--font-mono); opacity: 0.85; }
+	.degnum { font: 700 10px/1 var(--font-mono); opacity: 0.9; margin-bottom: 2px; }
+
+	/* --- abstract degree strip (variant B) --- */
+	.strip { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; margin: var(--space-4) 0; }
+	.cell { border: 2px solid var(--color-ink); min-height: 96px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; }
+	.strip .cell.deg-root { background: var(--color-root); color: var(--color-on-root); }
+	.strip .cell.deg-second { background: var(--color-second); color: var(--color-on-second); }
+	.strip .cell.deg-third { background: var(--color-third); color: var(--color-on-third); }
+	.strip .cell.deg-fourth { background: var(--color-fourth); color: var(--color-on-fourth); }
+	.strip .cell.deg-fifth { background: var(--color-fifth); color: var(--color-on-fifth); }
+	.strip .cell.deg-sixth { background: var(--color-sixth); color: var(--color-on-sixth); }
+	.strip .cell.deg-seventh { background: var(--color-seventh); color: var(--color-on-seventh); }
+	.cell .big { font: 700 var(--text-heading)/1 var(--font-serif); }
+	.cell .ring { font: 700 10px/1 var(--font-mono); letter-spacing: 0.1em; border: 1.5px solid currentColor; padding: 2px 5px; }
+	.today { border: 2px dashed var(--color-faint); padding: var(--space-4); margin-bottom: var(--space-6); }
+	.today .reg { color: var(--color-vermilion); }
+	.note-sm { font-size: 13px; color: var(--color-muted); margin-top: var(--space-2); }
+</style>
+
+<h1>Sketch 002 — Scale page, tonic-anchored</h1>
+<p class="sub">The scale should read as one clean run with the tonic at the left. Pick any tonic; watch it stay anchored. Compare three ways to anchor.</p>
+
+<div class="today">
+	<p class="reg">Today (the problem)</p>
+	<p class="note-sm">E&flat; major renders on a fixed C-to-C two-octave span, so E&flat; starts a third of the way in, C and D wrap into the second octave, and both ends sit blank. The tonic is not where the eye lands and the run looks scattered.</p>
+</div>
+
+<div class="picker" id="picker"></div>
+
+<div class="tabs" role="tablist">
+	<button class="tab" role="tab" aria-selected="true" data-tab="A">A · Anchored piano</button>
+	<button class="tab" role="tab" aria-selected="false" data-tab="B">B · Degree strip</button>
+	<button class="tab" role="tab" aria-selected="false" data-tab="C">C · Piano + degree numbers</button>
+</div>
+
+<div class="panel" data-tab="A" data-active="true">
+	<div class="card">
+		<p class="reg" id="titleA"></p>
+		<div class="kbd" id="kbdA"></div>
+		<p class="note-sm">One octave, tonic to tonic. The literal black/white shape is preserved so you still see the real geometry, but the run always begins at the left edge.</p>
+	</div>
+</div>
+<div class="panel" data-tab="B" data-active="false">
+	<div class="card">
+		<p class="reg" id="titleB"></p>
+		<div class="strip" id="stripB"></div>
+		<p class="note-sm">Abstract: the seven degrees (plus the octave) as equal cells, 1 through 8, colored by degree role. Drops piano geometry entirely for a clean scale-shape read.</p>
+	</div>
+</div>
+<div class="panel" data-tab="C" data-active="false">
+	<div class="card">
+		<p class="reg" id="titleC"></p>
+		<div class="kbd" id="kbdC"></div>
+		<p class="note-sm">Anchored piano (variant A) with the scale-degree number under each in-key note, so you learn the shape and the numbering together.</p>
+	</div>
+</div>
+
+<script>
+	// The 12 major scales, correctly spelled (degree 1..7). Mirrors what tonal
+	// Scale.get returns in the real app; hardcoded here so the sketch is standalone.
+	const MAJORS = {
+		'C': ['C','D','E','F','G','A','B'],
+		'D♭': ['D♭','E♭','F','G♭','A♭','B♭','C'],
+		'D': ['D','E','F♯','G','A','B','C♯'],
+		'E♭': ['E♭','F','G','A♭','B♭','C','D'],
+		'E': ['E','F♯','G♯','A','B','C♯','D♯'],
+		'F': ['F','G','A','B♭','C','D','E'],
+		'F♯': ['F♯','G♯','A♯','B','C♯','D♯','E♯'],
+		'G': ['G','A','B','C','D','E','F♯'],
+		'A♭': ['A♭','B♭','C','D♭','E♭','F','G'],
+		'A': ['A','B','C♯','D','E','F♯','G♯'],
+		'B♭': ['B♭','C','D','E♭','F','G','A'],
+		'B': ['B','C♯','D♯','E','F♯','G♯','A♯']
+	};
+	const TONICS = Object.keys(MAJORS);
+	const ROLES = ['root','second','third','fourth','fifth','sixth','seventh'];
+	const SOLF = { 'C':'Do','D':'Ré','E':'Mi','F':'Fa','G':'Sol','A':'La','B':'Si' };
+	function solf(n){ return SOLF[n[0]] + (n.slice(1)||''); }
+	// semitone of a spelled letter (for building the chromatic octave)
+	function chroma(n){
+		const base = {C:0,D:2,E:4,F:5,G:7,A:9,B:11}[n[0]];
+		let acc = 0; for (const c of n.slice(1)){ if(c==='♯')acc++; if(c==='♭')acc--; }
+		return (base+acc+12)%12;
+	}
+
+	let tonic = 'E♭';
+
+	// Build the 13 chromatic keys from the tonic up to the tonic an octave higher.
+	function octaveKeys(t){
+		const scale = MAJORS[t];
+		const degOf = new Map(); scale.forEach((n,i)=>degOf.set(chroma(n), i));
+		const start = chroma(t);
+		const keys = [];
+		for (let i=0;i<=12;i++){
+			const c = (start+i)%12;
+			const isBlack = [1,3,6,8,10].includes(c);
+			const deg = i===12 ? 0 : (degOf.has(c) ? degOf.get(c) : null);
+			// spelled name: use the scale spelling when in-key, else a neutral sharp/flat
+			let name = null;
+			if (i===12) name = scale[0];
+			else if (degOf.has(c)) name = scale[degOf.get(c)];
+			keys.push({ c, isBlack, deg, name });
+		}
+		return keys;
+	}
+
+	function renderPiano(el, withNums){
+		const keys = octaveKeys(tonic);
+		const whites = keys.filter(k=>!k.isBlack);
+		const n = whites.length;
+		const ww = 100/n;
+		el.innerHTML = '';
+		// place whites
+		let wi = 0;
+		const whiteLeft = new Map(); // key index -> left%
+		keys.forEach((k, idx)=>{ if(!k.isBlack){ whiteLeft.set(idx, wi*ww); wi++; } });
+		keys.forEach((k, idx)=>{
+			const inKey = k.deg !== null;
+			const roleCls = inKey ? 'deg-'+ROLES[k.deg===0?0:k.deg] : '';
+			if (!k.isBlack){
+				const d = document.createElement('div');
+				d.className = 'wk '+roleCls;
+				d.style.left = whiteLeft.get(idx)+'%';
+				d.style.width = ww+'%';
+				if (inKey) d.innerHTML =
+					(withNums?`<span class="degnum">${k.deg===0?8:k.deg+1}</span>`:'')+
+					`<span class="note">${k.name}</span><span class="solf">${solf(k.name)}</span>`;
+				el.appendChild(d);
+			} else {
+				// black sits between the previous white and next white
+				let prevWhite = idx; while(keys[prevWhite] && keys[prevWhite].isBlack) prevWhite--;
+				const leftPct = (whiteLeft.get(prevWhite) ?? 0) + ww - (ww*0.6)/2;
+				const d = document.createElement('div');
+				d.className = 'bk '+roleCls;
+				d.style.left = leftPct+'%';
+				d.style.width = (ww*0.6)+'%';
+				if (inKey) d.innerHTML =
+					(withNums?`<span class="degnum">${k.deg===0?8:k.deg+1}</span>`:'')+
+					`<span class="note">${k.name}</span><span class="solf">${solf(k.name)}</span>`;
+				el.appendChild(d);
+			}
+		});
+	}
+
+	function renderStrip(el){
+		const scale = MAJORS[tonic];
+		el.innerHTML = '';
+		const cells = [...scale.map((n,i)=>({n,role:ROLES[i],num:i+1})), {n:scale[0],role:'root',num:8}];
+		cells.forEach(c=>{
+			const d = document.createElement('div');
+			d.className = 'cell deg-'+c.role;
+			d.innerHTML = `<span class="ring">${c.num}</span><span class="big">${c.n}</span><span class="solf">${solf(c.n)}</span>`;
+			el.appendChild(d);
+		});
+	}
+
+	function renderAll(){
+		const title = `${tonic} major · gamme majeure`;
+		['A','B','C'].forEach(v=>{ document.getElementById('title'+v).textContent = title; });
+		renderPiano(document.getElementById('kbdA'), false);
+		renderPiano(document.getElementById('kbdC'), true);
+		renderStrip(document.getElementById('stripB'));
+	}
+
+	// tonic picker
+	const picker = document.getElementById('picker');
+	TONICS.forEach(t=>{
+		const b = document.createElement('button');
+		b.textContent = t; b.setAttribute('aria-pressed', String(t===tonic));
+		b.onclick = ()=>{ tonic = t; [...picker.children].forEach(c=>c.setAttribute('aria-pressed', String(c.textContent===t))); renderAll(); };
+		picker.appendChild(b);
+	});
+
+	// tabs
+	document.querySelectorAll('.tab').forEach(tab=>{
+		tab.onclick = ()=>{
+			const id = tab.dataset.tab;
+			document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected', String(t===tab)));
+			document.querySelectorAll('.panel').forEach(p=>p.setAttribute('data-active', String(p.dataset.tab===id)));
+		};
+	});
+
+	renderAll();
+</script>
