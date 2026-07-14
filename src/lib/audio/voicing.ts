@@ -15,18 +15,23 @@ export function toAsciiPitchClass(letter: string): string {
 /**
  * Assigns ascending octaves to the given pitch classes so the chord sounds
  * in root position, matching the keyboard's ascending root-position voicing.
- * Starting at octave 4, the octave increments whenever the chroma wraps
- * (stops ascending), so G7 plays G4-B4-D5-F5 rather than an inversion with
- * the D and F below the root.
+ * Starting at octave 4, each note takes the lowest octave whose SOUNDING
+ * midi (letter-based, matching Tone's convention where Cb4 sounds B3 and
+ * B#4 sounds C5) rises above the previous note. Comparing chromas instead
+ * would voice C♭/B♯ spellings an octave off: A♭m (A♭ C♭ E♭) must play
+ * midi 68-71-75, not 68-59-75.
  */
 export function toAscendingPitches(notes: string[]): string[] {
 	let octave = 4;
-	let prev = -1;
+	let prevMidi = -1;
 	return notes.map((letter) => {
 		const pitchClass = toAsciiPitchClass(letter);
-		const chroma = Note.chroma(pitchClass) ?? 0;
-		if (chroma <= prev) octave += 1;
-		prev = chroma;
+		let midi = Note.midi(`${pitchClass}${octave}`) ?? 0;
+		while (midi <= prevMidi) {
+			octave += 1;
+			midi = Note.midi(`${pitchClass}${octave}`) ?? midi + 12;
+		}
+		prevMidi = midi;
 		return `${pitchClass}${octave}`;
 	});
 }

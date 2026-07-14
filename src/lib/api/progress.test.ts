@@ -91,6 +91,41 @@ describe('progress', () => {
 			expect(readQueueFromStorage()).toEqual(seeded);
 		});
 
+		it('serializes overlapping drains: no duplicate POSTs, no lost mid-drain enqueues', async () => {
+			setApiToken('abc');
+			localStorage.setItem(
+				QUEUE_KEY,
+				JSON.stringify([{ item: 'Cm7', kind: 'chord', correct: true, clientDate: '2026-01-01' }])
+			);
+
+			// A slow but successful server: the first drain holds the "lock"
+			// while the second flushQueue call and a new enqueue arrive.
+			let release!: () => void;
+			const gate = new Promise<void>((resolve) => (release = resolve));
+			const fetchMock = vi
+				.fn()
+				.mockImplementation(async () => {
+					await gate;
+					return new Response(null, { status: 201 });
+				});
+			vi.stubGlobal('fetch', fetchMock);
+
+			const first = flushQueue();
+			const second = flushQueue(); // must wait for the first, not re-snapshot the same head
+			recordAnswer({ item: 'Fmaj7', kind: 'chord', correct: false }); // enqueue mid-drain (+1 chained drain)
+
+			release();
+			await first;
+			await second;
+			await flushQueue(); // settle any chained drains
+
+			expect(readQueueFromStorage()).toEqual([]);
+			const posted = fetchMock.mock.calls.map(([, init]) => JSON.parse(init.body as string).item);
+			// Cm7 exactly once (no duplicate head), Fmaj7 exactly once (not clobbered).
+			expect(posted.filter((item: string) => item === 'Cm7')).toHaveLength(1);
+			expect(posted.filter((item: string) => item === 'Fmaj7')).toHaveLength(1);
+		});
+
 		it('drains the queue to empty when all sends succeed', async () => {
 			const seeded = [
 				{ item: 'Cm7', kind: 'chord', correct: true, clientDate: '2026-01-01' },

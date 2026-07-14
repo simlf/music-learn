@@ -117,8 +117,23 @@ let warnedAboutRejectedEvents = false;
  * - Anything else (network failure, 401, 5xx) is treated as transient:
  *   stop and persist everything from that event on, mirroring
  *   recentLookups' availability-over-durability degradation.
+ *
+ * Drains are SERIALIZED: recordAnswer fires one per answer and onMount fires
+ * another, and two overlapping drains would snapshot the same queue head
+ * (duplicate POSTs inflating /stats attempts) and clobber each other's
+ * writeQueue (losing events enqueued mid-drain). Each call chains behind the
+ * previous drain and snapshots the queue only when its turn starts.
  */
-export async function flushQueue(): Promise<void> {
+let drainChain: Promise<void> = Promise.resolve();
+
+export function flushQueue(): Promise<void> {
+	const next = drainChain.then(() => drainQueue());
+	// Keep the chain alive after a rejection so one failure never wedges it.
+	drainChain = next.catch(() => {});
+	return next;
+}
+
+async function drainQueue(): Promise<void> {
 	const queue = readQueue();
 	const remaining: QueuedAnswerEvent[] = [];
 	let stopped = false;

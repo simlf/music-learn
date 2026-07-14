@@ -30,6 +30,37 @@ describe('recordPracticeAnswer without telemetry fields', () => {
 	});
 });
 
+describe('durationMs sanitization against the server schema bound', () => {
+	it('drops a durationMs above 3600000 (tab left open) so no 400 can poison probe or queue', async () => {
+		recordPracticeAnswer({ item: 'Cm7', kind: 'chord', correct: true, durationMs: 3_600_001 });
+		await flush();
+		// With the only telemetry field dropped, this is a plain base event: no probe.
+		expect(apiFetchMock).not.toHaveBeenCalled();
+		expect(recordAnswerMock).toHaveBeenCalledWith({ item: 'Cm7', kind: 'chord', correct: true });
+		expect(localStorage.getItem(TELEMETRY_SUPPORT_KEY)).toBeNull();
+	});
+
+	it('drops negative and non-finite durations, keeps given intact', async () => {
+		apiFetchMock.mockResolvedValue({ ok: true, status: 201 });
+		recordPracticeAnswer({ item: 'Cm7', kind: 'chord', correct: false, durationMs: -50, given: 'C7' });
+		await flush();
+		expect(apiFetchMock).toHaveBeenCalledWith('/answers', {
+			method: 'POST',
+			body: { item: 'Cm7', kind: 'chord', correct: false, given: 'C7', clientDate: '2026-07-14' }
+		});
+	});
+
+	it('rounds fractional durations to integers for the integer column', async () => {
+		apiFetchMock.mockResolvedValue({ ok: true, status: 201 });
+		recordPracticeAnswer({ item: 'Cm7', kind: 'chord', correct: true, durationMs: 2100.6 });
+		await flush();
+		expect(apiFetchMock).toHaveBeenCalledWith('/answers', {
+			method: 'POST',
+			body: { item: 'Cm7', kind: 'chord', correct: true, durationMs: 2101, clientDate: '2026-07-14' }
+		});
+	});
+});
+
 describe('unknown server support: one direct probe, never through the queue', () => {
 	it('a 2xx probe records the extended event once and remembers support', async () => {
 		apiFetchMock.mockResolvedValue({ ok: true, status: 201 });

@@ -26,8 +26,21 @@ export const DEFAULT_SESSION_CONFIG: SessionConfig = {
 
 export type QuestionSource = 'seeded' | 'retry' | 'warmup' | 'pool';
 
+export type QuestionFamily = 'chord' | 'interval';
+
+/**
+ * A queued practice item with its EXPLICIT family. Names alone are ambiguous:
+ * 'A4' is both a tritone interval and a quartal chord the songs page accepts,
+ * so queues carry the family instead of inferring it from the name.
+ */
+export interface SessionItem {
+	symbol: string;
+	family: QuestionFamily;
+}
+
 export interface SessionAnswer {
 	symbol: string;
+	family: QuestionFamily;
 	kind: 'construction' | 'identification';
 	correct: boolean;
 	/** Formula shown or hint taken: excluded from unlock accuracy. */
@@ -45,10 +58,11 @@ export interface Session {
 	/** Answers recorded so far; the next question's 0-based index. */
 	asked: number;
 	results: SessionAnswer[];
+	/** Warm-up candidates are recent CHORD misses by construction. */
 	warmupQueue: string[];
-	/** Drill-these seeds: served before anything except due retries. */
-	seedQueue: string[];
-	retryQueue: { symbol: string; dueIndex: number }[];
+	/** Drill-these / redrill seeds: served before anything except due retries. */
+	seedQueue: SessionItem[];
+	retryQueue: { symbol: string; family: QuestionFamily; dueIndex: number }[];
 	correct: number;
 	streak: number;
 	bestStreak: number;
@@ -57,11 +71,23 @@ export interface Session {
 export interface NextQuestionPlan {
 	/** null means: draw from the weighted pool. */
 	symbol: string | null;
+	/** The queued item's explicit family; null only when symbol is null. */
+	family: QuestionFamily | null;
 	source: QuestionSource;
 }
 
 function dedupe(symbols: string[]): string[] {
 	return [...new Set(symbols)];
+}
+
+function dedupeItems(items: SessionItem[]): SessionItem[] {
+	const seen = new Set<string>();
+	return items.filter((item) => {
+		const key = `${item.family}:${item.symbol}`;
+		if (seen.has(key)) return false;
+		seen.add(key);
+		return true;
+	});
 }
 
 /**
@@ -70,10 +96,10 @@ function dedupe(symbols: string[]): string[] {
  * (recent misses first, weakest merged in later) fill up to warmupMax slots.
  */
 export function createSession(
-	opts: { seeds?: string[]; warmupCandidates?: string[]; length?: number },
+	opts: { seeds?: SessionItem[]; warmupCandidates?: string[]; length?: number },
 	config: SessionConfig = DEFAULT_SESSION_CONFIG
 ): Session {
-	const seeds = dedupe(opts.seeds ?? []);
+	const seeds = dedupeItems(opts.seeds ?? []);
 	return {
 		length: opts.length ?? config.length,
 		warmupMax: config.warmupMax,
@@ -118,19 +144,25 @@ export function nextQuestion(session: Session): { plan: NextQuestionPlan; sessio
 		const entry = session.retryQueue[dueIndex];
 		const retryQueue = session.retryQueue.filter((_, i) => i !== dueIndex);
 		return {
-			plan: { symbol: entry.symbol, source: 'retry' },
+			plan: { symbol: entry.symbol, family: entry.family, source: 'retry' },
 			session: { ...session, retryQueue }
 		};
 	}
 	if (session.seedQueue.length > 0) {
-		const [symbol, ...seedQueue] = session.seedQueue;
-		return { plan: { symbol, source: 'seeded' }, session: { ...session, seedQueue } };
+		const [seed, ...seedQueue] = session.seedQueue;
+		return {
+			plan: { symbol: seed.symbol, family: seed.family, source: 'seeded' },
+			session: { ...session, seedQueue }
+		};
 	}
 	if (session.warmupQueue.length > 0 && session.asked < session.warmupMax) {
 		const [symbol, ...warmupQueue] = session.warmupQueue;
-		return { plan: { symbol, source: 'warmup' }, session: { ...session, warmupQueue } };
+		return {
+			plan: { symbol, family: 'chord', source: 'warmup' },
+			session: { ...session, warmupQueue }
+		};
 	}
-	return { plan: { symbol: null, source: 'pool' }, session };
+	return { plan: { symbol: null, family: null, source: 'pool' }, session };
 }
 
 /**
@@ -154,13 +186,19 @@ export function recordSessionAnswer(
 		bestStreak: Math.max(session.bestStreak, streak)
 	};
 
-	if (!answer.correct && !next.retryQueue.some((entry) => entry.symbol === answer.symbol)) {
+	const alreadyQueued = next.retryQueue.some(
+		(entry) => entry.symbol === answer.symbol && entry.family === answer.family
+	);
+	if (!answer.correct && !alreadyQueued) {
 		const gapSpan = session.retryMaxGap - session.retryMinGap + 1;
 		const gap = session.retryMinGap + Math.floor(rng() * gapSpan);
 		const lastIndex = session.length - 1;
 		const dueIndex = Math.min(questionIndex + gap, lastIndex);
 		if (dueIndex > questionIndex) {
-			next.retryQueue = [...next.retryQueue, { symbol: answer.symbol, dueIndex }];
+			next.retryQueue = [
+				...next.retryQueue,
+				{ symbol: answer.symbol, family: answer.family, dueIndex }
+			];
 		}
 	}
 
@@ -177,15 +215,19 @@ export interface SessionSummary {
 	bestStreak: number;
 	/** Deduped, in first-miss order. A later correct retry keeps the miss listed (honest ledger). */
 	missedSymbols: string[];
+	/** Same misses with their explicit family, for redrill routing. */
+	missedItems: SessionItem[];
 }
 
 export function summarize(session: Session): SessionSummary {
+	const misses = session.results.filter((result) => !result.correct);
 	return {
 		total: session.asked,
 		correct: session.correct,
 		bestStreak: session.bestStreak,
-		missedSymbols: dedupe(
-			session.results.filter((result) => !result.correct).map((result) => result.symbol)
+		missedSymbols: dedupe(misses.map((result) => result.symbol)),
+		missedItems: dedupeItems(
+			misses.map((result) => ({ symbol: result.symbol, family: result.family }))
 		)
 	};
 }

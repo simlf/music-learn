@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { Note } from 'tonal';
 	import { spellChord } from '$lib/theory/chord';
-	import { DRILL_INTERVALS, intervalFromShort, toAsciiAccidentals } from '$lib/theory/interval';
+	import { intervalFromShort, toAsciiAccidentals } from '$lib/theory/interval';
 	import { formulaFor } from '$lib/lookup/chordPresentation';
 	import { generateQuestion, pickQuestionFamily } from '$lib/drills/generateQuestion';
 	import {
@@ -47,7 +47,8 @@
 		recordSessionAnswer,
 		summarize,
 		type QuestionSource,
-		type Session
+		type Session,
+		type SessionItem
 	} from '$lib/practice/session';
 	import { activeSongChordSymbols } from '$lib/practice/songs';
 	import { splitSymbol, tierById } from '$lib/practice/tiers';
@@ -110,7 +111,11 @@
 	let questionShownAt = Date.now();
 
 	let session = $state<Session>(
-		createSession({ seeds: consumeDrillSeeds(), warmupCandidates: recentMisses(5) })
+		createSession({
+			// Drill-these seeds are chord symbols (Progress filters to kind 'chord').
+			seeds: consumeDrillSeeds().map((symbol) => ({ symbol, family: 'chord' as const })),
+			warmupCandidates: recentMisses(5)
+		})
 	);
 
 	function poolContext(): PoolContext {
@@ -171,7 +176,9 @@
 		hintTaken = false;
 		questionShownAt = Date.now();
 
-		if (plan.symbol !== null && DRILL_INTERVALS.includes(plan.symbol)) {
+		// The plan carries the queued item's EXPLICIT family: 'A4' is both a
+		// tritone and a quartal chord symbol, so names are never inferred.
+		if (plan.symbol !== null && plan.family === 'interval') {
 			scaffoldStage = null;
 			return generateIntervalQuestion({ short: plan.symbol });
 		}
@@ -352,6 +359,7 @@
 
 		session = recordSessionAnswer(session, {
 			symbol: item,
+			family: question.kind,
 			kind: question.direction,
 			correct,
 			assisted,
@@ -504,7 +512,7 @@
 	}
 
 	/** Starts a fresh round; seeds (tap-to-redrill, Drill these) suppress the warm-up. */
-	function startNewRound(seeds: string[] = []) {
+	function startNewRound(seeds: SessionItem[] = []) {
 		session = createSession({
 			seeds,
 			warmupCandidates: seeds.length > 0 ? [] : recentMisses(5)
@@ -529,8 +537,11 @@
 	}
 
 	/** Tap-to-redrill from the end card: the tapped miss leads, the others follow. */
-	function redrillMiss(symbol: string) {
-		startNewRound([symbol, ...sessionSummary.missedSymbols.filter((missed) => missed !== symbol)]);
+	function redrillMiss(item: SessionItem) {
+		const others = sessionSummary.missedItems.filter(
+			(missed) => missed.symbol !== item.symbol || missed.family !== item.family
+		);
+		startNewRound([item, ...others]);
 	}
 
 	/** Human-readable quality for unlock-card copy ('' is a major triad). */
@@ -619,17 +630,17 @@
 				BEST RUN: {sessionSummary.bestStreak} IN A ROW
 			</p>
 
-			{#if sessionSummary.missedSymbols.length > 0}
+			{#if sessionSummary.missedItems.length > 0}
 				<p class="text-body mt-6">Worth another look:</p>
 				<div class="mt-2 flex flex-wrap gap-2" data-testid="end-card-misses">
-					{#each sessionSummary.missedSymbols as missed (missed)}
+					{#each sessionSummary.missedItems as missed (`${missed.family}:${missed.symbol}`)}
 						<Button
 							type="button"
 							variant="ghost"
-							aria-label={`Redrill ${missed}`}
+							aria-label={`Redrill ${missed.symbol}`}
 							onclick={() => redrillMiss(missed)}
 						>
-							<span class="font-serif font-bold">{missed}</span>
+							<span class="font-serif font-bold">{missed.symbol}</span>
 						</Button>
 					{/each}
 				</div>

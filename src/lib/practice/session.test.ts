@@ -14,6 +14,7 @@ import {
 function answer(overrides: Partial<SessionAnswer> = {}): SessionAnswer {
 	return {
 		symbol: 'Cm7',
+		family: 'chord',
 		kind: 'construction',
 		correct: true,
 		assisted: false,
@@ -21,6 +22,11 @@ function answer(overrides: Partial<SessionAnswer> = {}): SessionAnswer {
 		source: 'pool',
 		...overrides
 	};
+}
+
+/** Chord-family seed items (the Drill-these flow ships chord symbols). */
+function chordSeeds(symbols: string[]) {
+	return symbols.map((symbol) => ({ symbol, family: 'chord' as const }));
 }
 
 /** rng stub returning a fixed value (gap control for retry scheduling). */
@@ -52,10 +58,10 @@ describe('createSession', () => {
 
 	it('Drill-these seeds take over: seedQueue set, warm-up skipped', () => {
 		const session = createSession({
-			seeds: ['Bm7b5', 'F#m7b5'],
+			seeds: chordSeeds(['Bm7b5', 'F#m7b5']),
 			warmupCandidates: ['Cm7', 'G7']
 		});
-		expect(session.seedQueue).toEqual(['Bm7b5', 'F#m7b5']);
+		expect(session.seedQueue).toEqual(chordSeeds(['Bm7b5', 'F#m7b5']));
 		expect(session.warmupQueue).toEqual([]);
 	});
 });
@@ -64,17 +70,17 @@ describe('nextQuestion priorities', () => {
 	it('serves warm-up symbols first, in order, consuming the queue', () => {
 		const session = createSession({ warmupCandidates: ['Cm7', 'G7'] });
 		const first = nextQuestion(session);
-		expect(first.plan).toEqual({ symbol: 'Cm7', source: 'warmup' });
+		expect(first.plan).toEqual({ symbol: 'Cm7', family: 'chord', source: 'warmup' });
 		const second = nextQuestion(first.session);
-		expect(second.plan).toEqual({ symbol: 'G7', source: 'warmup' });
+		expect(second.plan).toEqual({ symbol: 'G7', family: 'chord', source: 'warmup' });
 		const third = nextQuestion(second.session);
-		expect(third.plan).toEqual({ symbol: null, source: 'pool' });
+		expect(third.plan).toEqual({ symbol: null, family: null, source: 'pool' });
 	});
 
-	it('serves seeds before falling back to the pool', () => {
-		const session = createSession({ seeds: ['Bm7b5'] });
+	it('serves seeds before falling back to the pool, carrying their family', () => {
+		const session = createSession({ seeds: [{ symbol: 'm3', family: 'interval' }] });
 		const first = nextQuestion(session);
-		expect(first.plan).toEqual({ symbol: 'Bm7b5', source: 'seeded' });
+		expect(first.plan).toEqual({ symbol: 'm3', family: 'interval', source: 'seeded' });
 		expect(nextQuestion(first.session).plan.source).toBe('pool');
 	});
 
@@ -97,7 +103,7 @@ describe('nextQuestion priorities', () => {
 		session = recordSessionAnswer(early.session, answer({ correct: true }), rngZero);
 		// Question index 2: due now.
 		const due = nextQuestion(session);
-		expect(due.plan).toEqual({ symbol: 'F#m7b5', source: 'retry' });
+		expect(due.plan).toEqual({ symbol: 'F#m7b5', family: 'chord', source: 'retry' });
 		// The retry is consumed.
 		expect(nextQuestion(due.session).plan.source).toBe('pool');
 	});
@@ -107,11 +113,41 @@ describe('delayed retry scheduling (2 to 4 questions later)', () => {
 	it('schedules at asked + 2 with rng 0 and asked + 4 with rng near 1', () => {
 		let session = createSession({});
 		session = recordSessionAnswer(session, answer({ symbol: 'A7', correct: false }), rngMax);
-		expect(session.retryQueue).toEqual([{ symbol: 'A7', dueIndex: 4 }]);
+		expect(session.retryQueue).toEqual([{ symbol: 'A7', family: 'chord', dueIndex: 4 }]);
 
 		let other = createSession({});
 		other = recordSessionAnswer(other, answer({ symbol: 'B7', correct: false }), rngZero);
-		expect(other.retryQueue).toEqual([{ symbol: 'B7', dueIndex: 2 }]);
+		expect(other.retryQueue).toEqual([{ symbol: 'B7', family: 'chord', dueIndex: 2 }]);
+	});
+
+	it('a missed INTERVAL retries as an interval: the A4 name collision never misroutes', () => {
+		// 'A4' is both a tritone and a chord symbol tonal recognizes; the
+		// queue carries the family explicitly instead of inferring by name.
+		let session = createSession({});
+		session = recordSessionAnswer(
+			session,
+			answer({ symbol: 'A4', family: 'interval', correct: false }),
+			rngZero
+		);
+		expect(session.retryQueue).toEqual([{ symbol: 'A4', family: 'interval', dueIndex: 2 }]);
+		session = recordSessionAnswer(session, answer({ correct: true }), rngZero);
+		const due = nextQuestion(session);
+		expect(due.plan).toEqual({ symbol: 'A4', family: 'interval', source: 'retry' });
+	});
+
+	it('the same name can queue once per family (chord A4 and interval A4 are distinct)', () => {
+		let session = createSession({});
+		session = recordSessionAnswer(
+			session,
+			answer({ symbol: 'A4', family: 'interval', correct: false }),
+			rngZero
+		);
+		session = recordSessionAnswer(
+			session,
+			answer({ symbol: 'A4', family: 'chord', correct: false }),
+			rngZero
+		);
+		expect(session.retryQueue).toHaveLength(2);
 	});
 
 	it('never schedules the same symbol twice', () => {
@@ -127,9 +163,9 @@ describe('delayed retry scheduling (2 to 4 questions later)', () => {
 		session = playThrough(session, Array(8).fill({ correct: true }));
 		session = recordSessionAnswer(session, answer({ symbol: 'A7', correct: false }), rngZero);
 		// asked = 9; 9 + 2 = 11 > 9 (last index): clamped to 9.
-		expect(session.retryQueue).toEqual([{ symbol: 'A7', dueIndex: 9 }]);
+		expect(session.retryQueue).toEqual([{ symbol: 'A7', family: 'chord', dueIndex: 9 }]);
 		const { plan } = nextQuestion(session);
-		expect(plan).toEqual({ symbol: 'A7', source: 'retry' });
+		expect(plan).toEqual({ symbol: 'A7', family: 'chord', source: 'retry' });
 	});
 
 	it('drops the retry entirely when the session is already on its final question', () => {
@@ -179,6 +215,19 @@ describe('summarize (end card data)', () => {
 		expect(summary.total).toBe(5);
 		expect(summary.correct).toBe(2);
 		expect(summary.missedSymbols).toEqual(['A7', 'Dm7']);
+		expect(summary.missedItems).toEqual(chordSeeds(['A7', 'Dm7']));
+	});
+
+	it('missedItems keeps each family distinct for redrill routing', () => {
+		let session = createSession({});
+		session = playThrough(session, [
+			{ correct: false, symbol: 'm3', family: 'interval' },
+			{ correct: false, symbol: 'Cm7', family: 'chord' }
+		]);
+		expect(summarize(session).missedItems).toEqual([
+			{ symbol: 'm3', family: 'interval' },
+			{ symbol: 'Cm7', family: 'chord' }
+		]);
 	});
 
 	it('a symbol missed then answered correctly on retry still shows as missed (honest ledger)', () => {
@@ -206,7 +255,7 @@ describe('mergeWarmupCandidates (async weakest arrival)', () => {
 	});
 
 	it('does nothing for a seeded (Drill these) session', () => {
-		const session = createSession({ seeds: ['Bm7b5'] });
+		const session = createSession({ seeds: chordSeeds(['Bm7b5']) });
 		const merged = mergeWarmupCandidates(session, ['F7']);
 		expect(merged.warmupQueue).toEqual([]);
 	});

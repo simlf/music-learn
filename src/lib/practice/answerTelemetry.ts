@@ -53,6 +53,23 @@ function writeSupport(support: Exclude<TelemetrySupport, 'unknown'>): void {
 
 let warnedOnce = false;
 
+/** The server schema bound for duration_ms (answers route, maximum: 3600000). */
+export const MAX_DURATION_MS = 3_600_000;
+
+/**
+ * Sanitizes durationMs to the server's accepted range. Out-of-range values
+ * (a tab left open overnight, clock skew) are DROPPED, not clamped: they
+ * carry no fluency signal, and a 400 here would either poison the probe
+ * into a permanent "unsupported" verdict or make flushQueue drop the whole
+ * answer.
+ */
+function sanitizeDuration(durationMs: number | undefined): number | undefined {
+	if (durationMs === undefined || !Number.isFinite(durationMs)) return undefined;
+	const rounded = Math.round(durationMs);
+	if (rounded < 0 || rounded > MAX_DURATION_MS) return undefined;
+	return rounded;
+}
+
 function baseOf(event: PracticeAnswerEvent): AnswerEvent {
 	return { item: event.item, kind: event.kind, correct: event.correct };
 }
@@ -102,7 +119,8 @@ async function probe(event: PracticeAnswerEvent): Promise<void> {
  * gracefully against the old deployed server. Fire-and-forget like
  * recordAnswer itself (D-04): the drill loop never waits on the network.
  */
-export function recordPracticeAnswer(event: PracticeAnswerEvent): void {
+export function recordPracticeAnswer(rawEvent: PracticeAnswerEvent): void {
+	const event: PracticeAnswerEvent = { ...rawEvent, durationMs: sanitizeDuration(rawEvent.durationMs) };
 	if (!hasTelemetry(event)) {
 		recordAnswer(baseOf(event));
 		return;
