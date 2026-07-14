@@ -57,11 +57,39 @@
 - [x] **PLAT-01**: User can access the app from laptop and phone (responsive layout, on-screen keyboard usable on mobile)
 - [ ] **PLAT-02**: App is deployed on the user's Oracle server over HTTPS (required for Web MIDI)
 
-## v2 Requirements
+## v2.0 Milestone Requirements — Learning Upgrade (active)
 
-Deferred — becomes active once v1 is validated.
+Grounded in validated spikes 006-009 (`.planning/spikes/MANIFEST.md` Session 2, `.claude/skills/spike-findings-music-learn/`). Cross-cutting locked constraints: grade notes by chroma/MIDI never letter strings; render tonal's own spelling; local-first persistence (localStorage then Dexie); no em dashes in copy.
 
-- **SRS-01**: Spaced repetition scheduling over drill items — deliberately deferred until 1–2 weeks of real answer history exists (research: don't overbuild scheduling before there's data; simple weighted scheme preferred over full SM-2/FSRS)
+### Memorization Engine
+
+- [ ] **MEM-01**: User runs a recall session that surfaces the theory facts due today (chord formulas, interval sizes, scale degrees), scheduled by spaced repetition (FSRS)
+- [ ] **MEM-02**: User reveals then grades each fact (Again/Hard/Good/Easy) and the item reschedules at a growing day-scale interval (a lapse shortens it); each grade button shows the interval it will schedule
+- [ ] **MEM-03**: Recall scheduling state persists across sessions and reloads on the same device, with a card per (fact, mode)
+- [ ] **MEM-04**: User sees which facts are due, mastered, or weak across modes (recall map)
+
+### Build-it Construction
+
+- [ ] **BUILD-01**: User builds a chord from its symbol by tapping notes on a keyboard one interval at a time (stack a minor 3rd, a major 3rd...), earning each note instead of reading a finished list
+- [ ] **BUILD-02**: User builds a scale the same way, following its whole/half step pattern and closing on the octave
+- [ ] **BUILD-03**: Each construction step shows a plain-English interval instruction and why that note belongs; wrong taps give diagnostic feedback (e.g. "N half steps too high"); enharmonic spelling is taught and grading is by pitch class
+- [ ] **BUILD-04**: Construction accuracy feeds the memorization engine as gradeable events (Build-it is the formula mode of a fact)
+
+### Multi-modal Recall
+
+- [ ] **RECALL-01**: User drills one chord across rotating modes: see the symbol then play the notes; given the formula/degrees then build it; hear the chord then name it
+- [ ] **RECALL-02**: Ear-based naming is answered by multiple choice against same-root distractors and never gates progress or unlocks
+- [ ] **RECALL-03**: Modes rotate per-fact when teaching a new item and are spaced across sessions when reviewing a known one
+
+### Scale Practice
+
+- [ ] **SCALE-04**: User practices a scale by playing it ascending and descending on a movable piano keyboard whose leftmost key is the tonic, graded by pitch class, ending on the octave
+- [ ] **SCALE-05**: The confusing degree-ladder Practice surface is replaced by the keyboard drill; the Explore surface (degree strip + interval inspect) stays
+
+## Future Requirements
+
+Deferred beyond v2.0.
+
 - **LOOK-02**: Left-hand voicing suggestions (shell voicings: 3rd + 7th) per looked-up chord — after basic lookup proves useful during real song practice
 - **LOOK-03**: Equivalent symbol variants displayed alongside lookup results (Cm7 = C-7 = Cmin7) — parsing is v1 (THEORY-02); the educational display layer can follow
 - **LESSON-03**: Lessons linked from drill feedback ("wrong — here's why")
@@ -76,7 +104,8 @@ Deferred — becomes active once v1 is validated.
 - **Full sheet music / lead-sheet rendering and playback** — massive scope; iReal Pro already exists; this app translates symbols, not scores
 - **Multi-user accounts / social features** — single-user personal tool; auth kept trivial or absent
 - **Native mobile app** — responsive web covers the stated usage
-- **Full SRS engine (FSRS/ML-tuned)** — single user won't generate enough review history to tune it; simple scheduling suffices when SRS lands
+- **ML-tuned / weight-optimized FSRS** — spike 006 validated ts-fsrs with its DEFAULT weights as the right backbone (not a hand-rolled scheduler); optimizing the weight vector against personal review history stays out of scope (single user won't generate enough data, and defaults schedule well). The scheduler itself is now IN scope as MEM-01..04.
+- **MIDI Play-to-Answer (old Phase 4)** — deferred: needs the digital piano connected during build/verify; revisit as its own milestone when hardware-in-the-loop testing is set up
 
 ## Traceability
 
@@ -111,4 +140,4 @@ Deferred — becomes active once v1 is validated.
 **Coverage:** 25/25 v1 requirements mapped, no orphans, no duplicates.
 
 ---
-*Last updated: 2026-07-12 after roadmap creation*
+*Last updated: 2026-07-14 — added v2.0 Learning Upgrade requirements (MEM, BUILD, RECALL, SCALE-04/05)*
