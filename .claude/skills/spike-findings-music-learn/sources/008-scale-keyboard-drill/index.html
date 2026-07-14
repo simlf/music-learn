@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+		<title>Spike 008 · Scale Keyboard Drill</title>
+		<style>
+			:root {
+				--paper: #f2ecdd;
+				--paper-bright: #faf6ea;
+				--ink: #221e17;
+				--vermilion: #c8502e;
+				--verdigris: #3e7d6b;
+				--mustard: #f0c948;
+				--wrong: #b8b0a0;
+				--wrong-deep: #8f877a;
+				--mono: ui-monospace, 'SF Mono', Menlo, monospace;
+				--serif: 'Iowan Old Style', Georgia, serif;
+				--sans: system-ui, -apple-system, sans-serif;
+			}
+			* {
+				box-sizing: border-box;
+			}
+			body {
+				margin: 0;
+				background: var(--paper);
+				color: var(--ink);
+				font-family: var(--sans);
+				-webkit-tap-highlight-color: transparent;
+			}
+			main {
+				max-width: 560px;
+				margin: 0 auto;
+				padding: 24px 12px 64px;
+			}
+			h1 {
+				font-family: var(--serif);
+				font-size: 26px;
+				margin: 0 0 2px;
+			}
+			.sub {
+				font-family: var(--mono);
+				font-size: 11px;
+				text-transform: uppercase;
+				letter-spacing: 0.08em;
+				opacity: 0.6;
+				margin: 0 0 20px;
+			}
+			.picker {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 6px;
+				margin-bottom: 18px;
+			}
+			.picker button,
+			.dir button {
+				font-family: var(--mono);
+				font-size: 12px;
+				border: 2px solid var(--ink);
+				background: var(--paper-bright);
+				color: var(--ink);
+				padding: 8px 10px;
+				cursor: pointer;
+				min-height: 40px;
+			}
+			.picker button[aria-pressed='true'],
+			.dir button[aria-pressed='true'] {
+				background: var(--ink);
+				color: var(--paper-bright);
+			}
+			.card {
+				border: 2px solid var(--ink);
+				background: var(--paper-bright);
+				padding: 18px 14px;
+			}
+			.prompt {
+				display: flex;
+				align-items: baseline;
+				justify-content: space-between;
+				gap: 10px;
+				margin-bottom: 4px;
+			}
+			.prompt .what {
+				font-family: var(--serif);
+				font-size: 22px;
+				font-weight: 700;
+			}
+			.prompt .dir {
+				display: flex;
+				gap: 4px;
+			}
+			.expect {
+				font-family: var(--mono);
+				font-size: 12px;
+				min-height: 18px;
+				margin: 0 0 14px;
+				opacity: 0.75;
+			}
+
+			/* ladder of degree pips */
+			.ladder {
+				display: grid;
+				grid-auto-flow: column;
+				grid-auto-columns: 1fr;
+				gap: 3px;
+				margin-bottom: 14px;
+			}
+			.rung {
+				border: 2px solid var(--ink);
+				min-height: 30px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font: 700 13px/1 var(--mono);
+				background: var(--paper-bright);
+				color: rgba(34, 30, 23, 0.35);
+			}
+			.rung.done {
+				background: var(--vermilion);
+				color: var(--paper-bright);
+			}
+			.rung.now {
+				box-shadow: inset 0 0 0 3px var(--vermilion);
+				color: var(--ink);
+			}
+
+			/* keyboard */
+			.keyboard {
+				position: relative;
+				width: 100%;
+				height: 190px;
+				touch-action: manipulation;
+				user-select: none;
+				-webkit-touch-callout: none;
+			}
+			.key {
+				position: absolute;
+				top: 0;
+				box-sizing: border-box;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: flex-end;
+				padding-bottom: 8px;
+				gap: 2px;
+				cursor: pointer;
+				transition:
+					transform 90ms ease-out,
+					filter 90ms ease-out,
+					background-color 120ms;
+			}
+			.key.white {
+				height: 100%;
+				background: var(--paper-bright);
+				border: 1.5px solid var(--ink);
+				z-index: 1;
+			}
+			.key.black {
+				height: 62%;
+				background: var(--ink);
+				z-index: 2;
+			}
+			.key .name {
+				font: 700 14px/1 var(--serif);
+			}
+			.key.black .name {
+				color: var(--paper-bright);
+			}
+			.key .deg {
+				font: 400 9px/1 var(--mono);
+				opacity: 0.6;
+			}
+			.key.black .deg {
+				color: var(--paper-bright);
+			}
+			/* tonic marker on the leftmost anchored key */
+			.key.tonicmark::before {
+				content: '▸';
+				position: absolute;
+				top: 4px;
+				font-size: 9px;
+				color: var(--vermilion);
+			}
+			/* correct = interval color stamp */
+			.key.correct {
+				background: var(--verdigris);
+			}
+			.key.correct .name,
+			.key.correct .deg {
+				color: var(--paper-bright);
+			}
+			.key.correct.tonicdeg {
+				background: var(--vermilion);
+			}
+			/* the next expected key gets an outline nudge */
+			.key.expect-white {
+				box-shadow: inset 0 0 0 3px var(--vermilion);
+			}
+			.key.expect-black {
+				box-shadow: inset 0 0 0 3px var(--mustard);
+			}
+			.key.wrong {
+				background: var(--wrong);
+				animation: shake 320ms;
+			}
+			.key.black.wrong {
+				background: var(--wrong-deep);
+			}
+			.key.pressed {
+				transform: scale(0.95);
+				filter: brightness(0.9);
+			}
+			@keyframes shake {
+				0%,
+				100% {
+					transform: translateX(0);
+				}
+				25% {
+					transform: translateX(-3px);
+				}
+				75% {
+					transform: translateX(3px);
+				}
+			}
+
+			.status {
+				margin-top: 16px;
+				min-height: 52px;
+			}
+			.done-msg {
+				font: 700 20px/1.2 var(--serif);
+				color: var(--verdigris);
+				margin: 0 0 10px;
+			}
+			.reset {
+				font: 700 11px/1 var(--mono);
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				border: 2px solid var(--ink);
+				background: var(--vermilion);
+				color: var(--paper-bright);
+				padding: 10px 16px;
+				cursor: pointer;
+				min-height: 44px;
+			}
+			.log {
+				margin-top: 22px;
+				font-family: var(--mono);
+				font-size: 11px;
+				white-space: pre-wrap;
+				opacity: 0.55;
+				border-top: 1px solid rgba(34, 30, 23, 0.2);
+				padding-top: 10px;
+			}
+		</style>
+	</head>
+	<body>
+		<main>
+			<h1>Scale keyboard drill</h1>
+			<p class="sub">Spike 008 · tap the scale, bottom to top, on a real keyboard</p>
+
+			<div class="picker" id="picker" role="group" aria-label="Pick a scale"></div>
+
+			<div class="card">
+				<div class="prompt">
+					<span class="what" id="what">—</span>
+					<span class="dir" id="dir">
+						<button data-dir="asc" aria-pressed="true">ASC</button>
+						<button data-dir="desc" aria-pressed="false">DESC</button>
+					</span>
+				</div>
+				<p class="expect" id="expect"></p>
+
+				<div class="ladder" id="ladder"></div>
+				<div class="keyboard" id="keyboard"></div>
+
+				<div class="status" id="status"></div>
+			</div>
+
+			<div class="log" id="log"></div>
+		</main>
+
+		<script type="module">
+			import { Scale, Note } from 'https://esm.sh/tonal@6.4.3';
+
+			// ---- Scales under test: white tonic, sharp key (5#), flat key with Cb,
+			// black tonic, a mode, a minor. Deliberately covers the hard spellings. ----
+			const SCALES = [
+				{ id: 'F major', label: 'F' },
+				{ id: 'C major', label: 'C' },
+				{ id: 'B major', label: 'B (5♯)' },
+				{ id: 'Gb major', label: 'G♭ (has C♭)' },
+				{ id: 'Db major', label: 'D♭' },
+				{ id: 'A dorian', label: 'A dorian' },
+				{ id: 'Bb minor', label: 'B♭ minor' }
+			];
+			const WHITE_CHROMA = new Set([0, 2, 4, 5, 7, 9, 11]);
+			const glyph = (s) => s.replace(/#/g, '♯').replace(/b/g, '♭');
+
+			// ---- audio: tiny WebAudio synth, offline-safe (no Tone/CDN samples) ----
+			let actx;
+			function tone(midi, dur = 0.45, type = 'triangle', vol = 0.28) {
+				try {
+					actx ||= new (window.AudioContext || window.webkitAudioContext)();
+					const f = 440 * Math.pow(2, (midi - 69) / 12);
+					const o = actx.createOscillator();
+					const g = actx.createGain();
+					o.type = type;
+					o.frequency.value = f;
+					o.connect(g);
+					g.connect(actx.destination);
+					const t = actx.currentTime;
+					g.gain.setValueAtTime(0.0001, t);
+					g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+					g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+					o.start(t);
+					o.stop(t + dur + 0.02);
+				} catch (e) {
+					/* audio optional */
+				}
+			}
+			function buzz() {
+				tone(46, 0.18, 'sawtooth', 0.14);
+			}
+
+			// ---- build a drill model for a scale + direction ----
+			// A "target" is one step of the run: its spelled name, absolute midi,
+			// semitone offset from the tonic (so grading is by pitch, enharmonic-blind),
+			// and whether it is a tonic degree (1 or 8).
+			function buildTargets(scaleId, direction) {
+				const notes = Scale.get(scaleId).notes; // spelled, ascending, 7 notes
+				const tonic = notes[0];
+				const tonicChroma = Note.chroma(tonic);
+				const baseMidi = Note.midi(tonic + '4');
+
+				// ascending offsets 0,2,4,... then the octave (12) as an 8th degree.
+				const asc = notes.map((n, i) => {
+					const off = i === 0 ? 0 : (Note.chroma(n) - tonicChroma + 12) % 12;
+					return {
+						name: glyph(n),
+						chroma: Note.chroma(n),
+						offset: off,
+						midi: baseMidi + off,
+						degree: i + 1,
+						tonicDeg: i === 0
+					};
+				});
+				// add the octave tonic as degree 8 (a scale you "play" lands on the octave)
+				asc.push({
+					name: glyph(tonic),
+					chroma: tonicChroma,
+					offset: 12,
+					midi: baseMidi + 12,
+					degree: 8,
+					tonicDeg: true
+				});
+
+				const targets = direction === 'desc' ? [...asc].reverse() : asc;
+				return { notes, tonic, tonicChroma, baseMidi, targets };
+			}
+
+			// ---- build the tonic-anchored one-octave keyboard window ----
+			// Leftmost visible key is the tonic (if white) or the white key just below
+			// a black tonic, so the ascending run always reads strictly left-to-right.
+			// Window spans tonic..octave (13 semitones) + a couple extra whites of
+			// breathing room. Every key carries an absolute midi; scale membership and
+			// grading are by midi, never by letter string.
+			function buildKeys(model) {
+				const { baseMidi, tonicChroma } = model;
+				const tonicIsWhite = WHITE_CHROMA.has(tonicChroma);
+				const windowLow = tonicIsWhite ? baseMidi : baseMidi - 1; // start clean on a white key
+				const windowHigh = baseMidi + 12; // include the octave tonic
+				const keys = [];
+				let whiteCount = 0;
+				for (let m = windowLow; m <= windowHigh; m++) {
+					const chroma = ((m % 12) + 12) % 12;
+					const isWhite = WHITE_CHROMA.has(chroma);
+					keys.push({ midi: m, chroma, isWhite, whiteIndex: isWhite ? whiteCount : null });
+					if (isWhite) whiteCount++;
+				}
+				return { keys, whiteCount, windowLow };
+			}
+
+			// ---- state ----
+			let scaleId = SCALES[0].id;
+			let direction = 'asc';
+			let model, layout, step, wrong;
+
+			function reset() {
+				model = buildTargets(scaleId, direction);
+				layout = buildKeys(model);
+				step = 0;
+				wrong = null;
+				render();
+			}
+
+			function expectedTarget() {
+				return step < model.targets.length ? model.targets[step] : null;
+			}
+			const done = () => step >= model.targets.length;
+
+			function tap(key) {
+				if (done()) return;
+				// flash press cue
+				const el = document.querySelector(`[data-midi="${key.midi}"]`);
+				if (el) {
+					el.classList.add('pressed');
+					setTimeout(() => el.classList.remove('pressed'), 110);
+				}
+				const exp = expectedTarget();
+				// GRADE BY MIDI (pitch), so tapping the A♯/B♭ black key matches a scale
+				// spelled B♭, and C♭/E♯/B♯ land on their real white/black key.
+				if (key.midi === exp.midi) {
+					tone(key.midi);
+					step++;
+					wrong = null;
+					if (done()) {
+						tone(exp.midi, 0.7); // let the final note ring
+					}
+				} else {
+					wrong = key.midi;
+					buzz();
+					setTimeout(() => {
+						wrong = null;
+						render();
+					}, 320);
+				}
+				render();
+			}
+
+			// ---- render ----
+			const $ = (id) => document.getElementById(id);
+
+			function renderPicker() {
+				$('picker').innerHTML = '';
+				for (const s of SCALES) {
+					const b = document.createElement('button');
+					b.textContent = s.label;
+					b.setAttribute('aria-pressed', String(s.id === scaleId));
+					b.onclick = () => {
+						scaleId = s.id;
+						reset();
+					};
+					$('picker').appendChild(b);
+				}
+			}
+
+			function render() {
+				renderPicker();
+				const dirWord = direction === 'asc' ? 'ascending' : 'descending';
+				$('what').textContent = `Play ${glyph(model.tonic)} ${humanQuality(scaleId)}`;
+				document
+					.querySelectorAll('#dir button')
+					.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.dir === direction)));
+
+				const exp = expectedTarget();
+				$('expect').textContent = done()
+					? ''
+					: `${dirWord} · next: degree ${exp.degree}  (${exp.name})`;
+
+				// ladder
+				$('ladder').innerHTML = '';
+				model.targets.forEach((t, i) => {
+					const r = document.createElement('div');
+					r.className = 'rung' + (i < step ? ' done' : '') + (i === step && !done() ? ' now' : '');
+					r.textContent = t.degree;
+					$('ladder').appendChild(r);
+				});
+
+				// keyboard
+				const kb = $('keyboard');
+				kb.innerHTML = '';
+				const whiteW = 100 / layout.whiteCount;
+				const blackW = whiteW * 0.62;
+				// which absolute midis are scale degrees, and their spelled name/degree
+				const degByMidi = new Map();
+				model.targets.forEach((t) => degByMidi.set(t.midi, t));
+				// how many times each scale midi has been correctly played (for coloring)
+				const playedMidis = new Set(model.targets.slice(0, step).map((t) => t.midi));
+
+				for (const key of layout.keys) {
+					const el = document.createElement('div');
+					const deg = degByMidi.get(key.midi);
+					const cls = ['key', key.isWhite ? 'white' : 'black'];
+					if (key.midi === layout.windowLow && WHITE_CHROMA.has(model.tonicChroma))
+						cls.push('tonicmark');
+					if (playedMidis.has(key.midi)) {
+						cls.push('correct');
+						if (deg && deg.tonicDeg) cls.push('tonicdeg');
+					}
+					if (!done() && exp && key.midi === exp.midi)
+						cls.push(key.isWhite ? 'expect-white' : 'expect-black');
+					if (wrong === key.midi) cls.push('wrong');
+					el.className = cls.join(' ');
+					el.dataset.midi = key.midi;
+
+					// position
+					if (key.isWhite) {
+						el.style.left = key.whiteIndex * whiteW + '%';
+						el.style.width = whiteW + '%';
+					} else {
+						// black sits after the previous white key
+						const prevWhite = layout.keys
+							.filter((k) => k.isWhite && k.midi < key.midi)
+							.slice(-1)[0];
+						const wi = prevWhite ? prevWhite.whiteIndex : 0;
+						el.style.left = (wi + 1) * whiteW - blackW / 2 + '%';
+						el.style.width = blackW + '%';
+					}
+
+					// label: show spelled name only on scale-degree keys (keeps it clean)
+					if (deg) {
+						el.innerHTML = `<span class="name">${deg.name}</span><span class="deg">${deg.degree}</span>`;
+					}
+					el.onclick = () => tap(key);
+					kb.appendChild(el);
+				}
+
+				// status
+				const st = $('status');
+				if (done()) {
+					st.innerHTML = `<p class="done-msg">Voila. ${glyph(model.tonic)} ${humanQuality(scaleId)}, ${direction === 'asc' ? 'ascending' : 'descending'}. Clean.</p>`;
+					const btn = document.createElement('button');
+					btn.className = 'reset';
+					btn.textContent = 'Run it again';
+					btn.onclick = reset;
+					st.appendChild(btn);
+				} else {
+					st.innerHTML = '';
+				}
+			}
+
+			function humanQuality(id) {
+				const q = id.split(' ').slice(1).join(' ');
+				return q === 'major' ? 'major' : q;
+			}
+
+			// direction toggle
+			document.querySelectorAll('#dir button').forEach((b) => {
+				b.onclick = () => {
+					direction = b.dataset.dir;
+					reset();
+				};
+			});
+
+			// diagnostic log: dump every scale's spelling + chroma so the octave-span
+			// and enharmonic behavior is auditable at a glance.
+			function renderLog() {
+				const lines = SCALES.map((s) => {
+					const n = Scale.get(s.id).notes;
+					const chroma = n.map((x) => Note.chroma(x)).join(',');
+					return `${s.id.padEnd(9)} -> ${n.map(glyph).join(' ').padEnd(24)} chroma ${chroma}`;
+				});
+				$('log').textContent =
+					'tonal spelling audit (grading compares midi/chroma, not these letters):\n\n' +
+					lines.join('\n');
+			}
+
+			renderLog();
+			reset();
+		</script>
+	</body>
+</html>

@@ -150,6 +150,7 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
 ## Project Skills
 
 - **Sketch findings for music-learn** (design decisions, CSS patterns, visual direction) → `Skill("sketch-findings-music-learn")`
+- **Spike findings for music-learn** (implementation patterns, constraints, gotchas) → `Skill("spike-findings-music-learn")`
 <!-- GSD:skills-end -->
 
 <!-- GSD:workflow-start source:GSD defaults -->

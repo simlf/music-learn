@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Spike 009 — Multi-modal recall</title>
+<style>
+  :root {
+    --color-paper: #f2ecdd;
+    --color-paper-bright: #faf6ea;
+    --color-ink: #221e17;
+    --color-vermilion: #c8502e;
+    --color-mustard: #f0c948;
+    --color-verdigris: #3e7d6b;
+    --color-tan: #a89a7f;
+    --color-muted: #7d7462;
+    --color-faint: #9a907f;
+    --color-root: #c8502e;
+    --color-third: #3e7d6b;
+    --color-fifth: #a89a7f;
+    --color-seventh: #f0c948;
+    --color-on-root: #fff;
+    --color-on-third: #fff;
+    --color-on-fifth: #221e17;
+    --color-on-seventh: #221e17;
+    --color-wrong: #b8b0a0;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: 'Courier New', Courier, monospace;
+    --radius: 0px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 16px;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    max-width: 560px; margin-inline: auto;
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .sub { color: var(--color-muted); font-size: 13px; margin: 0 0 16px; }
+  .register {
+    font-family: var(--font-mono); font-size: 12px; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--color-muted);
+    border-top: 1px solid var(--color-tan); border-bottom: 1px solid var(--color-tan);
+    padding: 6px 0; margin-bottom: 16px; display: flex; justify-content: space-between; gap: 8px;
+  }
+  .card {
+    background: var(--color-paper-bright);
+    border: 2px solid var(--color-ink);
+    padding: 16px; margin-bottom: 16px;
+  }
+  .mode-tag {
+    font-family: var(--font-mono); font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--color-vermilion); font-weight: 700;
+  }
+  .prompt { font-size: 15px; margin: 4px 0 12px; min-height: 22px; }
+  .symbol { font-family: var(--font-mono); font-size: 40px; font-weight: 700; letter-spacing: 0.02em; }
+  .formula { font-family: var(--font-mono); font-size: 22px; }
+  .notes-spelled { font-family: var(--font-mono); font-size: 30px; letter-spacing: 0.06em; }
+
+  /* Keyboard: one octave, 12 pitch classes */
+  .keyboard { position: relative; height: 150px; margin: 12px 0; user-select: none; touch-action: manipulation; }
+  .white-row { display: flex; height: 100%; gap: 2px; }
+  .wkey, .bkey {
+    border: 1.5px solid var(--color-ink); cursor: pointer;
+    display: flex; align-items: flex-end; justify-content: center; padding-bottom: 6px;
+    font-family: var(--font-mono); font-size: 11px; color: var(--color-muted);
+  }
+  .wkey { flex: 1; background: var(--color-paper-bright); }
+  .bkey {
+    position: absolute; top: 0; width: 8%; height: 62%; background: var(--color-ink);
+    color: var(--color-paper); z-index: 2;
+  }
+  .wkey.sel { background: repeating-linear-gradient(45deg, var(--color-ink) 0 2px, transparent 2px 6px), var(--color-paper-bright); }
+  .bkey.sel { background: repeating-linear-gradient(45deg, var(--color-paper) 0 2px, var(--color-ink) 2px 6px); }
+  .key.role-root { background: var(--color-root) !important; color: var(--color-on-root) !important; }
+  .key.role-third { background: var(--color-third) !important; color: var(--color-on-third) !important; }
+  .key.role-fifth { background: var(--color-fifth) !important; color: var(--color-on-fifth) !important; }
+  .key.role-seventh { background: var(--color-seventh) !important; color: var(--color-on-seventh) !important; }
+  .key.wrong { background: var(--color-wrong) !important; color: #fff !important; }
+
+  .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+  .choice {
+    border: 1.5px solid var(--color-ink); background: var(--color-paper-bright);
+    padding: 12px; font-family: var(--font-mono); font-size: 20px; cursor: pointer;
+  }
+  .choice.correct { background: var(--color-verdigris); color: #fff; }
+  .choice.wrong { background: var(--color-wrong); color: #fff; }
+
+  button {
+    font-family: var(--font-sans); font-size: 14px; border: 2px solid var(--color-ink);
+    background: var(--color-ink); color: var(--color-paper-bright); padding: 10px 16px; cursor: pointer;
+  }
+  button.ghost { background: transparent; color: var(--color-ink); }
+  button:disabled { opacity: 0.4; cursor: default; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .feedback { min-height: 20px; font-size: 14px; margin-top: 10px; font-weight: 600; }
+  .ok { color: var(--color-verdigris); }
+  .no { color: var(--color-vermilion); }
+
+  .controls { font-size: 13px; color: var(--color-muted); margin-bottom: 16px; }
+  .controls label { margin-right: 12px; cursor: pointer; }
+
+  /* Recall map: fact x mode grid — shows multiple retrieval paths lighting up */
+  .map { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 12px; margin-top: 8px; }
+  .map th, .map td { border: 1px solid var(--color-tan); padding: 5px 8px; text-align: center; }
+  .map th { color: var(--color-muted); font-weight: 400; }
+  .map td.hit { background: var(--color-verdigris); color: #fff; }
+  .map td.miss { background: var(--color-wrong); color: #fff; }
+  .map .factname { text-align: left; font-weight: 700; }
+  details { margin-top: 16px; font-size: 13px; color: var(--color-muted); }
+  summary { cursor: pointer; font-weight: 600; color: var(--color-ink); }
+</style>
+</head>
+<body>
+  <h1>Spike 009 — Multi-modal recall</h1>
+  <p class="sub">One fact (e.g. <b>Cm7</b>), drilled from 4 directions. Feel whether hitting it from
+  several angles deepens memory more than always going symbol &rarr; notes.</p>
+
+  <div class="controls">
+    <b>Rotation:</b>
+    <label><input type="radio" name="rot" value="perfact" checked /> Rotate per fact (A&rarr;B&rarr;C&rarr;D)</label>
+    <label><input type="radio" name="rot" value="lock" /> Lock to one mode</label>
+    <span id="lockpick" style="display:none">
+      <select id="lockmode">
+        <option value="A">A recognise&rarr;produce</option>
+        <option value="B">B ear&rarr;name</option>
+        <option value="C">C formula&rarr;build</option>
+        <option value="D">D notes&rarr;name</option>
+      </select>
+    </span>
+  </div>
+
+  <div class="register">
+    <span id="reg-fact">FACT 1/4</span>
+    <span id="reg-mode">MODE A</span>
+    <span id="reg-score">0 CORRECT</span>
+  </div>
+
+  <div class="card" id="card"><!-- filled by JS --></div>
+
+  <h1 style="font-size:15px;margin-top:24px">Recall map</h1>
+  <p class="sub">Each cell is one retrieval path to that fact. Multi-modal drilling lights up the whole row,
+  not just one cue.</p>
+  <table class="map" id="map"></table>
+
+  <details>
+    <summary>What each mode encodes</summary>
+    <p><b>A recognition&rarr;production</b>: see the symbol, play the notes (visual symbol &rarr; motor/spatial). The app's main direction.<br>
+    <b>B audiation&rarr;naming</b>: hear the chord, pick the symbol (auditory &rarr; verbal). The risky one at beginner level — multiple choice, same root, so it tests <i>quality by ear</i> not root-finding.<br>
+    <b>C formula&rarr;build</b>: given "1 b3 5 b7", build it (verbal/analytic &rarr; motor). Encodes the construction rule.<br>
+    <b>D notes&rarr;naming</b>: see spelled notes, pick the symbol (spatial/visual &rarr; verbal). The reverse of A.</p>
+  </details>
+
+<script type="module">
+import { Chord, Note } from 'https://esm.sh/tonal@6.4.3';
+
+// ---- Target facts: one per quality family ----
+const FACTS = ['Cm7', 'Fmaj7', 'G7', 'Bm7b5'];
+const MODES = ['A', 'B', 'C', 'D'];
+const MODE_NAMES = {
+  A: 'A recognise→produce', B: 'B ear→name',
+  C: 'C formula→build', D: 'D notes→name'
+};
+const PC_NAMES = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
+const BLACK = { 1: 0, 3: 1, 6: 3, 8: 4, 10: 5 }; // pc -> which white gap (approx positions)
+
+// ---- theory helpers ----
+function targetInfo(symbol) {
+  const c = Chord.get(symbol);
+  const roles = c.intervals.map(iv => {
+    const deg = ((parseInt(iv, 10) - 1) % 7) + 1;
+    return ({1:'root',3:'third',5:'fifth',7:'seventh'})[deg] || 'root';
+  });
+  const chromas = c.notes.map(n => Note.chroma(n));
+  return { notes: c.notes, intervals: c.intervals, roles, chromas, symbol };
+}
+function formulaText(symbol) {
+  // human formula from intervals: 1 b3 5 b7 style
+  const c = Chord.get(symbol);
+  return c.intervals.map(iv => {
+    const num = parseInt(iv, 10);
+    const q = iv.replace(/[0-9]/g, '');
+    let acc = '';
+    if (q === 'm' && num === 3) acc = '♭';       // minor third
+    else if (q === 'm' && num === 7) acc = '♭';  // minor seventh
+    else if (q === 'd') acc = '♭';               // diminished fifth
+    return acc + num;
+  }).join('  ');
+}
+const QUALITY_LABEL = { 'Cm7':'minor 7th', 'Fmaj7':'major 7th', 'G7':'dominant 7th', 'Bm7b5':'half-diminished' };
+
+// ---- audio: raw WebAudio, plays an actual chord ----
+let ac = null;
+function chordFreqs(notes) {
+  let oct = 4, prev = -Infinity;
+  return notes.map(n => {
+    let m = Note.midi(n + oct);
+    if (m <= prev) { oct++; m = Note.midi(n + oct); }
+    prev = m;
+    return Note.freq(n + oct);
+  });
+}
+function playChord(notes) {
+  if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+  if (ac.state === 'suspended') ac.resume();
+  const t0 = ac.currentTime;
+  chordFreqs(notes).forEach((f, i) => {
+    const osc = ac.createOscillator(), g = ac.createGain();
+    osc.type = 'triangle'; osc.frequency.value = f;
+    const start = t0 + i * 0.02;
+    g.gain.setValueAtTime(0, start);
+    g.gain.linearRampToValueAtTime(0.18, start + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, start + 1.6);
+    osc.connect(g).connect(ac.destination);
+    osc.start(start); osc.stop(start + 1.7);
+  });
+}
+
+// ---- distractors: same-root, different quality (app convention) ----
+function sameRootChoices(symbol) {
+  const root = symbol.match(/^[A-G][#b♯♭]?/)[0];
+  const quals = ['m7', 'maj7', '7', 'm7b5', '6', 'm'];
+  const target = targetInfo(symbol).chromas.slice().sort().join(',');
+  const opts = new Set([symbol]);
+  for (const q of quals) {
+    if (opts.size >= 4) break;
+    const cand = root + q;
+    const c = Chord.get(cand);
+    if (c.empty) continue;
+    const key = c.notes.map(n => Note.chroma(n)).sort().join(',');
+    if (key === target && cand !== symbol) continue; // enharmonic-identical guard
+    opts.add(cand);
+  }
+  return shuffle([...opts]);
+}
+function shuffle(a) { a = a.slice(); for (let i=a.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[a[i],a[j]]=[a[j],a[i]];} return a; }
+
+// ---- state ----
+let factIdx = 0, modeIdx = 0, score = 0;
+let rotation = 'perfact', lockMode = 'A';
+const recall = FACTS.map(() => ({ A: null, B: null, C: null, D: null })); // null | true | false
+let selected = new Set();
+let answered = false;
+
+function currentMode() { return rotation === 'lock' ? lockMode : MODES[modeIdx]; }
+
+// ---- render ----
+const card = document.getElementById('card');
+function render() {
+  const fact = FACTS[factIdx];
+  const mode = currentMode();
+  const info = targetInfo(fact);
+  selected = new Set(); answered = false;
+  document.getElementById('reg-fact').textContent = `FACT ${factIdx+1}/${FACTS.length}`;
+  document.getElementById('reg-mode').textContent = `MODE ${mode}`;
+  document.getElementById('reg-score').textContent = `${score} CORRECT`;
+
+  if (mode === 'A') renderBuild(fact, info, `See the symbol. Play its notes.`, `<div class="symbol">${sym(fact)}</div>`);
+  else if (mode === 'C') renderBuild(fact, info, `Build the ${QUALITY_LABEL[fact]} on ${sym(fact.match(/^[A-G][#b♯♭]?/)[0])}.`,
+      `<div class="formula">${QUALITY_LABEL[fact]}: ${formulaText(fact)}</div><div style="font-size:13px;color:var(--color-muted);margin-top:6px">root = ${sym(fact.match(/^[A-G][#b♯♭]?/)[0])}</div>`);
+  else if (mode === 'B') renderNaming(fact, info, 'ear');
+  else if (mode === 'D') renderNaming(fact, info, 'notes');
+  renderMap();
+}
+function sym(s){ return s.replace(/#/g,'♯').replace(/b/g,'♭'); }
+
+function renderBuild(fact, info, prompt, header) {
+  card.innerHTML = `
+    <div class="mode-tag">MODE ${currentMode()} · ${MODE_NAMES[currentMode()]}</div>
+    <div class="prompt">${prompt}</div>
+    ${header}
+    ${keyboardHTML()}
+    <div class="row">
+      <button id="submit">Check</button>
+      <button class="ghost" id="hear" disabled>Hear it</button>
+    </div>
+    <div class="feedback" id="fb"></div>`;
+  wireKeyboard(info);
+  document.getElementById('submit').onclick = () => gradeBuild(info);
+  document.getElementById('hear').onclick = () => playChord(info.notes);
+}
+
+function renderNaming(fact, info, source) {
+  const choices = sameRootChoices(fact);
+  card.innerHTML = `
+    <div class="mode-tag">MODE ${currentMode()} · ${MODE_NAMES[currentMode()]}</div>
+    <div class="prompt">${source === 'ear' ? 'Hear the chord. Name it.' : 'These notes spell one chord. Name it.'}</div>
+    ${source === 'ear'
+      ? `<div class="row"><button id="play">▶ Play chord</button><span style="font-size:13px;color:var(--color-muted)">same root, name the quality</span></div>`
+      : `<div class="notes-spelled">${info.notes.map(sym).join('  ')}</div>`}
+    <div class="choices" id="choices">
+      ${choices.map(c => `<div class="choice" data-sym="${c}">${sym(c)}</div>`).join('')}
+    </div>
+    <div class="feedback" id="fb"></div>`;
+  if (source === 'ear') {
+    const p = document.getElementById('play');
+    p.onclick = () => playChord(info.notes);
+    playChord(info.notes); // auto-play on entry
+  }
+  document.querySelectorAll('.choice').forEach(el => {
+    el.onclick = () => gradeNaming(el.dataset.sym, fact);
+  });
+}
+
+function keyboardHTML() {
+  // 7 white keys C D E F G A B; black keys absolutely positioned
+  const whites = [0,2,4,5,7,9,11];
+  const whiteEls = whites.map(pc => `<div class="wkey key" data-pc="${pc}">${PC_NAMES[pc]}</div>`).join('');
+  // black key left offsets (% of keyboard) roughly between whites
+  const blacks = [{pc:1,l:11},{pc:3,l:25},{pc:6,l:53},{pc:8,l:67},{pc:10,l:81}];
+  const blackEls = blacks.map(b => `<div class="bkey key" data-pc="${b.pc}" style="left:${b.l}%">${PC_NAMES[b.pc]}</div>`).join('');
+  return `<div class="keyboard"><div class="white-row">${whiteEls}</div>${blackEls}</div>`;
+}
+
+function wireKeyboard(info) {
+  document.querySelectorAll('.key').forEach(el => {
+    el.onclick = () => {
+      if (answered) return;
+      const pc = +el.dataset.pc;
+      if (selected.has(pc)) { selected.delete(pc); el.classList.remove('sel'); }
+      else { selected.add(pc); el.classList.add('sel'); playChord([PC_NAMES[pc].replace(/♯/g,'#').replace(/♭/g,'b')]); }
+    };
+  });
+}
+
+function gradeBuild(info) {
+  if (answered) return;
+  answered = true;
+  const target = new Set(info.chromas);
+  const ok = selected.size === target.size && [...selected].every(pc => target.has(pc));
+  // stamp interval colors on correct notes, gray on wrong extras
+  document.querySelectorAll('.key').forEach(el => {
+    const pc = +el.dataset.pc;
+    el.classList.remove('sel');
+    const idx = info.chromas.indexOf(pc);
+    if (idx !== -1) el.classList.add('role-' + info.roles[idx]);
+    else if (selected.has(pc)) el.classList.add('wrong');
+  });
+  finish(ok, info);
+  document.getElementById('hear').disabled = false;
+  playChord(info.notes);
+}
+
+function gradeNaming(pick, fact) {
+  if (answered) return;
+  answered = true;
+  const ok = pick === fact;
+  document.querySelectorAll('.choice').forEach(el => {
+    if (el.dataset.sym === fact) el.classList.add('correct');
+    else if (el.dataset.sym === pick) el.classList.add('wrong');
+    el.onclick = null;
+  });
+  finish(ok, targetInfo(fact));
+}
+
+function finish(ok, info) {
+  recall[factIdx][currentMode()] = ok;
+  if (ok) score++;
+  const fb = document.getElementById('fb');
+  fb.className = 'feedback ' + (ok ? 'ok' : 'no');
+  fb.innerHTML = (ok ? '✓ Correct. ' : '✗ Not quite. ')
+    + `${sym(info.symbol)} = ${info.notes.map(sym).join(' ')} (${formulaText(info.symbol)})`
+    + `<div style="margin-top:10px"><button id="next">Next →</button></div>`;
+  document.getElementById('reg-score').textContent = `${score} CORRECT`;
+  document.getElementById('next').onclick = advance;
+  renderMap();
+}
+
+function advance() {
+  if (rotation === 'lock') { factIdx = (factIdx + 1) % FACTS.length; }
+  else {
+    modeIdx++;
+    if (modeIdx >= MODES.length) { modeIdx = 0; factIdx = (factIdx + 1) % FACTS.length; }
+  }
+  render();
+}
+
+function renderMap() {
+  const map = document.getElementById('map');
+  let html = `<tr><th class="factname">Fact</th>${MODES.map(m => `<th>${m}</th>`).join('')}</tr>`;
+  FACTS.forEach((f, i) => {
+    html += `<tr><td class="factname">${sym(f)}</td>` + MODES.map(m => {
+      const v = recall[i][m];
+      const cls = v === true ? 'hit' : v === false ? 'miss' : '';
+      const mark = v === true ? '✓' : v === false ? '✗' : '·';
+      return `<td class="${cls}">${mark}</td>`;
+    }).join('') + `</tr>`;
+  });
+  map.innerHTML = html;
+}
+
+// ---- controls ----
+document.querySelectorAll('input[name=rot]').forEach(r => {
+  r.onchange = () => {
+    rotation = document.querySelector('input[name=rot]:checked').value;
+    document.getElementById('lockpick').style.display = rotation === 'lock' ? 'inline' : 'none';
+    modeIdx = 0; render();
+  };
+});
+document.getElementById('lockmode').onchange = (e) => { lockMode = e.target.value; render(); };
+
+render();
+</script>
+</body>
+</html>
