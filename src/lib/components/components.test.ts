@@ -43,6 +43,27 @@ describe('PianoKeyboard', () => {
 		expect(highlighted).toHaveLength(4);
 	});
 
+	it('showIntervalBadges: each highlighted key shows its interval from the root (sketch 003)', () => {
+		const { notes } = spellChord('Cm7');
+
+		render(PianoKeyboard, { notes, showIntervalBadges: true });
+
+		const badges = document.querySelectorAll('.piano-keyboard__ivbadge');
+		const labels = [...badges].map((b) => b.textContent?.trim());
+		// Root reads R; the other three read their interval from C.
+		expect(labels).toContain('R');
+		expect(labels).toContain('m3');
+		expect(labels).toContain('P5');
+		expect(labels).toContain('m7');
+		expect(badges).toHaveLength(4);
+	});
+
+	it('non-regression: omitting showIntervalBadges renders no interval badges', () => {
+		const { notes } = spellChord('Cm7');
+		render(PianoKeyboard, { notes });
+		expect(document.querySelectorAll('.piano-keyboard__ivbadge')).toHaveLength(0);
+	});
+
 	it('renders a display-only keyboard with no click or keydown handlers', () => {
 		const { notes } = spellChord('Cm7');
 		const { container } = render(PianoKeyboard, { notes });

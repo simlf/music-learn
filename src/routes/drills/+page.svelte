@@ -777,6 +777,7 @@
 					wrongLetters={showConstructionReveal ? wrongLetters : undefined}
 					inspectable={showConstructionReveal}
 					onInspect={showConstructionReveal ? handleDrillInspect : undefined}
+					showIntervalBadges={showConstructionReveal}
 				/>
 			</div>
 
@@ -917,7 +918,12 @@
 								<ChordGlyph root={target.root} quality={target.symbol.slice(target.root.length)} />
 							</div>
 							<div class="mt-4">
-								<PianoKeyboard notes={target.notes} inspectable onInspect={handleDrillInspect} />
+								<PianoKeyboard
+									notes={target.notes}
+									inspectable
+									onInspect={handleDrillInspect}
+									showIntervalBadges
+								/>
 							</div>
 						{/if}
 						{#if question.direction === 'construction'}

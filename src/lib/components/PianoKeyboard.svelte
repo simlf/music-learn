@@ -103,6 +103,13 @@
 		inspectable?: boolean;
 		/** Called with the tapped key's InspectPayload; only meaningful when `inspectable`. */
 		onInspect?: (payload: InspectPayload) => void;
+		/**
+		 * Interval badges (sketch 003): when true, every highlighted key shows a
+		 * small corner badge with its interval from the root (R, m3, P5, m7), so
+		 * the interval each note plays is readable directly on the keyboard.
+		 * Additive and gated; omitting it leaves the render byte-identical.
+		 */
+		showIntervalBadges?: boolean;
 	}
 
 	let {
@@ -114,8 +121,15 @@
 		octaves,
 		wrongLetters,
 		inspectable = false,
-		onInspect
+		onInspect,
+		showIntervalBadges = false
 	}: Props = $props();
+
+	/** Interval-from-root short label for a highlighted note (sketch 003). "R" for the root. */
+	function intervalBadgeFor(note: SpelledNote | undefined): string {
+		if (!showIntervalBadges || !note || rootLetter === undefined) return '';
+		return intervalFromRoot(rootLetter, note.letter).short;
+	}
 
 	/** Inspect mode is subordinate to interactive: the two never coexist (contract). */
 	const inspecting = $derived(inspectable && !interactive);
@@ -411,6 +425,9 @@
 			onpointercancel={keysActive ? () => clearPressed(key.letter) : undefined}
 		>
 			{#if key.note}
+				{#if showIntervalBadges}
+					<span class="piano-keyboard__ivbadge">{intervalBadgeFor(key.note)}</span>
+				{/if}
 				<NoteLabel letter={key.note.letter} solfege={key.note.solfege} highlighted />
 			{:else if wrongLetters?.has(key.letter)}
 				<span class="piano-keyboard__wrong-mark" aria-hidden="true">✕</span>
@@ -444,6 +461,11 @@
 			onpointercancel={keysActive ? () => clearPressed(key.sharpLetter) : undefined}
 		>
 			{#if key.note}
+				{#if showIntervalBadges}
+					<span class="piano-keyboard__ivbadge piano-keyboard__ivbadge--black">
+						{intervalBadgeFor(key.note)}
+					</span>
+				{/if}
 				<NoteLabel letter={key.note.letter} solfege={key.note.solfege} highlighted />
 			{:else if wrongLetters?.has(key.sharpLetter)}
 				<span class="piano-keyboard__wrong-mark" aria-hidden="true">✕</span>
@@ -558,6 +580,31 @@
 		font-family: var(--font-sans);
 		font-weight: 700;
 		font-size: var(--text-label);
+		color: var(--color-ink);
+	}
+
+	/*
+	 * Interval-from-root badge (sketch 003): a small corner tab near the top of
+	 * a highlighted key, so the interval each note plays reads directly off the
+	 * keyboard. Absolutely positioned so it never shifts the NoteLabel that
+	 * sits at the key's foot.
+	 */
+	.piano-keyboard__ivbadge {
+		position: absolute;
+		top: var(--spacing-xs);
+		left: 50%;
+		transform: translateX(-50%);
+		font-family: var(--font-mono);
+		font-weight: 700;
+		font-size: 10px;
+		letter-spacing: 0.04em;
+		line-height: 1;
+		padding: 2px 4px;
+		background: var(--color-ink);
+		color: var(--color-paper-bright);
+	}
+	.piano-keyboard__ivbadge--black {
+		background: var(--color-paper-bright);
 		color: var(--color-ink);
 	}
 

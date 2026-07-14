@@ -218,7 +218,7 @@
 			{/if}
 
 			<div class="mt-6">
-				<PianoKeyboard notes={result.notes} inspectable onInspect={handleInspect} />
+				<PianoKeyboard notes={result.notes} inspectable onInspect={handleInspect} showIntervalBadges />
 			</div>
 
 			<InspectRegister payload={inspectPayload} />
