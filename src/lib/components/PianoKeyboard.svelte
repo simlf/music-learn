@@ -1,5 +1,26 @@
+<script module lang="ts">
+	import type { IntervalInfo } from '$lib/theory/interval';
+
+	/** What an inspect-mode tap reports: the tapped key, fully named, plus its interval from the current root. */
+	export interface InspectPayload {
+		/** Spelled letter with display glyphs; black keys use the enharmonic that reads simplest from the root. */
+		letter: string;
+		/** French solfège for the letter. */
+		solfege: string;
+		/** Playback octave derived from the key's position (4 for the first octave, 5 for the second). */
+		octave: number;
+		/** Interval from the current root (the `notes` entry with role 'root'), or null when no root is highlighted. */
+		info: IntervalInfo | null;
+		/** Whether the tapped key is one of the highlighted `notes`. */
+		inChord: boolean;
+	}
+</script>
+
 <script lang="ts">
 	import NoteLabel from './NoteLabel.svelte';
+	import { playNote } from '$lib/audio/audio';
+	import { intervalFromRoot, toAsciiAccidentals, transposeFrom } from '$lib/theory/interval';
+	import { letterToSolfege } from '$lib/theory/solfege';
 	import type { IntervalRole, SpelledNote } from '$lib/theory/types';
 	import {
 		assignNotesToKeys,
@@ -63,9 +84,34 @@
 		 * interactive mode byte-identical to before this prop existed.
 		 */
 		wrongLetters?: Set<string>;
+		/**
+		 * Tap-to-inspect mode (Track C): tapping any key plays its note (via
+		 * the $lib/audio/audio contract) and fires `onInspect` with the key's
+		 * spelling, solfège, octave, and interval from the current root.
+		 * Mutually exclusive with `interactive` (interactive wins if both are
+		 * ever passed); omitted keeps the display-only render byte-identical,
+		 * following the component's gated-prop compatibility contract.
+		 */
+		inspectable?: boolean;
+		/** Called with the tapped key's InspectPayload; only meaningful when `inspectable`. */
+		onInspect?: (payload: InspectPayload) => void;
 	}
 
-	let { notes, interactive = false, selected, onToggle, octaves, wrongLetters }: Props = $props();
+	let {
+		notes,
+		interactive = false,
+		selected,
+		onToggle,
+		octaves,
+		wrongLetters,
+		inspectable = false,
+		onInspect
+	}: Props = $props();
+
+	/** Inspect mode is subordinate to interactive: the two never coexist (contract). */
+	const inspecting = $derived(inspectable && !interactive);
+	/** Keys carry button semantics and pointer handlers in either active mode. */
+	const keysActive = $derived(interactive || inspecting);
 
 	let containerEl: HTMLDivElement | undefined = $state();
 	let measuredWidth: number | undefined = $state(undefined);
@@ -102,11 +148,63 @@
 		onToggle?.(letter);
 	}
 
-	function handleKeydown(event: KeyboardEvent, letter: string) {
+	function handleKeydown(event: KeyboardEvent, activate: () => void) {
 		if (event.key === 'Enter' || event.key === ' ') {
 			event.preventDefault();
-			toggleKey(letter);
+			activate();
 		}
+	}
+
+	/** Letter of the highlighted note tagged 'root': the inspect mode reference point. */
+	const rootLetter = $derived(notes.find((note) => note.role === 'root')?.letter);
+
+	/** Plays the tapped key and reports its full naming + interval from the root (inspect mode). */
+	function emitInspect(letter: string, octave: number, inChord: boolean) {
+		playNote(`${toAsciiAccidentals(letter)}${octave}`);
+		onInspect?.({
+			letter,
+			solfege: letterToSolfege(letter),
+			octave,
+			info: rootLetter !== undefined ? intervalFromRoot(rootLetter, letter) : null,
+			inChord
+		});
+	}
+
+	function inspectWhiteKey(key: WhiteKey) {
+		const octave = 4 + Math.floor(key.index / 7);
+		emitInspect(key.note?.letter ?? key.letter, octave, key.note !== undefined);
+	}
+
+	function inspectBlackKey(key: BlackKey) {
+		const octave = 4 + Math.floor((key.position - 1) / 7);
+		// A highlighted key keeps its assigned enharmonic spelling; an
+		// unhighlighted black key picks whichever spelling reads simplest
+		// from the current root (A4 over C reads F♯, m3 over E♭ reads G♭).
+		let letter = key.note?.letter;
+		if (letter === undefined) {
+			letter = key.sharpLetter;
+			if (rootLetter !== undefined) {
+				const picked = intervalFromRoot(rootLetter, {
+					sharpLetter: key.sharpLetter,
+					flatLetter: key.flatLetter
+				});
+				if (picked.short !== '') {
+					letter = transposeFrom(rootLetter, picked.short) || key.sharpLetter;
+				}
+			}
+		}
+		emitInspect(letter, octave, key.note !== undefined);
+	}
+
+	/** One activation path per key: toggle in interactive mode, inspect in inspect mode. */
+	function activateWhiteKey(key: WhiteKey) {
+		if (interactive) toggleKey(key.letter);
+		else inspectWhiteKey(key);
+	}
+
+	function activateBlackKey(key: BlackKey) {
+		if (interactive) toggleKey(key.sharpLetter);
+		else inspectBlackKey(key);
 	}
 
 	/**
@@ -241,11 +339,12 @@
 	/**
 	 * Press-down cue (D-11): additive to every other treatment above (interval
 	 * color, wrong fill, selected hatch) - a key can be pressed at the same
-	 * time as any of those, never replacing them. Interactive-only, since
-	 * display-mode keys have no pointer handlers to set `pressedLetter`.
+	 * time as any of those, never replacing them. Active-mode only
+	 * (interactive or inspect), since display-mode keys have no pointer
+	 * handlers to set `pressedLetter`.
 	 */
 	function pressedClass(letter: string): string {
-		return interactive && pressedLetter === letter ? 'piano-keyboard__key--pressed' : '';
+		return keysActive && pressedLetter === letter ? 'piano-keyboard__key--pressed' : '';
 	}
 </script>
 
@@ -266,16 +365,18 @@
 				key.note?.role
 			)} {stampedClass(key.letter, key.note?.role)} {pressedClass(key.letter)}"
 			style="left: {key.leftPct}%; width: {whiteKeyWidthPct}%;"
-			role={interactive ? 'button' : undefined}
-			tabindex={interactive ? 0 : undefined}
+			role={keysActive ? 'button' : undefined}
+			tabindex={keysActive ? 0 : undefined}
 			aria-pressed={interactive ? (selected?.has(key.letter) ?? false) : undefined}
-			aria-label={interactive ? keyAriaLabel(key.letter) : undefined}
-			onclick={interactive ? () => toggleKey(key.letter) : undefined}
-			onkeydown={interactive ? (event: KeyboardEvent) => handleKeydown(event, key.letter) : undefined}
-			onpointerdown={interactive ? () => handlePointerDown(key.letter) : undefined}
-			onpointerup={interactive ? () => clearPressed(key.letter) : undefined}
-			onpointerleave={interactive ? () => clearPressed(key.letter) : undefined}
-			onpointercancel={interactive ? () => clearPressed(key.letter) : undefined}
+			aria-label={keysActive ? keyAriaLabel(key.letter) : undefined}
+			onclick={keysActive ? () => activateWhiteKey(key) : undefined}
+			onkeydown={keysActive
+				? (event: KeyboardEvent) => handleKeydown(event, () => activateWhiteKey(key))
+				: undefined}
+			onpointerdown={keysActive ? () => handlePointerDown(key.letter) : undefined}
+			onpointerup={keysActive ? () => clearPressed(key.letter) : undefined}
+			onpointerleave={keysActive ? () => clearPressed(key.letter) : undefined}
+			onpointercancel={keysActive ? () => clearPressed(key.letter) : undefined}
 		>
 			{#if key.note}
 				<NoteLabel letter={key.note.letter} solfege={key.note.solfege} highlighted />
@@ -295,18 +396,18 @@
 				key.note?.role
 			)} {stampedClass(key.sharpLetter, key.note?.role)} {pressedClass(key.sharpLetter)}"
 			style="left: {key.leftPct}%; width: {blackKeyWidthPct}%;"
-			role={interactive ? 'button' : undefined}
-			tabindex={interactive ? 0 : undefined}
+			role={keysActive ? 'button' : undefined}
+			tabindex={keysActive ? 0 : undefined}
 			aria-pressed={interactive ? (selected?.has(key.sharpLetter) ?? false) : undefined}
-			aria-label={interactive ? keyAriaLabel(key.sharpLetter) : undefined}
-			onclick={interactive ? () => toggleKey(key.sharpLetter) : undefined}
-			onkeydown={interactive
-				? (event: KeyboardEvent) => handleKeydown(event, key.sharpLetter)
+			aria-label={keysActive ? keyAriaLabel(key.sharpLetter) : undefined}
+			onclick={keysActive ? () => activateBlackKey(key) : undefined}
+			onkeydown={keysActive
+				? (event: KeyboardEvent) => handleKeydown(event, () => activateBlackKey(key))
 				: undefined}
-			onpointerdown={interactive ? () => handlePointerDown(key.sharpLetter) : undefined}
-			onpointerup={interactive ? () => clearPressed(key.sharpLetter) : undefined}
-			onpointerleave={interactive ? () => clearPressed(key.sharpLetter) : undefined}
-			onpointercancel={interactive ? () => clearPressed(key.sharpLetter) : undefined}
+			onpointerdown={keysActive ? () => handlePointerDown(key.sharpLetter) : undefined}
+			onpointerup={keysActive ? () => clearPressed(key.sharpLetter) : undefined}
+			onpointerleave={keysActive ? () => clearPressed(key.sharpLetter) : undefined}
+			onpointercancel={keysActive ? () => clearPressed(key.sharpLetter) : undefined}
 		>
 			{#if key.note}
 				<NoteLabel letter={key.note.letter} solfege={key.note.solfege} highlighted />
