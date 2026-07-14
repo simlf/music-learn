@@ -1,0 +1,311 @@
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../themes/default.css" />
+<style>
+	* { box-sizing: border-box; }
+	body {
+		margin: 0;
+		background: var(--color-paper);
+		color: var(--color-ink);
+		font-family: var(--font-sans);
+		padding: var(--space-6);
+	}
+	h1 { font-size: var(--text-heading); margin: 0 0 var(--space-1); }
+	.sub { color: var(--color-muted); margin: 0 0 var(--space-6); font-size: var(--text-body); }
+
+	.today { border: 2px dashed var(--color-faint); padding: var(--space-4); margin-bottom: var(--space-6); }
+	.today .reg { color: var(--color-vermilion); }
+	.note-sm { font-size: 13px; color: var(--color-muted); margin-top: var(--space-2); }
+
+	.tabs { display: flex; gap: var(--space-2); margin-bottom: var(--space-4); flex-wrap: wrap; }
+	.tab {
+		font: 700 var(--text-label)/1 var(--font-mono);
+		letter-spacing: 0.12em; text-transform: uppercase;
+		padding: var(--space-2) var(--space-4); border: 2px solid var(--color-ink);
+		background: var(--color-paper-bright); cursor: pointer;
+		min-height: 44px;
+	}
+	.tab[aria-selected="true"] { background: var(--color-ink); color: var(--color-paper-bright); }
+	.panel { display: none; }
+	.panel[data-active="true"] { display: block; }
+
+	.reg { font: 700 var(--text-label)/1.4 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-muted); }
+
+	/* --- sim strip: pretend-progress control, shared across variants --- */
+	.sim { border: 2px solid var(--color-ink); background: var(--color-paper-bright); padding: var(--space-4); margin-bottom: var(--space-6); display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
+	.sim .reg { margin: 0; }
+	.sim-btns { display: flex; gap: var(--space-1); }
+	.sim-btns button {
+		font: 700 var(--text-label)/1 var(--font-mono);
+		min-width: 44px; min-height: 44px; border: 2px solid var(--color-ink);
+		background: var(--color-paper-bright); cursor: pointer;
+	}
+	.sim-btns button[aria-pressed="true"] { background: var(--color-verdigris); color: #ffffff; }
+
+	/* --- drills page mock (shared header + faded card below fold) --- */
+	.drills-title { font: 700 var(--text-display)/1 var(--font-serif); margin: 0 0 var(--space-6); }
+
+	.fold-hint { border: 2px solid var(--color-ink); background: var(--color-paper-bright); padding: var(--space-6); margin-top: var(--space-6); opacity: 0.35; pointer-events: none; -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent 100%); mask-image: linear-gradient(to bottom, black 40%, transparent 100%); }
+	.fold-hint .reg { margin: 0 0 var(--space-2); }
+	.fold-hint .chip { font: 700 32px/1 var(--font-serif); }
+
+	/* ===== Variant A: course stepper ===== */
+	.course-band { border: 2px solid var(--color-ink); background: var(--color-paper-bright); padding: var(--space-6); }
+	.course-eyebrow { font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-muted); margin: 0 0 var(--space-2); }
+	.course-name { font: 700 var(--text-heading)/1.2 var(--font-serif); margin: 0 0 var(--space-2); display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
+	.course-name .tiernum { font: 700 var(--text-label)/1 var(--font-mono); border: 2px solid var(--color-ink); padding: 2px 8px; color: var(--color-muted); }
+	.course-desc { font-size: var(--text-body); margin: 0 0 var(--space-4); max-width: 46em; }
+	.start-btn {
+		font: 700 var(--text-body)/1 var(--font-mono); letter-spacing: 0.04em; text-transform: uppercase;
+		background: var(--color-vermilion); color: #ffffff; border: 2px solid var(--color-ink);
+		padding: var(--space-4) var(--space-6); cursor: pointer; min-height: 44px;
+	}
+	.next-up { margin-top: var(--space-6); padding-top: var(--space-4); border-top: 2px dashed var(--color-faint); display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; }
+	.next-up .label { font: 700 11px/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-muted); }
+	.next-up .name { font: 700 var(--text-body)/1 var(--font-serif); }
+	.next-up .lockchip { font: 700 10px/1 var(--font-mono); border: 2px solid var(--color-faint); color: var(--color-faint); padding: 3px 6px; }
+
+	/* ===== Variant B: progress ladder ===== */
+	.ladder { display: flex; flex-direction: column; gap: 3px; }
+	.rung {
+		border: 2px solid var(--color-ink); background: var(--color-paper-bright);
+		display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4);
+		cursor: pointer; min-height: 44px; text-align: left; width: 100%; font: inherit; color: inherit;
+	}
+	.rung .mark { font: 700 16px/1 var(--font-mono); width: 28px; text-align: center; flex-shrink: 0; }
+	.rung .txt { flex: 1; }
+	.rung .name { font: 700 var(--text-body)/1.2 var(--font-serif); }
+	.rung .desc { font-size: 13px; color: var(--color-muted); margin-top: 2px; }
+	.rung[data-state="current"] { background: var(--color-mustard); border-color: var(--color-ink); }
+	.rung[data-state="done"] .mark { color: var(--color-verdigris); }
+	.rung[data-state="done"] .name { color: var(--color-ink); }
+	.rung[data-state="future"] { opacity: 0.55; cursor: default; }
+	.rung[data-state="locked"] { opacity: 0.4; cursor: default; border-style: dashed; }
+	.rung[data-state="locked"] .name { font-style: italic; }
+	.tier-badge { font: 700 10px/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; border: 2px solid currentColor; padding: 2px 6px; margin-left: var(--space-2); }
+
+	/* ===== Variant C: two-choice on-ramp ===== */
+	.choices { display: grid; grid-template-columns: 1.6fr 1fr; gap: var(--space-4); align-items: stretch; }
+	@media (max-width: 640px) { .choices { grid-template-columns: 1fr; } }
+	.choice-card { border: 2px solid var(--color-ink); background: var(--color-paper-bright); padding: var(--space-6); cursor: pointer; display: flex; flex-direction: column; gap: var(--space-2); min-height: 44px; }
+	.choice-card.primary { background: var(--color-paper-bright); }
+	.choice-card.primary .eyebrow { color: var(--color-vermilion); }
+	.choice-card .eyebrow { font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-muted); }
+	.choice-card .headline { font: 700 var(--text-heading)/1.25 var(--font-serif); }
+	.choice-card .desc { font-size: var(--text-body); color: var(--color-ink); }
+	.choice-card.secondary { justify-content: center; }
+	.choice-card.secondary .headline { font-size: var(--text-body); }
+	.choice-card[aria-pressed="true"] { outline: 3px solid var(--color-verdigris); outline-offset: -3px; }
+
+	.onramp-result { margin-top: var(--space-6); }
+	.picker-inline { display: flex; gap: var(--space-1); flex-wrap: wrap; margin-top: var(--space-2); }
+	.picker-inline button {
+		font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.02em;
+		min-height: 44px; border: 2px solid var(--color-ink); background: var(--color-paper-bright);
+		cursor: pointer; padding: var(--space-2) var(--space-4); text-align: left;
+	}
+	.picker-inline button[aria-pressed="true"] { background: var(--color-ink); color: var(--color-paper-bright); }
+	.picker-inline button[disabled] { opacity: 0.4; cursor: default; font-style: italic; }
+	.scaffold-note { font-size: 13px; color: var(--color-muted); margin-top: var(--space-2); }
+</style>
+
+<h1>Sketch 007 &middot; Beginner on-ramp for Drills</h1>
+<p class="sub">How does a beginner see the easiest course and pick their level without feeling overwhelmed, right where they practice, with advanced tiers hidden until reached? Three variants below. Use the simulator to see how each looks at different points of progress.</p>
+
+<div class="today">
+	<p class="reg">Today (the problem)</p>
+	<p class="note-sm">The level control is six bare tier-number buttons (1 to 6, with 5 and 6 disabled) buried in the Progress page settings. A beginner never sees a name, a description, or a reason to start at 1. It reads as a settings knob, not a course.</p>
+</div>
+
+<div class="sim">
+	<p class="reg">Simulate progress: reached up through tier</p>
+	<div class="sim-btns" id="simBtns"></div>
+	<p class="note-sm" style="margin:0;">Controls all three variants below. This stands in for drill history the real app already tracks.</p>
+</div>
+
+<div class="tabs" role="tablist">
+	<button class="tab" role="tab" aria-selected="true" data-tab="A">A &middot; Course stepper</button>
+	<button class="tab" role="tab" aria-selected="false" data-tab="B">B &middot; Progress ladder</button>
+	<button class="tab" role="tab" aria-selected="false" data-tab="C">C &middot; Two-choice on-ramp</button>
+</div>
+
+<div class="panel" data-tab="A" data-active="true">
+	<h1 class="drills-title">Drills</h1>
+	<div class="course-band" id="bandA"></div>
+	<p class="note-sm">Only the current tier and the immediate next tier ever show. Everything past that is not rendered at all, not even as a locked row, until you get closer to it. "Start practicing" is the only button that matters on this page.</p>
+	<div class="fold-hint">
+		<p class="reg">Below the fold (for scale reference only)</p>
+		<p class="chip">Cm7 &middot; what notes?</p>
+	</div>
+</div>
+
+<div class="panel" data-tab="B" data-active="false">
+	<h1 class="drills-title">Drills</h1>
+	<div class="ladder" id="ladderB"></div>
+	<p class="note-sm">Every reached tier is tappable and switches your practice level immediately. Future tiers sit dimmed so you know the ladder keeps going. Tier 5 and 6 do not appear at all until tier 4 is reached, then show up as locked, dashed rungs, "coming later."</p>
+	<div class="fold-hint">
+		<p class="reg">Below the fold (for scale reference only)</p>
+		<p class="chip">Cm7 &middot; what notes?</p>
+	</div>
+</div>
+
+<div class="panel" data-tab="C" data-active="false">
+	<h1 class="drills-title">Drills</h1>
+	<div class="choices" id="choicesC"></div>
+	<div class="onramp-result" id="resultC"></div>
+	<p class="note-sm">First-time framing: a beginner is offered exactly two doors. "Start the beginner course" needs zero decisions, it just begins at tier 1 with the interval scaffold on. "Pick my level" reveals a compact list of tiers already reached, for a returning player who knows where they left off.</p>
+	<div class="fold-hint">
+		<p class="reg">Below the fold (for scale reference only)</p>
+		<p class="chip">Cm7 &middot; what notes?</p>
+	</div>
+</div>
+
+<script>
+	const TIERS = [
+		{ id: 1, name: 'White-key triads', desc: 'Just the white-key major and minor chords: C D E F G A B. No sharps or flats yet. Start here.', locked: false },
+		{ id: 2, name: 'All-key triads', desc: 'All twelve roots now: major, minor, and diminished triads.', locked: false },
+		{ id: 3, name: 'The big three sevenths', desc: 'The seventh chords that show up everywhere: maj7, m7, and dominant 7.', locked: false },
+		{ id: 4, name: 'Minor ii-V colors', desc: 'Half-diminished and diminished seventh chords, the color of a minor ii-V-i.', locked: false },
+		{ id: 5, name: 'Sixths and sus', desc: 'Sixth chords and sus chords. Coming later.', locked: true },
+		{ id: 6, name: 'Extensions and alterations', desc: '9ths, altered dominants, and more color tones. Coming later.', locked: true }
+	];
+	const byId = (id) => TIERS.find((t) => t.id === id);
+
+	let reached = 1;      // highest tier the user has unlocked by progress
+	let selected = 1;      // tier currently chosen to practice (variants B/C)
+	let onrampChoice = null; // 'beginner' | 'pick', variant C only
+
+	function renderSim(){
+		const el = document.getElementById('simBtns');
+		el.innerHTML = '';
+		[1,2,3,4].forEach((n) => {
+			const b = document.createElement('button');
+			b.textContent = n;
+			b.setAttribute('aria-pressed', String(n === reached));
+			b.onclick = () => { reached = n; if (selected > reached) selected = reached; renderAll(); };
+			el.appendChild(b);
+		});
+	}
+
+	// ---------- Variant A: course stepper ----------
+	function renderA(){
+		const cur = byId(selected <= reached ? selected : reached);
+		const next = byId(cur.id + 1);
+		const band = document.getElementById('bandA');
+		let nextHtml = '';
+		if (next) {
+			const isReachedNext = next.id <= reached;
+			nextHtml = `
+				<div class="next-up">
+					<div>
+						<p class="label">Next up</p>
+						<p class="name">Tier ${next.id} &middot; ${next.name}</p>
+					</div>
+					${next.locked ? '<span class="lockchip">Locked</span>' : (isReachedNext ? '' : '<span class="lockchip">Not yet</span>')}
+				</div>`;
+		}
+		band.innerHTML = `
+			<p class="course-eyebrow">Your course</p>
+			<p class="course-name"><span class="tiernum">Tier ${cur.id}</span> ${cur.name}</p>
+			<p class="course-desc">${cur.desc}</p>
+			<button class="start-btn" type="button">Start practicing &rarr;</button>
+			${nextHtml}
+		`;
+	}
+
+	// ---------- Variant B: progress ladder ----------
+	function renderB(){
+		const el = document.getElementById('ladderB');
+		el.innerHTML = '';
+		const visible = TIERS.filter((t) => !t.locked || reached >= 4);
+		visible.forEach((t) => {
+			let state, mark;
+			if (t.locked) { state = 'locked'; mark = '&middot;'; }
+			else if (t.id < reached) { state = 'done'; mark = '&#10003;'; }
+			else if (t.id === reached) { state = 'current'; mark = String(t.id); }
+			else { state = 'future'; mark = String(t.id); }
+			const row = document.createElement('button');
+			row.className = 'rung';
+			row.type = 'button';
+			row.dataset.state = state;
+			row.disabled = state === 'future' || state === 'locked';
+			row.innerHTML = `
+				<span class="mark">${mark}</span>
+				<span class="txt">
+					<span class="name">${t.name}${state === 'current' ? '<span class="tier-badge">Practicing now</span>' : ''}</span>
+					<div class="desc">${t.locked ? t.desc : t.desc}</div>
+				</span>
+			`;
+			if (state === 'done' || state === 'current') {
+				row.onclick = () => { selected = t.id; reached = Math.max(reached, t.id); renderAll(); };
+			}
+			el.appendChild(row);
+		});
+	}
+
+	// ---------- Variant C: two-choice on-ramp ----------
+	function renderC(){
+		const wrap = document.getElementById('choicesC');
+		wrap.innerHTML = `
+			<button class="choice-card primary" type="button" id="btnBeginner" aria-pressed="${onrampChoice === 'beginner'}">
+				<span class="eyebrow">New here?</span>
+				<span class="headline">Start the beginner course</span>
+				<span class="desc">Begins at Tier 1, White-key triads, with the interval scaffold turned on. One tap, no decisions.</span>
+			</button>
+			<button class="choice-card secondary" type="button" id="btnPick" aria-pressed="${onrampChoice === 'pick'}">
+				<span class="eyebrow">Coming back?</span>
+				<span class="headline">Pick my level</span>
+			</button>
+		`;
+		document.getElementById('btnBeginner').onclick = () => { onrampChoice = 'beginner'; selected = 1; renderResultC(); };
+		document.getElementById('btnPick').onclick = () => { onrampChoice = 'pick'; renderResultC(); };
+		renderResultC();
+	}
+
+	function renderResultC(){
+		const el = document.getElementById('resultC');
+		if (onrampChoice === 'beginner') {
+			const t = byId(1);
+			el.innerHTML = `
+				<div class="course-band">
+					<p class="course-eyebrow">Your course</p>
+					<p class="course-name"><span class="tiernum">Tier 1</span> ${t.name}</p>
+					<p class="course-desc">${t.desc}</p>
+					<p class="scaffold-note">Interval scaffold: on. You will see root, third, and fifth labeled on the keyboard until you turn it off.</p>
+					<button class="start-btn" type="button">Start practicing &rarr;</button>
+				</div>
+			`;
+		} else if (onrampChoice === 'pick') {
+			const reachedTiers = TIERS.filter((t) => t.id <= reached);
+			el.innerHTML = `
+				<div class="course-band">
+					<p class="course-eyebrow">Pick a level you have reached</p>
+					<div class="picker-inline">
+						${reachedTiers.map((t) => `<button data-tier="${t.id}" aria-pressed="${t.id === selected}">Tier ${t.id} &middot; ${t.name}</button>`).join('')}
+					</div>
+				</div>
+			`;
+			el.querySelectorAll('.picker-inline button').forEach((b) => {
+				b.onclick = () => { selected = Number(b.dataset.tier); renderResultC(); };
+			});
+		} else {
+			el.innerHTML = '';
+		}
+	}
+
+	function renderAll(){
+		renderSim();
+		renderA();
+		renderB();
+		renderC();
+	}
+
+	document.querySelectorAll('.tab').forEach((tab) => {
+		tab.onclick = () => {
+			const id = tab.dataset.tab;
+			document.querySelectorAll('.tab').forEach((t) => t.setAttribute('aria-selected', String(t === tab)));
+			document.querySelectorAll('.panel').forEach((p) => p.setAttribute('data-active', String(p.dataset.tab === id)));
+		};
+	});
+
+	renderAll();
+</script>
