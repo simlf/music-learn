@@ -4,8 +4,20 @@
  * depend on this module freely.
  */
 
-/** Which chord tone a spelled note represents, by scale-degree position. */
-export type IntervalRole = 'root' | 'third' | 'fifth' | 'seventh';
+/**
+ * Which scale-degree class a spelled note represents. Covers all seven
+ * degree classes so scale degrees and extended/suspended chord tones render
+ * through the same color pipeline; compound extensions map down to their
+ * simple class (9 to second, 11 to fourth, 13 to sixth).
+ */
+export type IntervalRole =
+	| 'root'
+	| 'second'
+	| 'third'
+	| 'fourth'
+	| 'fifth'
+	| 'sixth'
+	| 'seventh';
 
 /** A single spelled note: letter name (with accidental glyph), French solfège, and its interval role. */
 export interface SpelledNote {
