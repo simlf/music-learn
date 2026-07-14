@@ -68,26 +68,33 @@ function toAccidentalGlyphs(note: string): string {
 	return note.replace(/#/g, '♯').replace(/b/g, '♭');
 }
 
+/** Degree-class role per simple scale degree (1..7). */
+const ROLE_BY_SIMPLE_DEGREE: Record<number, IntervalRole> = {
+	1: 'root',
+	2: 'second',
+	3: 'third',
+	4: 'fourth',
+	5: 'fifth',
+	6: 'sixth',
+	7: 'seventh'
+};
+
 /**
- * Derives the interval role (root/third/fifth/seventh) from tonal's interval
- * string, e.g. "1P" -> root, "3m" -> third, "5d" -> fifth, "7m" -> seventh.
- * The scale-degree number is always the leading digit(s) of the string.
+ * Derives the interval role from tonal's interval string, e.g. "1P" -> root,
+ * "3m" -> third, "5d" -> fifth, "7m" -> seventh, "4P" -> fourth. Compound
+ * extensions map down to their simple degree class (9 -> second,
+ * 11 -> fourth, 13 -> sixth), so extended/suspended chords and scale degrees
+ * all render through the same seven-color pipeline. The scale-degree number
+ * is always the leading digit(s) of the string.
  */
 function roleForDegree(interval: string): IntervalRole {
 	const degree = parseInt(interval, 10);
-	switch (degree) {
-		case 1:
-			return 'root';
-		case 3:
-			return 'third';
-		case 5:
-			return 'fifth';
-		case 7:
-			return 'seventh';
-		default:
-			// v1 qualities never produce other degrees; fall back to root
-			// rather than throwing, keeping spellChord total per the DoS
-			// threat mitigation (recognized:false path, never crash).
-			return 'root';
+	if (Number.isNaN(degree) || degree < 1) {
+		// Unparseable degree: fall back to root rather than throwing, keeping
+		// spellChord total per the DoS threat mitigation (recognized:false
+		// path, never crash).
+		return 'root';
 	}
+	const simple = ((degree - 1) % 7) + 1;
+	return ROLE_BY_SIMPLE_DEGREE[simple] ?? 'root';
 }

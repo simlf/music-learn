@@ -393,6 +393,18 @@
 		background-color: var(--color-seventh);
 	}
 
+	.piano-keyboard__key--second {
+		background-color: var(--color-second);
+	}
+
+	.piano-keyboard__key--fourth {
+		background-color: var(--color-fourth);
+	}
+
+	.piano-keyboard__key--sixth {
+		background-color: var(--color-sixth);
+	}
+
 	/*
 	 * Wrong-answer feedback fill (Sketch 001 Variant A): the user's extra,
 	 * non-chord notes at reveal time. Mutually exclusive with the four

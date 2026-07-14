@@ -92,6 +92,32 @@ describe('spellChord', () => {
 			const result = spellChord('C');
 			expect(result.notes.map((n) => n.role)).toEqual(['root', 'third', 'fifth']);
 		});
+
+		it('Csus4 tags its suspended tone as fourth, not root', () => {
+			const result = spellChord('Csus4');
+			expect(result.notes.map((n) => n.role)).toEqual(['root', 'fourth', 'fifth']);
+		});
+
+		it('C6 tags its sixth as sixth', () => {
+			const result = spellChord('C6');
+			expect(result.notes.map((n) => n.role)).toEqual(['root', 'third', 'fifth', 'sixth']);
+		});
+
+		it('C9 maps the compound ninth down to second (degree-class rule)', () => {
+			const result = spellChord('C9');
+			expect(result.notes.map((n) => n.role)).toEqual([
+				'root',
+				'third',
+				'fifth',
+				'seventh',
+				'second'
+			]);
+		});
+
+		it('C13 maps the thirteenth down to sixth', () => {
+			const result = spellChord('C13');
+			expect(result.notes.map((n) => n.role)).toContain('sixth');
+		});
 	});
 
 	describe('unrecognized input', () => {

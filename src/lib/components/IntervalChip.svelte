@@ -50,4 +50,19 @@
 		background-color: var(--color-seventh);
 		color: var(--color-on-seventh);
 	}
+
+	.interval-chip--second {
+		background-color: var(--color-second);
+		color: var(--color-on-second);
+	}
+
+	.interval-chip--fourth {
+		background-color: var(--color-fourth);
+		color: var(--color-on-fourth);
+	}
+
+	.interval-chip--sixth {
+		background-color: var(--color-sixth);
+		color: var(--color-on-sixth);
+	}
 </style>

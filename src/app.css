@@ -18,6 +18,16 @@
 	--color-fifth: #a89a7f;
 	--color-seventh: #f0c948;
 
+	/* Interval color language extension (degree classes 2/4/6; compound
+	   extensions 9/11/13 map down to them). Letterpress-ink temperature:
+	   slate recedes next to vermilion roots, plum sits apart from verdigris
+	   and tan, olive reads as mustard's earthy sibling. All three are dark
+	   enough for white on-fill text (same rule vermilion and verdigris
+	   follow) and stay clearly separate from the wrong grays. */
+	--color-second: #5b7a8c;
+	--color-fourth: #7d5a72;
+	--color-sixth: #6b7135;
+
 	/* Wrong-answer feedback grays (Sketch 001 Variant A) — additive, NOT part
 	   of the fixed interval-color language above; only fills the user's
 	   wrong extra notes at reveal time. */
@@ -30,6 +40,9 @@
 	--color-on-third: #ffffff;
 	--color-on-fifth: #221e17;
 	--color-on-seventh: #221e17;
+	--color-on-second: #ffffff;
+	--color-on-fourth: #ffffff;
+	--color-on-sixth: #ffffff;
 
 	/* System font stacks — no webfonts */
 	--font-sans:

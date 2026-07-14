@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import PianoKeyboard from './PianoKeyboard.svelte';
+import IntervalChip from './IntervalChip.svelte';
 import RecentChipRow from './RecentChipRow.svelte';
 import { spellChord } from '$lib/theory/chord';
 
@@ -384,5 +385,37 @@ describe('RecentChipRow', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Look up Fmaj7 again' }));
 
 		expect(onselect).toHaveBeenCalledWith('Fmaj7');
+	});
+});
+
+describe('degree-class color extension (second/fourth/sixth)', () => {
+	it('PianoKeyboard fills a sus4 chord tone with the fourth-class key color', () => {
+		const { notes } = spellChord('Csus4');
+		const { container } = render(PianoKeyboard, { notes });
+
+		expect(container.querySelector('.piano-keyboard__key--fourth')).not.toBeNull();
+	});
+
+	it('PianoKeyboard fills a sixth chord tone with the sixth-class key color', () => {
+		const { notes } = spellChord('C6');
+		const { container } = render(PianoKeyboard, { notes });
+
+		expect(container.querySelector('.piano-keyboard__key--sixth')).not.toBeNull();
+	});
+
+	it('PianoKeyboard fills a ninth chord tone with the second-class key color', () => {
+		const { notes } = spellChord('C9');
+		const { container } = render(PianoKeyboard, { notes });
+
+		expect(container.querySelector('.piano-keyboard__key--second')).not.toBeNull();
+	});
+
+	it('IntervalChip renders a modifier class for every degree-class role', () => {
+		const roles = ['root', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh'] as const;
+		for (const role of roles) {
+			const { container, unmount } = render(IntervalChip, { role, label: 'x' });
+			expect(container.querySelector(`.interval-chip--${role}`)).not.toBeNull();
+			unmount();
+		}
 	});
 });
