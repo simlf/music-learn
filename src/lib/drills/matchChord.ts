@@ -1,4 +1,5 @@
 import { Note } from 'tonal';
+import { toAsciiAccidentals } from '$lib/theory/interval';
 import type { ChordResult } from '$lib/theory/types';
 
 /** Result of grading a played note set against a target chord. */
@@ -9,11 +10,6 @@ export interface MatchResult {
 	missing: number[];
 	/** Played chroma (0-11) that are not part of the target chord. */
 	extra: number[];
-}
-
-/** tonal's Note.chroma only understands ASCII accidentals (#/b), not display glyphs (♯/♭). */
-function toAsciiAccidentals(letter: string): string {
-	return letter.replace(/♯/g, '#').replace(/♭/g, 'b');
 }
 
 /**

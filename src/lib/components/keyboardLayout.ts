@@ -1,4 +1,5 @@
 import { Note } from 'tonal';
+import { toAsciiAccidentals } from '$lib/theory/interval';
 import type { SpelledNote } from '$lib/theory/types';
 
 /**
@@ -78,15 +79,6 @@ export function blackKeysForOctaves(octaves: 1 | 2): BlackKeyPattern[] {
 		}
 	}
 	return blackKeys;
-}
-
-/**
- * Converts display-glyph accidentals (♯ ♭) to tonal's ASCII form (# b) so
- * `Note.chroma` can parse any spelling tonal produces, including doubled
- * accidentals (e.g. "A♭♭" -> "Abb").
- */
-function toAsciiAccidentals(letter: string): string {
-	return letter.replace(/♯/g, '#').replace(/♭/g, 'b');
 }
 
 /** Pitch class (0-11) for a display-glyph letter, or undefined if unparseable. */

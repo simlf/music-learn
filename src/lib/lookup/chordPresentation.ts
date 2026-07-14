@@ -1,42 +1,38 @@
-import { Interval } from 'tonal';
+import { intervalBetween, toAsciiAccidentals } from '$lib/theory/interval';
 import type { ChordResult, IntervalRole } from '$lib/theory/types';
 
 /**
  * A single entry in a chord's interval-formula readout: the root is always
  * labeled "R"; other tones get a quality-first label ("m3", "P5", "m7")
- * derived from tonal's Interval.distance between the chord's root and each
- * spelled note. Pure presentation shape - not a theory-engine responsibility
- * (types.ts owns ChordResult's contract).
+ * derived from the shared interval module. Pure presentation shape - not a
+ * theory-engine responsibility (types.ts owns ChordResult's contract).
  */
 export interface FormulaEntry {
 	role: IntervalRole;
 	label: string;
+	/** French long name for tooltips/aria ("tierce mineure"; "fondamentale" for the root). */
+	longFr: string;
 	letter: string;
 	solfege: string;
 }
 
-/** tonal's Interval.distance only understands ASCII accidentals (#/b), not display glyphs (♯/♭). */
-function toAsciiAccidentals(letter: string): string {
-	return letter.replace(/♯/g, '#').replace(/♭/g, 'b');
-}
-
 /**
  * Interval-formula readout: root shown as "R", other tones as quality-first
- * labels ("m3", "P5", "m7") derived from tonal's Interval.distance between
- * the chord's root and each spelled note. Extracted from the showcase page
- * (Phase 1) so the lookup page and Phase 3 drills can share it - a pure
- * presentation concern, not a theory-engine responsibility.
+ * labels ("m3", "P5", "m7"). Naming now comes from the shared
+ * $lib/theory/interval module (one naming source for the lookup formula,
+ * drill feedback, inspect register, and interval drill); the note's own
+ * role tag from spellChord is kept as the color key.
  */
 export function formulaFor(chord: ChordResult): FormulaEntry[] {
-	const rootAscii = toAsciiAccidentals(chord.root);
 	return chord.notes.map((note) => {
-		if (note.role === 'root') {
-			return { role: note.role, label: 'R', letter: note.letter, solfege: note.solfege };
-		}
-		const raw = Interval.distance(rootAscii, toAsciiAccidentals(note.letter));
-		const match = raw.match(/^(\d+)([A-Za-z]+)$/);
-		const label = match ? `${match[2]}${match[1]}` : raw;
-		return { role: note.role, label, letter: note.letter, solfege: note.solfege };
+		const info = intervalBetween(chord.root, note.letter);
+		return {
+			role: note.role,
+			label: info.short,
+			longFr: info.longFr,
+			letter: note.letter,
+			solfege: note.solfege
+		};
 	});
 }
 

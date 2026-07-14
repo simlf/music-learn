@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { Note } from 'tonal';
 	import { spellChord } from '$lib/theory/chord';
+	import { toAsciiAccidentals } from '$lib/theory/interval';
 	import { formulaFor } from '$lib/lookup/chordPresentation';
 	import { generateQuestion } from '$lib/drills/generateQuestion';
 	import { matchChord } from '$lib/drills/matchChord';
@@ -35,11 +36,6 @@
 			index = Math.floor(Math.random() * variants.length);
 		}
 		return [variants[index], index];
-	}
-
-	/** tonal's Note.chroma only understands ASCII accidentals (#/b), not display glyphs (♯/♭). */
-	function toAsciiAccidentals(letter: string): string {
-		return letter.replace(/♯/g, '#').replace(/♭/g, 'b');
 	}
 
 	// Interleaving (D-06): generateQuestion() is drawn directly for BOTH kinds
