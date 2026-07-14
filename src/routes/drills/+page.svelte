@@ -12,6 +12,7 @@
 	import PianoKeyboard from '$lib/components/PianoKeyboard.svelte';
 	import ChordGlyph from '$lib/components/ChordGlyph.svelte';
 	import IntervalChip from '$lib/components/IntervalChip.svelte';
+	import RevealInsight from '$lib/components/RevealInsight.svelte';
 	import Button from '$lib/components/Button.svelte';
 
 	/**
@@ -56,6 +57,9 @@
 
 	/** Snapshot of what the user played (letters, in click order) at grading time, for the diff row. */
 	let playedLetters = $state<string[]>([]);
+
+	/** The symbol the user picked on an identification question, for the confusion contrast (Track D). */
+	let givenSymbol = $state<string | undefined>(undefined);
 
 	/** In-session running tally (D-10): in-memory only, no localStorage, resets on reload. */
 	let score = $state({ correct: 0, streak: 0 });
@@ -142,6 +146,7 @@
 		if (answered) return;
 		answered = true;
 		const correct = choice === question.symbol;
+		givenSymbol = choice;
 		feedback = { correct, missing: [], extra: [] };
 		recordGrade(correct);
 	}
@@ -153,6 +158,7 @@
 		answered = false;
 		feedback = null;
 		playedLetters = [];
+		givenSymbol = undefined;
 	}
 
 	/** Whether a played letter's chroma is an extra note (not part of the target chord). */
@@ -304,6 +310,10 @@
 							</div>
 						{/each}
 					</div>
+					<RevealInsight
+						correctSymbol={question.symbol}
+						givenSymbol={question.kind === 'identification' ? givenSymbol : undefined}
+					/>
 				{/if}
 			</div>
 		{/if}
