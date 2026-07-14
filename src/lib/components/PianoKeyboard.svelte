@@ -48,6 +48,14 @@
 		/** Called with a key's letter when the user toggles it (click or Enter/Space). */
 		onToggle?: (letter: string) => void;
 		/**
+		 * Called on pointerdown with the key's letter (sharp spelling for black
+		 * keys, e.g. "C♯") and its octave number (base octave 4, matching the
+		 * audio engine's voicing) - the Track A key-touch sound hook, fired
+		 * beside the existing haptic pulse. Interactive-only, like every other
+		 * pointer handler; omitting it leaves rendering byte-identical.
+		 */
+		onPress?: (letter: string, octave: number) => void;
+		/**
 		 * Explicit octave-count override (mainly a test seam). When omitted, the
 		 * component self-measures its available width via ResizeObserver and
 		 * derives the octave count from it (2 when a full two-octave span fits,
@@ -65,7 +73,15 @@
 		wrongLetters?: Set<string>;
 	}
 
-	let { notes, interactive = false, selected, onToggle, octaves, wrongLetters }: Props = $props();
+	let {
+		notes,
+		interactive = false,
+		selected,
+		onToggle,
+		onPress,
+		octaves,
+		wrongLetters
+	}: Props = $props();
 
 	let containerEl: HTMLDivElement | undefined = $state();
 	let measuredWidth: number | undefined = $state(undefined);
@@ -120,10 +136,29 @@
 		}
 	}
 
-	/** Pointerdown press cue + haptic (D-11). Interactive-only. */
-	function handlePointerDown(letter: string) {
+	/**
+	 * Pointerdown press cue + haptic (D-11) + key-touch sound hook (Track A).
+	 * Interactive-only. The octave is derived from key position (base octave
+	 * 4, one per 7 white keys) so consumers can turn letter + octave into a
+	 * concrete pitch.
+	 */
+	function handlePointerDown(letter: string, octave: number) {
 		pressedLetter = letter;
 		triggerHapticPulse();
+		onPress?.(letter, octave);
+	}
+
+	/** Base octave of the keyboard's leftmost C (matches the audio voicing's octave 4). */
+	const BASE_OCTAVE = 4;
+
+	/** Octave of a white key by index (a new octave starts every 7 white keys). */
+	function octaveForWhiteIndex(index: number): number {
+		return BASE_OCTAVE + Math.floor(index / 7);
+	}
+
+	/** Octave of a black key by the white-key index it follows. */
+	function octaveForBlackAfterWhiteIndex(afterWhiteIndex: number): number {
+		return BASE_OCTAVE + Math.floor(afterWhiteIndex / 7);
 	}
 
 	/** Clears the transient pressed state on release/cancel/leave (D-11). */
@@ -272,7 +307,9 @@
 			aria-label={interactive ? keyAriaLabel(key.letter) : undefined}
 			onclick={interactive ? () => toggleKey(key.letter) : undefined}
 			onkeydown={interactive ? (event: KeyboardEvent) => handleKeydown(event, key.letter) : undefined}
-			onpointerdown={interactive ? () => handlePointerDown(key.letter) : undefined}
+			onpointerdown={interactive
+				? () => handlePointerDown(key.letter, octaveForWhiteIndex(key.index))
+				: undefined}
 			onpointerup={interactive ? () => clearPressed(key.letter) : undefined}
 			onpointerleave={interactive ? () => clearPressed(key.letter) : undefined}
 			onpointercancel={interactive ? () => clearPressed(key.letter) : undefined}
@@ -303,7 +340,9 @@
 			onkeydown={interactive
 				? (event: KeyboardEvent) => handleKeydown(event, key.sharpLetter)
 				: undefined}
-			onpointerdown={interactive ? () => handlePointerDown(key.sharpLetter) : undefined}
+			onpointerdown={interactive
+				? () => handlePointerDown(key.sharpLetter, octaveForBlackAfterWhiteIndex(key.position - 1))
+				: undefined}
 			onpointerup={interactive ? () => clearPressed(key.sharpLetter) : undefined}
 			onpointerleave={interactive ? () => clearPressed(key.sharpLetter) : undefined}
 			onpointercancel={interactive ? () => clearPressed(key.sharpLetter) : undefined}
