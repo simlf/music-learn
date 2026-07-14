@@ -27,6 +27,27 @@ Executed as an autonomous overnight multi-agent run: parallel research, architec
 | 004 | intervals | build | Interval labels everywhere + interval drill + /scales explorer + server migration | VALIDATED | theory |
 | 005 | theory-content | build | Improved theory content + quality-gated mnemonics | VALIDATED | content |
 
+## Session 2: Pedagogy / Memorization Upgrade (2026-07-14 evening)
+
+User feedback: the /scales Practice tab is confusing; wants either a real piano keyboard to play the scale on, or scales folded into the drill engine. Broader mandate: focus hard on the pedagogical aspect so the brain actually memorizes the theory. Run several agents.
+
+| # | Name | Type | Validates | Verdict | Tags |
+|---|------|------|-----------|---------|------|
+| 006 | srs-recall-loop | build | FSRS-scheduled daily recall of theory facts (chord formulas, intervals, scale degrees) surfaces due-today cards and beats rote for retention | VALIDATED | learning, srs |
+| 007 | construct-not-memorize | build | Build chord/scale note-by-note from the formula (stack thirds / step pattern) on a keyboard, teaching derivation instead of rote note lists | VALIDATED | learning, theory |
+| 008 | scale-keyboard-drill | build | Play a scale ascending/descending on a real movable keyboard, graded like a drill (the concrete /scales complaint) | VALIDATED | scales, drills |
+| 009 | recall-modes | build | One fact drilled across modes (see symbol->play, hear->name, degree->build); multi-modal encoding strengthens memory vs single-direction | VALIDATED | learning, memory |
+
+### Requirements emerged (locked by spiking, 2026-07-14 evening)
+
+- **Grade notes by chroma/MIDI, never by letter string.** Enharmonic-blind matching is mandatory (Bb vs A#, Gb major's Cb, Cdim7's Bdoubleflat on the white A key). Render tonal's own spelling for the chord/scale, but compare pitch classes. (006/007/008 all independently hit this.)
+- **SRS card unit = (fact, mode), not fact.** Cm7|see-play, Cm7|hear-name, Cm7|formula-build are separate FSRS cards sharing a fact. Multi-modal thesis (009) IS the card model.
+- **FSRS config: `enable_short_term: false`.** Default true gives ~10min learning steps and breaks any day-scale daily-review app. Use day-scale intervals. Rehydrate Date fields after JSON/storage round-trip (they silently become strings).
+- **Scales stay a DEDICATED drill, NOT folded into the one-shot DrillQuestion union.** A scale is an ordered multi-tap sequence. Reuse drill chrome (prompt, pass state, FSRS hook), extend scaleDrill.ts (letters -> {chroma, midi, degree}, add octave degree 8 + descending). Movable tonic-anchored one-octave window solves the non-C span problem. Replace the confusing ladder, do not offer a keyboard-vs-ladder toggle.
+- **Construction ("Build it") mode teaches WHY.** Phrase steps as consecutive intervals (stack m3/M3 for chords, W/H for scales) using Interval.distance between adjacent notes, not root-relative intervals. Enharmonic collision is a teaching moment, not a bug. Needs 2 octaves (phone needs scroll/compress). Place upstream of recall drilling (on-ramp).
+- **Mode B (name-chord-by-ear) must be multiple-choice against the canonical symbol** (Chord.detect leaks inversions/enharmonics), same-root distractors, lowest rotation weight, never gates progress.
+- Persistence: local-first (localStorage -> Dexie/IndexedDB as review log grows). Per-device for v1, no server needed. No em dashes in copy (existing rule, honored).
+
 ## Results (2026-07-14)
 
 All five tracks built TDD in isolated worktrees, merged to main: 694 app tests + 40 server tests green, svelte-check clean, adapter-static build clean, browser-verified at desktop and 375px (two fixes landed from that pass: lookup autofocus preventScroll, masthead wrap).

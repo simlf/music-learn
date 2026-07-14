@@ -6,6 +6,30 @@
 			"runtimeExecutable": "npm",
 			"runtimeArgs": ["run", "dev"],
 			"port": 5173
+		},
+		{
+			"name": "spike006",
+			"runtimeExecutable": "npx",
+			"runtimeArgs": ["-y", "serve", ".planning/spikes/006-srs-recall-loop", "-l", "4806"],
+			"port": 4806
+		},
+		{
+			"name": "spike007",
+			"runtimeExecutable": "npx",
+			"runtimeArgs": ["-y", "serve", ".planning/spikes/007-construct-not-memorize", "-l", "4807"],
+			"port": 4807
+		},
+		{
+			"name": "spike008",
+			"runtimeExecutable": "npx",
+			"runtimeArgs": ["-y", "serve", ".planning/spikes/008-scale-keyboard-drill", "-l", "4808"],
+			"port": 4808
+		},
+		{
+			"name": "spike009",
+			"runtimeExecutable": "npx",
+			"runtimeArgs": ["-y", "serve", ".planning/spikes/009-recall-modes", "-l", "4809"],
+			"port": 4809
 		}
 	]
 }
