@@ -51,7 +51,7 @@
 		type SessionItem
 	} from '$lib/practice/session';
 	import { activeSongChordSymbols } from '$lib/practice/songs';
-	import { splitSymbol, tierById } from '$lib/practice/tiers';
+	import { splitSymbol, tierById, type TierId } from '$lib/practice/tiers';
 	import type { DrillMode, DrillQuestion } from '$lib/drills/generateQuestion';
 	import type { MatchResult } from '$lib/drills/matchChord';
 	import PianoKeyboard, { type InspectPayload } from '$lib/components/PianoKeyboard.svelte';
@@ -60,6 +60,7 @@
 	import IntervalChip from '$lib/components/IntervalChip.svelte';
 	import RevealInsight from '$lib/components/RevealInsight.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import LevelPicker from '$lib/components/LevelPicker.svelte';
 
 	/**
 	 * Right-answer confirmation variants (D-08): the stamp beat is the reward,
@@ -511,6 +512,16 @@
 		unlockDismissed = true;
 	}
 
+	/**
+	 * The user changed level via the on-ramp picker (sketch 007): refresh the
+	 * page's level state and start a fresh round so the new tier's pool takes
+	 * effect immediately.
+	 */
+	function handleLevelChange(_tier: TierId) {
+		levelState = getLevelState();
+		startNewRound();
+	}
+
 	/** Starts a fresh round; seeds (tap-to-redrill, Drill these) suppress the warm-up. */
 	function startNewRound(seeds: SessionItem[] = []) {
 		session = createSession({
@@ -596,6 +607,11 @@
 
 <main class="bg-paper text-ink min-h-screen px-2 py-8 font-sans sm:px-8">
 	<h1 class="text-heading mt-2 font-bold">Drills</h1>
+
+	<!-- Beginner on-ramp (sketch 007): the level lives where you practice. -->
+	<div class="mt-6">
+		<LevelPicker onChange={handleLevelChange} />
+	</div>
 
 	<div class="mt-8 flex flex-wrap items-center justify-between gap-2">
 		<div class="flex gap-4" data-testid="drill-mode-row" role="group" aria-label="Drill mode">

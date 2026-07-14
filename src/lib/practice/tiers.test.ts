@@ -72,6 +72,24 @@ describe('the 6-tier table (R3)', () => {
 	});
 });
 
+describe('tier blurbs (beginner on-ramp, sketch 007)', () => {
+	it('gives every tier a one-line plain-language blurb with no em dashes', () => {
+		const expected: Record<number, string> = {
+			1: 'Just the white-key major and minor chords: C D E F G A B. No sharps or flats yet. Start here.',
+			2: 'All twelve roots now: major, minor, and diminished triads.',
+			3: 'The seventh chords that show up everywhere: maj7, m7, and dominant 7.',
+			4: 'Half-diminished and diminished seventh chords, the color of a minor ii-V-i.',
+			5: 'Sixth chords and sus chords. Coming later.',
+			6: '9ths, altered dominants, and more color tones. Coming later.'
+		};
+		for (const tier of TIERS) {
+			expect(tier.blurb).toBe(expected[tier.id]);
+			expect(tier.blurb).not.toContain('—');
+			expect(tier.blurb).not.toContain('–');
+		}
+	});
+});
+
 describe('itemsForTiers', () => {
 	it('unions items across tiers, deduping the tier 1 / tier 2 overlap', () => {
 		const items = itemsForTiers([1, 2]);
