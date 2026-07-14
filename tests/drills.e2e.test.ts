@@ -24,6 +24,20 @@ vi.mock('$lib/api/progress', () => ({
 	flushQueue: (...args: unknown[]) => flushQueueMock(...args)
 }));
 
+// The drills page now plays sound through the Track A audio engine: a
+// key-touch note on pointerdown and the correct chord on every answer
+// reveal. Mocked per the audio contract (consumers in tests always
+// vi.mock('$lib/audio/audio')) so no AudioContext or tone import ever
+// happens in jsdom.
+const playChordMock = vi.fn();
+const playNoteMock = vi.fn();
+const ensureAudioReadyMock = vi.fn(async () => {});
+vi.mock('$lib/audio/audio', () => ({
+	playChord: (...args: unknown[]) => playChordMock(...args),
+	playNote: (...args: unknown[]) => playNoteMock(...args),
+	ensureAudioReady: (...args: unknown[]) => ensureAudioReadyMock(...args)
+}));
+
 // The drills page reads/writes the rotate-hint dismissed flag (D-05) via
 // $lib/drills/rotateHint. Mocked so each rotate-hint scenario controls the
 // dismissed state explicitly rather than depending on real localStorage.
@@ -72,6 +86,9 @@ beforeEach(() => {
 	forceConstructionCm7();
 	recordAnswerMock.mockClear();
 	flushQueueMock.mockClear();
+	playChordMock.mockClear();
+	playNoteMock.mockClear();
+	ensureAudioReadyMock.mockClear();
 	isRotateHintDismissedMock.mockReset().mockReturnValue(false);
 	dismissRotateHintMock.mockClear();
 });
@@ -493,5 +510,80 @@ describe('drills page answer persistence (PROG-01)', () => {
 		render(DrillsPage);
 
 		expect(flushQueueMock).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('drills page sound (Track A)', () => {
+	const CM7_LETTERS = ['C', 'E♭', 'G', 'B♭'];
+
+	async function playCm7Correctly() {
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+	}
+
+	it('pressing a key plays its note and unlocks audio inside the gesture', async () => {
+		forceConstructionCm7();
+		render(DrillsPage);
+
+		const cKey = screen.getAllByRole('button', { name: 'C key' })[0];
+		await fireEvent.pointerDown(cKey);
+
+		expect(ensureAudioReadyMock).toHaveBeenCalled();
+		expect(playNoteMock).toHaveBeenCalledWith('C4');
+	});
+
+	it('a correct construction answer still plays the correct chord on reveal', async () => {
+		forceConstructionCm7();
+		render(DrillsPage);
+
+		await playCm7Correctly();
+		expect(playChordMock).not.toHaveBeenCalled();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(playChordMock).toHaveBeenCalledTimes(1);
+		expect(playChordMock).toHaveBeenCalledWith(CM7_LETTERS);
+	});
+
+	it('a wrong construction answer plays the CORRECT chord, not the played one', async () => {
+		forceConstructionCm7();
+		render(DrillsPage);
+
+		// Wrong set: missing the 7th, extra 6th (A).
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A key' })[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(playChordMock).toHaveBeenCalledTimes(1);
+		expect(playChordMock).toHaveBeenCalledWith(CM7_LETTERS);
+	});
+
+	it('a correct identification answer plays the chord on reveal', async () => {
+		forceIdentificationCm7();
+		render(DrillsPage);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Answer: Cm7' }));
+
+		expect(playChordMock).toHaveBeenCalledTimes(1);
+		expect(playChordMock).toHaveBeenCalledWith(CM7_LETTERS);
+	});
+
+	it('a wrong identification answer plays the correct chord on reveal', async () => {
+		forceIdentificationCm7();
+		render(DrillsPage);
+
+		const choices = screen.getAllByRole('button', { name: /^Answer: / });
+		const wrongChoice = choices.find(
+			(button) => button.getAttribute('aria-label') !== 'Answer: Cm7'
+		);
+		expect(wrongChoice).toBeDefined();
+		await fireEvent.click(wrongChoice!);
+
+		expect(playChordMock).toHaveBeenCalledTimes(1);
+		expect(playChordMock).toHaveBeenCalledWith(CM7_LETTERS);
 	});
 });

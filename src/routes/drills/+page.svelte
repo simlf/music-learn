@@ -7,6 +7,8 @@
 	import { matchChord } from '$lib/drills/matchChord';
 	import { dismissRotateHint, isRotateHintDismissed } from '$lib/drills/rotateHint';
 	import { recordAnswer, flushQueue } from '$lib/api/progress';
+	import { ensureAudioReady, playChord, playNote } from '$lib/audio/audio';
+	import { toPitch } from '$lib/audio/voicing';
 	import type { DrillQuestion } from '$lib/drills/generateQuestion';
 	import type { MatchResult } from '$lib/drills/matchChord';
 	import PianoKeyboard from '$lib/components/PianoKeyboard.svelte';
@@ -92,7 +94,21 @@
 		return () => mql.removeEventListener('change', handleOrientationChange);
 	});
 
+	/**
+	 * Key-touch sound (Track A): every on-screen key press sounds its note.
+	 * The first press also unlocks the audio context inside the gesture.
+	 */
+	function pressKey(letter: string, octave: number) {
+		void ensureAudioReady();
+		playNote(toPitch(letter, octave));
+	}
+
 	function recordGrade(correct: boolean) {
+		// Reveal rule (Track A): EVERY answer reveal plays the correct chord,
+		// correct answers included; on a miss this is the correct one, never
+		// the user's. Voicing and engine live in $lib/audio.
+		playChord(target.notes.map((note) => note.letter));
+
 		if (correct) {
 			score = { correct: score.correct + 1, streak: score.streak + 1 };
 			const [text, index] = pickVariant(CORRECT_VARIANTS, lastCorrectIndex);
@@ -213,6 +229,7 @@
 					interactive={!showConstructionReveal}
 					selected={showConstructionReveal ? undefined : selected}
 					onToggle={showConstructionReveal ? undefined : toggleKey}
+					onPress={showConstructionReveal ? undefined : pressKey}
 					wrongLetters={showConstructionReveal ? wrongLetters : undefined}
 				/>
 			</div>
