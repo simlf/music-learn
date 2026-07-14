@@ -46,12 +46,12 @@
 </script>
 
 <nav
-	class="bg-paper border-ink flex flex-row items-center justify-between gap-2 border-b-2 p-2 md:gap-4 md:px-6 md:py-4"
+	class="bg-paper border-ink flex flex-row flex-wrap items-center justify-between gap-2 border-b-2 p-2 md:gap-4 md:px-6 md:py-4"
 	data-testid="masthead"
 >
-	<span class="text-heading font-bold uppercase tracking-tight">MUSIC LEARN</span>
+	<span class="text-heading font-bold uppercase tracking-tight whitespace-nowrap">MUSIC LEARN</span>
 	<StreakBadge variant="compact" count={streakCount} loading={streakLoading} />
-	<div class="flex gap-2 md:gap-4">
+	<div class="flex flex-wrap gap-x-2 gap-y-1 md:gap-4">
 		{#each navLinks as link (link.href)}
 			<a
 				href={link.href}

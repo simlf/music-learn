@@ -38,7 +38,7 @@
 
 	/** Selects the input's full content so the next keystroke types over it. */
 	function focusAndSelectInput() {
-		inputEl?.focus();
+		inputEl?.focus({ preventScroll: true });
 		inputEl?.select();
 	}
 
@@ -124,9 +124,13 @@
 		});
 	}
 
-	/** Autofocus on mount so the piano-side user can type immediately. */
+	/**
+	 * Autofocus on mount so the piano-side user can type immediately.
+	 * preventScroll keeps the masthead in view: without it the browser
+	 * scrolls the focused input to the top and hides the nav entirely.
+	 */
 	function autofocus(node: HTMLInputElement) {
-		node.focus();
+		node.focus({ preventScroll: true });
 	}
 </script>
 
