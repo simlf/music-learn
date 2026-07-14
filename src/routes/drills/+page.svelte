@@ -2,23 +2,62 @@
 	import { onMount } from 'svelte';
 	import { Note } from 'tonal';
 	import { spellChord } from '$lib/theory/chord';
-	import { intervalFromShort, toAsciiAccidentals } from '$lib/theory/interval';
+	import { DRILL_INTERVALS, intervalFromShort, toAsciiAccidentals } from '$lib/theory/interval';
 	import { formulaFor } from '$lib/lookup/chordPresentation';
-	import { generateQuestion } from '$lib/drills/generateQuestion';
+	import { generateQuestion, pickQuestionFamily } from '$lib/drills/generateQuestion';
 	import {
 		describeTappedInterval,
+		generateIntervalQuestion,
 		gradeIntervalTap,
 		intervalQuestionNotes
 	} from '$lib/drills/generateIntervalQuestion';
 	import { matchChord } from '$lib/drills/matchChord';
 	import { dismissRotateHint, isRotateHintDismissed } from '$lib/drills/rotateHint';
-	import { recordAnswer, flushQueue } from '$lib/api/progress';
+	import { fetchStats, flushQueue, localDateString, type StatItem } from '$lib/api/progress';
+	import { ensureAudioReady, playChord, playNote } from '$lib/audio/audio';
+	import { toPitch } from '$lib/audio/voicing';
+	import { recordPracticeAnswer } from '$lib/practice/answerTelemetry';
+	import { consumeDrillSeeds } from '$lib/practice/drillSeeds';
+	import {
+		checkUnlock,
+		getLevelState,
+		isSnoozed,
+		setCurrentTier,
+		snoozeSuggestion,
+		type UnlockCheck
+	} from '$lib/practice/levelState';
+	import {
+		appendPracticeAnswer,
+		practiceDaysSince,
+		readPracticeLog,
+		recentMisses
+	} from '$lib/practice/practiceLog';
+	import { drawFromPool, scaffoldStageForSymbol, type PoolContext } from '$lib/practice/pool';
+	import {
+		readScaffolds,
+		recordScaffoldAnswer,
+		writeScaffold,
+		type ScaffoldStage
+	} from '$lib/practice/scaffold';
+	import {
+		createSession,
+		isComplete,
+		mergeWarmupCandidates,
+		nextQuestion as advanceSession,
+		recordSessionAnswer,
+		summarize,
+		type QuestionSource,
+		type Session
+	} from '$lib/practice/session';
+	import { activeSongChordSymbols } from '$lib/practice/songs';
+	import { splitSymbol, tierById } from '$lib/practice/tiers';
 	import type { DrillMode, DrillQuestion } from '$lib/drills/generateQuestion';
 	import type { MatchResult } from '$lib/drills/matchChord';
 	import PianoKeyboard, { type InspectPayload } from '$lib/components/PianoKeyboard.svelte';
 	import InspectRegister from '$lib/components/InspectRegister.svelte';
 	import ChordGlyph from '$lib/components/ChordGlyph.svelte';
 	import IntervalChip from '$lib/components/IntervalChip.svelte';
+	import RevealInsight from '$lib/components/RevealInsight.svelte';
 	import Button from '$lib/components/Button.svelte';
 
 	/**
@@ -34,14 +73,59 @@
 	let lastCorrectIndex = -1;
 	let lastWrongIndex = -1;
 
-	/** Picks a variant, avoiding an immediate repeat, mirroring pickHint's anti-repeat logic. */
+	/**
+	 * Picks a variant, avoiding an immediate repeat, mirroring pickHint's
+	 * anti-repeat logic. Loop-free (a repeat draw just steps to the next
+	 * variant) so a deterministic Math.random in tests can never spin forever.
+	 */
 	function pickVariant(variants: string[], lastIndex: number): [string, number] {
 		if (variants.length === 1) return [variants[0], 0];
 		let index = Math.floor(Math.random() * variants.length);
-		while (index === lastIndex) {
-			index = Math.floor(Math.random() * variants.length);
+		if (index === lastIndex) {
+			index = (index + 1) % variants.length;
 		}
 		return [variants[index], index];
+	}
+
+	// ---- Practice engine state (Track B) -----------------------------------
+	// The level gate, weighted pool, and micro-session drive every question
+	// draw. All logic lives in $lib/practice/*; this page only holds the
+	// reactive glue.
+
+	let levelState = $state(getLevelState());
+	let stats = $state<StatItem[] | null>(null);
+	let weakest = $state<StatItem[]>([]);
+	let showEndCard = $state(false);
+	let unlockSuggestion = $state<UnlockCheck | null>(null);
+	let unlockDismissed = $state(false);
+
+	/** Scaffolding stage of the CURRENT question (above-tier song chords), null for normal items. */
+	let scaffoldStage = $state<ScaffoldStage | null>(null);
+	let hintTaken = $state(false);
+	let questionSource = $state<QuestionSource>('pool');
+
+	/** Qualities of recent draws, most recent last (interleaving constraint input). */
+	let lastQualities: string[] = [];
+	/** Timestamp when the current question appeared (duration_ms telemetry). */
+	let questionShownAt = Date.now();
+
+	let session = $state<Session>(
+		createSession({ seeds: consumeDrillSeeds(), warmupCandidates: recentMisses(5) })
+	);
+
+	function poolContext(): PoolContext {
+		return {
+			songSymbols: activeSongChordSymbols(),
+			currentTier: levelState.currentTier,
+			unlockedTiers: levelState.unlockedTiers,
+			stats,
+			weakest,
+			recentMisses: recentMisses(8),
+			scaffolds: readScaffolds(),
+			lastQualities,
+			log: readPracticeLog(),
+			today: localDateString()
+		};
 	}
 
 	/** Deck selector (Track C): CHORDS, INTERVALS, or the default even MIX. */
@@ -52,16 +136,73 @@
 	];
 	let mode = $state<DrillMode>('mix');
 
-	// Interleaving (D-06): generateQuestion(mode) is drawn directly on load
-	// and on every Next - no setup screen. In MIX (default) each question is
-	// randomly a chord or an interval question; within each family the
-	// direction (construction/identification) stays a 50/50 draw.
-	let question = $state<DrillQuestion>(generateQuestion('mix'));
+	/**
+	 * A fresh (non-session-sourced) question: the deck mode decides the
+	 * family FIRST, and only a chord family draws a weighted symbol from the
+	 * practice pool. Interval questions never touch chord scaffolding.
+	 */
+	function freshPoolQuestion(): DrillQuestion {
+		if (pickQuestionFamily(mode) === 'interval') {
+			scaffoldStage = null;
+			return generateIntervalQuestion();
+		}
+		const symbol = drawFromPool(poolContext()).symbol;
+		scaffoldStage = scaffoldStageForSymbol(poolContext(), symbol);
+		lastQualities = [...lastQualities.slice(-1), splitSymbol(symbol)?.quality ?? ''];
+		return generateQuestion({
+			symbol,
+			direction: scaffoldStage === 'formula-first' ? 'construction' : undefined
+		});
+	}
+
+	/**
+	 * Draws the next question: the session decides the source (due retry >
+	 * Drill-these seed > warm-up > pool) and the pool supplies weighted
+	 * symbols; scaffolded chords force a guided construction on their
+	 * formula-first exposures. Session-sourced items always keep their
+	 * family regardless of the deck mode: chord symbols render as chord
+	 * questions, and a missed interval's retry (or an end-card redrill of
+	 * one) comes back as an interval question on the same interval.
+	 */
+	function drawNextQuestion(): DrillQuestion {
+		const { plan, session: consumed } = advanceSession(session);
+		session = consumed;
+		questionSource = plan.source;
+		hintTaken = false;
+		questionShownAt = Date.now();
+
+		if (plan.symbol !== null && DRILL_INTERVALS.includes(plan.symbol)) {
+			scaffoldStage = null;
+			return generateIntervalQuestion({ short: plan.symbol });
+		}
+		if (plan.symbol === null) {
+			return freshPoolQuestion();
+		}
+
+		const symbol = plan.symbol;
+		scaffoldStage = scaffoldStageForSymbol(poolContext(), symbol);
+		lastQualities = [...lastQualities.slice(-1), splitSymbol(symbol)?.quality ?? ''];
+		return generateQuestion({
+			symbol,
+			direction: scaffoldStage === 'formula-first' ? 'construction' : undefined
+		});
+	}
+
+	// Interleaving (D-06): a question is drawn for BOTH directions on load
+	// and on every Next - no setup screen. Each question is randomly
+	// construction or identification (scaffolding may force construction for
+	// formula-first exposures); the MIX deck also interleaves chord and
+	// interval questions.
+	let question = $state<DrillQuestion>(drawNextQuestion());
 	// spellChord('') is the total "no chord" value; interval questions never
 	// read `target`, so the fallback keeps every chord-branch read non-null.
 	const target = $derived(spellChord(question.kind === 'chord' ? question.symbol : ''));
 	/** Both interval-question notes (root + spelled target); construction shows only the root until graded. */
-	const intervalNotes = $derived(question.kind === 'interval' ? intervalQuestionNotes(question) : []);
+	const intervalNotes = $derived(
+		question.kind === 'interval' ? intervalQuestionNotes(question) : []
+	);
+
+	const sessionSummary = $derived(summarize(session));
 
 	let selected = $state<Set<string>>(new Set());
 	let answered = $state(false);
@@ -72,6 +213,9 @@
 	/** Snapshot of what the user played (letters, in click order) at grading time, for the diff row. */
 	let playedLetters = $state<string[]>([]);
 
+	/** The symbol the user picked on an identification question, for the confusion contrast (Track D). */
+	let givenSymbol = $state<string | undefined>(undefined);
+
 	/** The single graded tap of an interval construction question (letter as the keyboard reports it). */
 	let tappedLetter = $state<string | null>(null);
 	/** What that tap actually was, named from the question root, for the feedback register line. */
@@ -80,6 +224,38 @@
 			? describeTappedInterval(question.root, tappedLetter)
 			: null
 	);
+
+	/**
+	 * Reveal-keyboard inspect taps (R4: the study-the-reveal moment becomes
+	 * active exploration). Filled only after grading, rendered inside the
+	 * feedback block.
+	 */
+	let drillInspect = $state<InspectPayload | null>(null);
+
+	function handleDrillInspect(payload: InspectPayload) {
+		drillInspect = payload;
+	}
+
+	/**
+	 * Mode switch: fresh pool questions re-deal immediately under the new
+	 * deck (the tap should feel instant); session-sourced questions
+	 * (warm-up, retry, seeded) and already-answered questions keep their
+	 * place, and the mode applies from the next draw.
+	 */
+	function setMode(next: DrillMode) {
+		if (next === mode) return;
+		mode = next;
+		if (answered || questionSource !== 'pool') return;
+		hintTaken = false;
+		questionShownAt = Date.now();
+		question = freshPoolQuestion();
+		selected = new Set();
+		feedback = null;
+		playedLetters = [];
+		givenSymbol = undefined;
+		tappedLetter = null;
+		drillInspect = null;
+	}
 
 	/** In-session running tally (D-10): in-memory only, no localStorage, resets on reload. */
 	let score = $state({ correct: 0, streak: 0 });
@@ -101,6 +277,25 @@
 		flushQueue();
 	});
 
+	// Server-derived stats (D-02): need-weighting, the review bucket, and the
+	// unlock check all improve once these land; the drill loop never waits on
+	// them and works offline/tokenless without them.
+	onMount(() => {
+		fetchStats()
+			.then((result) => {
+				stats = result.items;
+				weakest = result.weakest;
+				session = mergeWarmupCandidates(
+					session,
+					result.weakest.filter((item) => item.kind === 'chord').map((item) => item.item)
+				);
+			})
+			.catch(() => {
+				// Offline or tokenless: the pool falls back to tier-uniform
+				// weighting and the unlock suggestion simply never fires.
+			});
+	});
+
 	// D-05 "first rotation" clause: entering landscape counts as an implicit
 	// dismissal, same as tapping the hint's dismiss control. Feature-detected
 	// (matchMedia isn't implemented by jsdom, so this is a silent no-op in
@@ -116,7 +311,24 @@
 		return () => mql.removeEventListener('change', handleOrientationChange);
 	});
 
-	function recordGrade(correct: boolean) {
+	/**
+	 * Key-touch sound (Track A): every on-screen key press sounds its note.
+	 * The first press also unlocks the audio context inside the gesture.
+	 */
+	function pressKey(letter: string, octave: number) {
+		void ensureAudioReady();
+		playNote(toPitch(letter, octave));
+	}
+
+	function recordGrade(correct: boolean, given?: string) {
+		// Reveal rule (Track A): EVERY answer reveal plays the correct answer,
+		// correct answers included; on a miss this is the correct one, never
+		// the user's. Chord questions play the chord; interval questions play
+		// the root + target pair. Voicing and engine live in $lib/audio.
+		playChord(
+			(question.kind === 'chord' ? target.notes : intervalNotes).map((note) => note.letter)
+		);
+
 		if (correct) {
 			score = { correct: score.correct + 1, streak: score.streak + 1 };
 			const [text, index] = pickVariant(CORRECT_VARIANTS, lastCorrectIndex);
@@ -129,14 +341,54 @@
 			lastWrongIndex = index;
 		}
 
+		const durationMs = Date.now() - questionShownAt;
+		// Formula-first exposures and taken hints are assisted: they count for
+		// the song's own progress but never toward tier unlock accuracy (R3).
+		// Interval questions have no scaffolding, so they are never assisted.
+		const assisted = question.kind === 'chord' && (scaffoldStage === 'formula-first' || hintTaken);
+		// Interval answers use the shorthand name as their item, so a missed
+		// interval's delayed retry and the end-card redrill work per interval.
+		const item = question.kind === 'chord' ? question.symbol : question.interval.short;
+
+		session = recordSessionAnswer(session, {
+			symbol: item,
+			kind: question.direction,
+			correct,
+			assisted,
+			durationMs,
+			source: questionSource
+		});
+
+		if (question.kind === 'chord') {
+			// The practice log feeds tier-unlock windows and chord warm-up
+			// candidates: chord-only by design, so interval answers never skew
+			// the unlock accuracy math.
+			appendPracticeAnswer({ item: question.symbol, correct, assisted, date: localDateString() });
+
+			if (scaffoldStage !== null) {
+				const scaffolds = readScaffolds();
+				const current = scaffolds[question.symbol] ?? {
+					symbol: question.symbol,
+					exposures: 0,
+					coldCorrectConstructions: 0
+				};
+				writeScaffold(
+					recordScaffoldAnswer(current, { correct, assisted, kind: question.direction })
+				);
+			}
+		}
+
 		// Fire-and-forget persistence (D-04): never awaited, so this cannot
-		// delay the synchronous UI updates above. Interval answers record
-		// kind 'interval' with the shorthand name as the item, so the
-		// progress page aggregates per interval class for free.
-		recordAnswer({
-			item: question.kind === 'chord' ? question.symbol : question.interval.short,
+		// delay the synchronous UI updates above. duration_ms and the given
+		// answer ride along tolerantly (answerTelemetry strips them if the
+		// deployed server rejects unknown fields). Interval answers post kind
+		// 'interval' with the shorthand as item.
+		recordPracticeAnswer({
+			item,
 			kind: question.kind,
-			correct
+			correct,
+			durationMs,
+			given
 		});
 	}
 
@@ -171,8 +423,9 @@
 		if (answered || question.kind !== 'chord') return;
 		answered = true;
 		const correct = choice === question.symbol;
+		givenSymbol = choice;
 		feedback = { correct, missing: [], extra: [] };
-		recordGrade(correct);
+		recordGrade(correct, choice);
 	}
 
 	/** Interval identification: tapping a shorthand choice IS the complete answer (same D-05 rule). */
@@ -181,13 +434,14 @@
 		answered = true;
 		const correct = choice === question.interval.short;
 		feedback = { correct, missing: [], extra: [] };
-		recordGrade(correct);
+		recordGrade(correct, choice);
 	}
 
 	/**
 	 * Interval construction: the FIRST tap is the whole answer (no Check
 	 * step; single-note answers need no chord assembly). Graded by chroma
-	 * distance, so enharmonic and octave-duplicate taps are accepted.
+	 * distance, so enharmonic and octave-duplicate taps are accepted. The
+	 * `given` telemetry records what the tap actually was, as an interval.
 	 */
 	function tapIntervalKey(letter: string) {
 		if (answered || question.kind !== 'interval') return;
@@ -195,36 +449,104 @@
 		answered = true;
 		const correct = gradeIntervalTap(question.root, letter, question.interval.semitones);
 		feedback = { correct, missing: [], extra: [] };
-		recordGrade(correct);
+		recordGrade(correct, describeTappedInterval(question.root, letter).info.short);
 	}
 
-	/** Mode switch discards the in-flight question and deals from the new deck. */
-	function setMode(next: DrillMode) {
-		if (next === mode) return;
-		mode = next;
-		nextQuestion();
-	}
-
-	/** Next (D-07): draws a fresh question from the current mode and clears all per-question state. */
+	/**
+	 * Next (D-07): draws a fresh question and clears all per-question state.
+	 * At the round boundary (10 answers) the end card takes over instead,
+	 * which is also the ONLY moment the unlock suggestion may appear (R3:
+	 * never mid-question).
+	 */
 	function nextQuestion() {
-		question = generateQuestion(mode);
+		if (isComplete(session)) {
+			unlockSuggestion = computeUnlockSuggestion();
+			showEndCard = true;
+			return;
+		}
+		question = drawNextQuestion();
 		selected = new Set();
 		answered = false;
 		feedback = null;
 		playedLetters = [];
+		givenSymbol = undefined;
 		tappedLetter = null;
 		drillInspect = null;
 	}
 
 	/**
-	 * Reveal-keyboard inspect taps (R4: the study-the-reveal moment becomes
-	 * active exploration). Filled only after grading, rendered inside the
-	 * feedback block.
+	 * Round-boundary unlock check (R3 section 2): eligible per the exact
+	 * criteria, and not snoozed within the last 3 practice days.
 	 */
-	let drillInspect = $state<InspectPayload | null>(null);
+	function computeUnlockSuggestion(): UnlockCheck | null {
+		const check = checkUnlock({
+			tier: levelState.currentTier,
+			stats,
+			log: readPracticeLog()
+		});
+		if (!check.eligible || check.nextTier === null) return null;
+		const snoozedOn = levelState.snooze?.snoozedOn;
+		const daysSince = snoozedOn === undefined ? Number.POSITIVE_INFINITY : practiceDaysSince(snoozedOn);
+		if (isSnoozed(levelState, check.nextTier, daysSince)) return null;
+		return check;
+	}
 
-	function handleDrillInspect(payload: InspectPayload) {
-		drillInspect = payload;
+	function unlockNextTier() {
+		if (unlockSuggestion?.nextTier == null) return;
+		levelState = setCurrentTier(unlockSuggestion.nextTier);
+		unlockDismissed = true;
+	}
+
+	function snoozeUnlock() {
+		if (unlockSuggestion?.nextTier == null) return;
+		levelState = snoozeSuggestion(unlockSuggestion.nextTier, localDateString());
+		unlockDismissed = true;
+	}
+
+	/** Starts a fresh round; seeds (tap-to-redrill, Drill these) suppress the warm-up. */
+	function startNewRound(seeds: string[] = []) {
+		session = createSession({
+			seeds,
+			warmupCandidates: seeds.length > 0 ? [] : recentMisses(5)
+		});
+		if (seeds.length === 0 && weakest.length > 0) {
+			session = mergeWarmupCandidates(
+				session,
+				weakest.filter((item) => item.kind === 'chord').map((item) => item.item)
+			);
+		}
+		showEndCard = false;
+		unlockSuggestion = null;
+		unlockDismissed = false;
+		question = drawNextQuestion();
+		selected = new Set();
+		answered = false;
+		feedback = null;
+		playedLetters = [];
+		givenSymbol = undefined;
+		tappedLetter = null;
+		drillInspect = null;
+	}
+
+	/** Tap-to-redrill from the end card: the tapped miss leads, the others follow. */
+	function redrillMiss(symbol: string) {
+		startNewRound([symbol, ...sessionSummary.missedSymbols.filter((missed) => missed !== symbol)]);
+	}
+
+	/** Human-readable quality for unlock-card copy ('' is a major triad). */
+	function qualityLabel(quality: string): string {
+		return quality === '' ? 'maj' : quality;
+	}
+
+	const SOURCE_TAGS: Partial<Record<QuestionSource, string>> = {
+		warmup: 'BACK FOR ANOTHER GO',
+		retry: 'ONE MORE TIME',
+		seeded: 'FROM YOUR WEAK LIST'
+	};
+
+	/** Hinted scaffolding stage: taking the hint reveals the formula and marks the answer assisted. */
+	function takeHint() {
+		hintTaken = true;
 	}
 
 	/** Whether a played letter's chroma is an extra note (not part of the target chord). */
@@ -279,10 +601,72 @@
 			{/each}
 		</div>
 		<p class="text-label text-right font-mono uppercase" data-testid="score-register">
-			{score.correct} RIGHT · {score.streak} STREAK
+			{Math.min(session.asked + 1, session.length)} OF {session.length} · {score.correct} RIGHT · {score.streak}
+			STREAK
 		</p>
 	</div>
 
+	{#if showEndCard}
+		<div
+			class="border-ink bg-paper-bright stamp mt-8 border-2 px-2 py-6 sm:px-6"
+			data-testid="session-end-card"
+		>
+			<p class="text-label font-mono uppercase">ROUND COMPLETE</p>
+			<p class="text-display mt-2 font-mono font-bold">
+				{sessionSummary.correct} / {sessionSummary.total}
+			</p>
+			<p class="text-label font-mono uppercase" data-testid="end-card-streak">
+				BEST RUN: {sessionSummary.bestStreak} IN A ROW
+			</p>
+
+			{#if sessionSummary.missedSymbols.length > 0}
+				<p class="text-body mt-6">Worth another look:</p>
+				<div class="mt-2 flex flex-wrap gap-2" data-testid="end-card-misses">
+					{#each sessionSummary.missedSymbols as missed (missed)}
+						<Button
+							type="button"
+							variant="ghost"
+							aria-label={`Redrill ${missed}`}
+							onclick={() => redrillMiss(missed)}
+						>
+							<span class="font-serif font-bold">{missed}</span>
+						</Button>
+					{/each}
+				</div>
+			{:else}
+				<p class="text-body mt-6">Clean sheet. The press ran true, mon ami.</p>
+			{/if}
+
+			{#if unlockSuggestion !== null && unlockSuggestion.nextTier !== null && !unlockDismissed}
+				<div class="border-ink mt-6 border-2 p-4" data-testid="unlock-card">
+					<p class="text-label font-mono uppercase">
+						TIER {unlockSuggestion.nextTier} LOOKS READY
+					</p>
+					<p class="text-body mt-2">
+						Your last {unlockSuggestion.rollingCount} answers are {Math.round(
+							unlockSuggestion.rollingAccuracy * 100
+						)}% correct across {unlockSuggestion.distinctDays} days. Unlock {tierById(
+							unlockSuggestion.nextTier
+						).name.toLowerCase()}: {tierById(unlockSuggestion.nextTier)
+							.qualities.map(qualityLabel)
+							.join(', ')}?
+					</p>
+					<div class="mt-4 flex flex-wrap gap-4">
+						<Button type="button" variant="primary" onclick={unlockNextTier}>
+							Unlock Tier {unlockSuggestion.nextTier}
+						</Button>
+						<Button type="button" variant="ghost" onclick={snoozeUnlock}>Not yet</Button>
+					</div>
+				</div>
+			{/if}
+
+			<div class="mt-6">
+				<Button type="button" variant="primary" onclick={() => startNewRound()}>
+					Run it again
+				</Button>
+			</div>
+		</div>
+	{:else}
 	<div
 		class="drill-layout border-ink bg-paper-bright mt-8 border-2 px-2 py-6 sm:px-6"
 		data-testid="drill-card"
@@ -298,10 +682,47 @@
 
 		{#if question.kind === 'chord' && question.direction === 'construction'}
 			<div class="drill-layout__prompt">
+				{#if SOURCE_TAGS[questionSource]}
+					<p class="text-label text-muted mb-2 font-mono uppercase" data-testid="question-source-tag">
+						{SOURCE_TAGS[questionSource]}
+					</p>
+				{/if}
 				<div class="flex items-start gap-4">
 					<ChordGlyph root={target.root} quality={target.symbol.slice(target.root.length)} />
 				</div>
 				<p class="text-body mt-4">Click the notes for {question.symbol}.</p>
+
+				{#if scaffoldStage === 'formula-first'}
+					<div class="border-ink mt-4 border-2 p-4" data-testid="scaffold-card">
+						<p class="text-label font-mono uppercase">NEW CHORD. FORMULA FIRST.</p>
+						<div class="mt-3 flex flex-wrap gap-4">
+							{#each formulaFor(target) as entry (entry.role + entry.letter)}
+								<div class="flex flex-col items-center gap-1">
+									<IntervalChip role={entry.role} label={entry.label} longName={entry.longFr} />
+									<span class="text-label font-mono">{entry.letter}</span>
+									<span class="text-label font-mono">{entry.solfege}</span>
+								</div>
+							{/each}
+						</div>
+						<p class="text-muted mt-3">Read it, then play it. This one counts as assisted.</p>
+					</div>
+				{:else if scaffoldStage === 'hinted' && !answered}
+					{#if hintTaken}
+						<div class="mt-4 flex flex-wrap gap-4" data-testid="hint-formula">
+							{#each formulaFor(target) as entry (entry.role + entry.letter)}
+								<div class="flex flex-col items-center gap-1">
+									<IntervalChip role={entry.role} label={entry.label} longName={entry.longFr} />
+									<span class="text-label font-mono">{entry.letter}</span>
+									<span class="text-label font-mono">{entry.solfege}</span>
+								</div>
+							{/each}
+						</div>
+					{:else}
+						<div class="mt-4">
+							<Button type="button" variant="ghost" onclick={takeHint}>Show formula</Button>
+						</div>
+					{/if}
+				{/if}
 			</div>
 
 			<div class="drill-layout__keyboard">
@@ -310,6 +731,7 @@
 					interactive={!showConstructionReveal}
 					selected={showConstructionReveal ? undefined : selected}
 					onToggle={showConstructionReveal ? undefined : toggleKey}
+					onPress={showConstructionReveal ? undefined : pressKey}
 					wrongLetters={showConstructionReveal ? wrongLetters : undefined}
 					inspectable={showConstructionReveal}
 					onInspect={showConstructionReveal ? handleDrillInspect : undefined}
@@ -333,6 +755,11 @@
 			</div>
 		{:else if question.kind === 'chord'}
 			<div class="drill-layout__prompt">
+				{#if SOURCE_TAGS[questionSource]}
+					<p class="text-label text-muted mb-2 font-mono uppercase" data-testid="question-source-tag">
+						{SOURCE_TAGS[questionSource]}
+					</p>
+				{/if}
 				<p class="text-body">Name this chord.</p>
 			</div>
 
@@ -357,6 +784,11 @@
 			</div>
 		{:else if question.direction === 'identification'}
 			<div class="drill-layout__prompt">
+				{#if SOURCE_TAGS[questionSource]}
+					<p class="text-label text-muted mb-2 font-mono uppercase" data-testid="question-source-tag">
+						{SOURCE_TAGS[questionSource]}
+					</p>
+				{/if}
 				<p class="text-body">Name this interval.</p>
 			</div>
 
@@ -388,6 +820,11 @@
 			</div>
 		{:else}
 			<div class="drill-layout__prompt">
+				{#if SOURCE_TAGS[questionSource]}
+					<p class="text-label text-muted mb-2 font-mono uppercase" data-testid="question-source-tag">
+						{SOURCE_TAGS[questionSource]}
+					</p>
+				{/if}
 				<p class="text-body" data-testid="interval-construction-prompt">
 					Tap a <span class="font-mono font-bold">{question.interval.short}</span> above
 					<span class="font-mono font-bold">{question.root}</span>.
@@ -401,6 +838,7 @@
 					interactive={!answered}
 					selected={answered ? undefined : new Set()}
 					onToggle={answered ? undefined : tapIntervalKey}
+					onPress={answered ? undefined : pressKey}
 					wrongLetters={answered
 						? feedback?.correct
 							? new Set()
@@ -459,6 +897,10 @@
 								</div>
 							{/each}
 						</div>
+						<RevealInsight
+							correctSymbol={question.symbol}
+							givenSymbol={question.direction === 'identification' ? givenSymbol : undefined}
+						/>
 					{:else}
 						<p class="text-muted mt-4">Here is the interval:</p>
 						<p class="text-label mt-2 font-mono uppercase" data-testid="interval-answer-line">
@@ -484,6 +926,7 @@
 			</div>
 		{/if}
 	</div>
+	{/if}
 </main>
 
 <style>
@@ -639,37 +1082,5 @@
 	.drill-controls__primary :global(.ps-button),
 	.drill-controls__secondary :global(.ps-button) {
 		width: 100%;
-	}
-
-	/*
-	 * Mode tabs (Track C): masthead-link grammar (mono uppercase, muted until
-	 * active, ink underline when active) rather than boxed buttons, so the
-	 * row shares the score register's line and costs no vertical space in the
-	 * short-landscape layout. The 44px touch floor comes from padding plus
-	 * the negative vertical margin (the .suggestion-tap precedent), keeping
-	 * the visual line height unchanged.
-	 */
-	.mode-tab {
-		min-height: 44px;
-		min-width: 44px;
-		padding: var(--spacing-sm);
-		margin: calc(-1 * var(--spacing-sm)) 0;
-		background: none;
-		border: none;
-		color: var(--color-muted);
-		letter-spacing: 0.08em;
-		cursor: pointer;
-	}
-
-	.mode-tab:hover,
-	.mode-tab:focus {
-		color: var(--color-ink);
-	}
-
-	.mode-tab--active {
-		color: var(--color-ink);
-		text-decoration: underline;
-		text-underline-offset: 4px;
-		text-decoration-thickness: 2px;
 	}
 </style>

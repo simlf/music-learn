@@ -154,3 +154,23 @@ describe('describeTappedInterval', () => {
 		expect(readout.letter).toBe('E');
 	});
 });
+
+describe('generateIntervalQuestion forced short (session-sourced retries)', () => {
+	it('keeps the forced interval and skips its draw: root, then direction', () => {
+		forceDraws([ROOTS.indexOf('G') / ROOTS.length, 0.99]); // root G, direction construction
+		const question = generateIntervalQuestion({ short: 'M6' });
+
+		expect(question.interval.short).toBe('M6');
+		expect(question.root).toBe('G');
+		expect(question.direction).toBe('construction');
+	});
+
+	it('still builds identification choices around the forced interval', () => {
+		forceDraws([0, 0]); // root C, direction identification
+		const question = generateIntervalQuestion({ short: 'P5' });
+
+		expect(question.interval.short).toBe('P5');
+		expect(question.choices).toContain('P5');
+		expect(question.choices).toHaveLength(4);
+	});
+});

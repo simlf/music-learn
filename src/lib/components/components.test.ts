@@ -346,6 +346,70 @@ describe('PianoKeyboard', () => {
 			expect(rootKey).toHaveClass('piano-keyboard__key--root');
 		});
 
+		it('pointerdown fires onPress with the key letter and octave (Track A key-touch sound hook)', async () => {
+			const onPress = vi.fn();
+			render(PianoKeyboard, {
+				notes: [],
+				interactive: true,
+				selected: new Set<string>(),
+				onToggle: () => {},
+				onPress,
+				octaves: 2
+			});
+
+			// White keys: C appears at white indices 0, 7, 14 -> octaves 4, 5, 6.
+			const cKeys = screen.getAllByRole('button', { name: 'C key' });
+			expect(cKeys).toHaveLength(3);
+			await fireEvent.pointerDown(cKeys[0]);
+			expect(onPress).toHaveBeenLastCalledWith('C', 4);
+			await fireEvent.pointerDown(cKeys[1]);
+			expect(onPress).toHaveBeenLastCalledWith('C', 5);
+			await fireEvent.pointerDown(cKeys[2]);
+			expect(onPress).toHaveBeenLastCalledWith('C', 6);
+
+			// Black keys report their sharp letter; second-octave instance is octave 5.
+			const cSharpKeys = screen.getAllByRole('button', { name: 'C♯ key' });
+			await fireEvent.pointerDown(cSharpKeys[0]);
+			expect(onPress).toHaveBeenLastCalledWith('C♯', 4);
+			await fireEvent.pointerDown(cSharpKeys[1]);
+			expect(onPress).toHaveBeenLastCalledWith('C♯', 5);
+		});
+
+		it('never fires onPress in display mode (handlers stay gated by interactive)', async () => {
+			const onPress = vi.fn();
+			render(PianoKeyboard, { notes: [], onPress });
+
+			const keyboard = screen.getByRole('img', { name: /piano keyboard/i });
+			const key = keyboard.querySelector('.piano-keyboard__key--white') as HTMLElement;
+			await fireEvent.pointerDown(key);
+
+			expect(onPress).not.toHaveBeenCalled();
+		});
+
+		it('renders byte-identical markup whether onPress is passed or omitted', () => {
+			const { notes } = spellChord('Cm7');
+			const withoutProp = render(PianoKeyboard, {
+				notes,
+				interactive: true,
+				selected: new Set(['C']),
+				onToggle: () => {},
+				octaves: 2
+			});
+			const withoutHtml = withoutProp.container.innerHTML;
+			withoutProp.unmount();
+
+			const withProp = render(PianoKeyboard, {
+				notes,
+				interactive: true,
+				selected: new Set(['C']),
+				onToggle: () => {},
+				onPress: () => {},
+				octaves: 2
+			});
+
+			expect(withProp.container.innerHTML).toBe(withoutHtml);
+		});
+
 		it('interactive keyboard surface carries touch-action styling that suppresses double-tap zoom', () => {
 			const { container } = render(PianoKeyboard, {
 				notes: [],

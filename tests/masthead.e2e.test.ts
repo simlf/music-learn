@@ -29,17 +29,15 @@ describe('masthead responsive nav (09-06)', () => {
 		expect(screen.getByRole('link', { name: 'Progress' })).toBeInTheDocument();
 	});
 
-	it('hides the Showcase link on mobile via a responsive display class, keeping it in the DOM for desktop', () => {
+	it('exposes the Songs and Theory links and drops Showcase from the nav (v2 contract)', () => {
 		const emptyChildren = createRawSnippet(() => ({
 			render: () => '<div></div>'
 		}));
 
 		render(RootLayout, { params: {}, data: {}, children: emptyChildren });
 
-		const showcaseLink = screen.getByRole('link', { name: 'Showcase' });
-		expect(showcaseLink).toBeInTheDocument();
-		expect(showcaseLink).toHaveAttribute('href', '/showcase');
-		expect(showcaseLink.className).toMatch(/\bhidden\b/);
-		expect(showcaseLink.className).toMatch(/\bsm:inline\b/);
+		expect(screen.getByRole('link', { name: 'Songs' })).toHaveAttribute('href', '/songs');
+		expect(screen.getByRole('link', { name: 'Theory' })).toHaveAttribute('href', '/theory');
+		expect(screen.queryByRole('link', { name: 'Showcase' })).not.toBeInTheDocument();
 	});
 });

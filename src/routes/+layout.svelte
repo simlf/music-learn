@@ -13,8 +13,9 @@
 		{ href: '/', label: 'Lookup' },
 		{ href: '/drills', label: 'Drills' },
 		{ href: '/scales', label: 'Scales' },
-		{ href: '/progress', label: 'Progress' },
-		{ href: '/showcase', label: 'Showcase' }
+		{ href: '/songs', label: 'Songs' },
+		{ href: '/theory', label: 'Theory' },
+		{ href: '/progress', label: 'Progress' }
 	];
 
 	/**
@@ -54,7 +55,7 @@
 		{#each navLinks as link (link.href)}
 			<a
 				href={link.href}
-				class={`masthead__link text-label font-mono uppercase ${link.href === '/showcase' ? 'hidden sm:inline' : ''}`}
+				class="masthead__link text-label font-mono uppercase"
 				class:masthead__link--active={$page.url.pathname === link.href}
 				style="letter-spacing: 0.08em;"
 			>

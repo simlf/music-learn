@@ -1,0 +1,367 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+/**
+ * The audio engine is tested entirely against a mocked 'tone' module: no
+ * AudioContext, no Tone construction, ever (jsdom has neither). audio.ts
+ * only ever loads tone via a lazy dynamic import, which Vitest intercepts
+ * with the factory below.
+ */
+
+interface FakeInstrument {
+	triggerAttackRelease: ReturnType<typeof vi.fn>;
+	triggerAttack: ReturnType<typeof vi.fn>;
+	triggerRelease: ReturnType<typeof vi.fn>;
+	releaseAll: ReturnType<typeof vi.fn>;
+	toDestination: () => FakeInstrument;
+}
+
+interface FakeSampler extends FakeInstrument {
+	options: {
+		urls: Record<string, string>;
+		baseUrl: string;
+		release: number;
+		onload: () => void;
+		onerror: (error: Error) => void;
+	};
+}
+
+const mockTone = vi.hoisted(() => ({
+	start: vi.fn(async () => {}),
+	context: { lookAhead: 0.1 },
+	synths: [] as unknown[],
+	samplers: [] as unknown[]
+}));
+
+vi.mock('tone', () => {
+	function makeInstrument(): FakeInstrument {
+		const instrument: FakeInstrument = {
+			triggerAttackRelease: vi.fn(),
+			triggerAttack: vi.fn(),
+			triggerRelease: vi.fn(),
+			releaseAll: vi.fn(),
+			toDestination: () => instrument
+		};
+		return instrument;
+	}
+	class PolySynth {
+		constructor() {
+			const instrument = makeInstrument();
+			mockTone.synths.push(instrument);
+			return instrument as unknown as PolySynth;
+		}
+	}
+	class Sampler {
+		constructor(options: FakeSampler['options']) {
+			const instrument = Object.assign(makeInstrument(), { options });
+			mockTone.samplers.push(instrument);
+			return instrument as unknown as Sampler;
+		}
+	}
+	return {
+		start: () => mockTone.start(),
+		getContext: () => mockTone.context,
+		PolySynth,
+		Synth: class {},
+		Sampler
+	};
+});
+
+import {
+	_resetForTests,
+	audioState,
+	ensureAudioReady,
+	noteOff,
+	noteOn,
+	playChord,
+	playNote,
+	releaseAll,
+	setSoundEnabled,
+	soundEnabled
+} from './audio';
+
+/** Lets every queued ensureReady -> play chain settle. */
+function flush(): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+function synth(index = 0): FakeInstrument {
+	return mockTone.synths[index] as FakeInstrument;
+}
+
+function sampler(index = 0): FakeSampler {
+	return mockTone.samplers[index] as FakeSampler;
+}
+
+beforeEach(() => {
+	localStorage.clear();
+	mockTone.start.mockClear();
+	mockTone.context.lookAhead = 0.1;
+	mockTone.synths.length = 0;
+	mockTone.samplers.length = 0;
+	_resetForTests();
+});
+
+describe('import safety (jsdom)', () => {
+	it('merely importing the module and reading state constructs no Tone objects', () => {
+		expect(soundEnabled()).toBe(true);
+		expect(audioState()).toEqual({ instrument: 'synth', samplesLoaded: false });
+		expect(mockTone.synths).toHaveLength(0);
+		expect(mockTone.samplers).toHaveLength(0);
+		expect(mockTone.start).not.toHaveBeenCalled();
+	});
+});
+
+describe('ensureAudioReady', () => {
+	it('loads tone, kills the lookAhead scheduling delay, unlocks the context, and builds synth + sampler', async () => {
+		await ensureAudioReady();
+
+		expect(mockTone.start).toHaveBeenCalled();
+		expect(mockTone.context.lookAhead).toBe(0);
+		expect(mockTone.synths).toHaveLength(1);
+		expect(mockTone.samplers).toHaveLength(1);
+	});
+
+	it('is idempotent: repeated calls never build a second synth or sampler', async () => {
+		await ensureAudioReady();
+		await ensureAudioReady();
+		await ensureAudioReady();
+
+		expect(mockTone.synths).toHaveLength(1);
+		expect(mockTone.samplers).toHaveLength(1);
+	});
+
+	it('points the sampler at the self-hosted Salamander set (30 files, minor-third spacing)', async () => {
+		await ensureAudioReady();
+
+		const { options } = sampler();
+		expect(options.baseUrl).toBe('/samples/salamander/');
+		expect(Object.keys(options.urls)).toHaveLength(30);
+		expect(options.urls['A0']).toBe('A0.mp3');
+		expect(options.urls['D#4']).toBe('Ds4.mp3');
+		expect(options.urls['F#2']).toBe('Fs2.mp3');
+		expect(options.urls['C8']).toBe('C8.mp3');
+	});
+});
+
+describe('playNote', () => {
+	it('plays instantly on the synth while samples are still loading', async () => {
+		playNote('C4');
+		await flush();
+
+		expect(synth().triggerAttackRelease).toHaveBeenCalledWith('C4', '8n', undefined, 0.75);
+	});
+
+	it('normalizes display-glyph accidentals to ASCII pitches', async () => {
+		playNote('B♭3');
+		await flush();
+
+		expect(synth().triggerAttackRelease).toHaveBeenCalledWith('Bb3', '8n', undefined, 0.75);
+	});
+
+	it('honors velocity and durationSec options', async () => {
+		playNote('C4', { velocity: 0.5, durationSec: 2 });
+		await flush();
+
+		expect(synth().triggerAttackRelease).toHaveBeenCalledWith('C4', 2, undefined, 0.5);
+	});
+
+	it('swaps to the sampled piano transparently once samples finish loading', async () => {
+		await ensureAudioReady();
+		sampler().options.onload();
+
+		playNote('C4');
+		await flush();
+
+		expect(sampler().triggerAttackRelease).toHaveBeenCalledWith('C4', '8n', undefined, 0.75);
+		expect(synth().triggerAttackRelease).not.toHaveBeenCalled();
+	});
+
+	it('ignores a same-note retrigger within the 50ms spam window, then allows it again', async () => {
+		const nowSpy = vi.spyOn(Date, 'now');
+		try {
+			nowSpy.mockReturnValue(1000);
+			playNote('C4');
+			playNote('C4');
+			await flush();
+			expect(synth().triggerAttackRelease).toHaveBeenCalledTimes(1);
+
+			nowSpy.mockReturnValue(1060);
+			playNote('C4');
+			await flush();
+			expect(synth().triggerAttackRelease).toHaveBeenCalledTimes(2);
+		} finally {
+			nowSpy.mockRestore();
+		}
+	});
+
+	it('lets two different notes sound back to back inside the window (guard is per note)', async () => {
+		const nowSpy = vi.spyOn(Date, 'now');
+		try {
+			nowSpy.mockReturnValue(1000);
+			playNote('C4');
+			playNote('E4');
+			await flush();
+			expect(synth().triggerAttackRelease).toHaveBeenCalledTimes(2);
+		} finally {
+			nowSpy.mockRestore();
+		}
+	});
+});
+
+describe('playChord', () => {
+	it('voices spelled letters as ascending root-position pitches at reveal velocity', async () => {
+		playChord(['C', 'E♭', 'G', 'B♭']);
+		await flush();
+
+		expect(synth().triggerAttackRelease).toHaveBeenCalledWith(
+			['C4', 'Eb4', 'G4', 'Bb4'],
+			'2n',
+			undefined,
+			0.85
+		);
+	});
+
+	it('honors velocity and durationSec options', async () => {
+		playChord(['C', 'E', 'G'], { velocity: 0.6, durationSec: 1.5 });
+		await flush();
+
+		expect(synth().triggerAttackRelease).toHaveBeenCalledWith(
+			['C4', 'E4', 'G4'],
+			1.5,
+			undefined,
+			0.6
+		);
+	});
+
+	it('does nothing (and loads nothing) for an empty note list', async () => {
+		playChord([]);
+		await flush();
+
+		expect(mockTone.synths).toHaveLength(0);
+	});
+});
+
+describe('noteOn / noteOff', () => {
+	it('attacks on noteOn and releases on noteOff', async () => {
+		noteOn('C4');
+		await flush();
+		expect(synth().triggerAttack).toHaveBeenCalledWith('C4', undefined, 0.75);
+
+		noteOff('C4');
+		await flush();
+		expect(synth().triggerRelease).toHaveBeenCalledWith('C4');
+	});
+
+	it('noteOff before anything ever sounded is a silent no-op that loads no tone', async () => {
+		noteOff('C4');
+		await flush();
+
+		expect(mockTone.synths).toHaveLength(0);
+	});
+
+	it('soft-caps held voices at 16 by releasing the oldest before a new attack', async () => {
+		const pitches = Array.from({ length: 17 }, (_, i) => `C${i}`);
+		for (const pitch of pitches) noteOn(pitch);
+		await flush();
+
+		expect(synth().triggerAttack).toHaveBeenCalledTimes(17);
+		expect(synth().triggerRelease).toHaveBeenCalledWith('C0');
+	});
+});
+
+describe('releaseAll', () => {
+	it('releases everything on both instruments once loaded', async () => {
+		await ensureAudioReady();
+		releaseAll();
+
+		expect(synth().releaseAll).toHaveBeenCalled();
+	});
+
+	it('never throws when nothing was ever loaded', () => {
+		expect(() => releaseAll()).not.toThrow();
+		expect(mockTone.synths).toHaveLength(0);
+	});
+});
+
+describe('sound toggle', () => {
+	it('defaults to enabled with no stored value', () => {
+		expect(soundEnabled()).toBe(true);
+	});
+
+	it('persists the toggle to localStorage under music-learn:sound', () => {
+		setSoundEnabled(false);
+		expect(localStorage.getItem('music-learn:sound')).toBe('false');
+		expect(soundEnabled()).toBe(false);
+
+		setSoundEnabled(true);
+		expect(localStorage.getItem('music-learn:sound')).toBe('true');
+		expect(soundEnabled()).toBe(true);
+	});
+
+	it('reads a persisted false back on a fresh session', () => {
+		localStorage.setItem('music-learn:sound', 'false');
+		_resetForTests();
+
+		expect(soundEnabled()).toBe(false);
+	});
+
+	it('treats corrupt stored values as the enabled default', () => {
+		localStorage.setItem('music-learn:sound', 'banana');
+		_resetForTests();
+
+		expect(soundEnabled()).toBe(true);
+	});
+
+	it('turns every play call into a no-op while disabled (nothing loads, nothing sounds)', async () => {
+		setSoundEnabled(false);
+
+		playNote('C4');
+		playChord(['C', 'E', 'G']);
+		noteOn('D4');
+		await ensureAudioReady();
+		await flush();
+
+		expect(mockTone.synths).toHaveLength(0);
+		expect(mockTone.samplers).toHaveLength(0);
+		expect(mockTone.start).not.toHaveBeenCalled();
+	});
+
+	it('sounds again after re-enabling', async () => {
+		setSoundEnabled(false);
+		playNote('C4');
+		await flush();
+
+		setSoundEnabled(true);
+		playNote('C4');
+		await flush();
+
+		expect(synth().triggerAttackRelease).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('audioState', () => {
+	it('reports the synth while samples are loading, sampled once loaded', async () => {
+		expect(audioState()).toEqual({ instrument: 'synth', samplesLoaded: false });
+
+		await ensureAudioReady();
+		expect(audioState()).toEqual({ instrument: 'synth', samplesLoaded: false });
+
+		sampler().options.onload();
+		expect(audioState()).toEqual({ instrument: 'sampled', samplesLoaded: true });
+	});
+
+	it('drops to a permanent synth-only session when sample loading fails', async () => {
+		await ensureAudioReady();
+		sampler().options.onerror(new Error('offline'));
+
+		expect(audioState()).toEqual({ instrument: 'synth', samplesLoaded: false });
+
+		// A later ensureAudioReady never retries a failed sample fetch.
+		await ensureAudioReady();
+		expect(mockTone.samplers).toHaveLength(1);
+
+		playNote('C4');
+		await flush();
+		expect(synth().triggerAttackRelease).toHaveBeenCalled();
+	});
+});

@@ -14,14 +14,100 @@ vi.mock('$app/stores', () => ({
 }));
 
 // The drills page now fire-and-forgets every graded answer to the backend
-// (PROG-01) via $lib/api/progress. Mocked here so this suite never touches
-// real fetch/localStorage and the existing timing-sensitive assertions stay
-// unaffected.
-const recordAnswerMock = vi.fn();
+// (PROG-01) via the tolerant practice-telemetry wrapper, and fetches stats
+// on mount for the practice pool (D-02). Mocked here so this suite never
+// touches real fetch/localStorage and the existing timing-sensitive
+// assertions stay unaffected.
 const flushQueueMock = vi.fn();
+const fetchStatsMock = vi.fn((..._args: unknown[]) =>
+	Promise.resolve({ items: [], weakest: [] })
+);
 vi.mock('$lib/api/progress', () => ({
-	recordAnswer: (...args: unknown[]) => recordAnswerMock(...args),
-	flushQueue: (...args: unknown[]) => flushQueueMock(...args)
+	flushQueue: (...args: unknown[]) => flushQueueMock(...args),
+	fetchStats: (...args: unknown[]) => fetchStatsMock(...args),
+	localDateString: () => '2026-07-14'
+}));
+
+const recordPracticeAnswerMock = vi.fn();
+vi.mock('$lib/practice/answerTelemetry', () => ({
+	recordPracticeAnswer: (...args: unknown[]) => recordPracticeAnswerMock(...args)
+}));
+
+// Practice-engine modules (Track B): the pool draw is mocked to pin the
+// question SYMBOL deterministically (replacing the old root/quality
+// Math.random draw-order script, which the pool integration removed), and
+// the persistence modules are mocked so no real localStorage is touched.
+// The session module stays REAL: its transitions are pure and deterministic.
+interface PoolDrawStub {
+	symbol: string;
+	bucket: string;
+	scaffoldStage: string | null;
+}
+const drawFromPoolMock = vi.fn(
+	(..._args: unknown[]): PoolDrawStub => ({ symbol: 'Cm7', bucket: 'tier', scaffoldStage: null })
+);
+const scaffoldStageForSymbolMock = vi.fn((..._args: unknown[]): string | null => null);
+vi.mock('$lib/practice/pool', () => ({
+	drawFromPool: (...args: unknown[]) => drawFromPoolMock(...args),
+	scaffoldStageForSymbol: (...args: unknown[]) => scaffoldStageForSymbolMock(...args)
+}));
+
+const recentMissesMock = vi.fn((..._args: unknown[]): string[] => []);
+const appendPracticeAnswerMock = vi.fn();
+vi.mock('$lib/practice/practiceLog', () => ({
+	recentMisses: (...args: unknown[]) => recentMissesMock(...args),
+	appendPracticeAnswer: (...args: unknown[]) => appendPracticeAnswerMock(...args),
+	readPracticeLog: () => [],
+	practiceDaysSince: () => 99
+}));
+
+const checkUnlockMock = vi.fn((..._args: unknown[]) => ({
+	tier: 1,
+	nextTier: 2,
+	eligible: false,
+	rollingAccuracy: 0,
+	rollingCount: 0,
+	lifetimeAttempts: 0,
+	distinctDays: 0,
+	perQuality: []
+}));
+const setCurrentTierMock = vi.fn();
+const snoozeSuggestionMock = vi.fn();
+vi.mock('$lib/practice/levelState', () => ({
+	getLevelState: () => ({ currentTier: 1, unlockedTiers: [1] }),
+	checkUnlock: (...args: unknown[]) => checkUnlockMock(...args),
+	isSnoozed: () => false,
+	setCurrentTier: (...args: unknown[]) => setCurrentTierMock(...args),
+	snoozeSuggestion: (...args: unknown[]) => snoozeSuggestionMock(...args)
+}));
+
+vi.mock('$lib/practice/songs', () => ({
+	activeSongChordSymbols: (): string[] => []
+}));
+
+const writeScaffoldMock = vi.fn();
+vi.mock('$lib/practice/scaffold', () => ({
+	readScaffolds: () => ({}),
+	writeScaffold: (...args: unknown[]) => writeScaffoldMock(...args),
+	recordScaffoldAnswer: (state: unknown) => state
+}));
+
+vi.mock('$lib/practice/drillSeeds', () => ({
+	consumeDrillSeeds: (): string[] => []
+}));
+
+// The drills page now plays sound through the Track A audio engine: a
+// key-touch note on pointerdown and the correct chord on every answer
+// reveal. Mocked per the audio contract (consumers in tests always
+// vi.mock('$lib/audio/audio')) so no AudioContext or tone import ever
+// happens in jsdom.
+const playChordMock = vi.fn();
+const playNoteMock = vi.fn();
+const ensureAudioReadyMock = vi.fn(async () => {});
+vi.mock('$lib/audio/audio', () => ({
+	playChord: (...args: unknown[]) => playChordMock(...args),
+	playNote: (...args: unknown[]) => playNoteMock(...args),
+	ensureAudioReady: () => ensureAudioReadyMock()
 }));
 
 // The drills page reads/writes the rotate-hint dismissed flag (D-05) via
@@ -34,90 +120,44 @@ vi.mock('$lib/drills/rotateHint', () => ({
 	dismissRotateHint: (...args: unknown[]) => dismissRotateHintMock(...args)
 }));
 
-// PianoKeyboard imports the audio contract for inspect-mode playback; tests
-// never construct a real AudioContext (ARCHITECTURE-CONTRACTS.md rule).
-const playNoteMock = vi.fn();
-vi.mock('$lib/audio/audio', () => ({
-	playNote: (...args: unknown[]) => playNoteMock(...args)
-}));
-
 const { default: RootLayout } = await import('../src/routes/+layout.svelte');
 
-// This suite pins the construction-drill loop (Plan 03). generateQuestion's
-// question type and symbol are drawn via Math.random(), so every test here
-// mocks Math.random to force a deterministic construction question (Cm7)
-// rather than relying on flaky real randomness (03-PATTERNS.md).
+// This suite pins the construction-drill loop (Plan 03). The question SYMBOL
+// is supplied by the mocked practice pool (drawFromPoolMock returns Cm7), so
+// Math.random only controls the draws around it. DRAW-ORDER UPDATE (Track C
+// integration merge): the page drills in MIX mode by default, so every FRESH
+// pool draw now spends ONE leading 50/50 family draw (< 0.5 -> chord,
+// >= 0.5 -> interval) via pickQuestionFamily BEFORE pickQuestionType's 0/1
+// direction draw and the downstream cosmetic draws (distractor shuffles,
+// feedback-copy variant picks).
 //
-// DRAW-ORDER UPDATE (Track C union): the page now drills in MIX mode by
-// default, so generateQuestion('mix') spends ONE leading 50/50 draw on the
-// question family (< 0.5 -> chord, >= 0.5 -> interval) BEFORE the original
-// chord draws. Every chord draw script below therefore starts with a 0
-// (family -> chord); the remaining draws are unchanged: (1) randomChord's
-// root index, (2) randomChord's quality index, (3) pickQuestionType's 0/1
-// draw. Root index -> C (index 0), quality index -> m7 (index 4 in
-// QUALITY_SUFFIXES = ['', 'm', 'dim', 'maj7', 'm7', '7', 'm7b5', 'dim7']),
-// question type -> 'construction' (index 0 of ['construction',
-// 'identification']).
-const ROOTS_LENGTH = 12;
-const QUALITY_SUFFIXES = ['', 'm', 'dim', 'maj7', 'm7', '7', 'm7b5', 'dim7'];
-const QUALITY_INDEX = QUALITY_SUFFIXES.indexOf('m7');
-/** DRILL_INTERVALS order pinned by interval.test.ts; m3 sits at index 2. */
-const DRILL_INTERVALS_LENGTH = 12;
-const M3_INDEX = 2;
+// A constant 0 satisfies construction (family 0 -> chord, direction 0 ->
+// construction); identification needs a call-indexed script (family must
+// stay < 0.5 while the direction draw needs >= 0.5), the same draw-script
+// pattern the pre-practice-engine suite used.
+function forceDraws(draws: number[]) {
+	let call = 0;
+	vi.spyOn(Math, 'random').mockImplementation(() => {
+		const value = draws[Math.min(call, draws.length - 1)];
+		call++;
+		return value;
+	});
+}
 
 function forceConstructionCm7() {
-	const draws = [
-		0, // family draw (MIX mode) -> chord
-		0 / ROOTS_LENGTH, // root index 0 -> 'C'
-		QUALITY_INDEX / QUALITY_SUFFIXES.length, // quality index -> 'm7'
-		0 // question type index 0 -> 'construction'
-	];
-	let call = 0;
-	vi.spyOn(Math, 'random').mockImplementation(() => {
-		const value = draws[Math.min(call, draws.length - 1)];
-		call++;
-		return value;
-	});
-}
-
-// Interval scripts drive generateQuestion('intervals') (the INTERVALS mode
-// button), which has NO family draw: it draws (1) root index over ROOTS,
-// (2) interval index over DRILL_INTERVALS, (3) direction index over
-// ['identification', 'construction'], then distractor/choice shuffle draws
-// (trailing repeats of the last entry, content not asserted).
-function forceIntervalIdentificationCm3() {
-	const draws = [
-		0 / ROOTS_LENGTH, // root index 0 -> 'C'
-		M3_INDEX / DRILL_INTERVALS_LENGTH, // interval index 2 -> 'm3'
-		0 // direction index 0 -> 'identification'
-	];
-	let call = 0;
-	vi.spyOn(Math, 'random').mockImplementation(() => {
-		const value = draws[Math.min(call, draws.length - 1)];
-		call++;
-		return value;
-	});
-}
-
-function forceIntervalConstructionCm3() {
-	const draws = [
-		0 / ROOTS_LENGTH, // root index 0 -> 'C'
-		M3_INDEX / DRILL_INTERVALS_LENGTH, // interval index 2 -> 'm3'
-		0.99 // direction index 1 -> 'construction'
-	];
-	let call = 0;
-	vi.spyOn(Math, 'random').mockImplementation(() => {
-		const value = draws[Math.min(call, draws.length - 1)];
-		call++;
-		return value;
-	});
+	vi.spyOn(Math, 'random').mockReturnValue(0); // family -> chord, direction -> 'construction'
 }
 
 beforeEach(() => {
 	forceConstructionCm7();
-	recordAnswerMock.mockClear();
+	recordPracticeAnswerMock.mockClear();
+	appendPracticeAnswerMock.mockClear();
 	flushQueueMock.mockClear();
+	playChordMock.mockClear();
 	playNoteMock.mockClear();
+	ensureAudioReadyMock.mockClear();
+	fetchStatsMock.mockClear();
+	drawFromPoolMock.mockClear();
 	isRotateHintDismissedMock.mockReset().mockReturnValue(false);
 	dismissRotateHintMock.mockClear();
 });
@@ -328,31 +368,16 @@ describe('drills masthead nav link', () => {
 	});
 });
 
-// The scenarios below (Plan 04) force an IDENTIFICATION question instead of a
-// construction one, reusing the same call-indexed Math.random draws array
-// pattern as forceConstructionCm7 above, but flipping the question-type draw
-// to index 1 ('identification'). generateQuestion() for an identification
-// question draws, in order: (1) root index, (2) quality index, (3) question
-// type index, then (4) pickDistractors' internal shuffle draws (near-miss and
-// other candidate shuffles - Fisher-Yates consumes many draws), and finally
-// the top-level shuffle([symbol, ...distractors]) draw. Since exact
-// distractor content isn't asserted (only that 4 choices exist and one is the
-// correct symbol), every draw after the fixed first three can safely return
-// the same trailing value from the draws array (index clamps at the array's
-// last entry), which still yields a valid, parseable set of distractors.
+// The scenarios below (Plan 04) force an IDENTIFICATION question instead of
+// a construction one: the mocked pool still supplies Cm7. Draw script
+// (Track C integration merge): the first draw is the MIX family draw and
+// must stay below 0.5 (chord); the trailing 0.99 then flips pickQuestionType
+// to index 1 ('identification') and feeds pickDistractors' internal
+// Fisher-Yates shuffles plus the top-level shuffle([symbol, ...distractors]),
+// which still yields a valid, parseable 4-choice set (exact distractor
+// content is never asserted here).
 function forceIdentificationCm7() {
-	const draws = [
-		0, // family draw (MIX mode) -> chord (Track C union update)
-		0 / ROOTS_LENGTH, // root index 0 -> 'C'
-		QUALITY_INDEX / QUALITY_SUFFIXES.length, // quality index -> 'm7'
-		0.99 // question type index 1 -> 'identification'
-	];
-	let call = 0;
-	vi.spyOn(Math, 'random').mockImplementation(() => {
-		const value = draws[Math.min(call, draws.length - 1)];
-		call++;
-		return value;
-	});
+	forceDraws([0, 0.99]);
 }
 
 describe('drills page identification prompt', () => {
@@ -509,18 +534,24 @@ describe('drills page ScoreRegister', () => {
 	});
 });
 
-describe('drills page answer persistence (PROG-01)', () => {
-	it('calls recordAnswer once with the question symbol, kind chord, and correct true after a right answer', async () => {
+describe('drills page answer persistence (PROG-01 + telemetry)', () => {
+	it('records a right identification answer with the given choice and a duration', async () => {
 		forceIdentificationCm7();
 		render(DrillsPage);
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Answer: Cm7' }));
 
-		expect(recordAnswerMock).toHaveBeenCalledTimes(1);
-		expect(recordAnswerMock).toHaveBeenCalledWith({ item: 'Cm7', kind: 'chord', correct: true });
+		expect(recordPracticeAnswerMock).toHaveBeenCalledTimes(1);
+		expect(recordPracticeAnswerMock).toHaveBeenCalledWith({
+			item: 'Cm7',
+			kind: 'chord',
+			correct: true,
+			durationMs: expect.any(Number),
+			given: 'Cm7'
+		});
 	});
 
-	it('calls recordAnswer with correct false after a wrong answer', async () => {
+	it('records a wrong identification answer with the picked symbol as given', async () => {
 		forceIdentificationCm7();
 		render(DrillsPage);
 
@@ -531,8 +562,47 @@ describe('drills page answer persistence (PROG-01)', () => {
 		expect(wrongChoice).toBeDefined();
 		await fireEvent.click(wrongChoice!);
 
-		expect(recordAnswerMock).toHaveBeenCalledTimes(1);
-		expect(recordAnswerMock).toHaveBeenCalledWith({ item: 'Cm7', kind: 'chord', correct: false });
+		const picked = wrongChoice!.getAttribute('aria-label')!.replace('Answer: ', '');
+		expect(recordPracticeAnswerMock).toHaveBeenCalledTimes(1);
+		expect(recordPracticeAnswerMock).toHaveBeenCalledWith({
+			item: 'Cm7',
+			kind: 'chord',
+			correct: false,
+			durationMs: expect.any(Number),
+			given: picked
+		});
+	});
+
+	it('records a construction answer with a duration and no given field', async () => {
+		forceConstructionCm7();
+		render(DrillsPage);
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(recordPracticeAnswerMock).toHaveBeenCalledTimes(1);
+		expect(recordPracticeAnswerMock).toHaveBeenCalledWith({
+			item: 'Cm7',
+			kind: 'chord',
+			correct: false,
+			durationMs: expect.any(Number),
+			given: undefined
+		});
+	});
+
+	it('appends every graded answer to the local practice log (unlock windows, warm-up)', async () => {
+		forceIdentificationCm7();
+		render(DrillsPage);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Answer: Cm7' }));
+
+		expect(appendPracticeAnswerMock).toHaveBeenCalledTimes(1);
+		expect(appendPracticeAnswerMock).toHaveBeenCalledWith({
+			item: 'Cm7',
+			correct: true,
+			assisted: false,
+			date: '2026-07-14'
+		});
 	});
 
 	it('flushes the queue on mount', () => {
@@ -543,22 +613,120 @@ describe('drills page answer persistence (PROG-01)', () => {
 	});
 });
 
+describe('drills page sound (Track A)', () => {
+	const CM7_LETTERS = ['C', 'E♭', 'G', 'B♭'];
+
+	async function playCm7Correctly() {
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+	}
+
+	it('pressing a key plays its note and unlocks audio inside the gesture', async () => {
+		forceConstructionCm7();
+		render(DrillsPage);
+
+		const cKey = screen.getAllByRole('button', { name: 'C key' })[0];
+		await fireEvent.pointerDown(cKey);
+
+		expect(ensureAudioReadyMock).toHaveBeenCalled();
+		expect(playNoteMock).toHaveBeenCalledWith('C4');
+	});
+
+	it('a correct construction answer still plays the correct chord on reveal', async () => {
+		forceConstructionCm7();
+		render(DrillsPage);
+
+		await playCm7Correctly();
+		expect(playChordMock).not.toHaveBeenCalled();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(playChordMock).toHaveBeenCalledTimes(1);
+		expect(playChordMock).toHaveBeenCalledWith(CM7_LETTERS);
+	});
+
+	it('a wrong construction answer plays the CORRECT chord, not the played one', async () => {
+		forceConstructionCm7();
+		render(DrillsPage);
+
+		// Wrong set: missing the 7th, extra 6th (A).
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A key' })[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(playChordMock).toHaveBeenCalledTimes(1);
+		expect(playChordMock).toHaveBeenCalledWith(CM7_LETTERS);
+	});
+
+	it('a correct identification answer plays the chord on reveal', async () => {
+		forceIdentificationCm7();
+		render(DrillsPage);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Answer: Cm7' }));
+
+		expect(playChordMock).toHaveBeenCalledTimes(1);
+		expect(playChordMock).toHaveBeenCalledWith(CM7_LETTERS);
+	});
+
+	it('a wrong identification answer plays the correct chord on reveal', async () => {
+		forceIdentificationCm7();
+		render(DrillsPage);
+
+		const choices = screen.getAllByRole('button', { name: /^Answer: / });
+		const wrongChoice = choices.find(
+			(button) => button.getAttribute('aria-label') !== 'Answer: Cm7'
+		);
+		expect(wrongChoice).toBeDefined();
+		await fireEvent.click(wrongChoice!);
+
+		expect(playChordMock).toHaveBeenCalledTimes(1);
+		expect(playChordMock).toHaveBeenCalledWith(CM7_LETTERS);
+	});
+});
+
+// ---- Track C: mode row + interval recognition drill ------------------------
+// Interval scripts drive the INTERVALS deck (mode switch), where
+// pickQuestionFamily consumes NO draw; generateIntervalQuestion then draws
+// (1) root index over ROOTS, (2) interval index over DRILL_INTERVALS,
+// (3) direction index over ['identification', 'construction'], then
+// distractor/choice shuffle draws (trailing repeats, content not asserted).
+const ROOTS_LENGTH = 12;
+const DRILL_INTERVALS_LENGTH = 12;
+const M3_INDEX = 2; // DRILL_INTERVALS order pinned by interval.test.ts
+
+function forceIntervalIdentificationCm3() {
+	forceDraws([0 / ROOTS_LENGTH, M3_INDEX / DRILL_INTERVALS_LENGTH, 0]);
+}
+
+function forceIntervalConstructionCm3() {
+	forceDraws([0 / ROOTS_LENGTH, M3_INDEX / DRILL_INTERVALS_LENGTH, 0.99]);
+}
+
 describe('drills page mode row (Track C)', () => {
 	it('shows CHORDS, INTERVALS, and MIX with MIX active by default', () => {
 		forceConstructionCm7();
 		render(DrillsPage);
 
 		const row = screen.getByTestId('drill-mode-row');
-		const chords = within(row).getByRole('button', { name: 'Chords' });
-		const intervals = within(row).getByRole('button', { name: 'Intervals' });
-		const mix = within(row).getByRole('button', { name: 'Mix' });
-
-		expect(chords).toHaveAttribute('aria-pressed', 'false');
-		expect(intervals).toHaveAttribute('aria-pressed', 'false');
-		expect(mix).toHaveAttribute('aria-pressed', 'true');
+		expect(within(row).getByRole('button', { name: 'Chords' })).toHaveAttribute(
+			'aria-pressed',
+			'false'
+		);
+		expect(within(row).getByRole('button', { name: 'Intervals' })).toHaveAttribute(
+			'aria-pressed',
+			'false'
+		);
+		expect(within(row).getByRole('button', { name: 'Mix' })).toHaveAttribute(
+			'aria-pressed',
+			'true'
+		);
 	});
 
-	it('switching to INTERVALS draws a fresh interval question immediately', async () => {
+	it('switching to INTERVALS re-deals the fresh pool question immediately', async () => {
 		forceConstructionCm7();
 		render(DrillsPage);
 		expect(screen.getByText('Click the notes for Cm7.')).toBeInTheDocument();
@@ -569,9 +737,23 @@ describe('drills page mode row (Track C)', () => {
 		expect(screen.getByText('Name this interval.')).toBeInTheDocument();
 		expect(screen.queryByText('Click the notes for Cm7.')).not.toBeInTheDocument();
 	});
+
+	it('switching back to CHORDS re-deals a pool chord question', async () => {
+		forceConstructionCm7();
+		render(DrillsPage);
+
+		forceIntervalIdentificationCm3();
+		await fireEvent.click(screen.getByRole('button', { name: 'Intervals' }));
+		expect(screen.getByText('Name this interval.')).toBeInTheDocument();
+
+		forceConstructionCm7();
+		await fireEvent.click(screen.getByRole('button', { name: 'Chords' }));
+
+		expect(screen.getByText('Click the notes for Cm7.')).toBeInTheDocument();
+	});
 });
 
-describe('interval identification drill', () => {
+describe('interval identification drill (Track C)', () => {
 	async function renderIntervalIdentification() {
 		forceConstructionCm7();
 		render(DrillsPage);
@@ -592,7 +774,7 @@ describe('interval identification drill', () => {
 		expect(within(correctChoice).getByText('tierce mineure')).toBeInTheDocument();
 	});
 
-	it('tapping the correct choice grades immediately and records kind interval', async () => {
+	it('tapping the correct choice grades immediately and records kind interval with telemetry', async () => {
 		await renderIntervalIdentification();
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Answer: m3' }));
@@ -601,8 +783,16 @@ describe('interval identification drill', () => {
 		expect(
 			within(feedback).getByText(/Nailed it\.|Et voilà\.|Bang on\.|Spot on, mon ami\./)
 		).toBeInTheDocument();
-		expect(recordAnswerMock).toHaveBeenCalledTimes(1);
-		expect(recordAnswerMock).toHaveBeenCalledWith({ item: 'm3', kind: 'interval', correct: true });
+		expect(recordPracticeAnswerMock).toHaveBeenCalledTimes(1);
+		expect(recordPracticeAnswerMock).toHaveBeenCalledWith({
+			item: 'm3',
+			kind: 'interval',
+			correct: true,
+			durationMs: expect.any(Number),
+			given: 'm3'
+		});
+		// The chord-only practice log (tier unlock windows) stays untouched.
+		expect(appendPracticeAnswerMock).not.toHaveBeenCalled();
 	});
 
 	it('a wrong choice reveals the correct name with its French long name', async () => {
@@ -620,7 +810,15 @@ describe('interval identification drill', () => {
 		const answerLine = within(feedback).getByTestId('interval-answer-line');
 		expect(answerLine).toHaveTextContent('m3');
 		expect(answerLine).toHaveTextContent('tierce mineure');
-		expect(recordAnswerMock).toHaveBeenCalledWith({ item: 'm3', kind: 'interval', correct: false });
+
+		const picked = wrongChoice!.getAttribute('aria-label')!.replace('Answer: ', '');
+		expect(recordPracticeAnswerMock).toHaveBeenCalledWith({
+			item: 'm3',
+			kind: 'interval',
+			correct: false,
+			durationMs: expect.any(Number),
+			given: picked
+		});
 	});
 
 	it('locks the choices once answered', async () => {
@@ -630,9 +828,18 @@ describe('interval identification drill', () => {
 
 		expect(screen.getByRole('button', { name: 'Answer: m3' })).toBeDisabled();
 	});
+
+	it('the reveal plays the interval pair, not a chord', async () => {
+		await renderIntervalIdentification();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Answer: m3' }));
+
+		expect(playChordMock).toHaveBeenCalledTimes(1);
+		expect(playChordMock).toHaveBeenCalledWith(['C', 'E♭']);
+	});
 });
 
-describe('interval construction drill', () => {
+describe('interval construction drill (Track C)', () => {
 	async function renderIntervalConstruction() {
 		forceConstructionCm7();
 		render(DrillsPage);
@@ -662,7 +869,13 @@ describe('interval construction drill', () => {
 		expect(
 			within(feedback).getByText(/Nailed it\.|Et voilà\.|Bang on\.|Spot on, mon ami\./)
 		).toBeInTheDocument();
-		expect(recordAnswerMock).toHaveBeenCalledWith({ item: 'm3', kind: 'interval', correct: true });
+		expect(recordPracticeAnswerMock).toHaveBeenCalledWith({
+			item: 'm3',
+			kind: 'interval',
+			correct: true,
+			durationMs: expect.any(Number),
+			given: 'm3'
+		});
 
 		// The reveal stamps the target in its degree color.
 		const keyboard = screen.getByRole('img', { name: /piano keyboard/i });
@@ -686,10 +899,15 @@ describe('interval construction drill', () => {
 
 		const keyboard = screen.getByRole('img', { name: /piano keyboard/i });
 		expect(keyboard.querySelector('.piano-keyboard__key--third')).toBeInTheDocument();
-		const wrongKeys = keyboard.querySelectorAll('.piano-keyboard__key--wrong');
-		expect(wrongKeys.length).toBeGreaterThan(0);
+		expect(keyboard.querySelectorAll('.piano-keyboard__key--wrong').length).toBeGreaterThan(0);
 
-		expect(recordAnswerMock).toHaveBeenCalledWith({ item: 'm3', kind: 'interval', correct: false });
+		expect(recordPracticeAnswerMock).toHaveBeenCalledWith({
+			item: 'm3',
+			kind: 'interval',
+			correct: false,
+			durationMs: expect.any(Number),
+			given: 'M3'
+		});
 	});
 
 	it('Next after an interval answer draws a fresh question from the current mode', async () => {

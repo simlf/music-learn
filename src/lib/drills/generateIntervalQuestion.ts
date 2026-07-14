@@ -68,14 +68,27 @@ export function pickIntervalDistractors(correctShort: string, count = 3): string
 	return [...shuffle(sameDegree), ...shuffle(adjacentDegree), ...shuffle(others)].slice(0, count);
 }
 
+export interface GenerateIntervalQuestionOptions {
+	/**
+	 * Session-sourced interval item (a missed interval's delayed retry or an
+	 * end-card redrill seed): forces the interval, skipping its random draw.
+	 * The root and direction still draw normally.
+	 */
+	short?: string;
+}
+
 /**
  * Generates one interval question. Draws, in order: (1) root index over
- * ROOTS, (2) interval index over DRILL_INTERVALS, (3) direction index, then
- * (4+) distractor shuffle draws for identification questions.
+ * ROOTS, (2) interval index over DRILL_INTERVALS (skipped when `short` is
+ * forced), (3) direction index, then (4+) distractor shuffle draws for
+ * identification questions.
  */
-export function generateIntervalQuestion(): IntervalQuestion {
+export function generateIntervalQuestion(
+	options: GenerateIntervalQuestionOptions = {}
+): IntervalQuestion {
 	const rootAscii = ROOTS[Math.floor(Math.random() * ROOTS.length)];
-	const short = DRILL_INTERVALS[Math.floor(Math.random() * DRILL_INTERVALS.length)];
+	const short =
+		options.short ?? DRILL_INTERVALS[Math.floor(Math.random() * DRILL_INTERVALS.length)];
 	const direction = INTERVAL_DIRECTIONS[Math.floor(Math.random() * INTERVAL_DIRECTIONS.length)];
 
 	// transposeFrom(root, 'R') round-trips the root through the interval

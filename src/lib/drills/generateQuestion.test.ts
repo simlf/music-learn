@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { generateQuestion, pickDistractors, pickQuestionType } from './generateQuestion';
+import {
+	generateQuestion,
+	pickDistractors,
+	pickQuestionFamily,
+	pickQuestionType
+} from './generateQuestion';
 import { spellChord } from '$lib/theory/chord';
 import { matchChord } from './matchChord';
 import { ROOTS, QUALITY_SUFFIXES } from '$lib/theory/randomChord';
@@ -54,11 +59,11 @@ describe('pickQuestionType', () => {
 	});
 });
 
-// DrillQuestion is now a discriminated union on `kind: 'chord' | 'interval'`
+// DrillQuestion is a discriminated union on `kind: 'chord' | 'interval'`
 // (Track C): the chord path keeps its exact draw order and behavior, with the
 // old top-level kind renamed to `direction`. These assertions were updated
-// deliberately for the union shape.
-describe('generateQuestion (chord path, default mode)', () => {
+// deliberately for the union shape at the integration merge.
+describe('generateQuestion (chord path, no options)', () => {
 	it('returns a symbol drawn from the ROOTS x QUALITY_SUFFIXES space', () => {
 		const question = generateQuestion();
 		expect(question.kind).toBe('chord');
@@ -91,7 +96,7 @@ describe('generateQuestion (chord path, default mode)', () => {
 	it('every generated symbol is a member of ROOTS x QUALITY_SUFFIXES', () => {
 		for (let i = 0; i < 20; i++) {
 			const question = generateQuestion();
-			if (question.kind !== 'chord') throw new Error('default mode must stay chord-only');
+			if (question.kind !== 'chord') throw new Error('optionless calls must stay chord-only');
 			const matches = ROOTS.some((root) =>
 				QUALITY_SUFFIXES.some((quality) => `${root}${quality}` === question.symbol)
 			);
@@ -100,27 +105,88 @@ describe('generateQuestion (chord path, default mode)', () => {
 	});
 });
 
-describe('generateQuestion modes (CHORDS / INTERVALS / MIX)', () => {
+// Track B's pool seam, adapted at the integration merge: the option that
+// forces the chord direction is now named `direction` (the union claimed
+// `kind` for the chord/interval discriminant).
+describe('generateQuestion practice-pool seam (Track B)', () => {
+	it('uses the provided symbol instead of drawing from randomChord', () => {
+		const question = generateQuestion({ symbol: 'F#m7b5', direction: 'construction' });
+		expect(question.kind).toBe('chord');
+		if (question.kind !== 'chord') throw new Error('unreachable');
+		expect(question.symbol).toBe('F#m7b5');
+		expect(question.direction).toBe('construction');
+		expect(question.choices).toBeUndefined();
+	});
+
+	it('builds identification choices around a provided symbol', () => {
+		const question = generateQuestion({ symbol: 'Cm7', direction: 'identification' });
+		expect(question.kind).toBe('chord');
+		if (question.kind !== 'chord') throw new Error('unreachable');
+		expect(question.symbol).toBe('Cm7');
+		expect(question.choices).toHaveLength(4);
+		expect(question.choices).toContain('Cm7');
+	});
+
+	it('a provided symbol with a random direction still yields a valid chord question', () => {
+		const question = generateQuestion({ symbol: 'Bbmaj7' });
+		expect(question.kind).toBe('chord');
+		if (question.kind !== 'chord') throw new Error('unreachable');
+		expect(question.symbol).toBe('Bbmaj7');
+		expect(['construction', 'identification']).toContain(question.direction);
+		if (question.direction === 'identification') {
+			expect(question.choices).toContain('Bbmaj7');
+		}
+	});
+
+	it('a provided symbol always forces a chord question, even in interval-leaning modes', () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.99);
+		expect(generateQuestion({ symbol: 'Cm7', mode: 'mix' }).kind).toBe('chord');
+		expect(generateQuestion({ symbol: 'Cm7', mode: 'intervals' }).kind).toBe('chord');
+		vi.restoreAllMocks();
+	});
+});
+
+describe('generateQuestion modes (CHORDS / INTERVALS / MIX, Track C)', () => {
 	it("mode 'chords' never yields an interval question", () => {
 		for (let i = 0; i < 20; i++) {
-			expect(generateQuestion('chords').kind).toBe('chord');
+			expect(generateQuestion({ mode: 'chords' }).kind).toBe('chord');
 		}
 	});
 
 	it("mode 'intervals' always yields an interval question", () => {
 		for (let i = 0; i < 20; i++) {
-			const question = generateQuestion('intervals');
-			expect(question.kind).toBe('interval');
+			expect(generateQuestion({ mode: 'intervals' }).kind).toBe('interval');
 		}
 	});
 
 	it("mode 'mix' draws the family first: a low draw yields chord, a high draw yields interval", () => {
 		vi.spyOn(Math, 'random').mockReturnValue(0.1);
-		expect(generateQuestion('mix').kind).toBe('chord');
+		expect(generateQuestion({ mode: 'mix' }).kind).toBe('chord');
 		vi.restoreAllMocks();
 
 		vi.spyOn(Math, 'random').mockReturnValue(0.9);
-		expect(generateQuestion('mix').kind).toBe('interval');
+		expect(generateQuestion({ mode: 'mix' }).kind).toBe('interval');
+		vi.restoreAllMocks();
+	});
+});
+
+describe('pickQuestionFamily', () => {
+	it('chord-only and interval-only modes consume no randomness', () => {
+		const spy = vi.spyOn(Math, 'random');
+		expect(pickQuestionFamily('chords')).toBe('chord');
+		expect(pickQuestionFamily('intervals')).toBe('interval');
+		expect(spy).not.toHaveBeenCalled();
+		vi.restoreAllMocks();
+	});
+
+	it('mix spends exactly one 50/50 draw', () => {
+		const spy = vi.spyOn(Math, 'random').mockReturnValue(0.2);
+		expect(pickQuestionFamily('mix')).toBe('chord');
+		expect(spy).toHaveBeenCalledTimes(1);
+		vi.restoreAllMocks();
+
+		vi.spyOn(Math, 'random').mockReturnValue(0.8);
+		expect(pickQuestionFamily('mix')).toBe('interval');
 		vi.restoreAllMocks();
 	});
 });

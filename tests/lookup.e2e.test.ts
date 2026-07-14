@@ -1,14 +1,21 @@
 import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import LookupPage from '../src/routes/+page.svelte';
 
-// The lookup keyboard is now inspectable (Track C): taps play through the
-// audio contract, mocked so tests never construct a real AudioContext.
+// The lookup page's Hear it action goes through the Track A audio engine,
+// and the keyboard/formula columns are inspectable (Track C): taps play
+// through the same contract. One mock provides all three engine functions
+// per the audio contract (consumers in tests always
+// vi.mock('$lib/audio/audio')) so no AudioContext or tone import ever
+// happens in jsdom.
+const playChordMock = vi.fn();
 const playNoteMock = vi.fn();
+const ensureAudioReadyMock = vi.fn(async () => {});
 vi.mock('$lib/audio/audio', () => ({
-	playNote: (...args: unknown[]) => playNoteMock(...args)
+	playChord: (...args: unknown[]) => playChordMock(...args),
+	playNote: (...args: unknown[]) => playNoteMock(...args),
+	ensureAudioReady: () => ensureAudioReadyMock()
 }));
-
-const { default: LookupPage } = await import('../src/routes/+page.svelte');
 
 // Note: masthead assertions intentionally live outside this file. The masthead
 // is rendered by +layout.svelte, not +page.svelte, and this suite renders the
@@ -22,6 +29,24 @@ const { default: LookupPage } = await import('../src/routes/+page.svelte');
 beforeEach(() => {
 	playNoteMock.mockClear();
 	localStorage.clear();
+	playChordMock.mockClear();
+	ensureAudioReadyMock.mockClear();
+});
+
+describe('lookup page Hear it (Track A audio engine)', () => {
+	it('plays the rendered chord through the engine, unlocking audio inside the gesture', async () => {
+		render(LookupPage);
+
+		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'Cm7' } });
+		await fireEvent.click(screen.getByRole('button', { name: /stamp/i }));
+		expect(playChordMock).not.toHaveBeenCalled();
+
+		await fireEvent.click(screen.getByRole('button', { name: /hear it/i }));
+
+		expect(ensureAudioReadyMock).toHaveBeenCalled();
+		expect(playChordMock).toHaveBeenCalledTimes(1);
+		expect(playChordMock).toHaveBeenCalledWith(['C', 'E♭', 'G', 'B♭']);
+	});
 });
 
 describe('lookup page happy path', () => {

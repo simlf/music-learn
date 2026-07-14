@@ -1,0 +1,7 @@
+Salamander Grand Piano v3 by Alexander Holm.
+Licensed under Creative Commons Attribution 3.0 Unported (CC-BY 3.0):
+https://creativecommons.org/licenses/by/3.0/
+
+These 30 mp3 files are the Tone.js project's mp3 conversion of the
+Salamander sample set (https://tonejs.github.io/audio/salamander/),
+minor-third spacing across A0-C8, single velocity layer.

@@ -108,16 +108,57 @@ function shuffle<T>(items: T[]): T[] {
 }
 
 /**
- * Generates one chord question (D-05/D-06): a symbol drawn from the proven
- * randomChord matrix, a construction-or-identification direction, and for
- * identification questions, 4 shuffled choices (the correct symbol plus 3
- * plausible, parseable, non-enharmonic-identical distractors). Draw order is
- * unchanged from the pre-union generator: root, quality, direction, then
- * shuffles.
+ * Practice-pool seam (Track B) + deck selector (Track C), combined at the
+ * integration merge:
+ *
+ * - `symbol`: the practice engine already drew a chord symbol (the weighted
+ *   60/25/15 song/tier/review mix in $lib/practice/pool, or a session-sourced
+ *   warm-up/retry/seed item). Skips the random symbol draw and FORCES a
+ *   chord question regardless of `mode` (session items are chord symbols).
+ * - `direction`: a scaffold stage forces construction or identification,
+ *   skipping the 50/50 direction draw. Also forces a chord question.
+ * - `mode`: which family a fresh draw belongs to. 'chords' (default) keeps
+ *   the original uniform randomChord behavior; 'intervals' delegates to
+ *   generateIntervalQuestion; 'mix' spends one leading 50/50 draw on the
+ *   family. Callers that pool-source chord symbols should decide the family
+ *   FIRST via `pickQuestionFamily(mode)` and only then draw from the pool.
  */
-function generateChordQuestion(): ChordQuestion {
-	const symbol = randomChord();
-	const direction = pickQuestionType();
+export interface GenerateQuestionOptions {
+	symbol?: string;
+	direction?: 'construction' | 'identification';
+	mode?: DrillMode;
+}
+
+/**
+ * One 50/50 family draw for MIX decks; chord-only and interval-only modes
+ * consume no randomness. Exported so the drills page can decide the family
+ * BEFORE drawing a chord symbol from the practice pool (the pool draw only
+ * happens when the family is 'chord').
+ */
+export function pickQuestionFamily(mode: DrillMode): 'chord' | 'interval' {
+	if (mode === 'intervals') return 'interval';
+	if (mode === 'mix') return Math.random() >= 0.5 ? 'interval' : 'chord';
+	return 'chord';
+}
+
+/**
+ * Generates one drill question (D-05/D-06). Chord questions use the
+ * caller-provided symbol when given (practice pool seam), falling back to
+ * the proven randomChord matrix; the direction is a 50/50 draw unless
+ * forced; identification questions get 4 shuffled choices (the correct
+ * symbol plus 3 plausible, parseable, non-enharmonic-identical
+ * distractors). Interval questions delegate to generateIntervalQuestion.
+ * With no options the behavior is exactly the original uniform
+ * randomChord + 50/50 direction draw.
+ */
+export function generateQuestion(options: GenerateQuestionOptions = {}): DrillQuestion {
+	const forcesChord = options.symbol !== undefined || options.direction !== undefined;
+	if (!forcesChord && pickQuestionFamily(options.mode ?? 'chords') === 'interval') {
+		return generateIntervalQuestion();
+	}
+
+	const symbol = options.symbol ?? randomChord();
+	const direction = options.direction ?? pickQuestionType();
 
 	if (direction === 'construction') {
 		return { kind: 'chord', direction, symbol };
@@ -125,17 +166,4 @@ function generateChordQuestion(): ChordQuestion {
 
 	const choices = shuffle([symbol, ...pickDistractors(symbol)]);
 	return { kind: 'chord', direction, symbol, choices };
-}
-
-/**
- * Generates one drill question for the given mode. 'chords' (the default,
- * preserving the pre-union call signature and draw order exactly) draws a
- * chord question; 'intervals' draws an interval question; 'mix' spends one
- * extra leading 50/50 draw on the family, then delegates.
- */
-export function generateQuestion(mode: DrillMode = 'chords'): DrillQuestion {
-	if (mode === 'intervals') return generateIntervalQuestion();
-	if (mode === 'mix' && Math.random() >= 0.5) return generateIntervalQuestion();
-	if (mode === 'mix') return generateChordQuestion();
-	return generateChordQuestion();
 }
