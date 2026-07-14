@@ -121,6 +121,12 @@
 			</div>
 		</div>
 	{/if}
+
+	<footer class="mt-16">
+		<p class="text-label text-muted font-mono">
+			Piano sound: Salamander Grand Piano v3 by Alexander Holm, CC-BY 3.0.
+		</p>
+	</footer>
 </main>
 
 <style>
