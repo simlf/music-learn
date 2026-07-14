@@ -50,6 +50,14 @@ On the Oracle box: pull main, rebuild the server container (`docker compose up -
 - [ ] Phone width: nav wraps to two rows, everything reachable, keyboards fit.
 - [ ] Print Shop look intact everywhere (paper, ink borders, stamps, zero radius).
 
+## Post-review notes
+
+A final adversarial review pass found and fixed 4 real bugs (wrong-octave voicing for flat-heavy chords, telemetry duration bound, concurrent queue drains, the A4 chord/interval name collision). Small observations left open, none blocking:
+
+- If the app ever marks telemetry as unsupported (only happens against the old server), the flag persists after you redeploy; clear it in DevTools with `localStorage.removeItem('music-learn:telemetry-support')` once the server is updated.
+- On the one-octave drill keyboard, a wide interval (M7 above B) wraps and can read visually descending; the audio plays it ascending correctly.
+- Octave construction questions accept a unison tap (grading is octave-agnostic like the chord matcher).
+
 ## Known limits (deliberate, not bugs)
 
 - Tiers 5 and 6 are labeled COMING LATER (engine supports 8 qualities today).
