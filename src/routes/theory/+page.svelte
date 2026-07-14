@@ -68,7 +68,9 @@
 {/snippet}
 
 <main class="bg-paper text-ink min-h-screen px-2 py-8 font-sans sm:px-8">
-	<div class="mx-auto flex max-w-2xl flex-col gap-8">
+	<!-- max-w must stay an arbitrary value: the Print Shop @theme defines
+	     --spacing-2xl: 48px, so a named max-w-2xl utility resolves to 48px. -->
+	<div class="mx-auto flex max-w-[42rem] flex-col gap-8">
 		<header>
 			<h1 class="text-heading mt-2 font-bold">Theory</h1>
 			<p class="text-body text-muted mt-2">
