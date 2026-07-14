@@ -12,9 +12,9 @@
 	const navLinks = [
 		{ href: '/', label: 'Lookup' },
 		{ href: '/drills', label: 'Drills' },
+		{ href: '/songs', label: 'Songs' },
 		{ href: '/theory', label: 'Theory' },
-		{ href: '/progress', label: 'Progress' },
-		{ href: '/showcase', label: 'Showcase' }
+		{ href: '/progress', label: 'Progress' }
 	];
 
 	/**
