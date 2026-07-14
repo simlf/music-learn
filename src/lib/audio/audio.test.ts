@@ -58,7 +58,7 @@ vi.mock('tone', () => {
 		}
 	}
 	return {
-		start: (...args: unknown[]) => mockTone.start(...args),
+		start: () => mockTone.start(),
 		getContext: () => mockTone.context,
 		PolySynth,
 		Synth: class {},

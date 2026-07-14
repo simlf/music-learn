@@ -10,7 +10,7 @@ const playChordMock = vi.fn();
 const ensureAudioReadyMock = vi.fn(async () => {});
 vi.mock('$lib/audio/audio', () => ({
 	playChord: (...args: unknown[]) => playChordMock(...args),
-	ensureAudioReady: (...args: unknown[]) => ensureAudioReadyMock(...args)
+	ensureAudioReady: () => ensureAudioReadyMock()
 }));
 
 // Note: masthead assertions intentionally live outside this file. The masthead

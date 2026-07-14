@@ -35,7 +35,7 @@ const ensureAudioReadyMock = vi.fn(async () => {});
 vi.mock('$lib/audio/audio', () => ({
 	playChord: (...args: unknown[]) => playChordMock(...args),
 	playNote: (...args: unknown[]) => playNoteMock(...args),
-	ensureAudioReady: (...args: unknown[]) => ensureAudioReadyMock(...args)
+	ensureAudioReady: () => ensureAudioReadyMock()
 }));
 
 // The drills page reads/writes the rotate-hint dismissed flag (D-05) via
