@@ -2,7 +2,7 @@
 	import { spellChord } from '$lib/theory/chord';
 	import { randomChord } from '$lib/theory/randomChord';
 	import { pickHint } from '$lib/copy/hints';
-	import { playChord } from '$lib/audio/playChord';
+	import { ensureAudioReady, playChord } from '$lib/audio/audio';
 	import { formulaFor, aliasLine } from '$lib/lookup/chordPresentation';
 	import type { ChordResult } from '$lib/theory/types';
 	import PianoKeyboard from '$lib/components/PianoKeyboard.svelte';
@@ -39,10 +39,15 @@
 		showChordFromSymbol(randomChord());
 	}
 
-	/** Plays the currently rendered chord's notes on a plain synth (D-11). */
+	/**
+	 * Plays the rendered chord through the app audio engine (D-11, Track A):
+	 * synth instantly, sampled piano once loaded. The click is the user
+	 * gesture that unlocks the audio context.
+	 */
 	function hearIt() {
 		if (!result) return;
-		void playChord(result.notes.map((note) => note.letter));
+		void ensureAudioReady();
+		playChord(result.notes.map((note) => note.letter));
 	}
 
 	function handleSubmit(event: SubmitEvent) {
