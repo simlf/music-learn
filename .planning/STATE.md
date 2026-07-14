@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Learning Upgrade
 status: planning
-last_updated: "2026-07-14T20:25:21.793Z"
+last_updated: "2026-07-14T20:45:00.000Z"
 last_activity: 2026-07-14
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,17 +17,24 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-13)
+See: .planning/PROJECT.md (updated 2026-07-14)
 
 **Core value:** See a jazz chord symbol and know instantly what to play with the left hand.
-**Current focus:** Phase 09 — Deploy to the Piano
+**Current focus:** Phase 10 — Scale Keyboard Drill (v2.0 Learning Upgrade, roadmap created)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 10 — Scale Keyboard Drill (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-07-14 — Milestone v2.0 started
+Status: v2.0 roadmap created; ready to plan Phase 10
+Last activity: 2026-07-14 — v2.0 roadmap drafted (Phases 10-13), 13/13 v2 requirements mapped
+
+**v2.0 phases (execution order 10 → 11 → 12 → 13):**
+
+- Phase 10: Scale Keyboard Drill (SCALE-04, SCALE-05) — independent; may run first/parallel
+- Phase 11: Memorization Engine (MEM-01..04) — SRS foundation (ts-fsrs, card = fact x mode)
+- Phase 12: Build-it Construction (BUILD-01..04) — depends on Phase 11 (feeds the engine)
+- Phase 13: Multi-modal Recall (RECALL-01..03) — depends on Phases 11 and 12
 
 ## Performance Metrics
 
@@ -80,10 +87,14 @@ Last activity: 2026-07-14 — Milestone v2.0 started
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-- Chord symbol fluency is the v1 priority (drives Phases 1-5 ordering).
+- [v2.0] Old Phases 5/6/7 superseded by v2 pillars: Smart Drill Design -> Phase 13 (Multi-modal Recall); Major Scales -> Phase 10 (Scale Keyboard Drill); Theory Lessons -> Phase 12 (Build-it Construction). Old Phase 4 (MIDI Play-to-Answer) stays deferred (needs hardware).
+- [v2.0] SRS card unit = (fact, mode); memorization engine (MEM) and multi-modal recall (RECALL) are one coupled system split across Phases 11 and 12/13. ts-fsrs enable_short_term:false; scheduler split from Dexie storage; rehydrate Date fields.
+- [v2.0] Build-it construction is the formula-build mode that feeds the memorization engine (BUILD-04); it comes upstream of recall drilling in the learning flow.
+- [v2.0] Locked constraints for every v2 phase: grade by chroma/MIDI never letter strings; ear-naming is multiple-choice and never gates; local-first persistence; no em dashes in copy.
+- Chord symbol fluency is the v1 priority (drove Phases 1-5 ordering).
 - Both MIDI and on-screen input; on-screen is primary (Phase 3 before MIDI in Phase 4).
 - Letters primary, solfège alongside; interval color language applied app-wide from Phase 1.
-- Spaced repetition deferred to v1.x; v1 persists raw answer history (Phase 8), no scheduler.
+- Spaced repetition deferred to v1.x in v1; now IN scope for v2.0 as MEM-01..04 (grounded in spike 006).
 - Backend on user's Oracle server + SQLite for cross-device progress (Phases 8-9).
 - [Phase 01]: Vite pinned to 8.1.4; resolve.conditions:['browser'] required for Vitest component tests under SvelteKit — Vite 8.x satisfies all peer ranges (kit, vite-plugin-svelte, tailwind vite plugin, vitest); browser condition fixes lifecycle_function_unavailable in @testing-library/svelte tests
 - [Phase 01 P02]: Reference chord matrix generated from tonal's Chord.get output (12 roots x 8 v1 qualities), including legitimate double-flat diminished-seventh spellings, as the correctness proof for THEORY-01/03
@@ -134,7 +145,7 @@ None yet.
 
 - ~~Phase 1: Verify tonal.js enharmonic spelling against jazz conventions (F♯ø7, C♯m7)~~ — RESOLVED in 01-02: 96-cell reference chord matrix confirms tonal's spellings match jazz conventions (F♯m7 → C♯ not D♭); ø/ø7 required explicit normalization since tonal doesn't parse the glyph natively.
 - Phase 3: Document explicit chord-matching tolerance (voicing/octave/extra-note) before coding — research flag.
-- Phase 4: Cross-browser Web MIDI permission/hot-plug behavior needs testing (Chrome/Firefox/Safari) — research flag.
+- Phase 4: Cross-browser Web MIDI permission/hot-plug behavior needs testing (Chrome/Firefox/Safari) — research flag. (Phase 4 is deferred out of v2.0.)
 - ⚠️ [Phase 8, for Phase 9] CORS_ORIGIN must match the deployed frontend origin exactly; UAT hit a block when the app ran on a non-allowed port (npm run preview, 4173). Deploy config must set CORS_ORIGIN.
 - ⚠️ [Phase 8] Progress page shows the generic "server's not answering" copy for a 401 (wrong access key). Misleading during setup; consider a distinct wrong-key message (minor UX).
 - ⚠️ [Phase 8] 08-REVIEW.md CR-02: on a fresh Linux host, the ./data bind mount may shadow the image chown and crash the non-root app user (SQLITE_CANTOPEN). Worked locally; re-check on the Oracle server in Phase 9.
@@ -145,10 +156,11 @@ Items acknowledged and carried forward from previous milestone close:
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| *(none)* | | | |
+| Input | MIDI Play-to-Answer (old Phase 4, INPUT-01/03) — needs hardware in the loop | Deferred | v2.0 start |
 
 ## Session Continuity
 
-Last session: 2026-07-13T23:36:29.724Z
-Stopped at: Completed 09-04-PLAN.md (press-cue + guarded haptic + gesture hygiene; haptic device-verification deferred to post-HTTPS-deploy todo)
+Last session: 2026-07-14T20:45:00.000Z
+Stopped at: v2.0 Learning Upgrade roadmap created (Phases 10-13; 13/13 v2 requirements mapped; old Phases 4-7 marked deferred/superseded in place)
 Resume file: None
+Next: /gsd-plan-phase 10

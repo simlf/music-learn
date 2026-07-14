@@ -136,8 +136,21 @@ Deferred beyond v2.0.
 | PROG-03 | Phase 8 |
 | PLAT-01 | Phase 9 |
 | PLAT-02 | Phase 9 |
+| SCALE-04 | Phase 10 |
+| SCALE-05 | Phase 10 |
+| MEM-01 | Phase 11 |
+| MEM-02 | Phase 11 |
+| MEM-03 | Phase 11 |
+| MEM-04 | Phase 11 |
+| BUILD-01 | Phase 12 |
+| BUILD-02 | Phase 12 |
+| BUILD-03 | Phase 12 |
+| BUILD-04 | Phase 12 |
+| RECALL-01 | Phase 13 |
+| RECALL-02 | Phase 13 |
+| RECALL-03 | Phase 13 |
 
-**Coverage:** 25/25 v1 requirements mapped, no orphans, no duplicates.
+**Coverage:** 25/25 v1 requirements mapped (Phases 1-9). v2.0 Learning Upgrade: 13/13 requirements mapped (Phases 10-13), no orphans, no duplicates. Old Phases 4-7 retain their original v1 mappings and are deferred/superseded (see ROADMAP.md); no v2.0 requirement is mapped onto Phases 4-7.
 
 ---
-*Last updated: 2026-07-14 — added v2.0 Learning Upgrade requirements (MEM, BUILD, RECALL, SCALE-04/05)*
+*Last updated: 2026-07-14 — mapped v2.0 Learning Upgrade requirements to Phases 10-13 (Scale Keyboard Drill, Memorization Engine, Build-it Construction, Multi-modal Recall)*

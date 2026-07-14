@@ -4,6 +4,8 @@
 
 Music Learn takes a returning classical pianist from "I freeze when I see `F♯ø7` in the sheet music" to "I know instantly what my left hand plays." The journey starts by establishing the design identity and a correct music-theory core (the single source of truth for notes, spelling, and dual naming), then delivers the first usable end-to-end capability — a chord lookup companion you can put next to the piano. From there each phase adds a complete user capability: on-screen practice drills, MIDI play-to-answer, learning-science drill design (interleaving, fading scaffolds, elaborative feedback), major scales, theory lessons, cross-device progress persistence with a weakness-aware stats view and streak, and finally deployment on the user's Oracle server over HTTPS. Every phase is a vertical slice that the user can actually try, keeping music-theory correctness and MIDI integration — the riskiest assumptions — testable early.
 
+**v2.0 Learning Upgrade (Phases 10-13):** With the chord-fluency core shipped and deployed, v2 turns the app from a chord dictionary into a memory trainer, grounded in validated spikes 006-009. Four phases replace the old, unbuilt learning phases (5-7) with a pedagogy-first stack: a scale keyboard drill that fixes the confusing degree ladder, a real spaced-repetition memorization engine (ts-fsrs, card = fact x mode), a "Build it" construction mode where the learner earns each note from its interval formula, and multi-modal recall that drills one fact across rotating retrieval paths. Cross-cutting locked constraints for every v2 phase: grade notes by chroma/MIDI never letter strings; ear-naming is multiple-choice and never gates; local-first persistence (localStorage then Dexie); no em dashes in copy. Old Phase 4 (MIDI Play-to-Answer) stays deferred until hardware-in-the-loop testing is set up.
+
 ## Phases
 
 **Phase Numbering:**
@@ -16,12 +18,19 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Print Shop Foundation & Theory Core** - Design identity + correct chord/spelling/dual-naming engine, testable in isolation (completed 2026-07-12)
 - [x] **Phase 2: Chord Lookup Companion** - Type a symbol, see notes on a colored keyboard diagram next to the piano (completed 2026-07-12)
 - [x] **Phase 3: On-Screen Drill Loop** - Construction & identification drills with instant elaborative feedback on the clickable keyboard (completed 2026-07-13)
-- [ ] **Phase 4: MIDI Play-to-Answer** - Answer the same drills by playing the connected digital piano
-- [ ] **Phase 5: Smart Drill Design** - Interleaved sessions, scoped practice, and fading label scaffolds
-- [ ] **Phase 6: Major Scales** - Drill and see fingerings for all 12 major scales, expanding from G major
-- [ ] **Phase 7: Theory Lessons** - Short shape-first lessons explaining what the symbols mean
+- [ ] **Phase 4: MIDI Play-to-Answer** - Answer the same drills by playing the connected digital piano — DEFERRED (needs hardware present; out of v2.0 scope)
+- [ ] **Phase 5: Smart Drill Design** - Interleaved sessions, scoped practice, and fading label scaffolds — SUPERSEDED by v2.0 Phase 13 (Multi-modal Recall)
+- [ ] **Phase 6: Major Scales** - Drill and see fingerings for all 12 major scales, expanding from G major — SUPERSEDED by v2.0 Phase 10 (Scale Keyboard Drill)
+- [ ] **Phase 7: Theory Lessons** - Short shape-first lessons explaining what the symbols mean — SUPERSEDED by v2.0 Phase 12 (Build-it Construction)
 - [x] **Phase 8: Progress & Streaks** - Cross-device answer history, weakness-aware stats, and a daily streak (completed 2026-07-13)
 - [x] **Phase 9: Deploy to the Piano** - Live on the Oracle server over HTTPS, usable on laptop and phone (completed 2026-07-13)
+
+### v2.0 Learning Upgrade
+
+- [ ] **Phase 10: Scale Keyboard Drill** - Play a scale on a movable tonic-anchored keyboard graded by pitch class; retires the confusing degree ladder
+- [ ] **Phase 11: Memorization Engine** - Real spaced repetition (ts-fsrs): surface facts due today, reveal-and-grade, persist a card per (fact, mode), recall map
+- [ ] **Phase 12: Build-it Construction** - Earn each note by stacking one interval at a time; derive chords and scales from the formula and feed the memorization engine
+- [ ] **Phase 13: Multi-modal Recall** - Drill one fact across rotating modes (see-play, formula-build, hear-name) on top of the scheduler
 
 ## Phase Details
 
@@ -115,6 +124,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### Phase 4: MIDI Play-to-Answer
 
+> **v2.0 note:** DEFERRED. This phase needs the digital piano connected during build/verify (hardware-in-the-loop). It is out of v2.0 scope and is not part of v2.0 execution. Revisit as its own milestone once hardware-in-the-loop testing is set up. Its requirements (INPUT-01, INPUT-03) stay mapped here.
+
 **Goal**: When the digital piano is connected, the user answers the exact same drills by playing keys, with identical matching and feedback to the on-screen path.
 **Mode:** mvp
 **Depends on**: Phase 3
@@ -128,6 +139,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: TBD
 
 ### Phase 5: Smart Drill Design
+
+> **v2.0 note:** SUPERSEDED by Phase 13 (Multi-modal Recall). The interleaving, scoped-practice, and fading-scaffold intent is realized by the v2.0 memorization engine and multi-modal recall (per-fact mode rotation, spaced review, FSRS scheduling). Not part of v2.0 execution; kept for history. Its requirements (DRILL-04, DRILL-05, DRILL-06) stay mapped here and are not remapped to any v2.0 phase.
 
 **Goal**: Practice sessions apply learning science by default — chord qualities are interleaved, the user can scope a session to chosen qualities/roots, and note labels fade as accuracy on each item grows.
 **Mode:** mvp
@@ -144,6 +157,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### Phase 6: Major Scales
 
+> **v2.0 note:** SUPERSEDED by Phase 10 (Scale Keyboard Drill). The v2.0 scale keyboard drill replaces the abstract degree ladder with a movable tonic-anchored keyboard graded by pitch class. Not part of v2.0 execution; kept for history. Its requirements (SCALE-01, SCALE-02) stay mapped here and are not remapped to any v2.0 phase.
+
 **Goal**: The user can drill and reference all 12 major scales, expanding outward from the one scale they know (G major), with standard piano fingerings shown.
 **Mode:** mvp
 **Depends on**: Phase 3
@@ -158,6 +173,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 **UI hint**: yes
 
 ### Phase 7: Theory Lessons
+
+> **v2.0 note:** SUPERSEDED by Phase 12 (Build-it Construction). Instead of passive lessons, v2.0 teaches the "why" actively: the learner derives chords and scales from their interval formula, one earned note at a time. Not part of v2.0 execution; kept for history. Its requirements (LESSON-01, LESSON-02) stay mapped here and are not remapped to any v2.0 phase.
 
 **Goal**: The user can read short, shape-first lessons that explain what the chord symbols mean and how chords are built from intervals, using the interval color language and keyboard examples.
 **Mode:** mvp
@@ -237,19 +254,85 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **UI hint**: yes
 
+### Phase 10: Scale Keyboard Drill
+
+**Goal**: The user practices a major scale by playing it up and down on a movable, tonic-anchored piano keyboard graded by pitch class, retiring the confusing degree-ladder Practice surface while leaving the Explore surface intact.
+**Depends on**: Phase 3 (drill chrome and PianoKeyboard, complete)
+**Requirements**: SCALE-04, SCALE-05
+**Success Criteria** (what must be TRUE):
+
+  1. The user practices a scale by tapping its notes ascending then descending on a keyboard whose leftmost highlighted key is the tonic, ending on the octave (degree 8).
+  2. Taps are graded by pitch class (MIDI/chroma), so enharmonic scales grade correctly (e.g., Gb major's Cb is accepted on the B key).
+  3. The degree-ladder Practice surface is gone, replaced by the keyboard with no keyboard-vs-ladder toggle; the Explore surface (degree strip + interval inspect) is unchanged.
+  4. A wrong tap gives immediate feedback (wrong-key flash) and the drill reports a clean pass when the full ascending-and-descending scale is completed.
+
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 11: Memorization Engine
+
+**Goal**: A real spaced-repetition recall loop: the app surfaces the theory facts due today, the user reveals and grades each one, and FSRS scheduling state persists per (fact, mode) on the device, with a recall map that shows what is due, mastered, or weak.
+**Depends on**: Phase 3 (theory engine supplies the facts)
+**Requirements**: MEM-01, MEM-02, MEM-03, MEM-04
+**Success Criteria** (what must be TRUE):
+
+  1. The user starts a recall session that surfaces only the theory facts (chord formulas, interval sizes, scale degrees) due today, scheduled by FSRS on day-scale intervals.
+  2. The user reveals each fact then grades it Again/Hard/Good/Easy; each grade button shows the day interval it will schedule, the item reschedules at a growing interval, and a lapse shortens it.
+  3. Scheduling state persists across sessions and reloads on the same device as one card per (fact, mode), with Date fields correctly rehydrated after storage round-trip.
+  4. The user sees a recall map showing which facts are due, mastered, or weak across modes.
+
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 12: Build-it Construction
+
+**Goal**: The learner earns each note by stacking one interval at a time on a keyboard — deriving chords and scales from their formula instead of reading a finished list — and construction accuracy feeds the memorization engine as the formula-build mode of a fact.
+**Depends on**: Phase 11 (construction accuracy feeds the engine, BUILD-04)
+**Requirements**: BUILD-01, BUILD-02, BUILD-03, BUILD-04
+**Success Criteria** (what must be TRUE):
+
+  1. The user builds a chord from its symbol by tapping notes one interval at a time (stack a minor 3rd, then a major 3rd...), earning each note rather than reading the answer list.
+  2. The user builds a major scale the same way, following its whole/half step pattern and closing on the octave.
+  3. Each step shows a plain-English interval instruction and why that note belongs; a wrong tap gives diagnostic feedback (e.g., "2 half steps too high"), grading by pitch class while teaching the correct enharmonic spelling.
+  4. Completing or missing construction steps records gradeable events into the memorization engine as that fact's formula-build mode.
+
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 13: Multi-modal Recall
+
+**Goal**: One fact is drilled across rotating retrieval modes on top of the scheduler — see the symbol then play, given the formula then build, hear the chord then name it — so each chord is encoded through multiple paths, with ear-naming demoted to a non-gating multiple-choice check.
+**Depends on**: Phase 11 (scheduler and card model), Phase 12 (formula-build is a recall mode)
+**Requirements**: RECALL-01, RECALL-02, RECALL-03
+**Success Criteria** (what must be TRUE):
+
+  1. The user drills one chord across rotating modes: see the symbol then play the notes; given the formula/degrees then build it; hear the chord then name it.
+  2. Ear-based naming is answered by multiple choice against same-root distractors and never gates progress or unlocks.
+  3. Modes rotate per-fact when teaching a new item and are spaced across sessions when reviewing a known one.
+
+**Plans**: TBD
+**UI hint**: yes
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9
+
+v1 phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9. Phases 1-3, 8, 9 are complete; phases 4-7 are deferred/superseded (see the v2.0 notes on each) and are not executed.
+
+v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 10 (Scale Keyboard Drill) is independent and may run first or in parallel; Phase 11 (Memorization Engine) is the SRS foundation; Phase 12 (Build-it Construction) depends on Phase 11; Phase 13 (Multi-modal Recall) depends on Phases 11 and 12.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Print Shop Foundation & Theory Core | 4/4 | Complete    | 2026-07-12 |
 | 2. Chord Lookup Companion | 3/3 | Complete    | 2026-07-12 |
 | 3. On-Screen Drill Loop | 4/4 | Complete   | 2026-07-13 |
-| 4. MIDI Play-to-Answer | 0/TBD | Not started | - |
-| 5. Smart Drill Design | 0/TBD | Not started | - |
-| 6. Major Scales | 0/TBD | Not started | - |
-| 7. Theory Lessons | 0/TBD | Not started | - |
+| 4. MIDI Play-to-Answer | 0/TBD | Deferred | - |
+| 5. Smart Drill Design | 0/TBD | Superseded (Phase 13) | - |
+| 6. Major Scales | 0/TBD | Superseded (Phase 10) | - |
+| 7. Theory Lessons | 0/TBD | Superseded (Phase 12) | - |
 | 8. Progress & Streaks | 4/4 | Complete    | 2026-07-13 |
 | 9. Deploy to the Piano | 6/6 | Complete   | 2026-07-13 |
+| 10. Scale Keyboard Drill | 0/TBD | Not started | - |
+| 11. Memorization Engine | 0/TBD | Not started | - |
+| 12. Build-it Construction | 0/TBD | Not started | - |
+| 13. Multi-modal Recall | 0/TBD | Not started | - |
