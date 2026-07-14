@@ -54,7 +54,7 @@
 		{#each navLinks as link (link.href)}
 			<a
 				href={link.href}
-				class={`masthead__link text-label font-mono uppercase ${link.href === '/showcase' ? 'hidden sm:inline' : ''}`}
+				class="masthead__link text-label font-mono uppercase"
 				class:masthead__link--active={$page.url.pathname === link.href}
 				style="letter-spacing: 0.08em;"
 			>
