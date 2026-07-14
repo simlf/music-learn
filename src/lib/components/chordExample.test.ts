@@ -6,7 +6,7 @@ import ChordExample from './ChordExample.svelte';
 const playChordMock = vi.fn();
 const ensureAudioReadyMock = vi.fn(() => Promise.resolve());
 vi.mock('$lib/audio/audio', () => ({
-	ensureAudioReady: (...args: unknown[]) => ensureAudioReadyMock(...args),
+	ensureAudioReady: () => ensureAudioReadyMock(),
 	playChord: (...args: unknown[]) => playChordMock(...args)
 }));
 
