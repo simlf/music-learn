@@ -32,6 +32,16 @@
 	let dockEl: HTMLDivElement | undefined = $state();
 	let dockHeight = $state(0);
 
+	// When the registered surface is the sole answer-input for the current
+	// flow (Drills construction, BuildSession Mode C, ScaleKeyboardDrill,
+	// RecallSession Mode A) the dock must never hide it: the persisted
+	// collapsed state is ignored and the collapse handle is suppressed, so a
+	// user who collapsed the dock on a passive page (or in a prior session -
+	// the flag persists device-locally) can't land on a question whose only
+	// answer surface is a hidden keyboard (WR-01).
+	const inputRequired = $derived(Boolean(config?.inputRequired));
+	const surfaceVisible = $derived(inputRequired || !collapsed);
+
 	function toggleCollapsed() {
 		collapsed = !collapsed;
 		setDockedKeyboardCollapsed(collapsed);
@@ -72,15 +82,17 @@
 
 {#if config}
 	<div class="keyboard-dock" data-testid="keyboard-dock" bind:this={dockEl}>
-		<button
-			type="button"
-			class="keyboard-dock__handle text-label font-mono uppercase"
-			onclick={toggleCollapsed}
-		>
-			<span class="keyboard-dock__grip" aria-hidden="true"></span>
-			{collapsed ? 'Keyboard · tap to expand' : 'Keyboard · tap to collapse'}
-		</button>
-		{#if !collapsed}
+		{#if !inputRequired}
+			<button
+				type="button"
+				class="keyboard-dock__handle text-label font-mono uppercase"
+				onclick={toggleCollapsed}
+			>
+				<span class="keyboard-dock__grip" aria-hidden="true"></span>
+				{collapsed ? 'Keyboard · tap to expand' : 'Keyboard · tap to collapse'}
+			</button>
+		{/if}
+		{#if surfaceVisible}
 			<div class="keyboard-dock__surface">
 				{@render config.keyboard()}
 				{#if config.register}

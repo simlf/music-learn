@@ -27,6 +27,10 @@ function makeConfig(): DockKeyboardConfig {
 	return { token: Symbol('page'), keyboard, register };
 }
 
+function makeInputRequiredConfig(): DockKeyboardConfig {
+	return { ...makeConfig(), inputRequired: true };
+}
+
 function renderDock(config: DockKeyboardConfig | null) {
 	const registry = createDockRegistry();
 	if (config) registry.register(config);
@@ -88,5 +92,19 @@ describe('KeyboardDock (KBD-02)', () => {
 
 		const grip = screen.getByTestId('keyboard-dock').querySelector('.keyboard-dock__grip');
 		expect(grip).toHaveAttribute('aria-hidden', 'true');
+	});
+
+	it('an input-required surface stays answerable even when collapse was persisted, and hides the collapse handle (WR-01)', () => {
+		// Persisted collapsed from a prior session / a passive page.
+		localStorage.setItem(STORAGE_KEY, 'true');
+
+		renderDock(makeInputRequiredConfig());
+
+		// The keys are still on screen (the answer surface is never hidden)...
+		expect(screen.getByRole('button', { name: 'Test Note C4' })).toBeInTheDocument();
+		// ...and there is no collapse handle to trap the user into hiding them.
+		expect(
+			screen.queryByRole('button', { name: /Keyboard · tap to (collapse|expand)/ })
+		).not.toBeInTheDocument();
 	});
 });

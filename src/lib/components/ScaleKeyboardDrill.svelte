@@ -133,7 +133,9 @@
 		if (drill.done) {
 			dockRegistry.clear(dockToken);
 		} else {
-			dockRegistry.register({ token: dockToken, keyboard: keyStrip });
+			// inputRequired: tapping the key-strip IS the drill - the dock must
+			// never hide it, even if collapse was persisted on a passive page (WR-01).
+			dockRegistry.register({ token: dockToken, keyboard: keyStrip, inputRequired: true });
 		}
 	});
 

@@ -477,7 +477,10 @@
 	$effect(() => {
 		if (!shouldDock) return;
 		if (sessionState === 'building') {
-			dockRegistry.register({ token: buildDockToken, keyboard: buildKeyboard });
+			// inputRequired: while building, the docked keyboard is the sole
+			// construction-input surface (Mode C) - never hide it, even if
+			// collapse was persisted on a passive page (WR-01).
+			dockRegistry.register({ token: buildDockToken, keyboard: buildKeyboard, inputRequired: true });
 		} else {
 			dockRegistry.clear(buildDockToken);
 		}

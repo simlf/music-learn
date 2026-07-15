@@ -338,9 +338,22 @@
 	 * `InspectRegister` for `drillInspect`, so the dock never duplicates
 	 * that readout.
 	 */
+	// inputRequired only on construction questions: there the docked keyboard
+	// is the sole answer-input surface (Check stays disabled until keys are
+	// selected; interval construction grades the first tap), so the dock must
+	// never hide it, even if collapse was persisted elsewhere (WR-01).
+	// Identification questions answer via in-flow choice buttons, so their
+	// ear-support keyboard keeps the normal collapse handle. The flag stays
+	// true across the answered reveal of a construction question so the
+	// in-place reveal keyboard never vanishes mid-question.
+	const dockInputRequired = $derived(question.direction === 'construction');
 	$effect(() => {
 		if (isShortLandscape) return;
-		dockRegistry.register({ token: dockToken, keyboard: dockedKeyboard });
+		dockRegistry.register({
+			token: dockToken,
+			keyboard: dockedKeyboard,
+			inputRequired: dockInputRequired
+		});
 		return () => dockRegistry.clear(dockToken);
 	});
 

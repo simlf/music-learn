@@ -19,6 +19,17 @@ export interface DockKeyboardConfig {
 	keyboard: Snippet;
 	/** Optional below-keys register line (inspectable surfaces only). */
 	register?: Snippet;
+	/**
+	 * True when this docked keyboard is the sole answer-input surface for the
+	 * current flow (Drills construction, BuildSession Mode C,
+	 * ScaleKeyboardDrill, RecallSession Mode A). The dock never hides an
+	 * input-required surface: it ignores the persisted collapsed state and
+	 * suppresses the collapse handle, so a user who collapsed the dock on a
+	 * passive page can't land on an unanswerable question with no visible
+	 * keys (WR-01). Inspect-only surfaces (Lookup, Theory, identification,
+	 * hear-name) omit it and keep the normal collapse handle.
+	 */
+	inputRequired?: boolean;
 }
 
 export interface DockRegistry {

@@ -222,7 +222,16 @@
 	 */
 	$effect(() => {
 		if (pageState !== 'reviewing' || currentItem?.mode === 'formula-build') return;
-		dockRegistry.register({ token: dockToken, keyboard: dockedKeyboard });
+		// inputRequired for Mode A (see-play): the docked keyboard is the sole
+		// answer-input surface (tap the chord, then Check), so the dock must
+		// never hide it even if collapse was persisted on a passive page
+		// (WR-01). Mode B (hear-name) and formula reveals are inspect-only and
+		// keep the normal collapse handle.
+		dockRegistry.register({
+			token: dockToken,
+			keyboard: dockedKeyboard,
+			inputRequired: currentItem?.mode === 'see-play'
+		});
 		return () => dockRegistry.clear(dockToken);
 	});
 
