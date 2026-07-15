@@ -5,9 +5,17 @@
 	import { fetchStreak, localDateString } from '$lib/api/progress';
 	import { getApiToken } from '$lib/api/client';
 	import StreakBadge from '$lib/components/StreakBadge.svelte';
+	import KeyboardDock from '$lib/components/KeyboardDock.svelte';
+	import { createDockRegistry, setDockRegistry } from '$lib/keyboard/dockContext.svelte';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
+
+	// Shared keyboard dock registry (KBD-02): created once here and provided
+	// via context so every page can register its single playable keyboard
+	// and KeyboardDock (mounted below) can render whichever one is current.
+	const dockRegistry = createDockRegistry();
+	setDockRegistry(dockRegistry);
 
 	const navLinks = [
 		{ href: '/', label: 'Lookup' },
@@ -67,9 +75,21 @@
 	</div>
 </nav>
 
-{@render children()}
+<div class="dock-clearance">
+	{@render children()}
+</div>
+
+<KeyboardDock />
 
 <style>
+	.dock-clearance {
+		/* Reserves exactly the dock's live rendered height (0px when nothing
+		   is docked - --dock-height is unset until KeyboardDock writes it) so
+		   scrolling content never sits permanently hidden behind the fixed
+		   dock chrome (KBD-02). */
+		padding-bottom: var(--dock-height, 0px);
+	}
+
 	.masthead__link {
 		color: var(--color-muted);
 		text-decoration: none;
