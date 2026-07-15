@@ -1,19 +1,19 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Learning Upgrade
+milestone: v2.1
+milestone_name: Playability & Comprehension
 current_phase: 15
-status: verifying
-stopped_at: Completed 15-05-PLAN.md
-last_updated: "2026-07-15T22:46:27.748Z"
-last_activity: 2026-07-15
-last_activity_desc: Phase 15 complete
+status: executing
+stopped_at: Phase 15 complete and verified; next: Phase 16 (Hear the Chord)
+last_updated: "2026-07-16T00:00:00.000Z"
+last_activity: 2026-07-16
+last_activity_desc: Phase 15 complete + reviewed; milestone tracking reconciled to v2.1
 progress:
-  total_phases: 11
-  completed_phases: 11
-  total_plans: 49
-  completed_plans: 49
-  percent: 100
+  total_phases: 6
+  completed_phases: 1
+  total_plans: 7
+  completed_plans: 7
+  percent: 17
 current_phase_name: playable-keyboard-everywhere
 ---
 
@@ -29,16 +29,22 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 ## Current Position
 
 Phase: 15
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-07-15 — Phase 15 complete
+Plan: 7/7 complete
+Status: Phase 15 complete and verified. Milestone v2.0 (Phases 10-13) shipped; v2.1 active. Next: Phase 16.
+Last activity: 2026-07-16 — Phase 15 complete + reviewed; milestone reconciled to v2.1
 
-**v2.0 phases (execution order 10 → 11 → 12 → 13):**
+**v2.0 Learning Upgrade (Phases 10-13): COMPLETE (shipped 2026-07-15).**
 
-- Phase 10: Scale Keyboard Drill (SCALE-04, SCALE-05) — independent; may run first/parallel
-- Phase 11: Memorization Engine (MEM-01..04) — SRS foundation (ts-fsrs, card = fact x mode)
-- Phase 12: Build-it Construction (BUILD-01..04) — depends on Phase 11 (feeds the engine)
-- Phase 13: Multi-modal Recall (RECALL-01..03) — depends on Phases 11 and 12
+**v2.1 Playability & Comprehension (Phases 15-20) — active batch; design winners = Session 4 sketches 008-013:**
+
+- Phase 15: Playable Keyboard Everywhere (KBD-01..03) — COMPLETE. Shared docked keyboard on every keyboard-bearing page.
+- Phase 16: Hear the Chord (HEAR-01, HEAR-02) — NEXT. Auto-play + synced pulse on the BUILD reveal. Depends on Phases 12 and 15. No CONTEXT.md yet.
+- Phase 17: Chord Explainer — escalating in-place hints for unknown chords in Recall.
+- Phase 18: Your Songs' Chords — song-provenance marks + a From-my-songs filter.
+- Phase 19: Interactive Theory — guided-step beginner lessons handing off into the first drill.
+- Phase 20: French Translation — header EN|FR toggle + full French i18n layer.
+
+(Phase 14 = standalone 14-mastery-criterion, separate from this batch.)
 
 ## Performance Metrics
 

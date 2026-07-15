@@ -8,19 +8,21 @@ A personal web app that teaches jazz piano theory to a returning classical piani
 
 Chord symbol fluency: see a jazz chord symbol like `Cm7` or `F♯ø7` in sheet music and know instantly what notes to play with the left hand — without stopping to think.
 
-## Current Milestone: v2.0 Learning Upgrade
+## Current Milestone: v2.1 Playability & Comprehension
 
-**Goal:** Make jazz theory stick in the brain, not just be lookup-able. Turn the app from a chord dictionary into a memory trainer, grounded in validated spikes 006-009.
+**Goal:** Build on the shipped memory trainer to make the app more playable and self-explaining: a keyboard on every page, audio memory on reveals, in-place chord explanations, song provenance, guided theory, and French. Design winners = Session 4 sketches 008-013.
 
-**Target features:**
-- Memorization engine: real spaced repetition (ts-fsrs), card unit = (fact, mode), day-scale scheduling. Realizes the long-deferred "smart practice / spaced repetition" requirement.
-- Build-it construction mode: derive chords and scales from the interval formula so the learner earns the notes (teach WHY, not rote). Supersedes the passive Theory Lessons idea.
-- Multi-modal recall: one fact drilled across modes (see the symbol then play, hear then name, formula then build). Supersedes the Smart Drill Design phase (interleaving, fading scaffolds).
-- Scale keyboard drill: replace the confusing /scales ladder with a movable tonic-anchored piano keyboard, graded by chroma. Supersedes the Major Scales phase.
+**Target features (Phases 15-20):**
+- Playable keyboard everywhere: one docked, always-playable keyboard on every keyboard-bearing page (Phase 15 — COMPLETE).
+- Hear the chord: auto-play + synced pulse on the BUILD reveal for audio memory (Phase 16).
+- Chord explainer: escalating in-place hints for unknown chords in Recall (Phase 17).
+- Your songs' chords: song-provenance marks + a From-my-songs filter across the app (Phase 18).
+- Interactive theory: guided-step beginner lessons that hand off into the first drill (Phase 19).
+- French translation: header EN|FR toggle and a full French i18n layer (Phase 20).
 
-**Locked requirements (from spikes):** grade notes by chroma/MIDI never letter strings; FSRS `enable_short_term:false`; scales stay a dedicated multi-tap drill (not the one-shot drill union); ear-naming is multiple-choice and never gates progress; local-first persistence (localStorage then Dexie). No em dashes in copy. See `.claude/skills/spike-findings-music-learn/` and `.planning/spikes/MANIFEST.md` (Session 2).
+**Locked requirements (carry over from v2.0 spikes, still binding):** grade notes by chroma/MIDI never letter strings; ear-naming is multiple-choice and never gates progress; local-first persistence; no em dashes in copy. See `.claude/skills/spike-findings-music-learn/` and `.planning/spikes/MANIFEST.md`.
 
-**Superseded / deferred:** old Phase 4 (MIDI Play-to-Answer) stays deferred (needs hardware present). Old Phases 5 (Smart Drill Design), 6 (Major Scales), 7 (Theory Lessons) are superseded by the v2 pillars above.
+**Previous milestone:** v2.0 Learning Upgrade (Phases 10-13 — Scale Keyboard Drill, Memorization Engine, Build-it Construction, Multi-modal Recall) shipped 2026-07-15, grounded in spikes 006-009. Old Phase 4 (MIDI Play-to-Answer) stays deferred (needs hardware present). Old Phases 5-7 (Smart Drill Design, Major Scales, Theory Lessons) were superseded by the v2.0 pillars.
 
 ## Requirements
 
@@ -98,4 +100,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-14 — started milestone v2.0 Learning Upgrade*
+*Last updated: 2026-07-16 — v2.0 Learning Upgrade shipped; milestone v2.1 Playability & Comprehension active (Phase 15 complete)*

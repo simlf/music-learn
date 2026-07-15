@@ -27,14 +27,15 @@ Phase 15 executed end-to-end via `/gsd-execute-phase 15`:
   - WR-01 fixed (84bfaa6) — new `inputRequired` flag on dock config; `KeyboardDock` ignores persisted-collapsed and hides the collapse handle when the surface needs the keyboard to answer (ScaleKeyboardDrill, BuildSession Mode C, Drills construction, Recall Mode A). Regression test added. Touched 7 files. This is a collapse-UX change across 5 surfaces.
   - WR-03 NOT changed (502bef1) — possible scroll-before-mount race in embedded BuildSession; repro test written, defect did not reproduce statically. Left source untouched.
 
+## Already reconciled this session (do not redo)
+
+- MILESTONE TRACKING fixed by hand (ROADMAP was already correct). `STATE.md` now: milestone v2.1 / milestone_name "Playability & Comprehension" / status cleaned off the stale "verifying"+"15-05" / progress rescoped to v2.1 (1/6 phases, 7/7 plans). `PROJECT.md` "Current Milestone" section rewritten to v2.1 with v2.0 marked shipped; footer dated 2026-07-16. Note: this was a surgical edit, NOT a `/gsd-complete-milestone` + `/gsd-new-milestone` ceremony (v2.1 phases were already planned/executing, so the ceremony didn't fit). If a formal v2.0 archive is wanted later, run `/gsd-complete-milestone` — but check it won't disturb the in-progress v2.1 phase dirs first.
+
 ## Outstanding — what the next agent could pick up
 
 Nothing blocks. Ordered by value:
 
-1. RECONCILE MILESTONE TRACKING (do before deeper v2.1 work).
-   Mismatch: `PROJECT.md` header + `STATE.md` say milestone v2.0 / current_phase 13, but Phases 15-20 were added to ROADMAP as v2.1 without a `/gsd-new-milestone` cutover. Also `STATE.md` still reads `status: verifying` / `stopped_at: Completed 15-05-PLAN.md` — stale; `phase.complete` left it because it reported `is_last_phase: true` (next_phase null) even though Phases 16-20 sit unstarted in ROADMAP. Fix path: run `/gsd-new-milestone` (or hand-correct STATE.md milestone/current_phase/status) so v2.1 tracking is coherent.
-
-2. NEXT PHASE = 16 (Hear the Chord — auto-play + synced pulse on BUILD reveal, HEAR-01/02). No `16-CONTEXT.md` yet.
+1. NEXT PHASE = 16 (Hear the Chord — auto-play + synced pulse on BUILD reveal, HEAR-01/02). No `16-CONTEXT.md` yet.
    Recommended start: `/gsd-discuss-phase 16` then `/gsd-plan-phase 16`. Note Phase 16 also touches BuildSession reveal — WR-03 (below) lives near that code, worth folding in.
 
 3. VERIFY THE TWO UI ITEMS IN A REAL BROWSER (Web MIDI / phone; iOS has no MIDI, on-screen path is primary):
