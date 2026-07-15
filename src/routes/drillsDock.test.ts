@@ -231,3 +231,19 @@ describe('Drills docked keyboard (KBD-01/KBD-03)', () => {
 		expect(registry.current).toBeNull();
 	});
 });
+
+describe('Drills short-landscape suppression (Scope Decision 7)', () => {
+	it('in the default (non-short-landscape) test environment, the keyboard registers with the dock and .drill-layout__keyboard has no inline keyboard', () => {
+		const { registry, page } = renderPageWithDock();
+
+		expect(registry.current).not.toBeNull();
+
+		const keyboardPane = page.container.querySelector('.drill-layout__keyboard');
+		expect(keyboardPane).not.toBeNull();
+		expect(keyboardPane?.querySelector('[role="img"]')).not.toBeInTheDocument();
+	});
+
+	it('matchMedia is feature-detected: rendering never throws even though jsdom has no real matchMedia support', () => {
+		expect(() => renderPageWithDock()).not.toThrow();
+	});
+});

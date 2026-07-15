@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount } from 'svelte';
 	import { Note } from 'tonal';
 	import { getDockRegistry } from '$lib/keyboard/dockContext.svelte';
 	import { spellChord } from '$lib/theory/chord';
@@ -72,9 +72,12 @@
 	 * interval identification, interval construction) plus the identification
 	 * reveal keyboard collapse into ONE mode-aware `dockedKeyboard` snippet
 	 * (below) registered with the shared dock. The registry reference is
-	 * captured once at component-init time and reused in both `onMount` and
-	 * `onDestroy` - calling `getDockRegistry()` again inside `onDestroy` throws
-	 * Svelte's `lifecycle_outside_component` (Plan 03's established fix).
+	 * captured once at component-init time and reused inside the register/
+	 * clear `$effect` further down - calling `getDockRegistry()` again during
+	 * teardown throws Svelte's `lifecycle_outside_component` (Plan 03's
+	 * established fix), so the effect's own returned cleanup (which fires on
+	 * both re-run and unmount) is what clears the registration, never a
+	 * separate `onDestroy`.
 	 */
 	const dockRegistry = getDockRegistry();
 	const dockToken = Symbol('drills-dock');
@@ -302,17 +305,43 @@
 		flushQueue();
 	});
 
-	// Docked keyboard (KBD-01/KBD-03): registers the single mode-aware
-	// `dockedKeyboard` snippet (defined in the template below) with the
-	// shared dock. No `register` snippet - the in-flow feedback block already
-	// hosts `InspectRegister` for `drillInspect`, so the dock never duplicates
-	// that readout.
+	/**
+	 * Short-landscape carve-out (Scope Decision 7): on a genuinely short
+	 * rotated-phone viewport, Drills keeps its existing two-pane layout
+	 * (Phase 09-03) instead of feeding the fixed dock chrome, which would
+	 * eat vertical space twice over an already height-cleared layout.
+	 * Feature-detected (matchMedia isn't implemented by jsdom, so this stays
+	 * `false` - dock-by-default - in tests and in any browser lacking it),
+	 * mirroring the existing rotate-hint orientation listener above.
+	 */
+	let isShortLandscape = $state(false);
+
 	onMount(() => {
-		dockRegistry.register({ token: dockToken, keyboard: dockedKeyboard });
+		if (typeof window.matchMedia !== 'function') return;
+		const mql = window.matchMedia('(max-height: 600px) and (orientation: landscape)');
+		isShortLandscape = mql.matches;
+		const handleShortLandscapeChange = (event: MediaQueryListEvent) => {
+			isShortLandscape = event.matches;
+		};
+		mql.addEventListener('change', handleShortLandscapeChange);
+		return () => mql.removeEventListener('change', handleShortLandscapeChange);
 	});
 
-	onDestroy(() => {
-		dockRegistry.clear(dockToken);
+	/**
+	 * Docked keyboard (KBD-01/KBD-03): registers the single mode-aware
+	 * `dockedKeyboard` snippet (defined in the template below) with the
+	 * shared dock whenever the viewport is NOT short-landscape, and clears
+	 * the registration (effect cleanup, which also fires on unmount)
+	 * whenever it flips to short-landscape - the same snippet then renders
+	 * inline in `.drill-layout__keyboard` instead (see template). No
+	 * `register` snippet - the in-flow feedback block already hosts
+	 * `InspectRegister` for `drillInspect`, so the dock never duplicates
+	 * that readout.
+	 */
+	$effect(() => {
+		if (isShortLandscape) return;
+		dockRegistry.register({ token: dockToken, keyboard: dockedKeyboard });
+		return () => dockRegistry.clear(dockToken);
 	});
 
 	// Server-derived stats (D-02): need-weighting, the review bucket, and the
@@ -857,7 +886,11 @@
 				{/if}
 			</div>
 
-			<div class="drill-layout__keyboard"></div>
+			<div class="drill-layout__keyboard">
+				{#if isShortLandscape}
+					{@render dockedKeyboard()}
+				{/if}
+			</div>
 
 			<div class="drill-layout__controls drill-controls">
 				<div class="drill-controls__primary">
@@ -884,7 +917,11 @@
 				<p class="text-body">Name this chord.</p>
 			</div>
 
-			<div class="drill-layout__keyboard"></div>
+			<div class="drill-layout__keyboard">
+				{#if isShortLandscape}
+					{@render dockedKeyboard()}
+				{/if}
+			</div>
 
 			<div class="drill-layout__controls">
 				<div class="grid grid-cols-2 gap-2 xl:grid-cols-4" data-testid="choice-grid">
@@ -911,7 +948,11 @@
 				<p class="text-body">Name this interval.</p>
 			</div>
 
-			<div class="drill-layout__keyboard"></div>
+			<div class="drill-layout__keyboard">
+				{#if isShortLandscape}
+					{@render dockedKeyboard()}
+				{/if}
+			</div>
 
 			<div class="drill-layout__controls">
 				<div class="grid grid-cols-2 gap-2 xl:grid-cols-4" data-testid="interval-choice-grid">
@@ -945,7 +986,11 @@
 				</p>
 			</div>
 
-			<div class="drill-layout__keyboard"></div>
+			<div class="drill-layout__keyboard">
+				{#if isShortLandscape}
+					{@render dockedKeyboard()}
+				{/if}
+			</div>
 		{/if}
 
 		{#if answered && feedback}
