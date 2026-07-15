@@ -1,6 +1,8 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import RecallSession from './RecallSession.svelte';
+import KeyboardDock from './KeyboardDock.svelte';
+import { createDockRegistry, DOCK_CONTEXT_KEY, type DockRegistry } from '$lib/keyboard/dockContext.svelte';
 import { gradeCard, newCard, previewGrades, Rating, State } from '$lib/srs/scheduler';
 import { formatDayInterval } from '$lib/srs/session';
 import type { CardRecord } from '$lib/srs/deck';
@@ -14,7 +16,43 @@ import { transposeFrom } from '$lib/theory/interval';
  * grade-button day-interval labels exercise the real theory engine and the
  * real FSRS fixed-interval math (New card: Again=1d, Hard=2d, Good=3d,
  * Easy=8d, per 11-01's scheduler tests).
+ *
+ * Mode A ('see-play'), Mode B ('hear-name'), and the `formula`-mode reveal
+ * keyboards now live in the shared dock (Phase 15 Plan 06) rather than
+ * rendering inline. `renderRecallSession()` supplies a real dock registry via
+ * the `context` option (the same seam `+layout.svelte`'s `setDockRegistry`
+ * uses) and renders `KeyboardDock` alongside the component so the docked
+ * keyboard content is present in the same `document.body` that `screen`
+ * queries - mirrors lookupDock.test.ts/theoryDock.test.ts/drillsDock.test.ts's
+ * own context-injection harness. Mode C ('formula-build') is unaffected: its
+ * embedded BuildSession keyboard still renders in flow, untouched.
  */
+
+function renderRecallSession(props: { onViewMap?: () => void } = {}): {
+	registry: DockRegistry;
+} {
+	const registry = createDockRegistry();
+	const context = new Map([[DOCK_CONTEXT_KEY, registry]]);
+	render(RecallSession, { props, context });
+	render(KeyboardDock, { context });
+	return { registry };
+}
+
+/**
+ * Page-only variant (no `KeyboardDock` mounted alongside): used by the dock
+ * registration/clear coverage below, which asserts against the registry
+ * object itself (and the page's OWN document flow) rather than against
+ * rendered docked-keyboard content.
+ */
+function renderRecallSessionPageOnly(props: { onViewMap?: () => void } = {}): {
+	registry: DockRegistry;
+	unmount: () => void;
+} {
+	const registry = createDockRegistry();
+	const context = new Map([[DOCK_CONTEXT_KEY, registry]]);
+	const page = render(RecallSession, { props, context });
+	return { registry, unmount: () => page.unmount() };
+}
 
 const introduceNewCardsMock = vi.fn();
 const getDueCardsMock = vi.fn();
@@ -79,7 +117,7 @@ beforeEach(() => {
 describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () => {
 	it('renders the loading state before the async load resolves', () => {
 		introduceNewCardsMock.mockReturnValue(new Promise(() => {}));
-		render(RecallSession);
+		renderRecallSession();
 		expect(screen.getByTestId('recall-loading')).toHaveTextContent("COUNTING TODAY'S CARDS...");
 	});
 
@@ -88,7 +126,7 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 		getDueCardsMock.mockResolvedValue([]);
 		getAllCardsMock.mockResolvedValue([]);
 
-		render(RecallSession);
+		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-empty-no-deck'));
 
 		expect(screen.getByText('Nothing to recall yet.')).toBeInTheDocument();
@@ -101,7 +139,7 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 		getDueCardsMock.mockResolvedValue([]);
 		getAllCardsMock.mockResolvedValue([makeCard('chord-formula:Cm7', 'chord-formula')]);
 
-		render(RecallSession);
+		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-empty-none-due'));
 
 		expect(screen.getByText('Nothing due today.')).toBeInTheDocument();
@@ -114,7 +152,7 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 		getDueCardsMock.mockResolvedValue([]);
 		getAllCardsMock.mockResolvedValue([]);
 
-		render(RecallSession);
+		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-error'));
 		expect(screen.getByText(/Couldn't open the practice ledger\./)).toBeInTheDocument();
 
@@ -130,7 +168,7 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 		getDueCardsMock.mockResolvedValue([card]);
 		getAllCardsMock.mockResolvedValue([card]);
 
-		render(RecallSession);
+		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-prompt'));
 
 		expect(screen.getByTestId('recall-register')).toHaveTextContent('1 LEFT TODAY');
@@ -162,7 +200,7 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 		getDueCardsMock.mockResolvedValue([card]);
 		getAllCardsMock.mockResolvedValue([card]);
 
-		render(RecallSession);
+		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-prompt'));
 
 		const targetLetter = transposeFrom('C', 'm3');
@@ -181,7 +219,7 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 		getDueCardsMock.mockResolvedValue([card]);
 		getAllCardsMock.mockResolvedValue([card]);
 
-		render(RecallSession);
+		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-prompt'));
 
 		expect(screen.getByText('Degree 3 of G major')).toBeInTheDocument();
@@ -201,7 +239,7 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 		getAllCardsMock.mockResolvedValue([card]);
 		recordGradeMock.mockRejectedValueOnce(new Error('quota exceeded'));
 
-		render(RecallSession);
+		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-prompt'));
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
@@ -217,7 +255,7 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 		getDueCardsMock.mockResolvedValue([card]);
 		getAllCardsMock.mockResolvedValue([card]);
 
-		render(RecallSession);
+		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-prompt'));
 
 		const prompt = screen.getByTestId('recall-prompt');
@@ -257,7 +295,7 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 			return updatedCard;
 		});
 
-		render(RecallSession);
+		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-prompt'));
 
 		// Grade Again: real FSRS fields change (New -> Review, per D-02); the
@@ -288,7 +326,7 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 		getDueCardsMock.mockResolvedValue([cardA, cardB]);
 		getAllCardsMock.mockResolvedValue([cardA, cardB]);
 
-		render(RecallSession);
+		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-prompt'));
 		expect(screen.getByTestId('recall-register')).toHaveTextContent('2 LEFT TODAY');
 		expect(screen.getByText("What's the formula?")).toBeInTheDocument();
@@ -336,7 +374,7 @@ describe('RecallSession Mode A (see-play: see symbol, play notes, chroma-graded)
 		getDueCardsMock.mockResolvedValue([card]);
 		getAllCardsMock.mockResolvedValue([card]);
 
-		render(RecallSession);
+		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-prompt'));
 
 		expect(screen.getByTestId('recall-mode-chip')).toHaveTextContent('SYMBOL → PLAY');
@@ -353,7 +391,7 @@ describe('RecallSession Mode A (see-play: see symbol, play notes, chroma-graded)
 		getDueCardsMock.mockResolvedValue([card]);
 		getAllCardsMock.mockResolvedValue([card]);
 
-		render(RecallSession);
+		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-prompt'));
 
 		// Cm7's exact chroma set: C (root), D♯/E♭ (third), G (fifth), A♯/B♭ (seventh).
@@ -382,7 +420,7 @@ describe('RecallSession Mode A (see-play: see symbol, play notes, chroma-graded)
 		getDueCardsMock.mockResolvedValue([card]);
 		getAllCardsMock.mockResolvedValue([card]);
 
-		render(RecallSession);
+		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-prompt'));
 
 		// Missing the seventh (A♯/B♭), plus an extra note (D) not in the chord.
@@ -434,7 +472,7 @@ describe('RecallSession Mode B (hear-name: hear the chord, pick its name, never 
 		getDueCardsMock.mockResolvedValue([card]);
 		getAllCardsMock.mockResolvedValue([card]);
 
-		render(RecallSession);
+		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-prompt'));
 
 		expect(screen.getByTestId('recall-mode-chip')).toHaveTextContent('SOUND → NAME');
@@ -464,7 +502,7 @@ describe('RecallSession Mode B (hear-name: hear the chord, pick its name, never 
 		getDueCardsMock.mockResolvedValue([card]);
 		getAllCardsMock.mockResolvedValue([card]);
 
-		render(RecallSession);
+		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-prompt'));
 
 		expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
@@ -489,7 +527,7 @@ describe('RecallSession Mode B (hear-name: hear the chord, pick its name, never 
 		getDueCardsMock.mockResolvedValue([card]);
 		getAllCardsMock.mockResolvedValue([card]);
 
-		render(RecallSession);
+		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-prompt'));
 
 		const wrongChoice = getChoiceButtons().find(
@@ -530,7 +568,7 @@ describe('RecallSession Mode B (hear-name: hear the chord, pick its name, never 
 		getDueCardsMock.mockResolvedValue([card]);
 		getAllCardsMock.mockResolvedValue([card]);
 
-		render(RecallSession);
+		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-prompt'));
 
 		// Answer wrong first: the queue's own re-enqueue-on-Again contract
@@ -583,7 +621,7 @@ describe('RecallSession Mode C (formula-build: embeds BuildSession directly, REC
 		getDueCardsMock.mockResolvedValue([card]);
 		getAllCardsMock.mockResolvedValue([card]);
 
-		render(RecallSession);
+		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-mode-chip'));
 
 		expect(screen.getByTestId('recall-mode-chip')).toHaveTextContent('FORMULA → BUILD');
@@ -599,7 +637,7 @@ describe('RecallSession Mode C (formula-build: embeds BuildSession directly, REC
 		getDueCardsMock.mockResolvedValue([card]);
 		getAllCardsMock.mockResolvedValue([card]);
 
-		render(RecallSession);
+		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-mode-chip'));
 
 		expect(screen.getByTestId('recall-mode-chip')).toHaveTextContent('FORMULA → BUILD');
@@ -615,7 +653,7 @@ describe('RecallSession Mode C (formula-build: embeds BuildSession directly, REC
 		getDueCardsMock.mockResolvedValue([cardA, cardB]);
 		getAllCardsMock.mockResolvedValue([cardA, cardB]);
 
-		render(RecallSession);
+		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-mode-chip'));
 		expect(screen.getByTestId('recall-register')).toHaveTextContent('2 LEFT TODAY');
 
@@ -641,7 +679,7 @@ describe('RecallSession Mode C (formula-build: embeds BuildSession directly, REC
 		getDueCardsMock.mockResolvedValue([card]);
 		getAllCardsMock.mockResolvedValue([card]);
 
-		render(RecallSession);
+		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-mode-chip'));
 
 		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
@@ -675,7 +713,7 @@ describe('RecallSession unrenderable fallback (WR-01: no dead-end card)', () => 
 		getDueCardsMock.mockResolvedValue([card]);
 		getAllCardsMock.mockResolvedValue([card]);
 
-		render(RecallSession);
+		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-unrenderable'));
 
 		expect(screen.getByTestId('recall-unrenderable')).toHaveTextContent("Couldn't show this card.");
@@ -696,7 +734,7 @@ describe('RecallSession unrenderable fallback (WR-01: no dead-end card)', () => 
 		getDueCardsMock.mockResolvedValue([mismatchedCard, nextCard]);
 		getAllCardsMock.mockResolvedValue([mismatchedCard, nextCard]);
 
-		render(RecallSession);
+		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-unrenderable'));
 		expect(screen.getByTestId('recall-register')).toHaveTextContent('2 LEFT TODAY');
 
@@ -712,7 +750,7 @@ describe('RecallSession unrenderable fallback (WR-01: no dead-end card)', () => 
 		getDueCardsMock.mockResolvedValue([card]);
 		getAllCardsMock.mockResolvedValue([card]);
 
-		render(RecallSession);
+		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-unrenderable'));
 		expect(screen.getByTestId('recall-unrenderable')).toHaveTextContent("Couldn't show this card.");
 
@@ -764,7 +802,7 @@ describe('RecallSession queue composition via selectReviewCards (RECALL-03 rotat
 		getDueCardsMock.mockResolvedValue([formulaCard, seePlayCard, buildCard]);
 		getAllCardsMock.mockResolvedValue([formulaCard, seePlayCard, buildCard]);
 
-		render(RecallSession);
+		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-register'));
 		expect(screen.getByTestId('recall-register')).toHaveTextContent('3 LEFT TODAY');
 		expect(screen.getByTestId('recall-mode-chip')).toHaveTextContent('SYMBOL → FORMULA');
@@ -823,7 +861,7 @@ describe('RecallSession queue composition via selectReviewCards (RECALL-03 rotat
 		getDueCardsMock.mockResolvedValue([hearNameCard, formulaCard, seePlayCard]);
 		getAllCardsMock.mockResolvedValue([hearNameCard, formulaCard, seePlayCard]);
 
-		render(RecallSession);
+		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-register'));
 
 		// Capped: only 2 of this fact's 3 due cards are selected.
@@ -865,7 +903,7 @@ describe('RecallSession queue composition via selectReviewCards (RECALL-03 rotat
 		getDueCardsMock.mockResolvedValue([card]);
 		getAllCardsMock.mockResolvedValue([card]);
 
-		render(RecallSession);
+		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-prompt'));
 
 		expect(screen.getByTestId('recall-register')).toHaveTextContent('1 LEFT TODAY');
@@ -895,7 +933,7 @@ describe('RecallSession queue composition via selectReviewCards (RECALL-03 rotat
 		getDueCardsMock.mockResolvedValue([formulaCard, seePlayCard, hearNameCard, buildCard]);
 		getAllCardsMock.mockResolvedValue([formulaCard, seePlayCard, hearNameCard, buildCard]);
 
-		render(RecallSession);
+		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-register'));
 		expect(screen.getByTestId('recall-register')).toHaveTextContent('4 LEFT TODAY');
 
@@ -938,5 +976,171 @@ describe('RecallSession queue composition via selectReviewCards (RECALL-03 rotat
 
 		await waitFor(() => screen.getByTestId('recall-complete'));
 		expect(screen.getByTestId('recall-reviewed-count')).toHaveTextContent('4 REVIEWED TODAY');
+	});
+});
+
+/**
+ * Docked keyboard coverage (Phase 15 Plan 06, KBD-01/KBD-03): Mode A
+ * ('see-play'), Mode B ('hear-name'), and the `formula`-mode reveal keyboard
+ * collapse into ONE mode-aware `dockedKeyboard` snippet registered with the
+ * shared dock. Mode C ('formula-build') is explicitly out of scope here (its
+ * embedded BuildSession keyboard stays in flow, untouched by this plan).
+ */
+describe('RecallSession docked keyboard (KBD-01/KBD-03, Phase 15 Plan 06)', () => {
+	it('registers a dock config on mount whose keyboard is a snippet function once a formula card is reviewing', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		const { registry } = renderRecallSessionPageOnly();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		expect(registry.current).not.toBeNull();
+		expect(registry.current?.keyboard).toBeTypeOf('function');
+		expect(registry.current?.register).toBeUndefined();
+	});
+
+	it("renders no PianoKeyboard in the page's own document flow itself (it lives only in the dock snippet)", async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSessionPageOnly();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		expect(screen.queryByRole('img', { name: /piano keyboard/i })).not.toBeInTheDocument();
+	});
+
+	it('clears its registration on unmount', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		const { registry, unmount } = renderRecallSessionPageOnly();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+		expect(registry.current).not.toBeNull();
+
+		unmount();
+
+		expect(registry.current).toBeNull();
+	});
+
+	it('clears its registration once the session completes (no stale keyboard outside the reviewing state, T-15-03)', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		const { registry } = renderRecallSessionPageOnly();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+		expect(registry.current).not.toBeNull();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
+		await fireEvent.click(screen.getByTestId('recall-grade-good'));
+
+		await waitFor(() => screen.getByTestId('recall-complete'));
+		expect(registry.current).toBeNull();
+	});
+
+	it('clears its registration while a formula-build (Mode C) card is showing, so no stale keyboard exists alongside the embedded BuildSession', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'formula-build');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		const { registry } = renderRecallSessionPageOnly();
+		await waitFor(() => screen.getByTestId('build-session'));
+
+		expect(registry.current).toBeNull();
+	});
+
+	it('Mode A (see-play): the docked keyboard is interactive - tapping sounds via mocked playNote and toggles selection', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'see-play');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		const cKey = screen.getAllByRole('button', { name: 'C key' })[0];
+		await fireEvent.pointerDown(cKey);
+		expect(playNoteMock).toHaveBeenCalledWith('C4');
+
+		await fireEvent.click(cKey);
+		expect(cKey).toHaveAttribute('aria-pressed', 'true');
+	});
+
+	it('Mode A (see-play): a wrong Check transforms the SAME docked keyboard (one keyboard, target notes + wrongLetters)', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'see-play');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		// Missing the seventh (A♯/B♭), plus an extra note (D) not in the chord.
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D key' })[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		const keyboards = screen.getAllByRole('img', { name: /piano keyboard/i });
+		expect(keyboards).toHaveLength(1);
+		const keyboard = keyboards[0];
+
+		const wrongKeys = keyboard.querySelectorAll('.piano-keyboard__key--wrong');
+		expect(wrongKeys.length).toBeGreaterThan(0);
+		const highlighted = keyboard.querySelectorAll(
+			'.piano-keyboard__key--root, .piano-keyboard__key--third, .piano-keyboard__key--fifth, .piano-keyboard__key--seventh'
+		);
+		expect(highlighted).toHaveLength(4);
+	});
+
+	it('Mode B (hear-name): the docked keyboard is a plain inspectable tap-to-hear board', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'hear-name');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		const keyboards = screen.getAllByRole('img', { name: /piano keyboard/i });
+		expect(keyboards).toHaveLength(1);
+		const key = screen.getAllByRole('button', { name: 'C key' })[0];
+		await fireEvent.click(key);
+		expect(playNoteMock).toHaveBeenCalled();
+
+		// Never a graded/selection surface - the multiple-choice grid stays in
+		// flow, unaffected by tapping the docked board.
+		expect(screen.getAllByRole('button', { name: /^Answer: / })).toHaveLength(4);
+	});
+
+	it('formula mode: the docked keyboard is inspectable and present before AND after Show Answer (empty pre-reveal, chord notes post-reveal)', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		const beforeKeyboards = screen.getAllByRole('img', { name: /piano keyboard/i });
+		expect(beforeKeyboards).toHaveLength(1);
+		expect(beforeKeyboards[0].querySelectorAll('.piano-keyboard__key--root')).toHaveLength(0);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
+
+		const afterKeyboards = screen.getAllByRole('img', { name: /piano keyboard/i });
+		expect(afterKeyboards).toHaveLength(1);
+		expect(afterKeyboards[0].querySelectorAll('.piano-keyboard__key--root').length).toBeGreaterThan(
+			0
+		);
 	});
 });
