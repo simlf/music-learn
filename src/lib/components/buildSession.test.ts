@@ -182,17 +182,42 @@ describe('BuildSession construction step loop (BUILD-01/02/03, Task 2)', () => {
 		expect(screen.getByTestId('build-register')).toHaveTextContent('STEP 1 OF 3');
 	});
 
-	it('a wrong-octave tap (right pitch class, wrong octave) shows the fixed headline and restates the SAME tapped letter', async () => {
+	it('a wrong-octave tap that overshot HIGH shows the fixed headline and a direction-aware restatement telling the user to go DOWN', async () => {
 		await startCm7();
 
+		// Index 1 is the octave-5 (higher-register) D♯/E♭ key; Cm7's third is
+		// expected at octave 4, so this tap overshot upward.
 		const wrongOctaveKey = screen.getAllByRole('button', { name: 'D♯ key' })[1];
 		await fireEvent.click(wrongOctaveKey);
 
 		expect(screen.getByTestId('build-feedback')).toHaveTextContent('Right note, wrong octave.');
 		expect(screen.getByTestId('build-restatement')).toHaveTextContent(
-			"You're stacking upward: try the next D♯ up."
+			"You're stacking upward: try the next D♯ down."
 		);
 		expect(wrongOctaveKey.className).toContain('piano-keyboard__key--wrong');
+	});
+
+	it('a wrong-octave tap that undershot LOW (scale construction) restates telling the user to go UP', async () => {
+		render(BuildSession);
+		await fireEvent.click(screen.getByRole('button', { name: 'Scales' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'G major' }));
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'B key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[1]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+
+		// Expected next target is D5 (octave 5, the ascending-voicing wraparound
+		// placement); tap the lower-register D4 instead - an undershot.
+		const undershotKey = screen.getAllByRole('button', { name: 'D key' })[0];
+		await fireEvent.click(undershotKey);
+
+		expect(screen.getByTestId('build-feedback')).toHaveTextContent('Right note, wrong octave.');
+		expect(screen.getByTestId('build-restatement')).toHaveTextContent(
+			"You're stacking upward: try the next D up."
+		);
 	});
 
 	it('the formula strip shows exactly one dashed "?" placeholder for the next unearned target', async () => {

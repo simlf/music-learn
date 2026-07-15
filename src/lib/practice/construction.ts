@@ -63,7 +63,7 @@ export interface ConstructionTapResult {
 	state: ConstructionState;
 	/** Signed semitone distance between the tap and the target. Present only on 'wrong-pitch-class'. */
 	semitones?: number;
-	/** Whether the tap was above or below the target. Present only on 'wrong-pitch-class'. */
+	/** Whether the tap was above or below the target. Present on both 'wrong-pitch-class' and 'wrong-octave' (never on 'correct'). */
 	direction?: 'high' | 'low';
 }
 
@@ -216,7 +216,8 @@ export function gradeConstructionTap(
 	if (tappedChroma === targetChroma) {
 		return {
 			outcome: 'wrong-octave',
-			state: { ...state, wrongTapCount: state.wrongTapCount + 1 }
+			state: { ...state, wrongTapCount: state.wrongTapCount + 1 },
+			direction: tappedMidi > target.midi ? 'high' : 'low'
 		};
 	}
 

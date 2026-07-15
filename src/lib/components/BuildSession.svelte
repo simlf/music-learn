@@ -374,7 +374,11 @@
 			flashKey = { letter, octave };
 			construction = result.state;
 			promptState = result.state;
-			feedback = { kind: 'wrong-octave', headline: 'Right note, wrong octave.' };
+			feedback = {
+				kind: 'wrong-octave',
+				headline: 'Right note, wrong octave.',
+				direction: result.direction
+			};
 		}
 
 		clearTimeout(flashTimer);
@@ -530,7 +534,11 @@
 						{/if}
 					{:else if feedback.kind === 'wrong-octave'}
 						<p class="text-body mt-2" data-testid="build-restatement">
-							You're stacking upward: try the next {lastTappedLetter} up.
+							{#if feedback.direction === 'high'}
+								You're stacking upward: try the next {lastTappedLetter} down.
+							{:else}
+								You're stacking upward: try the next {lastTappedLetter} up.
+							{/if}
 						</p>
 					{/if}
 				</div>

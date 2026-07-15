@@ -171,7 +171,7 @@ describe('gradeConstructionTap: wrong-pitch-class and wrong-octave grading', () 
 		expect(initial.wrongTapCount).toBe(snapshotWrongTapCount);
 	});
 
-	it('wrong-octave: tapping the correct letter one octave too high is a distinct outcome from wrong-pitch-class', () => {
+	it('wrong-octave: tapping the correct letter one octave too high is a distinct outcome from wrong-pitch-class, and reports the "high" direction', () => {
 		const initial = createChordConstruction('Cm7');
 		const step = expectedStep(initial);
 		if (!step) throw new Error('expected a step');
@@ -184,8 +184,24 @@ describe('gradeConstructionTap: wrong-pitch-class and wrong-octave grading', () 
 
 		expect(result.outcome).toBe('wrong-octave');
 		expect(result.semitones).toBeUndefined();
-		expect(result.direction).toBeUndefined();
+		expect(result.direction).toBe('high');
 		expect(result.state.position).toBe(0);
+		expect(result.state.wrongTapCount).toBe(1);
+	});
+
+	it('wrong-octave: tapping the correct letter one octave too low reports the "low" direction', () => {
+		const initial = createChordConstruction('Cm7');
+		const step = expectedStep(initial);
+		if (!step) throw new Error('expected a step');
+
+		const result = gradeConstructionTap(
+			initial,
+			step.letter,
+			octaveForTap(step.letter, step.midi) - 1
+		);
+
+		expect(result.outcome).toBe('wrong-octave');
+		expect(result.direction).toBe('low');
 		expect(result.state.wrongTapCount).toBe(1);
 	});
 
