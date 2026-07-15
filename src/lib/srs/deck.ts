@@ -193,8 +193,11 @@ export function deriveCellState(card: CardRecord | undefined, now: Date = new Da
 	if (card.state === State.Review) {
 		return 'mastered';
 	}
-	// Not-yet-due New/Learning card without a lastRating; shouldn't occur in
-	// practice since New cards are created with due=now, but keeps the
-	// function total.
+	// Not-yet-due New/Learning card without a lastRating: provably unreachable
+	// given this app's invariants (New cards are always created with due=now,
+	// and every grade on a New card transitions straight to State.Review per
+	// this app's FSRS config), but kept so the function stays total rather
+	// than partial.
+	/* istanbul ignore next */
 	return 'due';
 }
