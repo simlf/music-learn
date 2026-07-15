@@ -1,0 +1,384 @@
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../themes/default.css" />
+<style>
+	* { box-sizing: border-box; }
+	body {
+		margin: 0;
+		background: var(--color-paper);
+		color: var(--color-ink);
+		font-family: var(--font-sans);
+		padding: var(--space-6);
+	}
+	h1 { font-size: var(--text-heading); margin: 0 0 var(--space-1); }
+	.sub { color: var(--color-muted); margin: 0 0 var(--space-6); font-size: var(--text-body); max-width: 52em; }
+
+	.reg { font: 700 var(--text-label)/1.4 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-muted); }
+
+	/* ---- tabs ---- */
+	.tabs { display: flex; gap: var(--space-2); margin-bottom: var(--space-6); flex-wrap: wrap; }
+	.tab {
+		font: 700 var(--text-label)/1 var(--font-mono);
+		letter-spacing: 0.12em; text-transform: uppercase;
+		padding: var(--space-2) var(--space-4); border: 2px solid var(--color-ink);
+		background: var(--color-paper-bright); cursor: pointer; min-height: 44px;
+	}
+	.tab[aria-selected="true"] { background: var(--color-ink); color: var(--color-paper-bright); }
+	.panel { display: none; }
+	.panel[data-active="true"] { display: block; }
+
+	.premise { font-size: 13px; color: var(--color-muted); margin: 0 0 var(--space-4); max-width: 50em; }
+	.premise b { color: var(--color-ink); }
+
+	/* ---- phone frame (contains fixed / floating chrome) ---- */
+	.phone {
+		position: relative; border: 2px solid var(--color-ink);
+		background: var(--color-paper); height: 560px; overflow: hidden;
+		max-width: 420px; margin: 0 auto;
+	}
+	.phone-scroll { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+	.phone-scroll.has-dock { padding-bottom: 176px; }
+	.phone-scroll.has-fab { padding-bottom: 84px; }
+	.scrollpad { padding: var(--space-4); }
+
+	/* ---- fake page surfaces ---- */
+	.surface { border: 2px solid var(--color-ink); background: var(--color-paper-bright); padding: var(--space-4); margin-bottom: var(--space-4); }
+	.surface .eyebrow { font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-muted); margin: 0 0 var(--space-2); }
+	.chord-display { font: 700 var(--text-display)/1 var(--font-serif); margin: 0 0 var(--space-2); }
+	.chord-sub { font-size: 13px; color: var(--color-muted); margin: 0 0 var(--space-4); }
+
+	.note-row { display: flex; gap: var(--space-1); flex-wrap: wrap; margin-bottom: var(--space-4); }
+	.note-chip { font: 700 var(--text-body)/1 var(--font-serif); border: 2px solid var(--color-ink); padding: var(--space-2) var(--space-2); min-width: 40px; text-align: center; }
+	.note-chip[data-role="root"]    { background: var(--color-root);    color: var(--color-on-root); }
+	.note-chip[data-role="third"]   { background: var(--color-third);   color: var(--color-on-third); }
+	.note-chip[data-role="fifth"]   { background: var(--color-fifth);   color: var(--color-on-fifth); }
+	.note-chip[data-role="seventh"] { background: var(--color-seventh); color: var(--color-on-seventh); }
+
+	.grade-row { display: flex; gap: var(--space-1); flex-wrap: wrap; }
+	.grade-btn { flex: 1; min-width: 64px; min-height: 44px; font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; border: 2px solid var(--color-ink); background: var(--color-paper-bright); cursor: pointer; }
+	.grade-btn.again { border-color: var(--color-vermilion); color: var(--color-vermilion); }
+
+	.filler { font-size: 13px; color: var(--color-faint); border: 2px dashed var(--color-faint); padding: var(--space-4); margin-bottom: var(--space-4); }
+
+	/* ================= PIANO KEYBOARD ================= */
+	.pk { border: 2px solid var(--color-ink); background: var(--color-paper-bright); }
+	.pk-chrome { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) var(--space-2); border-bottom: 2px solid var(--color-ink); }
+	.pk-chrome .reg { margin: 0; }
+	.pk-toggle { font: 700 11px/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; border: 2px solid var(--color-ink); background: var(--color-paper-bright); color: var(--color-muted); cursor: pointer; min-height: 44px; padding: 0 var(--space-2); display: flex; align-items: center; gap: 6px; }
+	.pk-toggle[aria-pressed="true"] { background: var(--color-verdigris); color: #fff; border-color: var(--color-ink); }
+	.pk-toggle .dot { width: 9px; height: 9px; border: 2px solid currentColor; display: inline-block; }
+	.pk-toggle[aria-pressed="true"] .dot { background: #fff; }
+
+	.pk-keys-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+	.pk-keys { position: relative; height: 120px; width: max-content; margin: 0 auto; }
+	.pk-white {
+		position: absolute; top: 0; height: 120px; width: 32px;
+		border: 2px solid var(--color-ink); background: var(--color-paper-bright);
+		cursor: pointer; padding: 0; display: flex; align-items: flex-end; justify-content: center;
+		padding-bottom: 4px; font: 700 9px/1 var(--font-mono); color: var(--color-faint);
+	}
+	.pk-black {
+		position: absolute; top: 0; height: 74px; width: 22px; z-index: 2;
+		border: 2px solid var(--color-ink); background: var(--color-ink);
+		cursor: pointer; padding: 0;
+	}
+	.pk-white[data-press="true"] { background: var(--color-ink); color: var(--color-paper-bright); }
+	.pk-black[data-press="true"] { background: var(--color-vermilion); border-color: var(--color-ink); }
+
+	/* register log under keys */
+	.pk-log { border-top: 2px solid var(--color-ink); padding: var(--space-2); min-height: 30px; }
+	.pk-log-line { font: 700 12px/1.5 var(--font-mono); letter-spacing: 0.06em; color: var(--color-ink); }
+	.pk-log-line.faded { color: var(--color-faint); }
+	.pk-log-empty { font: 700 11px/1.4 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-faint); }
+
+	/* ===== A: docked bottom bar ===== */
+	.dock { position: absolute; left: 0; right: 0; bottom: 0; z-index: 10; border-top: 2px solid var(--color-ink); background: var(--color-paper-bright); box-shadow: 0 -6px 0 rgba(34,30,23,0.06); }
+	.dock-handle { width: 100%; display: flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: 32px; border: none; border-bottom: 2px solid var(--color-ink); background: var(--color-ink); color: var(--color-paper-bright); cursor: pointer; font: 700 10px/1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; }
+	.dock-handle .grip { width: 34px; height: 4px; background: var(--color-paper-bright); }
+	.dock[data-collapsed="true"] .pk-keys-wrap,
+	.dock[data-collapsed="true"] .pk-log,
+	.dock[data-collapsed="true"] .pk-chrome { display: none; }
+	.dock[data-collapsed="true"] .dock-handle { border-bottom: none; }
+
+	/* ===== C: floating summon ===== */
+	.fab { position: absolute; right: var(--space-4); bottom: var(--space-4); z-index: 20; min-height: 56px; min-width: 56px; padding: 0 var(--space-4); border: 2px solid var(--color-ink); background: var(--color-vermilion); color: #fff; cursor: pointer; font: 700 13px/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; display: flex; align-items: center; gap: 8px; box-shadow: 4px 4px 0 var(--color-ink); }
+	.fab .ico { font-size: 18px; }
+	.sheet-backdrop { position: absolute; inset: 0; z-index: 25; background: rgba(34,30,23,0.28); display: none; }
+	.sheet-backdrop[data-open="true"] { display: block; }
+	.sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 30; border-top: 2px solid var(--color-ink); background: var(--color-paper-bright); transform: translateY(100%); transition: transform 0.18s ease; }
+	.sheet[data-open="true"] { transform: translateY(0); }
+	.sheet-bar { display: flex; align-items: center; justify-content: space-between; padding: var(--space-2) var(--space-4); border-bottom: 2px solid var(--color-ink); background: var(--color-ink); color: var(--color-paper-bright); }
+	.sheet-bar .reg { color: var(--color-paper-bright); margin: 0; }
+	.sheet-close { min-height: 44px; min-width: 44px; border: 2px solid var(--color-paper-bright); background: transparent; color: var(--color-paper-bright); cursor: pointer; font: 700 16px/1 var(--font-mono); }
+
+	/* ===== B: sticky sound chip ===== */
+	.soundchip-bar { position: sticky; top: 0; z-index: 5; display: flex; justify-content: flex-end; padding: var(--space-2) 0; background: linear-gradient(var(--color-paper) 70%, transparent); margin-bottom: var(--space-2); }
+	.guarantee-tag { display: inline-flex; align-items: center; gap: 6px; font: 700 10px/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-verdigris); border: 2px solid var(--color-verdigris); padding: 4px 6px; margin: 0 0 var(--space-2); }
+	.guarantee-tag .dot { width: 8px; height: 8px; background: var(--color-verdigris); }
+
+	.footnote { font-size: 13px; color: var(--color-muted); border-top: 2px dashed var(--color-faint); margin-top: var(--space-6); padding-top: var(--space-4); max-width: 52em; }
+	.footnote b { color: var(--color-ink); }
+	.footnote code { font-family: var(--font-mono); background: var(--color-paper-bright); border: 1px solid var(--color-faint); padding: 1px 4px; }
+</style>
+
+<h1>Sketch 008 &middot; Keyboard everywhere</h1>
+<p class="sub">Non-negotiable: on every page that has a piano keyboard, the keyboard must be immediately playable (tap a key, it sounds). Where should an always-playable keyboard live on pages already carrying a lot of content (Recall, Chord Lookup, Scales, Drills, Theory)? Three treatments below, each mocked over a representative page. Tap the keys.</p>
+
+<div class="tabs" role="tablist">
+	<button class="tab" role="tab" aria-selected="true" data-tab="A">A &middot; Docked bottom bar &#9733;</button>
+	<button class="tab" role="tab" aria-selected="false" data-tab="B">B &middot; Inline, guaranteed</button>
+	<button class="tab" role="tab" aria-selected="false" data-tab="C">C &middot; Floating summon</button>
+</div>
+
+<!-- ============ VARIANT A ============ -->
+<div class="panel" data-tab="A" data-active="true">
+	<p class="premise">A <b>docked bottom bar</b>: a 1.5-octave keyboard pinned to the bottom of the viewport. The page (a Recall review card) scrolls above it. Always thumb-reachable on a phone. The ink handle collapses it to a thin strip when you need the whole screen. Scroll the card. The keyboard never leaves.</p>
+	<div class="phone">
+		<div class="phone-scroll has-dock" id="A-scroll">
+			<div class="scrollpad">
+				<p class="reg">/recall &middot; card 3 of 12 due</p>
+				<div class="surface">
+					<p class="eyebrow">Recall &middot; play the left-hand voicing</p>
+					<div class="chord-display">Cm7</div>
+					<p class="chord-sub">C minor seventh. Reveal to check against the keys you played.</p>
+					<div class="note-row">
+						<span class="note-chip" data-role="root">C</span>
+						<span class="note-chip" data-role="third">E&flat;</span>
+						<span class="note-chip" data-role="fifth">G</span>
+						<span class="note-chip" data-role="seventh">B&flat;</span>
+					</div>
+					<div class="grade-row">
+						<button class="grade-btn again">Again</button>
+						<button class="grade-btn">Hard</button>
+						<button class="grade-btn">Good</button>
+						<button class="grade-btn">Easy</button>
+					</div>
+				</div>
+				<div class="filler">Prompt context, sheet-music snippet, and the FSRS interval preview scroll here. There is a lot of content on a Recall card. Keep scrolling.</div>
+				<div class="filler">More context below the fold. The docked keyboard stays pinned no matter how far this scrolls.</div>
+			</div>
+		</div>
+		<div class="dock" id="A-dock" data-collapsed="false">
+			<button class="dock-handle" id="A-handle" type="button"><span class="grip"></span> Keyboard &middot; tap to collapse</button>
+			<div id="A-kbd"></div>
+		</div>
+	</div>
+</div>
+
+<!-- ============ VARIANT B ============ -->
+<div class="panel" data-tab="B" data-active="false">
+	<p class="premise">Each surface keeps its <b>own in-flow keyboard</b> (today's pattern) but every one is guaranteed present and playable. Below: a Chord Lookup result and a Recall card, stacked, each with its own keyboard. A sticky <b>SOUND</b> chip rides along as the persistent, page-wide affordance so sound state is one shared truth.</p>
+	<div class="phone">
+		<div class="phone-scroll" id="B-scroll">
+			<div class="scrollpad">
+				<div class="soundchip-bar">
+					<button class="pk-toggle" id="B-sound" aria-pressed="true"><span class="dot"></span> Sound on</button>
+				</div>
+				<span class="guarantee-tag"><span class="dot"></span> Keyboard guaranteed on every surface</span>
+
+				<p class="reg">/ (chord lookup) &middot; result</p>
+				<div class="surface">
+					<p class="eyebrow">Lookup result</p>
+					<div class="chord-display">F&sharp;&oslash;7</div>
+					<p class="chord-sub">F-sharp half-diminished seventh. Also written F&sharp;m7&flat;5.</p>
+					<div class="note-row">
+						<span class="note-chip" data-role="root">F&sharp;</span>
+						<span class="note-chip" data-role="third">A</span>
+						<span class="note-chip" data-role="fifth">C</span>
+						<span class="note-chip" data-role="seventh">E</span>
+					</div>
+					<div id="B-kbd1"></div>
+				</div>
+
+				<p class="reg">/recall &middot; card 3 of 12 due</p>
+				<div class="surface">
+					<p class="eyebrow">Recall &middot; play the left-hand voicing</p>
+					<div class="chord-display">Cm7</div>
+					<p class="chord-sub">C minor seventh. Play it, then reveal.</p>
+					<div id="B-kbd2"></div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- ============ VARIANT C ============ -->
+<div class="panel" data-tab="C" data-active="false">
+	<p class="premise">A small persistent <b>PIANO</b> button sits bottom-right on every page. Tap it and a keyboard sheet slides up from the bottom, dismissible. Present everywhere, hidden until summoned, so a content-heavy page (a Recall card) keeps its full height until you actually want to play. Tap the FAB.</p>
+	<div class="phone">
+		<div class="phone-scroll has-fab" id="C-scroll">
+			<div class="scrollpad">
+				<p class="reg">/recall &middot; card 3 of 12 due</p>
+				<div class="surface">
+					<p class="eyebrow">Recall &middot; play the left-hand voicing</p>
+					<div class="chord-display">Cm7</div>
+					<p class="chord-sub">C minor seventh. Summon the piano to play your answer.</p>
+					<div class="note-row">
+						<span class="note-chip" data-role="root">C</span>
+						<span class="note-chip" data-role="third">E&flat;</span>
+						<span class="note-chip" data-role="fifth">G</span>
+						<span class="note-chip" data-role="seventh">B&flat;</span>
+					</div>
+					<div class="grade-row">
+						<button class="grade-btn again">Again</button>
+						<button class="grade-btn">Hard</button>
+						<button class="grade-btn">Good</button>
+						<button class="grade-btn">Easy</button>
+					</div>
+				</div>
+				<div class="filler">Full page height stays free. The summon button floats above everything at bottom-right.</div>
+			</div>
+		</div>
+		<button class="fab" id="C-fab" type="button"><span class="ico">&#9835;</span> Piano</button>
+		<div class="sheet-backdrop" id="C-backdrop"></div>
+		<div class="sheet" id="C-sheet" data-open="false">
+			<div class="sheet-bar">
+				<span class="reg">Keyboard</span>
+				<button class="sheet-close" id="C-close" type="button">&times;</button>
+			</div>
+			<div id="C-kbd"></div>
+		</div>
+	</div>
+</div>
+
+<p class="footnote"><b>Sound note:</b> In the real app the keyboard is <code>PianoKeyboard.svelte</code> wired to a working audio engine (<code>playNote</code> / <code>playChord</code>) with a persisted sound toggle, so every tap actually sounds. This sketch fakes audio with the visual key-press plus a line in the mono register (e.g. <code>&#9834; E4</code>). The winning treatment must guarantee the keyboard is present and playable on <b>/recall, /scales, /drills, /theory,</b> and the root chord-lookup page.</p>
+
+<script>
+	/* ---- keyboard layout: ~1.5 octaves, C4..G5 ---- */
+	var WHITE = ['C4','D4','E4','F4','G4','A4','B4','C5','D5','E5','F5','G5'];
+	/* black key sits to the right of the white key at this index */
+	var BLACK = [
+		{ after: 0, name: 'C#4' }, { after: 1, name: 'D#4' },
+		{ after: 3, name: 'F#4' }, { after: 4, name: 'G#4' }, { after: 5, name: 'A#4' },
+		{ after: 7, name: 'C#5' }, { after: 8, name: 'D#5' },
+		{ after: 10, name: 'F#5' }, { after: 11, name: 'G#5' }
+	];
+	var WK = 32; /* white key width, must match CSS */
+
+	/* build one keyboard instance; returns its shared-toggle setter */
+	function buildKeyboard(mountEl, opts) {
+		opts = opts || {};
+		var soundOn = { v: true };
+		var root = document.createElement('div');
+		root.className = 'pk';
+
+		/* chrome: register label + sound toggle (unless external toggle supplied) */
+		var chrome = document.createElement('div');
+		chrome.className = 'pk-chrome';
+		var lbl = document.createElement('span');
+		lbl.className = 'reg';
+		lbl.textContent = opts.label || 'Piano · tap to play';
+		chrome.appendChild(lbl);
+
+		var toggle = null;
+		if (!opts.externalToggle) {
+			toggle = document.createElement('button');
+			toggle.className = 'pk-toggle';
+			toggle.setAttribute('aria-pressed', 'true');
+			toggle.innerHTML = '<span class="dot"></span> Sound on';
+			toggle.onclick = function () {
+				soundOn.v = !soundOn.v;
+				toggle.setAttribute('aria-pressed', String(soundOn.v));
+				toggle.innerHTML = '<span class="dot"></span> ' + (soundOn.v ? 'Sound on' : 'Sound off');
+			};
+			chrome.appendChild(toggle);
+		}
+		root.appendChild(chrome);
+
+		/* keys */
+		var wrap = document.createElement('div');
+		wrap.className = 'pk-keys-wrap';
+		var keys = document.createElement('div');
+		keys.className = 'pk-keys';
+		keys.style.width = (WHITE.length * WK) + 'px';
+
+		var log; /* forward ref */
+		function press(el, note) {
+			el.setAttribute('data-press', 'true');
+			setTimeout(function () { el.removeAttribute('data-press'); }, 170);
+			var line = document.createElement('div');
+			line.className = 'pk-log-line';
+			var mark = soundOn.v ? '♪' : '♪ (muted)';
+			line.textContent = mark + ' ' + note;
+			if (log.querySelector('.pk-log-empty')) log.innerHTML = '';
+			log.insertBefore(line, log.firstChild);
+			/* fade + cap */
+			var lines = log.querySelectorAll('.pk-log-line');
+			for (var i = 0; i < lines.length; i++) {
+				if (i > 0) lines[i].classList.add('faded');
+				if (i >= 5) log.removeChild(lines[i]);
+			}
+		}
+
+		WHITE.forEach(function (note, i) {
+			var k = document.createElement('button');
+			k.className = 'pk-white';
+			k.type = 'button';
+			k.style.left = (i * WK) + 'px';
+			k.textContent = note;
+			k.onclick = function () { press(k, note); };
+			keys.appendChild(k);
+		});
+		BLACK.forEach(function (b) {
+			var k = document.createElement('button');
+			k.className = 'pk-black';
+			k.type = 'button';
+			k.style.left = ((b.after + 1) * WK - 11) + 'px';
+			k.title = b.name;
+			k.onclick = function (e) { e.stopPropagation(); press(k, b.name); };
+			keys.appendChild(k);
+		});
+		wrap.appendChild(keys);
+		root.appendChild(wrap);
+
+		/* register log */
+		log = document.createElement('div');
+		log.className = 'pk-log';
+		log.innerHTML = '<span class="pk-log-empty">Register · taps appear here</span>';
+		root.appendChild(log);
+
+		mountEl.appendChild(root);
+		return { setSound: function (v) {
+			soundOn.v = v;
+			if (toggle) { toggle.setAttribute('aria-pressed', String(v)); toggle.innerHTML = '<span class="dot"></span> ' + (v ? 'Sound on' : 'Sound off'); }
+		} };
+	}
+
+	/* ---- A: docked bar ---- */
+	buildKeyboard(document.getElementById('A-kbd'), { label: 'Docked · always reachable' });
+	var aDock = document.getElementById('A-dock');
+	document.getElementById('A-handle').onclick = function () {
+		var c = aDock.getAttribute('data-collapsed') === 'true';
+		aDock.setAttribute('data-collapsed', String(!c));
+		this.lastChild.textContent = c ? ' Keyboard · tap to collapse' : ' Keyboard · tap to expand';
+	};
+
+	/* ---- B: two inline keyboards + shared sticky sound chip ---- */
+	var b1 = buildKeyboard(document.getElementById('B-kbd1'), { label: 'Lookup keyboard', externalToggle: true });
+	var b2 = buildKeyboard(document.getElementById('B-kbd2'), { label: 'Recall keyboard', externalToggle: true });
+	var bSoundOn = true;
+	var bSound = document.getElementById('B-sound');
+	bSound.onclick = function () {
+		bSoundOn = !bSoundOn;
+		bSound.setAttribute('aria-pressed', String(bSoundOn));
+		bSound.innerHTML = '<span class="dot"></span> ' + (bSoundOn ? 'Sound on' : 'Sound off');
+		b1.setSound(bSoundOn); b2.setSound(bSoundOn);
+	};
+
+	/* ---- C: floating summon ---- */
+	buildKeyboard(document.getElementById('C-kbd'), { label: 'Summoned · dismiss when done' });
+	var cSheet = document.getElementById('C-sheet');
+	var cBack = document.getElementById('C-backdrop');
+	function openC(o) { cSheet.setAttribute('data-open', String(o)); cBack.setAttribute('data-open', String(o)); }
+	document.getElementById('C-fab').onclick = function () { openC(true); };
+	document.getElementById('C-close').onclick = function () { openC(false); };
+	cBack.onclick = function () { openC(false); };
+
+	/* ---- tabs ---- */
+	document.querySelectorAll('.tab').forEach(function (tab) {
+		tab.onclick = function () {
+			var id = tab.dataset.tab;
+			document.querySelectorAll('.tab').forEach(function (t) { t.setAttribute('aria-selected', String(t === tab)); });
+			document.querySelectorAll('.panel').forEach(function (p) { p.setAttribute('data-active', String(p.dataset.tab === id)); });
+		};
+	});
+</script>
