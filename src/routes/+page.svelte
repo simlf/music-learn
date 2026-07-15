@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onDestroy, onMount } from 'svelte';
 	import { spellChord } from '$lib/theory/chord';
 	import { pickHint, pickSuggestionHint } from '$lib/copy/hints';
 	import { didYouMean } from '$lib/theory/didYouMean';
@@ -6,6 +7,7 @@
 	import { intervalFromRoot, toAsciiAccidentals } from '$lib/theory/interval';
 	import { formulaFor, aliasLine, type FormulaEntry } from '$lib/lookup/chordPresentation';
 	import { getRecentLookups, addRecentLookup } from '$lib/lookup/recentLookups';
+	import { getDockRegistry } from '$lib/keyboard/dockContext.svelte';
 	import type { ChordResult } from '$lib/theory/types';
 	import PianoKeyboard, { type InspectPayload } from '$lib/components/PianoKeyboard.svelte';
 	import ChordGlyph from '$lib/components/ChordGlyph.svelte';
@@ -49,6 +51,17 @@
 	function handleInspect(payload: InspectPayload) {
 		inspectPayload = payload;
 	}
+
+	/**
+	 * Docked keyboard (KBD-01, Scope Decision 2/3): the keyboard that used to
+	 * render inline in the result block now lives in the shared dock so the
+	 * page is keyboard-bearing from first load, even pre-search
+	 * (`result?.notes ?? []` renders an untargeted playable board). The
+	 * snippets close over `result`/`inspectPayload`, so the dock's rendering
+	 * stays reactive as chords are looked up with no re-registration needed.
+	 */
+	const dockToken = Symbol('lookup-dock');
+	const dockRegistry = getDockRegistry();
 
 	/** Tapping a formula column does the same as tapping its key: play + fill the register. */
 	function inspectFormulaEntry(entry: FormulaEntry) {
@@ -133,7 +146,32 @@
 	function autofocus(node: HTMLInputElement) {
 		node.focus({ preventScroll: true });
 	}
+
+	onMount(() => {
+		dockRegistry.register({
+			token: dockToken,
+			keyboard: dockedKeyboard,
+			register: dockedRegister
+		});
+	});
+
+	onDestroy(() => {
+		dockRegistry.clear(dockToken);
+	});
 </script>
+
+{#snippet dockedKeyboard()}
+	<PianoKeyboard
+		notes={result?.notes ?? []}
+		inspectable
+		onInspect={handleInspect}
+		showIntervalBadges
+	/>
+{/snippet}
+
+{#snippet dockedRegister()}
+	<InspectRegister payload={inspectPayload} idleText="Tap a key to hear it." />
+{/snippet}
 
 <main class="bg-paper text-ink min-h-screen px-2 py-8 font-sans sm:px-8">
 	<h1 class="text-heading mt-2 font-bold">Chord lookup</h1>
@@ -218,11 +256,6 @@
 				</p>
 			{/if}
 
-			<div class="mt-6">
-				<PianoKeyboard notes={result.notes} inspectable onInspect={handleInspect} showIntervalBadges />
-			</div>
-
-			<InspectRegister payload={inspectPayload} />
 			<SongHook short={inspectPayload?.info?.short ?? ''} />
 
 			<div class="mt-6 flex gap-4" data-testid="interval-formula">

@@ -1,6 +1,25 @@
 import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import LookupPage from '../src/routes/+page.svelte';
+import KeyboardDock from '../src/lib/components/KeyboardDock.svelte';
+import { createDockRegistry, DOCK_CONTEXT_KEY } from '../src/lib/keyboard/dockContext.svelte';
+
+/**
+ * Lookup's keyboard/register now live in the shared dock (Phase 15 Plan 03)
+ * rather than rendering inline. Every test below still exercises real
+ * behavior end to end: this helper supplies a real dock registry via the
+ * `context` option (the same seam `+layout.svelte`'s `setDockRegistry` uses)
+ * and renders `KeyboardDock` alongside the page so the docked keyboard/
+ * register content is present in the same `document.body` that `screen`
+ * queries - mirrors `lookupDock.test.ts`'s own harness.
+ */
+function renderPage() {
+	const registry = createDockRegistry();
+	const context = new Map([[DOCK_CONTEXT_KEY, registry]]);
+	const page = render(LookupPage, { context });
+	render(KeyboardDock, { context });
+	return page;
+}
 
 // The lookup page's Hear it action goes through the Track A audio engine,
 // and the keyboard/formula columns are inspectable (Track C): taps play
@@ -35,7 +54,7 @@ beforeEach(() => {
 
 describe('lookup page Hear it (Track A audio engine)', () => {
 	it('plays the rendered chord through the engine, unlocking audio inside the gesture', async () => {
-		render(LookupPage);
+		renderPage();
 
 		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'Cm7' } });
 		await fireEvent.click(screen.getByRole('button', { name: /stamp/i }));
@@ -51,7 +70,7 @@ describe('lookup page Hear it (Track A audio engine)', () => {
 
 describe('lookup page happy path', () => {
 	it('typing Dm7 and clicking Stamp renders a chord-result with dual naming and interval-colored keys', async () => {
-		render(LookupPage);
+		renderPage();
 
 		const input = screen.getByRole('textbox');
 		await fireEvent.input(input, { target: { value: 'Dm7' } });
@@ -81,7 +100,7 @@ describe('lookup page happy path', () => {
 
 describe('lookup page input trimming', () => {
 	it('stamping "Cm7 " with a trailing space (mobile autocomplete artifact) resolves the chord directly', async () => {
-		render(LookupPage);
+		renderPage();
 
 		const input = screen.getByRole('textbox');
 		await fireEvent.input(input, { target: { value: 'Cm7 ' } });
@@ -96,7 +115,7 @@ describe('lookup page input trimming', () => {
 
 describe('lookup page keyboard reactivity across repeat lookups', () => {
 	it('stamping Cm7 then Fmaj7 updates the keyboard highlights to the new chord (no stale E♭)', async () => {
-		render(LookupPage);
+		renderPage();
 
 		const input = screen.getByRole('textbox');
 		const button = screen.getByRole('button', { name: /stamp/i });
@@ -122,7 +141,7 @@ describe('lookup page keyboard reactivity across repeat lookups', () => {
 
 describe('lookup page dual naming and interval formula', () => {
 	it('typing Cm7 and stamping renders the interval-formula chip labels and dual-named notes', async () => {
-		render(LookupPage);
+		renderPage();
 
 		const input = screen.getByRole('textbox');
 		await fireEvent.input(input, { target: { value: 'Cm7' } });
@@ -142,7 +161,7 @@ describe('lookup page dual naming and interval formula', () => {
 
 describe('lookup page identity', () => {
 	it('shows the "Chord lookup" heading and "No chord yet" empty state before any input', () => {
-		render(LookupPage);
+		renderPage();
 
 		expect(screen.getByText('Chord lookup')).toBeInTheDocument();
 		expect(screen.getByText('No chord yet')).toBeInTheDocument();
@@ -151,7 +170,7 @@ describe('lookup page identity', () => {
 
 describe('lookup page non-blocking error', () => {
 	it('stamping a valid chord then an invalid one shows the error bar while keeping the previous result visible', async () => {
-		render(LookupPage);
+		renderPage();
 
 		const input = screen.getByRole('textbox');
 		const button = screen.getByRole('button', { name: /stamp/i });
@@ -170,13 +189,13 @@ describe('lookup page non-blocking error', () => {
 
 describe('lookup page recent lookups', () => {
 	it('does not render a recent-chip row before the first successful lookup', () => {
-		render(LookupPage);
+		renderPage();
 
 		expect(screen.queryByTestId('recent-chip-row')).not.toBeInTheDocument();
 	});
 
 	it('shows a recent-chip row after stamping, and re-stamps on chip click', async () => {
-		render(LookupPage);
+		renderPage();
 
 		const input = screen.getByRole('textbox');
 		const button = screen.getByRole('button', { name: /stamp/i });
@@ -201,7 +220,7 @@ describe('lookup page recent lookups', () => {
 
 describe('lookup page sharp/flat helpers', () => {
 	it('clicking the sharp helper inserts the glyph into the input value', async () => {
-		render(LookupPage);
+		renderPage();
 
 		const input = screen.getByRole('textbox') as HTMLInputElement;
 		await fireEvent.input(input, { target: { value: 'F' } });
@@ -213,7 +232,7 @@ describe('lookup page sharp/flat helpers', () => {
 	});
 
 	it('clicking the flat helper inserts the glyph into the input value', async () => {
-		render(LookupPage);
+		renderPage();
 
 		const input = screen.getByRole('textbox') as HTMLInputElement;
 		await fireEvent.input(input, { target: { value: 'B' } });
@@ -227,7 +246,7 @@ describe('lookup page sharp/flat helpers', () => {
 
 describe('lookup page did-you-mean suggestion', () => {
 	it('stamping an unrecognized-but-close symbol shows a tappable suggestion that stamps the candidate on click', async () => {
-		render(LookupPage);
+		renderPage();
 
 		const input = screen.getByRole('textbox');
 		const button = screen.getByRole('button', { name: /stamp/i });
@@ -250,7 +269,7 @@ describe('lookup page did-you-mean suggestion', () => {
 	});
 
 	it('stamping an unrelated unrecognized symbol falls back to a plain rotating hint with no suggestion token', async () => {
-		render(LookupPage);
+		renderPage();
 
 		const input = screen.getByRole('textbox');
 		const button = screen.getByRole('button', { name: /stamp/i });
@@ -264,7 +283,7 @@ describe('lookup page did-you-mean suggestion', () => {
 	});
 
 	it('keeps the previously rendered chord-result visible while showing the suggestion bar (non-blocking)', async () => {
-		render(LookupPage);
+		renderPage();
 
 		const input = screen.getByRole('textbox');
 		const button = screen.getByRole('button', { name: /stamp/i });
@@ -283,14 +302,14 @@ describe('lookup page did-you-mean suggestion', () => {
 
 describe('lookup page focus behavior', () => {
 	it('autofocuses the input on initial mount', () => {
-		render(LookupPage);
+		renderPage();
 
 		const input = screen.getByRole('textbox');
 		expect(document.activeElement).toBe(input);
 	});
 
 	it('re-selects the input content after a successful stamp for type-over entry', async () => {
-		render(LookupPage);
+		renderPage();
 
 		const input = screen.getByRole('textbox') as HTMLInputElement;
 		const button = screen.getByRole('button', { name: /stamp/i });
@@ -306,16 +325,16 @@ describe('lookup page focus behavior', () => {
 
 describe('lookup page interval register (Track C)', () => {
 	it('shows the idle register line under the keyboard after a stamp', async () => {
-		render(LookupPage);
+		renderPage();
 
 		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'Cm7' } });
 		await fireEvent.click(screen.getByRole('button', { name: /stamp/i }));
 
-		expect(screen.getByTestId('inspect-register')).toHaveTextContent('Tap a key to inspect it.');
+		expect(screen.getByTestId('inspect-register')).toHaveTextContent('Tap a key to hear it.');
 	});
 
 	it('tapping a highlighted key plays it and fills the register with its full naming', async () => {
-		render(LookupPage);
+		renderPage();
 
 		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'Cm7' } });
 		await fireEvent.click(screen.getByRole('button', { name: /stamp/i }));
@@ -328,7 +347,7 @@ describe('lookup page interval register (Track C)', () => {
 	});
 
 	it('tapping a formula column does the same as tapping its key', async () => {
-		render(LookupPage);
+		renderPage();
 
 		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'Cm7' } });
 		await fireEvent.click(screen.getByRole('button', { name: /stamp/i }));
@@ -341,7 +360,7 @@ describe('lookup page interval register (Track C)', () => {
 	});
 
 	it('clears the register back to idle when a new chord is stamped', async () => {
-		render(LookupPage);
+		renderPage();
 
 		const input = screen.getByRole('textbox');
 		const stamp = screen.getByRole('button', { name: /stamp/i });
@@ -354,11 +373,11 @@ describe('lookup page interval register (Track C)', () => {
 		await fireEvent.input(input, { target: { value: 'Fmaj7' } });
 		await fireEvent.click(stamp);
 
-		expect(screen.getByTestId('inspect-register')).toHaveTextContent('Tap a key to inspect it.');
+		expect(screen.getByTestId('inspect-register')).toHaveTextContent('Tap a key to hear it.');
 	});
 
 	it('interval chips carry the French long name as tooltip and aria-label', async () => {
-		render(LookupPage);
+		renderPage();
 
 		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'Cm7' } });
 		await fireEvent.click(screen.getByRole('button', { name: /stamp/i }));
