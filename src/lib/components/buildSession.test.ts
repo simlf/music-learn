@@ -1,6 +1,8 @@
-import { render, screen, fireEvent, within } from '@testing-library/svelte';
-import { describe, expect, it } from 'vitest';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import BuildSession from './BuildSession.svelte';
+import { Rating } from '$lib/srs/scheduler';
+import * as deckModule from '$lib/srs/deck';
 
 /**
  * Component test for BuildSession (Phase 12, Task 1): the picker (kind
@@ -9,6 +11,21 @@ import BuildSession from './BuildSession.svelte';
  * The full construction step loop (Task 2) is covered separately, further
  * down this file, once that behavior lands.
  */
+
+const getCardMock = vi.fn();
+const recordGradeMock = vi.fn();
+
+vi.mock('$lib/srs/deck', () => ({
+	getCard: (...args: unknown[]) => getCardMock(...args),
+	recordGrade: (...args: unknown[]) => recordGradeMock(...args)
+}));
+
+beforeEach(() => {
+	getCardMock.mockReset();
+	getCardMock.mockResolvedValue(undefined);
+	recordGradeMock.mockReset();
+	recordGradeMock.mockImplementation(async (card, rating) => ({ ...card, lastRating: rating }));
+});
 
 describe('BuildSession picker (BUILD-01/02, Task 1)', () => {
 	it('mounts in picking state with Chords the default kind, showing Root and Quality rows', () => {
@@ -422,4 +439,149 @@ describe('BuildSession completion summary (BUILD-01/02, 12-05 Task 2)', () => {
 		},
 		10000
 	);
+});
+
+/**
+ * Component test for BuildSession (Phase 12, Task 2 of 12-06): the FSRS
+ * write on completion (BUILD-04, D-09). Mocks the deck persistence seam
+ * (getCard/recordGrade) so the chord-path factId, the scale-path factId, all
+ * three rating bands, and write-failure resilience can be asserted without
+ * touching real IndexedDB.
+ */
+describe('BuildSession FSRS write on completion (BUILD-04, 12-06)', () => {
+	async function buildCm7WithWrongTaps(wrongTapCount: number) {
+		render(BuildSession);
+		await fireEvent.click(screen.getByRole('button', { name: 'C' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'minor 7th' }));
+
+		for (let i = 0; i < wrongTapCount; i++) {
+			await fireEvent.click(screen.getAllByRole('button', { name: 'D key' })[0]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+		}
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+	}
+
+	it('a zero-wrong-tap Cm7 completion writes a formula-build card rated Easy under the ORIGINAL ASCII chord-formula factId', async () => {
+		await buildCm7WithWrongTaps(0);
+
+		await waitFor(() => expect(screen.getByTestId('build-fsrs-status')).toBeInTheDocument());
+
+		expect(getCardMock).toHaveBeenCalledWith('chord-formula:Cm7', 'formula-build');
+		expect(recordGradeMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				factId: 'chord-formula:Cm7',
+				factKind: 'chord-formula',
+				mode: 'formula-build'
+			}),
+			Rating.Easy,
+			expect.any(Date)
+		);
+		expect(screen.getByTestId('build-fsrs-status')).toHaveTextContent(
+			'SAVED TO RECALL · FORMULA-BUILD MODE'
+		);
+	});
+
+	it('a Cm7 completion with exactly 2 wrong taps along the way writes a Good rating', async () => {
+		await buildCm7WithWrongTaps(2);
+
+		await waitFor(() => expect(recordGradeMock).toHaveBeenCalled());
+
+		expect(recordGradeMock).toHaveBeenCalledWith(
+			expect.objectContaining({ factId: 'chord-formula:Cm7' }),
+			Rating.Good,
+			expect.any(Date)
+		);
+	});
+
+	it('a Cm7 completion with 3 or more wrong taps writes a Hard rating', async () => {
+		await buildCm7WithWrongTaps(3);
+
+		await waitFor(() => expect(recordGradeMock).toHaveBeenCalled());
+
+		expect(recordGradeMock).toHaveBeenCalledWith(
+			expect.objectContaining({ factId: 'chord-formula:Cm7' }),
+			Rating.Hard,
+			expect.any(Date)
+		);
+	});
+
+	it(
+		'a full G major scale completion writes a formula-build card under scale-formula:G, factKind scale-formula',
+		async () => {
+			render(BuildSession);
+			await fireEvent.click(screen.getByRole('button', { name: 'Scales' }));
+			await fireEvent.click(screen.getByRole('button', { name: 'G major' }));
+
+			await fireEvent.click(screen.getAllByRole('button', { name: 'A key' })[0]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			await fireEvent.click(screen.getAllByRole('button', { name: 'B key' })[0]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[1]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			await fireEvent.click(screen.getAllByRole('button', { name: 'D key' })[1]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			await fireEvent.click(screen.getAllByRole('button', { name: 'E key' })[1]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			await fireEvent.click(screen.getAllByRole('button', { name: 'F♯ key' })[1]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[1]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+
+			await waitFor(() => expect(screen.getByTestId('build-fsrs-status')).toBeInTheDocument());
+
+			expect(getCardMock).toHaveBeenCalledWith('scale-formula:G', 'formula-build');
+			expect(recordGradeMock).toHaveBeenCalledWith(
+				expect.objectContaining({
+					factId: 'scale-formula:G',
+					factKind: 'scale-formula',
+					mode: 'formula-build'
+				}),
+				Rating.Easy,
+				expect.any(Date)
+			);
+		},
+		10000
+	);
+
+	it('a getCard rejection is swallowed silently: the completion summary still renders every element except the status line', async () => {
+		getCardMock.mockRejectedValueOnce(new Error('quota exceeded'));
+		const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+		await buildCm7WithWrongTaps(0);
+		// Give the fire-and-forget write's rejected promise a tick to settle.
+		await new Promise((resolve) => setTimeout(resolve, 50));
+
+		expect(screen.getByTestId('build-complete-heading')).toHaveTextContent('Voila. You built Cm7.');
+		expect(screen.getByTestId('build-complete-rule')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Build Another' })).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Recall It Now' })).toBeInTheDocument();
+		expect(screen.queryByTestId('build-fsrs-status')).not.toBeInTheDocument();
+		expect(recordGradeMock).not.toHaveBeenCalled();
+		expect(consoleErrorSpy).not.toHaveBeenCalled();
+
+		consoleErrorSpy.mockRestore();
+	});
+
+	it('getCard is never called with mode "formula" and recordGrade is never called with Rating.Again', async () => {
+		await buildCm7WithWrongTaps(0);
+		await waitFor(() => expect(recordGradeMock).toHaveBeenCalled());
+
+		for (const call of getCardMock.mock.calls) {
+			expect(call[1]).toBe('formula-build');
+			expect(call[1]).not.toBe('formula');
+		}
+		for (const call of recordGradeMock.mock.calls) {
+			expect(call[1]).not.toBe(Rating.Again);
+		}
+	});
+
+	it('never wires a mock for introduceNewCards from $lib/srs/deck (the component genuinely never reaches for it)', () => {
+		expect('introduceNewCards' in deckModule).toBe(false);
+	});
 });
