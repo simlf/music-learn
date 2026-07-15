@@ -505,7 +505,7 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 | 11. Memorization Engine | 6/6 | Complete    | 2026-07-15 |
 | 12. Build-it Construction | 6/6 | Complete    | 2026-07-15 |
 | 13. Multi-modal Recall | 6/6 | Complete    | 2026-07-15 |
-| 15. Playable Keyboard Everywhere | 7/7 | Complete   | 2026-07-15 |
+| 15. Playable Keyboard Everywhere | 7/7 | Complete    | 2026-07-15 |
 | 16. Hear the Chord | 0/TBD | Pending | - |
 | 17. Chord Explainer | 0/TBD | Pending | - |
 | 18. Your Songs' Chords | 0/TBD | Pending | - |
