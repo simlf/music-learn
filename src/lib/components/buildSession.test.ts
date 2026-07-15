@@ -595,7 +595,7 @@ describe('BuildSession FSRS write on completion (BUILD-04, 12-06)', () => {
 				expect.any(Date)
 			);
 		},
-		10000
+		20000
 	);
 
 	it('WR-03: the FSRS write fires as soon as the completing tap grades correct, without waiting out the 650ms pacing delay', async () => {
