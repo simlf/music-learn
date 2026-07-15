@@ -55,16 +55,16 @@
 
 	/** The 8 ascending degree placements (degree 8 is the distinct octave key). */
 	const placements = $derived(placeAscendingScaleKeys(notes));
-	/** How many of the 8 ascending placements are filled; stays at 8 through the descending leg. */
-	const filledCount = $derived(Math.min(drill.position, 8));
-	const filledMap = $derived.by(() => {
-		const map = new Map<string, ScaleKeyPlacement>();
-		for (let i = 0; i < filledCount; i += 1) {
-			const placement = placements[i];
-			if (placement) map.set(`${placement.kind}:${placement.keyIndex}`, placement);
-		}
-		return map;
-	});
+	/**
+	 * Keyed by the physical key actually tapped (`kind:keyIndex`), not by the
+	 * degree's precomputed canonical placement: a 2-octave board always
+	 * contains a second (sometimes third) key sharing every degree's pitch
+	 * class, and grading accepts a correct tap on any of them (chroma-only,
+	 * per SCALE-04) - so the fill must land on whichever key the user
+	 * actually touched, or an accepted tap on a non-canonical duplicate would
+	 * advance the drill while visibly filling a key nobody tapped.
+	 */
+	let filledMap = $state<Map<string, ScaleKeyPlacement>>(new Map());
 	const tonicPlacement = $derived(placements[0]);
 
 	const register = $derived.by(() => {
@@ -82,6 +82,7 @@
 
 	function reset() {
 		drill = freshState();
+		filledMap = new Map();
 		clearWrong();
 		void tick().then(scrollTonicIntoView);
 	}
@@ -104,9 +105,16 @@
 		if (result.correct) {
 			drill = result.state;
 			clearWrong();
+			// Canonical placement supplies this degree's role/letter/solfege and
+			// the pitch to play, but the fill itself is keyed by the key the
+			// user actually tapped (kind/keyIndex), which may be a different,
+			// same-chroma duplicate key elsewhere on the board (CR-01).
 			const canonical = target ? placements[target.degree - 1] : undefined;
 			if (canonical) {
 				playNote(toPitch(canonical.letter, canonical.octave));
+				const next = new Map(filledMap);
+				next.set(`${kind}:${keyIndex}`, canonical);
+				filledMap = next;
 			}
 			return;
 		}
@@ -306,6 +314,16 @@
 		height: 60%;
 		background-color: var(--color-ink);
 		z-index: 2;
+	}
+
+	/* Pre-tap cue marking the canonical tonic (degree 1) key: the fixed
+	   2-octave board always contains at least one other same-pitch-class key
+	   elsewhere, and grading accepts a correct tap on any of them, so without
+	   this ring nothing distinguishes "the" expected tonic key from its
+	   duplicates before the first tap lands. Stays visible after filling too
+	   (an inset ring layers fine over a role fill color). */
+	.key[data-tonic-key='true'] {
+		box-shadow: inset 0 0 0 3px var(--color-verdigris);
 	}
 
 	.key--root {

@@ -167,6 +167,31 @@ describe('ScaleKeyboardDrill (tonic-anchored 2-octave keyboard, SCALE-04)', () =
 		expect(tapButtonFor(gPlacements[0])).not.toHaveClass('key--root');
 	});
 
+	it('CR-01: tapping a non-canonical duplicate key (same pitch class, different physical key) fills the tapped key, not the canonical one', async () => {
+		const notes = majorScaleNotes('C');
+		const placements = placeAscendingScaleKeys(notes);
+		render(ScaleKeyboardDrill, { notes, tonic: 'C' });
+
+		// Degree 1 (tonic C) is expected first. Its canonical placement is the
+		// leftmost white C (keyIndex 0), but the fixed 2-octave board also has
+		// a second C at white keyIndex 7 (degree 8's canonical placement) -
+		// tap that one instead. Same chroma, so it must be accepted.
+		expect(placements[0]).toMatchObject({ kind: 'white', keyIndex: 0 });
+		expect(placements[7]).toMatchObject({ kind: 'white', keyIndex: 7 });
+
+		const tappedKey = screen.getByRole('button', { name: 'C5 key' });
+		await fireEvent.click(tappedKey);
+
+		// The tapped key itself gets the fill...
+		expect(tappedKey).toHaveClass('key--root');
+		// ...and the canonical (but untouched) tonic key gets nothing.
+		expect(tapButtonFor(placements[0])).not.toHaveClass('key--root');
+		expect(tapButtonFor(placements[0])).not.toHaveClass('key--wrong');
+		// The tap was graded correct: audio played and the drill advanced.
+		expect(playNoteMock).toHaveBeenCalledTimes(1);
+		expect(screen.getByTestId('scale-keyboard-register')).toHaveTextContent('DEGREE 2 OF 8 · ASCENDING');
+	});
+
 	it('accepts F♯ major degree 7 (E♯) on the white F key and labels it E♯ (enharmonic acceptance by chroma)', async () => {
 		const notes = majorScaleNotes('F♯');
 		const placements = placeAscendingScaleKeys(notes);
