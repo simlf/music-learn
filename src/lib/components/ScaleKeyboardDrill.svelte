@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tick } from 'svelte';
+	import { onDestroy, tick } from 'svelte';
 	import NoteLabel from './NoteLabel.svelte';
 	import Button from './Button.svelte';
 	import { playNote } from '$lib/audio/audio';
@@ -92,6 +92,11 @@
 		clearTimeout(wrongTimer);
 		wrongTimer = undefined;
 	}
+
+	// If the component unmounts (e.g. switching back to Explore, or
+	// navigating away) while a wrong-flash timer is pending, cancel it so
+	// its callback never fires against an already-torn-down instance.
+	onDestroy(() => clearTimeout(wrongTimer));
 
 	function scrollTonicIntoView() {
 		const el = containerEl?.querySelector('[data-tonic-key="true"]') as HTMLElement | null;
