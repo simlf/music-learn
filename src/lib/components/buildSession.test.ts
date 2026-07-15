@@ -574,6 +574,58 @@ describe('BuildSession FSRS write on completion (BUILD-04, 12-06)', () => {
 		10000
 	);
 
+	it('WR-03: the FSRS write fires as soon as the completing tap grades correct, without waiting out the 650ms pacing delay', async () => {
+		render(BuildSession);
+		await fireEvent.click(screen.getByRole('button', { name: 'C' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'minor 7th' }));
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+
+		// The final correct tap - deliberately wait far LESS than the 650ms
+		// pacing delay before asserting: the write must not be gated behind it.
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 50));
+
+		expect(recordGradeMock).toHaveBeenCalledWith(
+			expect.objectContaining({ factId: 'chord-formula:Cm7' }),
+			Rating.Easy,
+			expect.any(Date)
+		);
+		// The visual completion screen itself still paces with the 650ms timer.
+		expect(screen.queryByTestId('build-complete')).not.toBeInTheDocument();
+	});
+
+	it('WR-02: the FSRS write survives an immediate kind-toggle click (which resets the picker) fired right after the completing tap, before the pacing timer would have flipped sessionState', async () => {
+		render(BuildSession);
+		await fireEvent.click(screen.getByRole('button', { name: 'C' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'minor 7th' }));
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+
+		// Final correct tap completes the construction. The kind-toggle is
+		// always clickable (rendered outside the sessionState branches), so
+		// immediately toggling it - with no wait at all - resets the picker
+		// (construction/pickedTonic/etc -> undefined) before the 650ms pacing
+		// timer would ever fire.
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'Scales' }));
+
+		await waitFor(() => expect(recordGradeMock).toHaveBeenCalled());
+
+		expect(getCardMock).toHaveBeenCalledWith('chord-formula:Cm7', 'formula-build');
+		expect(recordGradeMock).toHaveBeenCalledWith(
+			expect.objectContaining({ factId: 'chord-formula:Cm7', factKind: 'chord-formula' }),
+			Rating.Easy,
+			expect.any(Date)
+		);
+	});
+
 	it('a getCard rejection is swallowed silently: the completion summary still renders every element except the status line', async () => {
 		getCardMock.mockRejectedValueOnce(new Error('quota exceeded'));
 		const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});

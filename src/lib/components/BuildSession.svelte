@@ -310,14 +310,34 @@
 	 * error is swallowed silently (mirrors RecallSession's handleReveal
 	 * audio-failure precedent), never blocking or altering the already-
 	 * rendered completion summary.
+	 *
+	 * Called synchronously (fire-and-forget) the instant the final tap grades
+	 * 'correct' (see handleConstructTap), NOT from inside the 650ms pacing
+	 * timer (WR-03) - a client-side navigation away from /build within that
+	 * window would otherwise unmount the component before the timer ever
+	 * fires and permanently drop the grade. Every value this continuation
+	 * needs (wrongTapCount, factId inputs, kind, symbol/tonic) is snapshotted
+	 * into local consts BEFORE the first `await` (WR-02): "Build Another"/the
+	 * kind toggle both reset `construction`/`pickedTonic`/etc. to undefined
+	 * synchronously and are clickable the instant this fires, so re-reading
+	 * live component state after an await boundary risks throwing on
+	 * undefined and having the bare catch swallow a genuine write.
 	 */
 	async function recordConstructionOutcome(): Promise<void> {
 		if (!construction || !construction.done) return;
+		// Snapshot every input the async continuation needs before any `await` -
+		// nothing below this line reads live component state again.
+		const wrongTapCount = construction.wrongTapCount;
+		const snapshotKind = kind;
+		const snapshotSymbol = startedSymbol;
+		const snapshotTonic = pickedTonic;
 		try {
 			const now = new Date();
 			const factId =
-				kind === 'chords' ? `chord-formula:${startedSymbol}` : scaleFormulaFactId(pickedTonic ?? '');
-			const factKind = kind === 'chords' ? ('chord-formula' as const) : ('scale-formula' as const);
+				snapshotKind === 'chords'
+					? `chord-formula:${snapshotSymbol}`
+					: scaleFormulaFactId(snapshotTonic ?? '');
+			const factKind = snapshotKind === 'chords' ? ('chord-formula' as const) : ('scale-formula' as const);
 			const existing = await getCard(factId, 'formula-build');
 			const card: CardRecord = existing ?? {
 				...newCard(now),
@@ -326,7 +346,7 @@
 				mode: 'formula-build',
 				lastRating: null
 			};
-			await recordGrade(card, ratingForWrongTaps(construction.wrongTapCount), now);
+			await recordGrade(card, ratingForWrongTaps(wrongTapCount), now);
 			fsrsSaved = true;
 		} catch {
 			// Best-effort write; never let it block or alter the completion summary.
@@ -358,6 +378,12 @@
 						}
 					: {})
 			};
+			// WR-03: fire the FSRS write the instant the session actually
+			// completes, independent of the 650ms pacing timer below - a
+			// navigation away within that window must not drop the grade.
+			if (result.state.done) {
+				void recordConstructionOutcome();
+			}
 		} else if (result.outcome === 'wrong-pitch-class') {
 			flashKey = { letter, octave };
 			construction = result.state;
@@ -387,6 +413,8 @@
 		}, 320);
 
 		const advancesPrompt = result.outcome === 'correct';
+		// The FSRS write itself already fired synchronously above (WR-03) - this
+		// timer only owns the cosmetic transition to the `complete` screen.
 		const willComplete = advancesPrompt && result.state.done;
 		const nextPromptState = result.state;
 		clearTimeout(feedbackTimer);
@@ -395,7 +423,6 @@
 			if (advancesPrompt) promptState = nextPromptState;
 			if (willComplete) {
 				sessionState = 'complete';
-				void recordConstructionOutcome();
 			}
 		}, 650);
 	}
