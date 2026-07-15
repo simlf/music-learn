@@ -12,6 +12,7 @@
 	const navLinks = [
 		{ href: '/', label: 'Lookup' },
 		{ href: '/drills', label: 'Drills' },
+		{ href: '/recall', label: 'Recall' },
 		{ href: '/scales', label: 'Scales' },
 		{ href: '/songs', label: 'Songs' },
 		{ href: '/theory', label: 'Theory' },
