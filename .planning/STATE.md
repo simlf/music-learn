@@ -5,16 +5,16 @@ milestone_name: Learning Upgrade
 current_phase: 15
 current_phase_name: playable-keyboard-everywhere
 status: executing
-stopped_at: Phase 15 UI-SPEC approved
-last_updated: "2026-07-15T21:04:08.120Z"
+stopped_at: Completed 15-02-PLAN.md
+last_updated: "2026-07-15T21:15:50.715Z"
 last_activity: 2026-07-15
 last_activity_desc: Phase 15 execution started
 progress:
   total_phases: 11
   completed_phases: 10
   total_plans: 49
-  completed_plans: 43
-  percent: 88
+  completed_plans: 44
+  percent: 90
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 ## Current Position
 
 Phase: 15 (playable-keyboard-everywhere) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Ready to execute
 Last activity: 2026-07-15 — Phase 15 execution started
 
@@ -108,6 +108,7 @@ Last activity: 2026-07-15 — Phase 15 execution started
 | Phase 13 P05 | 9min | 2 tasks | 4 files |
 | Phase 13 P06 | 25min | 1 tasks | 2 files |
 | Phase 15 P01 | 9min | 2 tasks | 4 files |
+| Phase 15 P02 | 18min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -204,6 +205,7 @@ Recent decisions affecting current work:
 - [Phase 13-06]: selectedCards local (not selected) avoids shadowing Mode A's selected Set<string> state
 - [Phase 13-06]: Review-state test fixtures need explicit difficulty override alongside stability, since ts-fsrs previewGrades rejects difficulty:0 combined with non-default stability for a State.Review card
 - [Phase 15-01]: dockContext's registry uses $state.raw (not $state) so registered DockKeyboardConfig objects keep reference identity through register/clear
+- [Phase ?]: [Phase 15-02]: bind:offsetHeight replaced with bind:this + a manually-guarded ResizeObserver effect (mirrors PianoKeyboard.svelte), since Svelte 5's built-in box-size bindings unconditionally construct a ResizeObserver and throw in jsdom test environments lacking one
 
 ### Pending Todos
 
@@ -228,7 +230,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-15T21:03:16.851Z
-Stopped at: Phase 15 UI-SPEC approved
+Last session: 2026-07-15T21:15:50.709Z
+Stopped at: Completed 15-02-PLAN.md
 Resume file: 
 None

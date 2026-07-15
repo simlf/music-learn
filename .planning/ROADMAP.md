@@ -393,14 +393,14 @@ Plans:
 
 **Design reference**: `.planning/sketches/008-keyboard-everywhere/` (winner Variant A: docked bottom bar)
 **UI hint**: yes
-**Plans**: 1/7 plans executed
+**Plans**: 2/7 plans executed
 **Wave 1**
 
 - [x] 15-01-PLAN.md — Dock foundations: collapse-state persistence (music-learn:docked-keyboard-collapsed) + Svelte context registration seam (KBD-02)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 15-02-PLAN.md — KeyboardDock chrome (handle/surface/register, collapse+persist, --dock-height clearance) + layout host wiring (KBD-01/02)
+- [x] 15-02-PLAN.md — KeyboardDock chrome (handle/surface/register, collapse+persist, --dock-height clearance) + layout host wiring (KBD-01/02)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -505,7 +505,7 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 | 11. Memorization Engine | 6/6 | Complete    | 2026-07-15 |
 | 12. Build-it Construction | 6/6 | Complete    | 2026-07-15 |
 | 13. Multi-modal Recall | 6/6 | Complete    | 2026-07-15 |
-| 15. Playable Keyboard Everywhere | 1/7 | In Progress|  |
+| 15. Playable Keyboard Everywhere | 2/7 | In Progress|  |
 | 16. Hear the Chord | 0/TBD | Pending | - |
 | 17. Chord Explainer | 0/TBD | Pending | - |
 | 18. Your Songs' Chords | 0/TBD | Pending | - |
