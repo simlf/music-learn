@@ -32,6 +32,7 @@
 	import PianoKeyboard from './PianoKeyboard.svelte';
 	import Button from './Button.svelte';
 	import RevealInsight from './RevealInsight.svelte';
+	import BuildSession from './BuildSession.svelte';
 
 	/**
 	 * Mode-signal chip label (UI-SPEC "Mode Surfaces" / Scope Decision 8):
@@ -391,6 +392,45 @@
 	});
 
 	/**
+	 * Mode C ('formula-build', 13-05): the inverse parse of facts.ts's
+	 * scaleFormulaFactId/chord-formula factId string shapes ('chord-formula:'/
+	 * 'scale-formula:' prefixes), deliberately independent of factById()/
+	 * allFacts() - a scale-formula factId (created by Phase 12's standalone
+	 * /build page) never resolves via the shared fact catalog (facts.ts's own
+	 * documented prohibition against adding scale-formula to it), so this
+	 * parse exists outside that catalog specifically so such a card can still
+	 * render correctly here.
+	 */
+	function embedTargetFor(
+		factId: string
+	): { kind: 'chord'; symbol: string } | { kind: 'scale'; tonic: string } | undefined {
+		if (factId.startsWith('chord-formula:')) {
+			return { kind: 'chord', symbol: factId.slice('chord-formula:'.length) };
+		}
+		if (factId.startsWith('scale-formula:')) {
+			return { kind: 'scale', tonic: factId.slice('scale-formula:'.length) };
+		}
+		return undefined;
+	}
+
+	/**
+	 * Advances the recall queue after an embedded BuildSession instance
+	 * completes (Mode C, Scope Decision 7). Construction's own rating
+	 * (BuildSession's ratingForWrongTaps) is never Again, so any non-Again
+	 * rating advances the queue identically - Rating.Good is passed purely to
+	 * satisfy advanceQueue's signature, not to imply a specific grade was
+	 * given. The FSRS write itself already happened inside BuildSession's own
+	 * unchanged recordConstructionOutcome; this handler only advances the
+	 * LOCAL in-memory queue, mirroring Mode A/B's own advance shape.
+	 */
+	function handleModeCNext(): void {
+		queue = advanceQueue(queue, Rating.Good);
+		resetPerCardState();
+		reviewedCount += 1;
+		if (isSessionComplete(queue)) pageState = 'complete';
+	}
+
+	/**
 	 * Reveals the current card's answer. Optionally plays the revealed fact's
 	 * sound (best-effort enhancement, per the UI-SPEC's implementation notes) -
 	 * an audio failure never affects `revealed`, which is already set above the
@@ -498,7 +538,7 @@
 			{/if}
 		</div>
 	</div>
-{:else if pageState === 'reviewing' && currentFact && currentItem}
+{:else if pageState === 'reviewing' && currentItem}
 	<p class="text-label font-mono uppercase" aria-live="polite" data-testid="recall-register">
 		{remaining} LEFT TODAY
 	</p>
@@ -506,6 +546,16 @@
 		{MODE_LABELS[currentItem.mode]}
 	</p>
 
+	{#if currentItem.mode === 'formula-build'}
+		{@const embedTarget = embedTargetFor(currentItem.factId)}
+		{#if embedTarget}
+			{#key `${currentItem.factId}|${currentItem.mode}`}
+				<div class="mt-4">
+					<BuildSession embedFact={embedTarget} onComplete={handleModeCNext} />
+				</div>
+			{/key}
+		{/if}
+	{:else if currentFact}
 	{#if currentItem.mode === 'formula'}
 		<div aria-live="polite">
 			<div class="mt-4" data-testid="recall-prompt">
@@ -705,6 +755,7 @@
 				</div>
 			{/if}
 		</div>
+	{/if}
 	{/if}
 {/if}
 

@@ -20,12 +20,17 @@ const introduceNewCardsMock = vi.fn();
 const getDueCardsMock = vi.fn();
 const getAllCardsMock = vi.fn();
 const recordGradeMock = vi.fn();
+// BuildSession itself calls getCard internally when embedded (Mode C, 13-05) -
+// the module-wide $lib/srs/deck mock must supply it or the embedded instance
+// throws.
+const getCardMock = vi.fn();
 
 vi.mock('$lib/srs/deck', () => ({
 	introduceNewCards: (...args: unknown[]) => introduceNewCardsMock(...args),
 	getDueCards: (...args: unknown[]) => getDueCardsMock(...args),
 	getAllCards: (...args: unknown[]) => getAllCardsMock(...args),
-	recordGrade: (...args: unknown[]) => recordGradeMock(...args)
+	recordGrade: (...args: unknown[]) => recordGradeMock(...args),
+	getCard: (...args: unknown[]) => getCardMock(...args)
 }));
 
 const playChordMock = vi.fn();
@@ -62,6 +67,8 @@ beforeEach(() => {
 		...card,
 		lastRating: rating
 	}));
+	getCardMock.mockReset();
+	getCardMock.mockResolvedValue(undefined);
 	playChordMock.mockReset();
 	playNoteMock.mockReset();
 	ensureAudioReadyMock.mockReset();
@@ -558,5 +565,94 @@ describe('RecallSession Mode B (hear-name: hear the chord, pick its name, never 
 		await new Promise((resolve) => setTimeout(resolve, 700));
 
 		await waitFor(() => screen.getByTestId('recall-complete'));
+	});
+});
+
+/**
+ * Mode C ('formula-build') component tests (13-05): the queue-embedded
+ * BuildSession surface (RECALL-01). Proves embedTargetFor's inverse factId
+ * parse for both a chord-formula and a SCALE-formula factId (Phase 12's
+ * accepted scope gap, never resolvable via factById()), and that Next
+ * (BuildSession's onComplete) advances RecallSession's own queue.
+ */
+describe('RecallSession Mode C (formula-build: embeds BuildSession directly, RECALL-01)', () => {
+	it('a formula-build queue item for a chord-formula factId mounts BuildSession directly into its building state, with no kind-toggle/picker visible', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'formula-build');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		render(RecallSession);
+		await waitFor(() => screen.getByTestId('recall-mode-chip'));
+
+		expect(screen.getByTestId('recall-mode-chip')).toHaveTextContent('FORMULA → BUILD');
+		expect(screen.getByTestId('build-session')).toBeInTheDocument();
+		expect(screen.queryByTestId('kind-toggle')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('picker')).not.toBeInTheDocument();
+		expect(screen.getByTestId('build-register')).toHaveTextContent('STEP 1 OF 3');
+	});
+
+	it('a formula-build queue item for a SCALE-formula factId also mounts BuildSession correctly (embedTargetFor scale branch, independent of factById)', async () => {
+		const card = makeCard('scale-formula:G', 'scale-formula', 'formula-build');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		render(RecallSession);
+		await waitFor(() => screen.getByTestId('recall-mode-chip'));
+
+		expect(screen.getByTestId('recall-mode-chip')).toHaveTextContent('FORMULA → BUILD');
+		expect(screen.getByTestId('build-session')).toBeInTheDocument();
+		expect(screen.queryByTestId('kind-toggle')).not.toBeInTheDocument();
+		expect(screen.getByTestId('build-register')).toHaveTextContent('STEP 1 OF 7');
+	});
+
+	it('completing the embedded build and tapping Next advances RecallSession\'s own queue to the next item', async () => {
+		const cardA = makeCard('chord-formula:Cm7', 'chord-formula', 'formula-build');
+		const cardB = makeCard('interval-size:m3', 'interval-size', 'formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([cardA, cardB]);
+		getAllCardsMock.mockResolvedValue([cardA, cardB]);
+
+		render(RecallSession);
+		await waitFor(() => screen.getByTestId('recall-mode-chip'));
+		expect(screen.getByTestId('recall-register')).toHaveTextContent('2 LEFT TODAY');
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+
+		expect(screen.getByTestId('build-complete')).toBeInTheDocument();
+		expect(screen.queryByTestId('build-fsrs-status')).not.toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+		await waitFor(() => expect(screen.getByText("What's the interval?")).toBeInTheDocument());
+		expect(screen.getByTestId('recall-register')).toHaveTextContent('1 LEFT TODAY');
+	});
+
+	it('completing the LAST queue item via Mode C\'s Next completes the session (recall-complete)', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'formula-build');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		render(RecallSession);
+		await waitFor(() => screen.getByTestId('recall-mode-chip'));
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+		await waitFor(() => screen.getByTestId('recall-complete'));
+		expect(screen.getByTestId('recall-reviewed-count')).toHaveTextContent('1 REVIEWED TODAY');
 	});
 });
