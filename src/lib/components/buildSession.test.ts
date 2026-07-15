@@ -222,3 +222,110 @@ describe('BuildSession construction step loop (BUILD-01/02/03, Task 2)', () => {
 		expect(true).toBe(true);
 	});
 });
+
+/**
+ * Component test for BuildSession (Phase 12, Task 1 of 12-05): the opt-in
+ * count-up hint (chords only, session-persistent once revealed) and the
+ * enharmonic teaching line (fires exactly per isNotableSpelling).
+ */
+describe('BuildSession count-up hint (BUILD-03, 12-05 Task 1)', () => {
+	async function startCm7() {
+		render(BuildSession);
+		await fireEvent.click(screen.getByRole('button', { name: 'C' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'minor 7th' }));
+	}
+
+	async function startCdim7() {
+		render(BuildSession);
+		await fireEvent.click(screen.getByRole('button', { name: 'C' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'diminished 7th' }));
+	}
+
+	it('renders the "Show the count-up hint" toggle for chords, between steps', async () => {
+		await startCm7();
+
+		expect(screen.getByRole('button', { name: 'Show the count-up hint' })).toBeInTheDocument();
+	});
+
+	it('the scales picker never renders a count-up hint toggle, not even a disabled one', async () => {
+		render(BuildSession);
+		await fireEvent.click(screen.getByRole('button', { name: 'Scales' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'G major' }));
+
+		expect(
+			screen.queryByRole('button', { name: 'Show the count-up hint' })
+		).not.toBeInTheDocument();
+	});
+
+	it('tapping the toggle reveals the exact count-up line, naming only the semitone count and the FROM letter (never the destination letter)', async () => {
+		await startCm7();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Show the count-up hint' }));
+
+		expect(screen.getByTestId('build-count-up-hint')).toHaveTextContent(
+			'3 half steps up from C. Count it out.'
+		);
+		expect(screen.getByTestId('build-count-up-hint').textContent).not.toMatch(/E♭/);
+		expect(
+			screen.queryByRole('button', { name: 'Show the count-up hint' })
+		).not.toBeInTheDocument();
+	});
+
+	it('stays revealed across a step advance within the SAME target, with no re-tap needed', async () => {
+		await startCm7();
+		await fireEvent.click(screen.getByRole('button', { name: 'Show the count-up hint' }));
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+
+		expect(screen.getByTestId('build-register')).toHaveTextContent('STEP 2 OF 3');
+		expect(screen.getByTestId('build-count-up-hint')).toHaveTextContent(
+			'4 half steps up from E♭. Count it out.'
+		);
+		expect(
+			screen.queryByRole('button', { name: 'Show the count-up hint' })
+		).not.toBeInTheDocument();
+	});
+
+	it('resets back to hidden only once a brand-new target is picked, never mid-target (round-tripping kind resets the picker, per 12-04\'s existing resetPicker seam)', async () => {
+		await startCm7();
+		await fireEvent.click(screen.getByRole('button', { name: 'Show the count-up hint' }));
+		expect(screen.getByTestId('build-count-up-hint')).toBeInTheDocument();
+
+		// Round-tripping the kind toggle calls 12-04's existing resetPicker(),
+		// the same reset seam a fresh target pick goes through - exercises the
+		// "brand-new target" reset without depending on 12-05 Task 2's
+		// completion-summary CTAs (covered separately once Task 2 lands).
+		await fireEvent.click(screen.getByRole('button', { name: 'Scales' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Chords' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'C' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'minor 7th' }));
+
+		expect(screen.getByRole('button', { name: 'Show the count-up hint' })).toBeInTheDocument();
+		expect(screen.queryByTestId('build-count-up-hint')).not.toBeInTheDocument();
+	});
+
+	it('a correct tap earning a notable spelling (Cdim7\'s B♭♭) shows the enharmonic teaching line', async () => {
+		await startCdim7();
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'F♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A key' })[0]);
+
+		expect(screen.getByTestId('build-enharmonic-line')).toHaveTextContent(
+			"This key's usually called A, but Cdim7 spells it B♭♭ so the chord reads as a clean stack of minor thirds."
+		);
+	});
+
+	it('a correct tap earning a routine spelling (Cm7\'s E♭) never shows the enharmonic teaching line', async () => {
+		await startCm7();
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+
+		expect(screen.getByTestId('build-feedback')).toBeInTheDocument();
+		expect(screen.queryByTestId('build-enharmonic-line')).not.toBeInTheDocument();
+	});
+});
