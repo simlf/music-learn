@@ -172,8 +172,15 @@
 
 	let containerEl: HTMLDivElement | undefined = $state();
 	let measuredWidth: number | undefined = $state(undefined);
-	/** Letter of the key currently pressed (pointer down), for the D-11 press cue. Interactive-only. */
-	let pressedLetter: string | undefined = $state(undefined);
+	/**
+	 * Letter+octave of the key currently pressed (pointer down), for the D-11
+	 * press cue. Interactive-only. Keyed by BOTH letter and octave (IN-01,
+	 * mirroring `flashWrongKey`'s own letter+octave keying) so a same-letter
+	 * duplicate key at a different octave never presses in lockstep - this
+	 * matters once `constructable` mode's forced two-octave keyboard makes
+	 * octave-repeated pitch classes a routine occurrence, not a rare one.
+	 */
+	let pressedKey: { letter: string; octave: number } | undefined = $state(undefined);
 
 	// Self-measure only when `octaves` isn't explicitly provided. Reads the
 	// container's width and derives octave count from it via `$derived` below
@@ -291,7 +298,7 @@
 	 * consumers can turn letter + octave into a concrete pitch.
 	 */
 	function handlePointerDown(letter: string, octave: number) {
-		pressedLetter = letter;
+		pressedKey = { letter, octave };
 		triggerHapticPulse();
 		if (interactive) onPress?.(letter, octave);
 	}
@@ -310,8 +317,8 @@
 	}
 
 	/** Clears the transient pressed state on release/cancel/leave (D-11). */
-	function clearPressed(letter: string) {
-		if (pressedLetter === letter) pressedLetter = undefined;
+	function clearPressed(letter: string, octave: number) {
+		if (pressedKey?.letter === letter && pressedKey?.octave === octave) pressedKey = undefined;
 	}
 
 	function keyAriaLabel(letter: string): string {
@@ -428,8 +435,10 @@
 	 * (interactive or inspect), since display-mode keys have no pointer
 	 * handlers to set `pressedLetter`.
 	 */
-	function pressedClass(letter: string): string {
-		return keysActive && pressedLetter === letter ? 'piano-keyboard__key--pressed' : '';
+	function pressedClass(letter: string, octave: number): string {
+		return keysActive && pressedKey?.letter === letter && pressedKey?.octave === octave
+			? 'piano-keyboard__key--pressed'
+			: '';
 	}
 
 	/**
@@ -461,10 +470,10 @@
 			)} {selectedClass(key.letter, key.note?.role)} {wrongClass(
 				key.letter,
 				key.note?.role
-			)} {stampedClass(key.letter, key.note?.role)} {pressedClass(key.letter)} {flashWrongClass(
+			)} {stampedClass(key.letter, key.note?.role)} {pressedClass(
 				key.letter,
 				octaveForWhiteIndex(key.index)
-			)}"
+			)} {flashWrongClass(key.letter, octaveForWhiteIndex(key.index))}"
 			style="left: {key.leftPct}%; width: {whiteKeyWidthPct}%;"
 			role={keysActive ? 'button' : undefined}
 			tabindex={keysActive ? 0 : undefined}
@@ -477,9 +486,15 @@
 			onpointerdown={keysActive
 				? () => handlePointerDown(key.letter, octaveForWhiteIndex(key.index))
 				: undefined}
-			onpointerup={keysActive ? () => clearPressed(key.letter) : undefined}
-			onpointerleave={keysActive ? () => clearPressed(key.letter) : undefined}
-			onpointercancel={keysActive ? () => clearPressed(key.letter) : undefined}
+			onpointerup={keysActive
+				? () => clearPressed(key.letter, octaveForWhiteIndex(key.index))
+				: undefined}
+			onpointerleave={keysActive
+				? () => clearPressed(key.letter, octaveForWhiteIndex(key.index))
+				: undefined}
+			onpointercancel={keysActive
+				? () => clearPressed(key.letter, octaveForWhiteIndex(key.index))
+				: undefined}
 		>
 			{#if key.note}
 				{#if showIntervalBadges}
@@ -501,7 +516,8 @@
 				key.sharpLetter,
 				key.note?.role
 			)} {stampedClass(key.sharpLetter, key.note?.role)} {pressedClass(
-				key.sharpLetter
+				key.sharpLetter,
+				octaveForBlackAfterWhiteIndex(key.position - 1)
 			)} {flashWrongClass(key.sharpLetter, octaveForBlackAfterWhiteIndex(key.position - 1))}"
 			style="left: {key.leftPct}%; width: {blackKeyWidthPct}%;"
 			role={keysActive ? 'button' : undefined}
@@ -515,9 +531,15 @@
 			onpointerdown={keysActive
 				? () => handlePointerDown(key.sharpLetter, octaveForBlackAfterWhiteIndex(key.position - 1))
 				: undefined}
-			onpointerup={keysActive ? () => clearPressed(key.sharpLetter) : undefined}
-			onpointerleave={keysActive ? () => clearPressed(key.sharpLetter) : undefined}
-			onpointercancel={keysActive ? () => clearPressed(key.sharpLetter) : undefined}
+			onpointerup={keysActive
+				? () => clearPressed(key.sharpLetter, octaveForBlackAfterWhiteIndex(key.position - 1))
+				: undefined}
+			onpointerleave={keysActive
+				? () => clearPressed(key.sharpLetter, octaveForBlackAfterWhiteIndex(key.position - 1))
+				: undefined}
+			onpointercancel={keysActive
+				? () => clearPressed(key.sharpLetter, octaveForBlackAfterWhiteIndex(key.position - 1))
+				: undefined}
 		>
 			{#if key.note}
 				{#if showIntervalBadges}

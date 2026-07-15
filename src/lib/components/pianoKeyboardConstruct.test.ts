@@ -135,6 +135,28 @@ describe('PianoKeyboard construct mode (constructable + onConstructTap + flashWr
 		expect(fSharpKeys[1].className).not.toContain('piano-keyboard__key--wrong');
 	});
 
+	it('IN-01: pointerdown\'s transient pressed cue is keyed by letter AND octave, so a same-letter duplicate key at the other octave never presses too', async () => {
+		const notes = spellChord('Cm7').notes.slice(0, 1);
+		render(PianoKeyboard, { notes, constructable: true, octaves: 2, onConstructTap: () => {} });
+
+		const cKeys = screen.getAllByRole('button', { name: 'C key' });
+		await fireEvent.pointerDown(cKeys[0]);
+
+		expect(cKeys[0].className).toContain('piano-keyboard__key--pressed');
+		expect(cKeys[1].className).not.toContain('piano-keyboard__key--pressed');
+	});
+
+	it('IN-01: the pressed cue applies to a black key too, discriminating by octave', async () => {
+		const notes = spellChord('Cm7').notes.slice(0, 1);
+		render(PianoKeyboard, { notes, constructable: true, octaves: 2, onConstructTap: () => {} });
+
+		const fSharpKeys = screen.getAllByRole('button', { name: 'F♯ key' });
+		await fireEvent.pointerDown(fSharpKeys[1]);
+
+		expect(fSharpKeys[0].className).not.toContain('piano-keyboard__key--pressed');
+		expect(fSharpKeys[1].className).toContain('piano-keyboard__key--pressed');
+	});
+
 	it('flashWrongKey omitted or null leaves every key free of the wrong-fill class', () => {
 		const notes = spellChord('Cm7').notes.slice(0, 1);
 		const { container } = render(PianoKeyboard, {
