@@ -323,7 +323,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Each step shows a plain-English interval instruction and why that note belongs; a wrong tap gives diagnostic feedback (e.g., "2 half steps too high"), grading by pitch class while teaching the correct enharmonic spelling.
   4. Completing or missing construction steps records gradeable events into the memorization engine as that fact's formula-build mode.
 
-**Plans**: 3/6 plans executed
+**Plans**: 4/6 plans executed
 
 **Wave 1** *(parallel: disjoint file sets)*
 
@@ -333,7 +333,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 12-04-PLAN.md — BuildSession core: picker, route, nav, full step loop (both feedback branches, pacing, formula strip)
+- [x] 12-04-PLAN.md — BuildSession core: picker, route, nav, full step loop (both feedback branches, pacing, formula strip)
 
 **Wave 3** *(blocked on Wave 2: shares BuildSession.svelte)*
 
@@ -380,5 +380,5 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 | 9. Deploy to the Piano | 6/6 | Complete   | 2026-07-13 |
 | 10. Scale Keyboard Drill | 2/2 | Complete    | 2026-07-15 |
 | 11. Memorization Engine | 6/6 | Complete    | 2026-07-15 |
-| 12. Build-it Construction | 3/6 | In Progress|  |
+| 12. Build-it Construction | 4/6 | In Progress|  |
 | 13. Multi-modal Recall | 0/TBD | Not started | - |
