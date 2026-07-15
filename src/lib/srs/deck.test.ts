@@ -12,6 +12,7 @@ import {
 	introduceNewCards,
 	recordGrade,
 	deriveCellState,
+	getCard,
 	NEW_CARDS_PER_SESSION,
 	_database
 } from './deck';
@@ -203,6 +204,57 @@ describe('deck', () => {
 			lastRating: Rating.Good
 		});
 		expect(deriveCellState(masteredCard, now0)).toBe('mastered');
+	});
+});
+
+describe('formula-build mode seam (Phase 12 D-09)', () => {
+	beforeEach(async () => {
+		await clearDeck();
+	});
+
+	it('a CardRecord with mode formula-build and factKind scale-formula round-trips through recordGrade -> getAllCards without being dropped by CardRecordSchema', async () => {
+		const card = makeCardRecord({
+			factId: 'scale-formula:C',
+			factKind: 'scale-formula',
+			mode: 'formula-build'
+		});
+		await recordGrade(card, Rating.Good, now0);
+
+		const cards = await getAllCards();
+		const persisted = cards.find((c) => c.factId === 'scale-formula:C' && c.mode === 'formula-build');
+		expect(persisted).toBeDefined();
+		expect(persisted?.factKind).toBe('scale-formula');
+		expect(persisted?.mode).toBe('formula-build');
+	});
+
+	it('getCard(factId, mode) returns undefined when no record has been persisted for that pair', async () => {
+		expect(await getCard('chord-formula:Cm7', 'formula-build')).toBeUndefined();
+	});
+
+	it('getCard(factId, mode) returns the exact persisted record after recordGrade wrote it, mode-scoped', async () => {
+		const buildCard = makeCardRecord({
+			factId: 'chord-formula:Cm7',
+			factKind: 'chord-formula',
+			mode: 'formula-build'
+		});
+		const graded = await recordGrade(buildCard, Rating.Good, now0);
+
+		const found = await getCard('chord-formula:Cm7', 'formula-build');
+		expect(found).toBeDefined();
+		expect(found?.factId).toBe(graded.factId);
+		expect(found?.mode).toBe('formula-build');
+		expect(found?.scheduled_days).toBe(graded.scheduled_days);
+
+		// A different mode of the same factId must NOT satisfy getCard.
+		const miss = await getCard('chord-formula:Cm7', 'formula');
+		expect(miss).toBeUndefined();
+	});
+
+	it('regression pin: introduceNewCards(1000, now) never produces a formula-build record (bulk seeding untouched)', async () => {
+		await introduceNewCards(1000, now0);
+		const cards = await getAllCards();
+		expect(cards.length).toBeGreaterThan(0);
+		expect(cards.every((c) => c.mode === 'formula')).toBe(true);
 	});
 });
 

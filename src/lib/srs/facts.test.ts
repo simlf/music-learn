@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allFacts, factById } from './facts';
+import { allFacts, factById, scaleFormulaFactId } from './facts';
 import { ROOTS, QUALITY_SUFFIXES } from '$lib/theory/randomChord';
 import { DRILL_INTERVALS } from '$lib/theory/interval';
 import { MAJOR_SCALE_ROOTS, majorScaleNotes } from '$lib/theory/scale';
@@ -121,5 +121,20 @@ describe('allFacts', () => {
 	it('factById returns undefined for an unknown factId, never throws', () => {
 		expect(() => factById('nonsense:not-a-real-fact')).not.toThrow();
 		expect(factById('nonsense:not-a-real-fact')).toBeUndefined();
+	});
+});
+
+describe('scaleFormulaFactId (Phase 12 D-09 seam)', () => {
+	it('builds a scale-formula factId with the tonic preserved verbatim', () => {
+		expect(scaleFormulaFactId('C')).toBe('scale-formula:C');
+		expect(scaleFormulaFactId('F♯')).toBe('scale-formula:F♯');
+	});
+
+	it('regression pin: allFacts().length is still exactly 192 (unchanged catalog size)', () => {
+		expect(allFacts().length).toBe(192);
+	});
+
+	it('regression pin: no fact in the catalog carries factKind scale-formula', () => {
+		expect(allFacts().every((f) => f.factKind !== 'scale-formula')).toBe(true);
 	});
 });

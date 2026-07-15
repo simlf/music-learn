@@ -4,6 +4,7 @@ import {
 	intervalBetween,
 	intervalFromRoot,
 	intervalFromShort,
+	phraseStep,
 	toAsciiAccidentals,
 	transposeFrom
 } from './interval';
@@ -201,6 +202,35 @@ describe('DRILL_INTERVALS', () => {
 	it('has no two entries sharing a semitone count (no enharmonic ambiguity in choices)', () => {
 		const semis = DRILL_INTERVALS.map((short) => intervalFromShort(short).semitones);
 		expect(new Set(semis).size).toBe(semis.length);
+	});
+});
+
+describe('phraseStep (Phase 12 D-03: consecutive-interval phrasing)', () => {
+	it('phrases a plain interval via delegation to intervalFromShort(short).long', () => {
+		expect(phraseStep('m3')).toBe('minor 3rd');
+		expect(phraseStep('M3')).toBe('major 3rd');
+	});
+
+	it('does NOT special-case seconds when asScaleStep is omitted or false', () => {
+		expect(phraseStep('M2')).toBe('major 2nd');
+		expect(phraseStep('m2')).toBe('minor 2nd');
+		expect(phraseStep('M2', { asScaleStep: false })).toBe('major 2nd');
+		expect(phraseStep('m2', { asScaleStep: false })).toBe('minor 2nd');
+	});
+
+	it('overrides ONLY seconds to whole/half step when asScaleStep is true', () => {
+		expect(phraseStep('M2', { asScaleStep: true })).toBe('whole step');
+		expect(phraseStep('m2', { asScaleStep: true })).toBe('half step');
+	});
+
+	it('leaves every non-second degree unaffected by asScaleStep', () => {
+		expect(phraseStep('m3', { asScaleStep: true })).toBe('minor 3rd');
+		expect(phraseStep('P5', { asScaleStep: true })).toBe('perfect 5th');
+	});
+
+	it('is total: unparseable input returns the empty string, never throws', () => {
+		expect(phraseStep('', { asScaleStep: true })).toBe('');
+		expect(phraseStep('garbage')).toBe('');
 	});
 });
 
