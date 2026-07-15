@@ -5,15 +5,15 @@ milestone_name: Learning Upgrade
 current_phase: 11
 current_phase_name: Memorization Engine
 status: executing
-stopped_at: Completed 11-02-PLAN.md (fact catalog generated from theory engine)
-last_updated: "2026-07-15T12:15:39.124Z"
+stopped_at: Completed 11-03-PLAN.md (Dexie card deck persistence with Zod Date rehydration)
+last_updated: "2026-07-15T12:24:00.953Z"
 last_activity: 2026-07-15
 last_activity_desc: Phase 11 execution started
 progress:
   total_phases: 13
   completed_phases: 6
   total_plans: 29
-  completed_plans: 25
+  completed_plans: 26
   percent: 46
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 ## Current Position
 
 Phase: 11 (Memorization Engine) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-07-15 — Phase 11 execution started
 
@@ -88,6 +88,7 @@ Last activity: 2026-07-15 — Phase 11 execution started
 | Phase 10 P02 | 20min | 2 tasks | 6 files |
 | Phase 11 P01 | 12min | 2 tasks | 4 files |
 | Phase 11 P02 | 15min | 2 tasks | 2 files |
+| Phase 11 P03 | 5min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -153,6 +154,9 @@ Recent decisions affecting current work:
 - [Phase 11-01]: scheduler.ts re-exports Rating/State/Card verbatim from ts-fsrs (single-seam encapsulation mirroring audio.ts); every later plan in the phase must import these from ./scheduler, never from ts-fsrs directly
 - [Phase 11-02]: Chord-formula factId uses the original ASCII symbol (e.g. F#m7), not spellChord's re-derived display-glyph symbol, so factIds stay stable and match ROOTS/QUALITY_SUFFIXES' own ASCII spelling
 - [Phase 11-02]: Fact catalog and factById Map are built once at module load time (not per-call), since generating 192 entries is pure and cheap
+- [Phase 11-03]: dexie/zod/fake-indexeddb pinned to exact versions (no caret ranges) in package.json, matching the project's exact-pinning convention for vetted stack deps
+- [Phase 11-03]: deck.ts's _database() accessor is exported underscore-prefixed as a test-only escape hatch for the D-09 Date-rehydration regression's raw storage corruption, documented in deck.test.ts's own comments
+- [Phase 11-03]: getAllCards() uses per-record Zod safeParse (not a whole-array parse) so one corrupt record is skipped without failing every other valid record's read
 
 ### Pending Todos
 
@@ -177,7 +181,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-15T12:15:39.113Z
-Stopped at: Completed 11-02-PLAN.md (fact catalog generated from theory engine)
+Last session: 2026-07-15T12:24:00.947Z
+Stopped at: Completed 11-03-PLAN.md (Dexie card deck persistence with Zod Date rehydration)
 Resume file: None
 Next: /gsd-plan-phase 10

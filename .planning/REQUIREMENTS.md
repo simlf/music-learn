@@ -65,8 +65,8 @@ Grounded in validated spikes 006-009 (`.planning/spikes/MANIFEST.md` Session 2, 
 
 - [x] **MEM-01**: User runs a recall session that surfaces the theory facts due today (chord formulas, interval sizes, scale degrees), scheduled by spaced repetition (FSRS)
 - [x] **MEM-02**: User reveals then grades each fact (Again/Hard/Good/Easy) and the item reschedules at a growing day-scale interval (a lapse shortens it); each grade button shows the interval it will schedule
-- [ ] **MEM-03**: Recall scheduling state persists across sessions and reloads on the same device, with a card per (fact, mode)
-- [ ] **MEM-04**: User sees which facts are due, mastered, or weak across modes (recall map)
+- [x] **MEM-03**: Recall scheduling state persists across sessions and reloads on the same device, with a card per (fact, mode)
+- [x] **MEM-04**: User sees which facts are due, mastered, or weak across modes (recall map)
 
 ### Build-it Construction
 
