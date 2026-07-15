@@ -393,7 +393,7 @@ Plans:
 
 **Design reference**: `.planning/sketches/008-keyboard-everywhere/` (winner Variant A: docked bottom bar)
 **UI hint**: yes
-**Plans**: 3/7 plans executed
+**Plans**: 4/7 plans executed
 **Wave 1**
 
 - [x] 15-01-PLAN.md — Dock foundations: collapse-state persistence (music-learn:docked-keyboard-collapsed) + Svelte context registration seam (KBD-02)
@@ -405,7 +405,7 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [x] 15-03-PLAN.md — Lookup + Theory: docked always-inspectable tap-to-hear keyboards (Theory gains a new one) (KBD-01)
-- [ ] 15-04-PLAN.md — Scales Practice: relocate ScaleKeyboardDrill's key-strip into the dock, degree register stays in flow (KBD-01)
+- [x] 15-04-PLAN.md — Scales Practice: relocate ScaleKeyboardDrill's key-strip into the dock, degree register stays in flow (KBD-01)
 - [ ] 15-05-PLAN.md — Drills: single mode-aware docked keyboard for all branches + short-landscape inline fallback (KBD-01/03)
 - [ ] 15-06-PLAN.md — Recall modes A/B/formula: one mode-aware docked keyboard (KBD-01/03)
 
@@ -505,7 +505,7 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 | 11. Memorization Engine | 6/6 | Complete    | 2026-07-15 |
 | 12. Build-it Construction | 6/6 | Complete    | 2026-07-15 |
 | 13. Multi-modal Recall | 6/6 | Complete    | 2026-07-15 |
-| 15. Playable Keyboard Everywhere | 3/7 | In Progress|  |
+| 15. Playable Keyboard Everywhere | 4/7 | In Progress|  |
 | 16. Hear the Chord | 0/TBD | Pending | - |
 | 17. Chord Explainer | 0/TBD | Pending | - |
 | 18. Your Songs' Chords | 0/TBD | Pending | - |
