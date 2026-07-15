@@ -72,8 +72,8 @@ Grounded in validated spikes 006-009 (`.planning/spikes/MANIFEST.md` Session 2, 
 
 - [ ] **BUILD-01**: User builds a chord from its symbol by tapping notes on a keyboard one interval at a time (stack a minor 3rd, a major 3rd...), earning each note instead of reading a finished list
 - [ ] **BUILD-02**: User builds a scale the same way, following its whole/half step pattern and closing on the octave
-- [ ] **BUILD-03**: Each construction step shows a plain-English interval instruction and why that note belongs; wrong taps give diagnostic feedback (e.g. "N half steps too high"); enharmonic spelling is taught and grading is by pitch class
-- [ ] **BUILD-04**: Construction accuracy feeds the memorization engine as gradeable events (Build-it is the formula mode of a fact)
+- [x] **BUILD-03**: Each construction step shows a plain-English interval instruction and why that note belongs; wrong taps give diagnostic feedback (e.g. "N half steps too high"); enharmonic spelling is taught and grading is by pitch class
+- [x] **BUILD-04**: Construction accuracy feeds the memorization engine as gradeable events (Build-it is the formula mode of a fact)
 
 ### Multi-modal Recall
 

@@ -323,11 +323,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Each step shows a plain-English interval instruction and why that note belongs; a wrong tap gives diagnostic feedback (e.g., "2 half steps too high"), grading by pitch class while teaching the correct enharmonic spelling.
   4. Completing or missing construction steps records gradeable events into the memorization engine as that fact's formula-build mode.
 
-**Plans**: 6 plans
+**Plans**: 1/6 plans executed
 
 **Wave 1** *(parallel: disjoint file sets)*
 
-- [ ] 12-01-PLAN.md — Theory + SRS seams: phraseStep consecutive-interval phrasing, scale-formula factId, deck.ts formula-build mode
+- [x] 12-01-PLAN.md — Theory + SRS seams: phraseStep consecutive-interval phrasing, scale-formula factId, deck.ts formula-build mode
 - [ ] 12-02-PLAN.md — PianoKeyboard constructable gated mode (onConstructTap, flashWrongKey)
 - [ ] 12-03-PLAN.md — Pure construction engine (one engine, two grammars; MIDI/chroma grading; full-catalog reachability)
 
@@ -380,5 +380,5 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 | 9. Deploy to the Piano | 6/6 | Complete   | 2026-07-13 |
 | 10. Scale Keyboard Drill | 2/2 | Complete    | 2026-07-15 |
 | 11. Memorization Engine | 6/6 | Complete    | 2026-07-15 |
-| 12. Build-it Construction | 0/TBD | Not started | - |
+| 12. Build-it Construction | 1/6 | In Progress|  |
 | 13. Multi-modal Recall | 0/TBD | Not started | - |

@@ -5,15 +5,15 @@ milestone_name: Learning Upgrade
 current_phase: 12
 current_phase_name: Build-it Construction
 status: verifying
-stopped_at: Completed 11-05-PLAN.md (RecallSession component + /recall route + nav)
-last_updated: "2026-07-15T13:24:46.442Z"
+stopped_at: Completed 12-01-PLAN.md (theory phraseStep + facts scale-formula factId + deck.ts formula-build mode + getCard)
+last_updated: "2026-07-15T14:11:36.542Z"
 last_activity: 2026-07-15
 last_activity_desc: Phase 11 complete, transitioned to Phase 12
 progress:
   total_phases: 13
   completed_phases: 7
-  total_plans: 29
-  completed_plans: 29
+  total_plans: 35
+  completed_plans: 30
   percent: 54
 ---
 
@@ -93,6 +93,7 @@ Last activity: 2026-07-15 — Phase 11 complete, transitioned to Phase 12
 | Phase 11 P04 | 1min | 2 tasks | 2 files |
 | Phase 11 P05 | 24min | 2 tasks | 4 files |
 | Phase 11 P06 | 8min | 2 tasks | 4 files |
+| Phase 12 P01 | 3min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -166,6 +167,9 @@ Recent decisions affecting current work:
 - [Phase 11-05]: Scale-degree reveal badge derives its fill color directly from SpelledNote.role (no separate degree-to-role lookup table).
 - [Phase 11-06]: RecallMap's MODE_COLUMNS array is the one-line extension point for Phase 13's future mode columns (see-play/hear-name/notes-symbol), avoiding a layout rewrite when that phase ships
 - [Phase 11-06]: RecallSession's onViewMap prop is gated (omit => byte-identical render to 11-05); the completion card's ghost 'View Recall Map' CTA switches /recall's own mode state to Map in place, no navigation
+- [Phase 12 P01]: phraseStep delegates to intervalFromShort(short).long except when asScaleStep is true AND degree is 2 (whole/half step), matching D-03 exactly
+- [Phase 12 P01]: scaleFormulaFactId and widened FactKind/Mode are additive-only: Fact union, CATALOG, allFacts(), factById() byte-unchanged so introduceNewCards/RecallSession/RecallMap stay unaware of scale-formula facts
+- [Phase 12 P01]: getCard is a filter over getAllCards() (not a raw Dexie compound-key get), so it inherits the same Zod-validation/Date-coercion read boundary as every other deck.ts read path
 
 ### Pending Todos
 
@@ -190,7 +194,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-15T12:53:17.199Z
-Stopped at: Completed 11-05-PLAN.md (RecallSession component + /recall route + nav)
+Last session: 2026-07-15T14:11:36.533Z
+Stopped at: Completed 12-01-PLAN.md (theory phraseStep + facts scale-formula factId + deck.ts formula-build mode + getCard)
 Resume file: None
 Next: /gsd-plan-phase 10
