@@ -221,83 +221,85 @@
 		{remaining} LEFT TODAY
 	</p>
 
-	<div class="mt-4" data-testid="recall-prompt">
-		{#if currentFact.factKind === 'chord-formula'}
-			{@const chord = spellChord(currentFact.symbol)}
-			<div class="flex items-start gap-4">
-				<ChordGlyph root={chord.root} quality={chord.symbol.slice(chord.root.length)} />
-			</div>
-			<p class="text-body mt-4">What's the formula?</p>
-		{:else if currentFact.factKind === 'interval-size'}
-			{@const targetLetter = transposeFrom('C', currentFact.short)}
-			<p class="text-heading font-serif font-bold">C to {targetLetter}</p>
-			<p class="text-body mt-4">What's the interval?</p>
-		{:else if currentFact.factKind === 'scale-degree'}
-			<p class="text-heading font-bold">
-				Degree {currentFact.degree} of {currentFact.tonic} major
-			</p>
-			<p class="text-body mt-4">Which note?</p>
-		{/if}
-	</div>
-
-	{#if !revealed}
-		<div class="mt-6">
-			<Button type="button" variant="primary" onclick={handleReveal}>Show Answer</Button>
-		</div>
-	{:else}
-		<div class="stamp mt-6" data-testid="recall-reveal">
+	<div aria-live="polite">
+		<div class="mt-4" data-testid="recall-prompt">
 			{#if currentFact.factKind === 'chord-formula'}
 				{@const chord = spellChord(currentFact.symbol)}
-				<p class="text-body">Here's the formula:</p>
-				<div class="mt-4 flex flex-wrap gap-4">
-					{#each formulaFor(chord) as entry (entry.role + entry.letter)}
-						<div class="flex flex-col items-center gap-1">
-							<IntervalChip role={entry.role} label={entry.label} longName={entry.longFr} />
-							<span class="text-label font-mono">{entry.letter}</span>
-							<span class="text-label font-mono">{entry.solfege}</span>
-						</div>
-					{/each}
+				<div class="flex items-start gap-4">
+					<ChordGlyph root={chord.root} quality={chord.symbol.slice(chord.root.length)} />
 				</div>
-				<div class="mt-4">
-					<PianoKeyboard notes={chord.notes} />
-				</div>
+				<p class="text-body mt-4">What's the formula?</p>
 			{:else if currentFact.factKind === 'interval-size'}
-				{@const info = intervalFromShort(currentFact.short)}
-				<p class="text-body">Here's the interval:</p>
-				<div class="mt-4">
-					<IntervalChip role={info.role} label={info.short} longName={info.longFr} />
-				</div>
+				{@const targetLetter = transposeFrom('C', currentFact.short)}
+				<p class="text-heading font-serif font-bold">C to {targetLetter}</p>
+				<p class="text-body mt-4">What's the interval?</p>
 			{:else if currentFact.factKind === 'scale-degree'}
-				{@const degreeNote = majorScaleNotes(currentFact.tonic)[currentFact.degree - 1]}
-				<p class="text-body">Here's the note:</p>
-				{#if degreeNote}
-					<div
-						class="mt-4 inline-block border-2 p-2"
-						style={`border-color: var(--color-ink); background-color: var(--color-${degreeNote.role}); color: var(--color-on-${degreeNote.role});`}
-					>
-						<NoteLabel letter={degreeNote.letter} solfege={degreeNote.solfege} highlighted />
-					</div>
-				{/if}
+				<p class="text-heading font-bold">
+					Degree {currentFact.degree} of {currentFact.tonic} major
+				</p>
+				<p class="text-body mt-4">Which note?</p>
 			{/if}
 		</div>
 
-		<div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4" data-testid="recall-grade-grid">
-			{#each GRADES as grade (grade.rating)}
-				<Button
-					type="button"
-					variant="ghost"
-					style={gradeButtonStyle(grade.rating)}
-					data-testid={`recall-grade-${grade.label.toLowerCase()}`}
-					onclick={() => handleGrade(grade.rating)}
-				>
-					<span class="flex flex-col items-center gap-1">
-						<span class="text-heading font-bold">{grade.label}</span>
-						<span class="text-label font-mono">{intervalTag(grade.rating)}</span>
-					</span>
-				</Button>
-			{/each}
-		</div>
-	{/if}
+		{#if !revealed}
+			<div class="mt-6">
+				<Button type="button" variant="primary" onclick={handleReveal}>Show Answer</Button>
+			</div>
+		{:else}
+			<div class="stamp mt-6" data-testid="recall-reveal">
+				{#if currentFact.factKind === 'chord-formula'}
+					{@const chord = spellChord(currentFact.symbol)}
+					<p class="text-body">Here's the formula:</p>
+					<div class="mt-4 flex flex-wrap gap-4">
+						{#each formulaFor(chord) as entry (entry.role + entry.letter)}
+							<div class="flex flex-col items-center gap-1">
+								<IntervalChip role={entry.role} label={entry.label} longName={entry.longFr} />
+								<span class="text-label font-mono">{entry.letter}</span>
+								<span class="text-label font-mono">{entry.solfege}</span>
+							</div>
+						{/each}
+					</div>
+					<div class="mt-4">
+						<PianoKeyboard notes={chord.notes} />
+					</div>
+				{:else if currentFact.factKind === 'interval-size'}
+					{@const info = intervalFromShort(currentFact.short)}
+					<p class="text-body">Here's the interval:</p>
+					<div class="mt-4">
+						<IntervalChip role={info.role} label={info.short} longName={info.longFr} />
+					</div>
+				{:else if currentFact.factKind === 'scale-degree'}
+					{@const degreeNote = majorScaleNotes(currentFact.tonic)[currentFact.degree - 1]}
+					<p class="text-body">Here's the note:</p>
+					{#if degreeNote}
+						<div
+							class="mt-4 inline-block border-2 p-2"
+							style={`border-color: var(--color-ink); background-color: var(--color-${degreeNote.role}); color: var(--color-on-${degreeNote.role});`}
+						>
+							<NoteLabel letter={degreeNote.letter} solfege={degreeNote.solfege} highlighted />
+						</div>
+					{/if}
+				{/if}
+			</div>
+
+			<div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4" data-testid="recall-grade-grid">
+				{#each GRADES as grade (grade.rating)}
+					<Button
+						type="button"
+						variant="ghost"
+						style={gradeButtonStyle(grade.rating)}
+						data-testid={`recall-grade-${grade.label.toLowerCase()}`}
+						onclick={() => handleGrade(grade.rating)}
+					>
+						<span class="flex flex-col items-center gap-1">
+							<span class="text-heading font-bold">{grade.label}</span>
+							<span class="text-label font-mono">{intervalTag(grade.rating)}</span>
+						</span>
+					</Button>
+				{/each}
+			</div>
+		{/if}
+	</div>
 {/if}
 
 <style>

@@ -194,6 +194,26 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 		expect(screen.getByText(/Couldn't open the practice ledger\./)).toBeInTheDocument();
 	});
 
+	it('announces reveal->grade transitions via an aria-live region (WR-03)', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		render(RecallSession);
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		const prompt = screen.getByTestId('recall-prompt');
+		const liveRegion = prompt.closest('[aria-live="polite"]');
+		expect(liveRegion).not.toBeNull();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
+
+		// The revealed answer content renders inside the same live region, so
+		// its appearance is announced too.
+		expect(screen.getByTestId('recall-reveal').closest('[aria-live="polite"]')).toBe(liveRegion);
+	});
+
 	it("reactively reflects a graded card's real FSRS state on its next reveal, not the stale pre-grade record (WR-01 regression)", async () => {
 		// A single-card queue is the scenario that actually exercises WR-01:
 		// `advanceQueue`'s Again branch on a one-item queue returns a new
