@@ -19,7 +19,7 @@
 
 	type KindFilter = 'all' | Fact['factKind'];
 
-	let facts = $state<Fact[]>(allFacts());
+	const facts: Fact[] = allFacts();
 	let cardsByKey = $state(new Map<string, CardRecord>());
 	let kindFilter = $state<KindFilter>('all');
 	let now = $state(new Date());
