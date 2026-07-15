@@ -4,17 +4,17 @@ milestone: v2.0
 milestone_name: Learning Upgrade
 current_phase: 15
 current_phase_name: playable-keyboard-everywhere
-status: executing
+status: verifying
 stopped_at: Completed 15-05-PLAN.md
-last_updated: "2026-07-15T22:09:35.509Z"
+last_updated: "2026-07-15T22:30:20.657Z"
 last_activity: 2026-07-15
 last_activity_desc: Phase 15 execution started
 progress:
   total_phases: 11
-  completed_phases: 10
+  completed_phases: 11
   total_plans: 49
-  completed_plans: 48
-  percent: 91
+  completed_plans: 49
+  percent: 100
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 
 Phase: 15 (playable-keyboard-everywhere) — EXECUTING
 Plan: 7 of 7
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-15 — Phase 15 execution started
 
 **v2.0 phases (execution order 10 → 11 → 12 → 13):**
@@ -113,6 +113,7 @@ Last activity: 2026-07-15 — Phase 15 execution started
 | Phase 15 P04 | 15min | 2 tasks | 2 files |
 | Phase 15 P05 | 14min | 2 tasks | 5 files |
 | Phase 15 P06 | 20min | 1 tasks | 2 files |
+| Phase 15 P07 | 25min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -216,6 +217,7 @@ Recent decisions affecting current work:
 - [Phase 15-05]: One dockedKeyboard snippet branches on question.kind/direction/answered/showConstructionReveal to reproduce all four former inline PianoKeyboard sites plus the identification-reveal keyboard, making KBD-03 true by construction
 - [Phase 15-05]: Dock registration is $effect-driven (register + returned cleanup that clears), keyed off a feature-detected isShortLandscape flag, mirroring Plan 04's drill.done-driven ScaleKeyboardDrill pattern rather than a mount-once register()/onDestroy pair
 - [Phase ?]: [Phase 15-06] Dock registration is $effect-driven (register, return cleanup that clears), keyed off pageState !== 'reviewing' || currentItem?.mode === 'formula-build' - reacts live to queue advances, not just mount/unmount
+- [Phase 15-07]: BuildSession's constructable keyboard docks only when embedFact is set; RecallSession's Mode C skip guard is kept (not removed) since unconditional per-card re-registration races non-deterministically against BuildSession's own mount-time registration
 
 ### Pending Todos
 
@@ -240,7 +242,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-15T22:08:41.977Z
+Last session: 2026-07-15T22:29:35.041Z
 Stopped at: Completed 15-05-PLAN.md
 Resume file: 
 None

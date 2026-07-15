@@ -92,9 +92,9 @@ Grounded in Session 4 sketches 008–013 (`.planning/sketches/MANIFEST.md`). Loc
 
 ### Playable Keyboard Everywhere
 
-- [ ] **KBD-01**: Every keyboard-bearing page (Lookup, /drills, /recall, /scales, /theory) shows a keyboard whose keys sound on tap through the existing audio engine, honoring the persisted sound toggle
+- [x] **KBD-01**: Every keyboard-bearing page (Lookup, /drills, /recall, /scales, /theory) shows a keyboard whose keys sound on tap through the existing audio engine, honoring the persisted sound toggle
 - [x] **KBD-02**: The keyboard is docked to the bottom of the viewport, thumb-reachable on phone with content scrolling above it, and collapses/expands via a handle whose state persists
-- [ ] **KBD-03**: Free exploration on the docked keyboard never corrupts the active drill/recall answer input — exploration and answering stay distinguishable
+- [x] **KBD-03**: Free exploration on the docked keyboard never corrupts the active drill/recall answer input — exploration and answering stay distinguishable
 
 ### Hear the Chord
 

@@ -36,7 +36,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 *(Phase 14 is the standalone `14-mastery-criterion` improvement; this v2.1 batch continues at 15. Design winners are Session 4 sketches 008–013.)*
 
-- [ ] **Phase 15: Playable Keyboard Everywhere** - A docked, always-playable keyboard on every keyboard-bearing page (sketch 008-A) (planned 2026-07-15)
+- [x] **Phase 15: Playable Keyboard Everywhere** - A docked, always-playable keyboard on every keyboard-bearing page (sketch 008-A) (planned 2026-07-15) (completed 2026-07-15)
 - [ ] **Phase 16: Hear the Chord** - Auto-play + synced pulse on the BUILD reveal for audio memory (sketch 009-A) (planned 2026-07-15)
 - [ ] **Phase 17: Chord Explainer** - Escalating in-place hints for unknown chords in Recall (sketch 010-A) (planned 2026-07-15)
 - [ ] **Phase 18: Your Songs' Chords** - Song-provenance marks + a From-my-songs filter across the app (sketch 011-A) (planned 2026-07-15)
@@ -393,7 +393,7 @@ Plans:
 
 **Design reference**: `.planning/sketches/008-keyboard-everywhere/` (winner Variant A: docked bottom bar)
 **UI hint**: yes
-**Plans**: 6/7 plans executed
+**Plans**: 7/7 plans complete
 **Wave 1**
 
 - [x] 15-01-PLAN.md — Dock foundations: collapse-state persistence (music-learn:docked-keyboard-collapsed) + Svelte context registration seam (KBD-02)
@@ -411,7 +411,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 15-07-PLAN.md — Recall Mode C: dock the embedded BuildSession constructable keyboard, /build unchanged (KBD-01/03)
+- [x] 15-07-PLAN.md — Recall Mode C: dock the embedded BuildSession constructable keyboard, /build unchanged (KBD-01/03)
 
 ### Phase 16: Hear the Chord
 
@@ -505,7 +505,7 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 | 11. Memorization Engine | 6/6 | Complete    | 2026-07-15 |
 | 12. Build-it Construction | 6/6 | Complete    | 2026-07-15 |
 | 13. Multi-modal Recall | 6/6 | Complete    | 2026-07-15 |
-| 15. Playable Keyboard Everywhere | 6/7 | In Progress|  |
+| 15. Playable Keyboard Everywhere | 7/7 | Complete   | 2026-07-15 |
 | 16. Hear the Chord | 0/TBD | Pending | - |
 | 17. Chord Explainer | 0/TBD | Pending | - |
 | 18. Your Songs' Chords | 0/TBD | Pending | - |
