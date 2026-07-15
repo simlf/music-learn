@@ -5,15 +5,15 @@ milestone_name: Learning Upgrade
 current_phase: 11
 current_phase_name: Memorization Engine
 status: executing
-stopped_at: Completed 11-01-PLAN.md (SRS scheduler wrapper)
-last_updated: "2026-07-15T12:07:19.701Z"
+stopped_at: Completed 11-02-PLAN.md (fact catalog generated from theory engine)
+last_updated: "2026-07-15T12:15:39.124Z"
 last_activity: 2026-07-15
 last_activity_desc: Phase 11 execution started
 progress:
   total_phases: 13
   completed_phases: 6
   total_plans: 29
-  completed_plans: 24
+  completed_plans: 25
   percent: 46
 ---
 
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 ## Current Position
 
 Phase: 11 (Memorization Engine) — EXECUTING
-Plan: 2 of 6
-Status: Executing Phase 11
+Plan: 3 of 6
+Status: Ready to execute
 Last activity: 2026-07-15 — Phase 11 execution started
 
 **v2.0 phases (execution order 10 → 11 → 12 → 13):**
@@ -87,6 +87,7 @@ Last activity: 2026-07-15 — Phase 11 execution started
 | Phase 10 P01 | 15min | 2 tasks | 2 files |
 | Phase 10 P02 | 20min | 2 tasks | 6 files |
 | Phase 11 P01 | 12min | 2 tasks | 4 files |
+| Phase 11 P02 | 15min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -150,6 +151,8 @@ Recent decisions affecting current work:
 - [Phase 10-02]: Correct taps always fill/sound the canonical ascending placement (placements[degree-1]) regardless of which board key instance was tapped, keeping the same logic correct for both the ascending and descending legs
 - [Phase 11-01]: fsrs(generatorParameters({ enable_short_term: false, request_retention: 0.9, enable_fuzz: false })) is the one module-level scheduler instance; enable_short_term:false confirmed by test to keep New+Again graduating straight to Review, never Relearning
 - [Phase 11-01]: scheduler.ts re-exports Rating/State/Card verbatim from ts-fsrs (single-seam encapsulation mirroring audio.ts); every later plan in the phase must import these from ./scheduler, never from ts-fsrs directly
+- [Phase 11-02]: Chord-formula factId uses the original ASCII symbol (e.g. F#m7), not spellChord's re-derived display-glyph symbol, so factIds stay stable and match ROOTS/QUALITY_SUFFIXES' own ASCII spelling
+- [Phase 11-02]: Fact catalog and factById Map are built once at module load time (not per-call), since generating 192 entries is pure and cheap
 
 ### Pending Todos
 
@@ -174,7 +177,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-15T12:07:19.665Z
-Stopped at: Completed 11-01-PLAN.md (SRS scheduler wrapper)
+Last session: 2026-07-15T12:15:39.113Z
+Stopped at: Completed 11-02-PLAN.md (fact catalog generated from theory engine)
 Resume file: None
 Next: /gsd-plan-phase 10
