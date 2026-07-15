@@ -1,0 +1,389 @@
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../themes/default.css" />
+<style>
+	* { box-sizing: border-box; }
+	body {
+		margin: 0;
+		background: var(--color-paper);
+		color: var(--color-ink);
+		font-family: var(--font-sans);
+		padding: var(--space-6);
+	}
+	h1 { font-size: var(--text-heading); margin: 0 0 var(--space-1); }
+	.sub { color: var(--color-muted); margin: 0 0 var(--space-6); font-size: var(--text-body); max-width: 60ch; }
+
+	.today { border: 2px dashed var(--color-faint); padding: var(--space-4); margin-bottom: var(--space-6); }
+	.reg { font: 700 var(--text-label)/1.4 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-muted); margin: 0 0 var(--space-2); }
+	.note-sm { font-size: 13px; color: var(--color-muted); margin-top: var(--space-2); max-width: 60ch; }
+
+	/* tabs */
+	.tabs { display: flex; gap: var(--space-2); margin-bottom: var(--space-4); flex-wrap: wrap; }
+	.tab {
+		font: 700 var(--text-label)/1 var(--font-mono);
+		letter-spacing: 0.12em; text-transform: uppercase;
+		padding: var(--space-2) var(--space-4); border: 2px solid var(--color-ink);
+		background: var(--color-paper-bright); cursor: pointer; min-height: 44px;
+	}
+	.tab[aria-selected="true"] { background: var(--color-ink); color: var(--color-paper-bright); }
+	.panel { display: none; }
+	.panel[data-active="true"] { display: block; }
+
+	/* ── Recall card (mirrors RecallSession.svelte) ── */
+	.recall-meta { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-2); flex-wrap: wrap; }
+	.recall-meta .due { font: 700 11px/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-muted); }
+	.recall-meta .count { font: 700 11px/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-muted); }
+	.recall-card {
+		border: 2px solid var(--color-ink); background: var(--color-paper-bright);
+		padding: var(--space-6);
+	}
+	.chord-glyph { font: 700 var(--text-display)/1 var(--font-serif); margin: 0; }
+	.prompt { font-size: 15px; color: var(--color-muted); margin: var(--space-2) 0 0; }
+
+	/* interval-color chips (formula) */
+	.chips { display: flex; gap: var(--space-2); flex-wrap: wrap; margin: var(--space-4) 0 0; }
+	.ichip {
+		font: 700 13px/1 var(--font-mono); letter-spacing: 0.04em;
+		border: 2px solid var(--color-ink); padding: var(--space-2) var(--space-4);
+		display: inline-flex; gap: 6px; align-items: baseline; min-height: 34px;
+	}
+	.ichip .deg { font-size: 10px; opacity: 0.85; }
+	.ichip.root { background: var(--color-root); color: var(--color-on-root); }
+	.ichip.third { background: var(--color-third); color: var(--color-on-third); }
+	.ichip.fifth { background: var(--color-fifth); color: var(--color-on-fifth); }
+
+	/* ── Mini keyboard (~1 octave) ── */
+	.kb-wrap { margin-top: var(--space-4); }
+	.kb { position: relative; height: 120px; width: 100%; max-width: 320px; }
+	.kb .key {
+		position: absolute; top: 0; display: flex; align-items: flex-end; justify-content: center;
+		padding-bottom: 6px; transition: background-color 0.2s ease;
+	}
+	.kb .white { height: 100%; background: var(--color-paper-bright); border: 2px solid var(--color-ink); z-index: 1; }
+	.kb .black { height: 62%; background: var(--color-ink); z-index: 2; }
+	.kb .key.lit-root { background-color: var(--color-root); }
+	.kb .key.lit-third { background-color: var(--color-third); }
+	.kb .key.lit-fifth { background-color: var(--color-fifth); }
+	.kb .black.lit-third { background-color: var(--color-third); box-shadow: inset 0 0 0 2px var(--color-ink); }
+	.kb .black.lit-fifth { background-color: var(--color-fifth); box-shadow: inset 0 0 0 2px var(--color-ink); }
+	.kb .tag { font: 700 10px/1 var(--font-mono); pointer-events: none; color: var(--color-ink); }
+	.kb .lit-root > .tag, .kb .lit-third > .tag { color: #fff; }
+	.kb .black > .tag { color: var(--color-paper-bright); }
+
+	/* ── Grading row (Again / Hard / Good / Easy) — always present ── */
+	.grade-label { font: 700 11px/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-muted); margin: var(--space-6) 0 var(--space-2); }
+	.grade-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-1); }
+	.grade-btn {
+		font: 700 13px/1 var(--font-mono); letter-spacing: 0.04em; text-transform: uppercase;
+		border: 2px solid var(--color-ink); background: var(--color-paper-bright); color: var(--color-ink);
+		padding: var(--space-4) var(--space-2); cursor: pointer; min-height: 48px;
+	}
+	.grade-btn[data-g="again"]:hover { background: var(--color-vermilion); color: #fff; }
+	.grade-btn[data-g="hard"]:hover  { background: var(--color-mustard); color: var(--color-ink); }
+	.grade-btn[data-g="good"]:hover  { background: var(--color-verdigris); color: #fff; }
+	.grade-btn[data-g="easy"]:hover  { background: var(--color-ink); color: var(--color-paper-bright); }
+
+	/* ═══ Variant A: hint ladder ═══ */
+	.hint-cta {
+		font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase;
+		border: 2px dashed var(--color-faint); background: transparent; color: var(--color-muted);
+		padding: var(--space-4); cursor: pointer; min-height: 44px; width: 100%; margin-top: var(--space-6);
+	}
+	.hint-cta:hover { border-color: var(--color-ink); color: var(--color-ink); }
+	.hints { margin-top: var(--space-4); display: flex; flex-direction: column; gap: 3px; }
+	.hint {
+		border: 2px solid var(--color-ink); background: var(--color-paper-bright); padding: var(--space-4);
+		animation: stamp 0.18s ease;
+	}
+	@keyframes stamp { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+	.hint .tier { font: 700 10px/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-muted); margin: 0 0 var(--space-2); }
+	.hint .body { font-size: 15px; margin: 0; }
+	.hint .spell { font: 700 var(--text-heading)/1 var(--font-serif); letter-spacing: 0.06em; }
+	.hint-more {
+		font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase;
+		border: 2px solid var(--color-ink); background: var(--color-ink); color: var(--color-paper-bright);
+		padding: var(--space-2) var(--space-4); cursor: pointer; min-height: 44px; margin-top: var(--space-4); align-self: flex-start;
+	}
+	.hint-done { font-size: 13px; color: var(--color-muted); font-style: italic; margin-top: var(--space-4); }
+
+	/* ═══ Variant B: tutor conversation ═══ */
+	.chat { margin-top: var(--space-6); display: flex; flex-direction: column; gap: var(--space-4); }
+	.bubble-tutor {
+		border: 2px solid var(--color-ink); background: var(--color-paper-bright);
+		padding: var(--space-4); font-size: 15px; align-self: flex-start; max-width: 90%;
+		animation: stamp 0.18s ease;
+	}
+	.bubble-tutor .who { font: 700 10px/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-muted); display: block; margin-bottom: var(--space-2); }
+	.bubble-you {
+		border: 2px solid var(--color-ink); background: var(--color-ink); color: var(--color-paper-bright);
+		padding: var(--space-2) var(--space-4); font-size: 14px; align-self: flex-end; max-width: 85%;
+		animation: stamp 0.18s ease;
+	}
+	.qr { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+	.qr button {
+		font: 700 13px/1 var(--font-sans); border: 2px solid var(--color-ink); background: transparent; color: var(--color-ink);
+		padding: var(--space-2) var(--space-4); cursor: pointer; min-height: 44px;
+	}
+	.qr button:hover { background: var(--color-mustard); }
+	.qr button:disabled { opacity: 0.35; cursor: default; text-decoration: line-through; }
+	.back-grade {
+		font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase;
+		border: 2px solid var(--color-ink); background: var(--color-verdigris); color: #fff;
+		padding: var(--space-2) var(--space-4); cursor: pointer; min-height: 44px; margin-top: var(--space-2); align-self: flex-start;
+	}
+
+	/* ═══ Variant C: flip dossier ═══ */
+	.flip-scene { perspective: 1400px; margin-top: var(--space-2); }
+	.flip-inner { position: relative; transition: transform 0.5s ease; transform-style: preserve-3d; }
+	.flip-scene[data-flipped="true"] .flip-inner { transform: rotateY(180deg); }
+	.flip-face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+	.flip-back { position: absolute; inset: 0; transform: rotateY(180deg); }
+	.flip-scene[data-flipped="false"] .flip-back { pointer-events: none; }
+	.flip-scene[data-flipped="true"] .flip-front { pointer-events: none; }
+	.flip-btn {
+		font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase;
+		border: 2px solid var(--color-ink); background: var(--color-paper-bright); color: var(--color-ink);
+		padding: var(--space-4); cursor: pointer; min-height: 44px; width: 100%; margin-top: var(--space-6);
+	}
+	.flip-btn:hover { background: var(--color-ink); color: var(--color-paper-bright); }
+	.dossier { border: 2px solid var(--color-ink); background: var(--color-paper-bright); padding: var(--space-6); }
+	.dossier .d-name { font: 700 var(--text-display)/1 var(--font-serif); margin: 0; }
+	.dossier .d-mean { font-size: 15px; margin: var(--space-4) 0 0; }
+	.dossier .d-lab { font: 700 10px/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-muted); margin: var(--space-6) 0 var(--space-2); }
+	.dossier .d-hook { font-family: var(--font-serif); font-style: italic; font-size: 15px; margin: var(--space-2) 0 0; border-left: 3px solid var(--color-mustard); padding-left: var(--space-4); }
+</style>
+
+<h1>Sketch 010 &middot; Chord Explainer</h1>
+<p class="sub">In Recall, the card shows &ldquo;Cdim&rdquo; but you don't actually know what Cdim is. How do you get escalating help, in place, without abandoning the review? Three variants, all on the worked example <strong>Cdim = C &middot; E&flat; &middot; G&flat;</strong> (a diminished triad, two stacked minor thirds).</p>
+
+<div class="today">
+	<p class="reg">Today (the problem)</p>
+	<p class="note-sm" style="margin:0;">RecallSession.svelte shows the chord name and a grading row. If you blank on what Cdim even is, your only move is to grade &ldquo;Again&rdquo; and hope the answer reveal teaches you. There's no way to ask for a nudge, or a bit of teaching, before you commit a grade.</p>
+</div>
+
+<div class="tabs" role="tablist">
+	<button class="tab" role="tab" aria-selected="true"  data-tab="A">A &middot; Hint ladder &#9733;</button>
+	<button class="tab" role="tab" aria-selected="false" data-tab="B">B &middot; Tutor chat</button>
+	<button class="tab" role="tab" aria-selected="false" data-tab="C">C &middot; Flip dossier</button>
+</div>
+
+<!-- ═══════════ VARIANT A ═══════════ -->
+<div class="panel" data-tab="A" data-active="true">
+	<div class="recall-meta"><span class="due">Due now</span><span class="count">Card 4 of 12</span></div>
+	<div class="recall-card">
+		<p class="chord-glyph">Cdim</p>
+		<p class="prompt">What notes? Play them, or tap for a hint.</p>
+
+		<button class="hint-cta" id="hintCta" type="button">Need a hint?</button>
+		<div class="hints" id="hintsA"></div>
+
+		<p class="grade-label">Grade yourself</p>
+		<div class="grade-row">
+			<button class="grade-btn" data-g="again" type="button">Again</button>
+			<button class="grade-btn" data-g="hard"  type="button">Hard</button>
+			<button class="grade-btn" data-g="good"  type="button">Good</button>
+			<button class="grade-btn" data-g="easy"  type="button">Easy</button>
+		</div>
+	</div>
+	<p class="note-sm">Each tap reveals one more layer and stops. Plain-English family &rarr; the formula in interval colors &rarr; notes lit on the keyboard &rarr; the full spelling. You stop the moment it clicks, then grade honestly. Copy would live in hints.ts / mnemonics.ts.</p>
+</div>
+
+<!-- ═══════════ VARIANT B ═══════════ -->
+<div class="panel" data-tab="B" data-active="false">
+	<div class="recall-meta"><span class="due">Due now</span><span class="count">Card 4 of 12</span></div>
+	<div class="recall-card">
+		<p class="chord-glyph">Cdim</p>
+		<p class="prompt">What notes? Play them, or ask the tutor.</p>
+		<div class="chat" id="chatB"></div>
+
+		<p class="grade-label">Grade yourself</p>
+		<div class="grade-row">
+			<button class="grade-btn" data-g="again" type="button">Again</button>
+			<button class="grade-btn" data-g="hard"  type="button">Hard</button>
+			<button class="grade-btn" data-g="good"  type="button">Good</button>
+			<button class="grade-btn" data-g="easy"  type="button">Easy</button>
+		</div>
+	</div>
+	<p class="note-sm">A patient teacher, not a jargon dump. Tap a question, get a short letterpress answer with a keyboard or chips where it helps, then follow-up chips. &ldquo;Back to grading&rdquo; returns you to the card. Answer copy from hints.ts / mnemonics.ts.</p>
+</div>
+
+<!-- ═══════════ VARIANT C ═══════════ -->
+<div class="panel" data-tab="C" data-active="false">
+	<div class="recall-meta"><span class="due">Due now</span><span class="count">Card 4 of 12</span></div>
+	<div class="flip-scene" id="sceneC" data-flipped="false">
+		<div class="flip-inner">
+			<!-- front: the recall card -->
+			<div class="flip-face flip-front">
+				<div class="recall-card">
+					<p class="chord-glyph">Cdim</p>
+					<p class="prompt">What notes? Play them, or flip to learn.</p>
+					<button class="flip-btn" id="flipTo" type="button">Flip to learn &#8635;</button>
+					<p class="grade-label">Grade yourself</p>
+					<div class="grade-row">
+						<button class="grade-btn" data-g="again" type="button">Again</button>
+						<button class="grade-btn" data-g="hard"  type="button">Hard</button>
+						<button class="grade-btn" data-g="good"  type="button">Good</button>
+						<button class="grade-btn" data-g="easy"  type="button">Easy</button>
+					</div>
+				</div>
+			</div>
+			<!-- back: the dossier -->
+			<div class="flip-face flip-back">
+				<div class="dossier" id="dossierC"></div>
+			</div>
+		</div>
+	</div>
+	<p class="note-sm">One flip, everything at once: serif name (ChordGlyph.svelte), a one-line plain meaning, formula chips, the lit keyboard, and a song hook from songHooks.ts. Flip back and the grading row is right there, untouched.</p>
+</div>
+
+<script>
+	// Worked example — Cdim: C(0, root) · E♭(3, ♭3) · G♭(6, ♭5)
+	const WHITE = [['C',0],['D',2],['E',4],['F',5],['G',7],['A',9],['B',11]];
+	const BLACK = { 'C':['D♭',1], 'D':['E♭',3], 'F':['G♭',6], 'G':['A♭',8], 'A':['B♭',10] };
+	const LIT = { 0: 'root', 3: 'third', 6: 'fifth' };
+	const TAGS = { 0: 'R', 3: '♭3', 6: '♭5' };
+
+	function miniKb(){
+		const w = 100 / 8, bw = w * 0.62; // one octave = 7 white + top C
+		const keys = []; let idx = 0;
+		for (const [letter, chroma] of WHITE) {
+			keys.push({ chroma, left: idx * w, width: w, black: false });
+			if (BLACK[letter]) keys.push({ chroma: BLACK[letter][1], left: (idx + 1) * w - bw / 2, width: bw, black: true });
+			idx++;
+		}
+		keys.push({ chroma: 12, left: idx * w, width: w, black: false });
+		let html = '<div class="kb-wrap"><div class="kb">';
+		for (const k of keys) {
+			const role = LIT[k.chroma];
+			const cls = (k.black ? 'black' : 'white') + (role ? ' lit-' + role : '');
+			const tag = role ? `<span class="tag">${TAGS[k.chroma]}</span>` : '';
+			html += `<div class="key ${cls}" style="left:${k.left}%;width:${k.width}%">${tag}</div>`;
+		}
+		return html + '</div></div>';
+	}
+
+	const FORMULA = `
+		<div class="chips">
+			<span class="ichip root"><span class="deg">root</span> C</span>
+			<span class="ichip third"><span class="deg">&flat;3</span> E&flat;</span>
+			<span class="ichip fifth"><span class="deg">&flat;5</span> G&flat;</span>
+		</div>`;
+
+	/* ── Variant A: hint ladder ── */
+	const LADDER = [
+		{ tier: 'Hint 1 · the family', html: `<p class="body">Diminished means tense and unstable. It's a chord that sounds like it <em>wants</em> to move somewhere. It's built from two stacked minor thirds.</p>` },
+		{ tier: 'Hint 2 · the formula', html: `<p class="body">Take the root, then lower the 3rd and the 5th a half step each: root, &flat;3, &flat;5.</p>${FORMULA}` },
+		{ tier: 'Hint 3 · on the keys', html: `<p class="body">Here they are from C. Each gap is three half-steps.</p>${miniKb()}` },
+		{ tier: 'Hint 4 · full spelling', html: `<p class="spell">C &nbsp; E&flat; &nbsp; G&flat;</p>` }
+	];
+	let shownA = 0;
+	function renderA(){
+		const box = document.getElementById('hintsA');
+		const cta = document.getElementById('hintCta');
+		box.innerHTML = '';
+		for (let i = 0; i < shownA; i++){
+			const d = document.createElement('div');
+			d.className = 'hint';
+			d.innerHTML = `<p class="tier">${LADDER[i].tier}</p>${LADDER[i].html}`;
+			if (i === shownA - 1 && shownA < LADDER.length){
+				const more = document.createElement('button');
+				more.className = 'hint-more'; more.type = 'button';
+				more.textContent = 'Still stuck — one more';
+				more.onclick = () => { shownA++; renderA(); };
+				d.appendChild(more);
+			}
+			if (i === shownA - 1 && shownA === LADDER.length){
+				const done = document.createElement('p');
+				done.className = 'hint-done';
+				done.textContent = "That's the whole chord. Grade yourself below.";
+				d.appendChild(done);
+			}
+			box.appendChild(d);
+		}
+		cta.style.display = shownA === 0 ? 'block' : 'none';
+	}
+	document.getElementById('hintCta').onclick = () => { shownA = 1; renderA(); };
+
+	/* ── Variant B: tutor chat ── */
+	const ANSWERS = {
+		dim: {
+			you: "What does 'dim' mean?",
+			html: `<span class="who">Tutor</span>&ldquo;dim&rdquo; is short for diminished. Think tense and unsettled: the chord leans forward, like it's asking a question. You build it by stacking two minor thirds (three keys apart, then three more).`,
+			follow: ['notes', 'vs-cm']
+		},
+		notes: {
+			you: 'What notes?',
+			html: `<span class="who">Tutor</span>From C, go up in minor thirds: C, then E&flat;, then G&flat;.${FORMULA}${miniKb()}`,
+			follow: ['dim', 'vs-cm']
+		},
+		'vs-cm': {
+			you: "How's it different from Cm?",
+			html: `<span class="who">Tutor</span>Cm is C E&flat; G. Cdim keeps the E&flat; but drops the 5th a half step, G becomes G&flat;. That one flat is what turns it tense.`,
+			follow: ['dim', 'notes']
+		}
+	};
+	const CHIP_LABEL = { dim: "What does 'dim' mean?", notes: 'What notes?', 'vs-cm': "How's it different from Cm?" };
+	let asked = [];
+	function renderB(){
+		const chat = document.getElementById('chatB');
+		chat.innerHTML = '';
+		// opener
+		const open = document.createElement('div');
+		open.className = 'bubble-tutor';
+		open.innerHTML = `<span class="who">Tutor</span>What's tripping you up on Cdim?`;
+		chat.appendChild(open);
+		// asked exchanges
+		asked.forEach((key) => {
+			const a = ANSWERS[key];
+			const you = document.createElement('div'); you.className = 'bubble-you'; you.textContent = a.you; chat.appendChild(you);
+			const t = document.createElement('div'); t.className = 'bubble-tutor'; t.innerHTML = a.html; chat.appendChild(t);
+		});
+		// quick replies
+		const last = asked.length ? ANSWERS[asked[asked.length - 1]].follow : ['dim', 'notes', 'vs-cm'];
+		const qr = document.createElement('div'); qr.className = 'qr';
+		last.forEach((key) => {
+			const b = document.createElement('button'); b.type = 'button';
+			b.textContent = CHIP_LABEL[key];
+			if (asked.includes(key)) b.disabled = true;
+			else b.onclick = () => { asked.push(key); renderB(); };
+			qr.appendChild(b);
+		});
+		chat.appendChild(qr);
+		if (asked.length){
+			const back = document.createElement('button');
+			back.className = 'back-grade'; back.type = 'button';
+			back.textContent = 'Back to grading';
+			back.onclick = () => { document.querySelector('#chatB').scrollIntoView({ behavior: 'smooth', block: 'end' }); };
+			chat.appendChild(back);
+		}
+	}
+
+	/* ── Variant C: flip dossier ── */
+	function renderC(){
+		document.getElementById('dossierC').innerHTML = `
+			<p class="d-name">Cdim</p>
+			<p class="d-mean">The tense &ldquo;something's about to happen&rdquo; chord. Two minor thirds stacked from C.</p>
+			<p class="d-lab">Formula</p>
+			${FORMULA}
+			<p class="d-lab">On the keys</p>
+			${miniKb()}
+			<p class="d-lab">You've heard it</p>
+			<p class="d-hook">The suspense sting in old silent films, right before the twist.</p>
+			<button class="flip-btn" id="flipBack" type="button">&#8635; Flip back to grade</button>
+		`;
+		document.getElementById('flipBack').onclick = () => { document.getElementById('sceneC').dataset.flipped = 'false'; };
+	}
+	document.getElementById('flipTo').onclick = () => { document.getElementById('sceneC').dataset.flipped = 'true'; };
+
+	/* tabs */
+	document.querySelectorAll('.tab').forEach((tab) => {
+		tab.onclick = () => {
+			const id = tab.dataset.tab;
+			document.querySelectorAll('.tab').forEach((t) => t.setAttribute('aria-selected', String(t === tab)));
+			document.querySelectorAll('.panel').forEach((p) => p.setAttribute('data-active', String(p.dataset.tab === id)));
+		};
+	});
+	// grading buttons are inert in the mock (help does not replace them)
+	document.querySelectorAll('.grade-btn').forEach((b) => b.onclick = () => {});
+
+	renderA(); renderB(); renderC();
+</script>
