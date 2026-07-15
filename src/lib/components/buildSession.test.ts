@@ -869,4 +869,40 @@ describe('BuildSession docked constructable keyboard (Task 1, 15-07, KBD-01/KBD-
 		expect(screen.getAllByRole('img', { name: /piano keyboard/i })).toHaveLength(1);
 		expect(registerSpy).not.toHaveBeenCalled();
 	});
+
+	// WR-03 regression guard: the review flagged a possible scroll-before-mount
+	// race - when embedded (Mode C), buildKeyboard is rendered by KeyboardDock
+	// reactively (not inline), so scrollRootIntoView's one-shot
+	// `tick().then(...)` might fire before `bind:this={containerEl}` is set.
+	// This test reproduces the real-app ordering (dock already mounted, then a
+	// keyed embedded BuildSession registers) and confirms the root key IS
+	// scrolled into view: Svelte flushes the cross-component dock re-render
+	// within the same cycle before tick() resolves, so containerEl is populated
+	// when the continuation runs. Kept as a guard against a future regression.
+	it('embedded Mode C (dock already mounted) scrolls the root key into view once the docked keyboard mounts', async () => {
+		const scrollSpy = vi.fn();
+		const original = Element.prototype.scrollIntoView;
+		Element.prototype.scrollIntoView = scrollSpy;
+		try {
+			// Faithful to the real app: KeyboardDock lives in the layout and is
+			// ALREADY mounted (empty registry -> renders nothing) before a
+			// RecallSession Mode C card mounts a keyed embedded BuildSession that
+			// registers its constructable keyboard. containerEl is then set by
+			// KeyboardDock's reactive re-render, not by a synchronous inline render.
+			const registry = createDockRegistry();
+			const context = new Map([[DOCK_CONTEXT_KEY, registry]]);
+			render(KeyboardDock, { context });
+			render(BuildSession, {
+				props: { embedFact: { kind: 'chord', symbol: 'Cm7' } },
+				context
+			});
+			await waitFor(() => {
+				const rootKey = document.querySelector('.piano-keyboard__key--root');
+				expect(rootKey).not.toBeNull();
+				expect(scrollSpy).toHaveBeenCalled();
+			});
+		} finally {
+			Element.prototype.scrollIntoView = original;
+		}
+	});
 });
