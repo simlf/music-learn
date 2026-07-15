@@ -356,7 +356,16 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Ear-based naming is answered by multiple choice against same-root distractors and never gates progress or unlocks.
   3. Modes rotate per-fact when teaching a new item and are spaced across sessions when reviewing a known one.
 
-**Plans**: TBD
+**Plans:** 6 plans
+
+Plans:
+- [ ] 13-01-PLAN.md — Widen deck.ts's Mode to 4 values and add the RECALL-03 rotation policy (rotation.ts)
+- [ ] 13-02-PLAN.md — RecallMap grows to 4 mode columns with the not-applicable cell treatment
+- [ ] 13-03-PLAN.md — Universal mode-signal chip + Mode A (see-play) surface
+- [ ] 13-04-PLAN.md — Mode B (hear-name) surface: same-root MC, never gates, auto-advance
+- [ ] 13-05-PLAN.md — Mode C: embed BuildSession as a recall mode
+- [ ] 13-06-PLAN.md — Wire the rotation policy into RecallSession's queue composition
+
 **UI hint**: yes
 
 ## Progress
