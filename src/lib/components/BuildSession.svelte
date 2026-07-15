@@ -517,59 +517,70 @@
 				>
 					STEP {promptState.position + 1} OF {promptState.steps.length}
 				</p>
-				<p class="text-body mt-2" data-testid="build-step-line">{stepLineFor(promptStep)}</p>
-				<p class="text-body mt-2" data-testid="build-why-line">{whyLineFor(promptStep)}</p>
-
-				{#if kind === 'chords' && !feedback}
-					{#if !countUpRevealed}
-						<div class="mt-2">
-							<Button
-								type="button"
-								variant="ghost"
-								data-testid="count-up-toggle"
-								onclick={() => (countUpRevealed = true)}
-							>
-								Show the count-up hint
-							</Button>
-						</div>
-					{:else if countUpStep}
-						<p class="text-body mt-2" data-testid="build-count-up-hint">
-							{countUpStep.interval.semitones} half step{countUpStep.interval.semitones === 1
-								? ''
-								: 's'} up from {lastLetter}. Count it out.
-						</p>
-					{/if}
-				{/if}
 			{/if}
 
-			{#if feedback}
-				<div class="mt-4" data-testid="build-feedback">
-					<p class="text-body font-bold">{feedback.headline}</p>
-					{#if feedback.kind === 'correct' && feedback.notable}
-						<p class="text-body mt-2" data-testid="build-enharmonic-line">
-							This key's usually called {feedback.commonName}, but {targetSymbol} spells it {feedback.actualName}
-							so the chord reads as a clean stack of {feedback.intervalWord}s.
-						</p>
-					{:else if feedback.kind === 'wrong-pitch-class'}
-						<p class="text-body mt-2" data-testid="build-diagnostic">
-							{feedback.semitones} half step{feedback.semitones === 1 ? '' : 's'} too {feedback.direction}.
-						</p>
-						{#if promptStep}
-							<p class="text-body mt-2" data-testid="build-restatement">
-								You need a {phraseFor(promptStep)} up from {lastLetter}.
+			<!-- WR-04: mirrors RecallSession.svelte/ScaleKeyboardDrill.svelte's
+			     established convention of a single aria-live="polite" region over
+			     the step/WHY/feedback zone (kept as a sibling of build-register's
+			     OWN aria-live paragraph above, never nested, matching that same
+			     precedent), so a screen-reader user hears every graded-tap
+			     outcome - the core pedagogical content of this mode. -->
+			<div aria-live="polite">
+				{#if promptStep}
+					<p class="text-body mt-2" data-testid="build-step-line">{stepLineFor(promptStep)}</p>
+					<p class="text-body mt-2" data-testid="build-why-line">{whyLineFor(promptStep)}</p>
+
+					{#if kind === 'chords' && !feedback}
+						{#if !countUpRevealed}
+							<div class="mt-2">
+								<Button
+									type="button"
+									variant="ghost"
+									data-testid="count-up-toggle"
+									onclick={() => (countUpRevealed = true)}
+								>
+									Show the count-up hint
+								</Button>
+							</div>
+						{:else if countUpStep}
+							<p class="text-body mt-2" data-testid="build-count-up-hint">
+								{countUpStep.interval.semitones} half step{countUpStep.interval.semitones === 1
+									? ''
+									: 's'} up from {lastLetter}. Count it out.
 							</p>
 						{/if}
-					{:else if feedback.kind === 'wrong-octave'}
-						<p class="text-body mt-2" data-testid="build-restatement">
-							{#if feedback.direction === 'high'}
-								You're stacking upward: try the next {lastTappedLetter} down.
-							{:else}
-								You're stacking upward: try the next {lastTappedLetter} up.
-							{/if}
-						</p>
 					{/if}
-				</div>
-			{/if}
+				{/if}
+
+				{#if feedback}
+					<div class="mt-4" data-testid="build-feedback">
+						<p class="text-body font-bold">{feedback.headline}</p>
+						{#if feedback.kind === 'correct' && feedback.notable}
+							<p class="text-body mt-2" data-testid="build-enharmonic-line">
+								This key's usually called {feedback.commonName}, but {targetSymbol} spells it {feedback.actualName}
+								so the {kind === 'chords' ? 'chord' : 'scale'} reads as a clean stack of {feedback.intervalWord}s.
+							</p>
+						{:else if feedback.kind === 'wrong-pitch-class'}
+							<p class="text-body mt-2" data-testid="build-diagnostic">
+								{feedback.semitones} half step{feedback.semitones === 1 ? '' : 's'} too {feedback.direction}.
+							</p>
+							{#if promptStep}
+								<p class="text-body mt-2" data-testid="build-restatement">
+									You need a {phraseFor(promptStep)} up from {lastLetter}.
+								</p>
+							{/if}
+						{:else if feedback.kind === 'wrong-octave'}
+							<p class="text-body mt-2" data-testid="build-restatement">
+								{#if feedback.direction === 'high'}
+									You're stacking upward: try the next {lastTappedLetter} down.
+								{:else}
+									You're stacking upward: try the next {lastTappedLetter} up.
+								{/if}
+							</p>
+						{/if}
+					</div>
+				{/if}
+			</div>
 
 			<div class="scroll-wrap mt-4" bind:this={containerEl}>
 				<div style="min-width: {15 * 44}px;">

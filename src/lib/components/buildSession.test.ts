@@ -362,6 +362,30 @@ describe('BuildSession count-up hint (BUILD-03, 12-05 Task 1)', () => {
 		);
 	});
 
+	it('WR-05: a scale construction earning a notable spelling (F♯ major\'s 7th degree, E♯) shows the enharmonic teaching line with SCALE wording, never "chord"', async () => {
+		render(BuildSession);
+		await fireEvent.click(screen.getByRole('button', { name: 'Scales' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'F♯ major' }));
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'B key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C♯ key' })[1]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[1]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+
+		// The 7th degree (E♯) is enharmonically F - tap the physical F key.
+		await fireEvent.click(screen.getAllByRole('button', { name: 'F key' })[1]);
+
+		expect(screen.getByTestId('build-enharmonic-line')).toHaveTextContent(
+			"This key's usually called F, but F♯ major spells it E♯ so the scale reads as a clean stack of major seconds."
+		);
+	});
+
 	it('a correct tap earning a routine spelling (Cm7\'s E♭) never shows the enharmonic teaching line', async () => {
 		await startCm7();
 
