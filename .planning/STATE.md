@@ -5,15 +5,15 @@ milestone_name: Learning Upgrade
 current_phase: 11
 current_phase_name: Memorization Engine
 status: executing
-stopped_at: Completed 11-03-PLAN.md (Dexie card deck persistence with Zod Date rehydration)
-last_updated: "2026-07-15T12:29:13.598Z"
+stopped_at: Completed 11-05-PLAN.md (RecallSession component + /recall route + nav)
+last_updated: "2026-07-15T12:43:12.429Z"
 last_activity: 2026-07-15
 last_activity_desc: Phase 11 execution started
 progress:
   total_phases: 13
   completed_phases: 6
   total_plans: 29
-  completed_plans: 27
+  completed_plans: 28
   percent: 46
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 ## Current Position
 
 Phase: 11 (Memorization Engine) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-07-15 — Phase 11 execution started
 
@@ -90,6 +90,7 @@ Last activity: 2026-07-15 — Phase 11 execution started
 | Phase 11 P02 | 15min | 2 tasks | 2 files |
 | Phase 11 P03 | 5min | 2 tasks | 4 files |
 | Phase 11 P04 | 1min | 2 tasks | 2 files |
+| Phase 11 P05 | 24min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -158,7 +159,9 @@ Recent decisions affecting current work:
 - [Phase 11-03]: dexie/zod/fake-indexeddb pinned to exact versions (no caret ranges) in package.json, matching the project's exact-pinning convention for vetted stack deps
 - [Phase 11-03]: deck.ts's _database() accessor is exported underscore-prefixed as a test-only escape hatch for the D-09 Date-rehydration regression's raw storage corruption, documented in deck.test.ts's own comments
 - [Phase 11-03]: getAllCards() uses per-record Zod safeParse (not a whole-array parse) so one corrupt record is skipped without failing every other valid record's read
-- [Phase ?]: [Phase 11-04]: advanceQueue re-enqueues Again-graded items to the back without decrementing count (D-10); every non-empty path returns a brand-new array so callers rely on reference-equality change detection
+- [Phase 11-04]: advanceQueue re-enqueues Again-graded items to the back without decrementing count (D-10); every non-empty path returns a brand-new array so callers rely on reference-equality change detection
+- [Phase 11-05]: Again's grade button reuses Button's ghost variant with an inline style override for --color-wrong rather than adding a new Button variant.
+- [Phase 11-05]: Scale-degree reveal badge derives its fill color directly from SpelledNote.role (no separate degree-to-role lookup table).
 
 ### Pending Todos
 
@@ -183,7 +186,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-15T12:28:21.049Z
-Stopped at: Completed 11-03-PLAN.md (Dexie card deck persistence with Zod Date rehydration)
+Last session: 2026-07-15T12:43:12.424Z
+Stopped at: Completed 11-05-PLAN.md (RecallSession component + /recall route + nav)
 Resume file: None
 Next: /gsd-plan-phase 10

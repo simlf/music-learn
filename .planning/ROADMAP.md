@@ -290,7 +290,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Scheduling state persists across sessions and reloads on the same device as one card per (fact, mode), with Date fields correctly rehydrated after storage round-trip.
   4. The user sees a recall map showing which facts are due, mastered, or weak across modes.
 
-**Plans**: 4/6 plans executed
+**Plans**: 5/6 plans executed
 **Wave 1** *(parallel: disjoint file sets)*
 
 - [x] 11-01-PLAN.md — Pure FSRS scheduler wrapper (TDD): ts-fsrs config, fixed day intervals, grade preview vs commit
@@ -303,7 +303,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 11-05-PLAN.md — RecallSession UI + /recall route: reveal-then-grade session loop, 6-state page machine, masthead nav entry
+- [x] 11-05-PLAN.md — RecallSession UI + /recall route: reveal-then-grade session loop, 6-state page machine, masthead nav entry
 
 **Wave 4** *(blocked on Wave 3: shares recall/+page.svelte)*
 
@@ -360,6 +360,6 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 | 8. Progress & Streaks | 4/4 | Complete    | 2026-07-13 |
 | 9. Deploy to the Piano | 6/6 | Complete   | 2026-07-13 |
 | 10. Scale Keyboard Drill | 2/2 | Complete    | 2026-07-15 |
-| 11. Memorization Engine | 4/6 | In Progress|  |
+| 11. Memorization Engine | 5/6 | In Progress|  |
 | 12. Build-it Construction | 0/TBD | Not started | - |
 | 13. Multi-modal Recall | 0/TBD | Not started | - |
