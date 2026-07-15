@@ -3,6 +3,22 @@ import { createRawSnippet } from 'svelte';
 import { readable } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import TheoryPage from '../src/routes/theory/+page.svelte';
+import KeyboardDock from '../src/lib/components/KeyboardDock.svelte';
+import { createDockRegistry, DOCK_CONTEXT_KEY } from '../src/lib/keyboard/dockContext.svelte';
+
+/**
+ * Theory now registers a new docked keyboard on mount (Phase 15 Plan 03,
+ * Scope Decision 2), so every render needs a real dock registry supplied via
+ * the `context` option (the same seam `+layout.svelte`'s `setDockRegistry`
+ * uses) - mirrors `lookupDock.test.ts`'s harness. Tests that need to
+ * interact with the docked keyboard also render `KeyboardDock` so its
+ * content lands in the same `document.body` that `screen` queries.
+ */
+function renderPage() {
+	const registry = createDockRegistry();
+	const context = new Map([[DOCK_CONTEXT_KEY, registry]]);
+	return { page: render(TheoryPage, { context }), context };
+}
 
 // Masthead active-link check reads $page from $app/stores (see
 // tests/masthead.e2e.test.ts for the stub rationale).
@@ -31,7 +47,7 @@ afterEach(() => {
 
 describe('theory page: six shape-first lessons', () => {
 	it('renders the page title and every lesson section', () => {
-		render(TheoryPage);
+		renderPage();
 
 		expect(screen.getByRole('heading', { name: 'Theory', level: 1 })).toBeInTheDocument();
 		expect(screen.getByTestId('section-symbol')).toBeInTheDocument();
@@ -43,14 +59,14 @@ describe('theory page: six shape-first lessons', () => {
 	});
 
 	it('shows real shapes: at least one display keyboard per chord lesson', () => {
-		render(TheoryPage);
+		renderPage();
 
 		const keyboards = screen.getAllByRole('img', { name: /piano keyboard/i });
 		expect(keyboards.length).toBeGreaterThanOrEqual(5);
 	});
 
 	it('contains no em dashes anywhere in the rendered copy (D-05)', () => {
-		render(TheoryPage);
+		renderPage();
 
 		expect(document.body.textContent).not.toMatch(/—|–/);
 	});
@@ -58,7 +74,7 @@ describe('theory page: six shape-first lessons', () => {
 
 describe('theory page: the seventh-shapes picker', () => {
 	it('starts on Cmaj7 and swaps the example when a quality is tapped', async () => {
-		render(TheoryPage);
+		renderPage();
 		const section = screen.getByTestId('section-sevenths');
 
 		expect(within(section).getByText('Major triad + 7. At rest.')).toBeInTheDocument();
@@ -71,7 +87,7 @@ describe('theory page: the seventh-shapes picker', () => {
 	});
 
 	it('weaves the KEEP mnemonic in as a sidebar for the picked quality', async () => {
-		render(TheoryPage);
+		renderPage();
 		const section = screen.getByTestId('section-sevenths');
 
 		await fireEvent.click(within(section).getByRole('button', { name: 'Cdim7' }));
@@ -83,7 +99,7 @@ describe('theory page: the seventh-shapes picker', () => {
 
 describe('theory page: the white-key anchor', () => {
 	it('tapping a diatonic seventh swaps the anchor example', async () => {
-		render(TheoryPage);
+		renderPage();
 		const section = screen.getByTestId('section-anchor');
 
 		await fireEvent.click(within(section).getByRole('button', { name: 'G7' }));
@@ -94,7 +110,7 @@ describe('theory page: the white-key anchor', () => {
 
 describe('theory page: tappable sound through the audio contract', () => {
 	it('Hear it in the dominant lesson plays the spelled G7', async () => {
-		render(TheoryPage);
+		renderPage();
 		const section = screen.getByTestId('section-dominant');
 
 		await fireEvent.click(within(section).getByRole('button', { name: 'Hear it' }));
@@ -105,7 +121,7 @@ describe('theory page: tappable sound through the audio contract', () => {
 
 	it('the resolution demo plays G7 first, then C major after the beat', async () => {
 		vi.useFakeTimers();
-		render(TheoryPage);
+		renderPage();
 		const section = screen.getByTestId('section-dominant');
 
 		await fireEvent.click(within(section).getByRole('button', { name: 'Hear G7 resolve' }));
@@ -119,7 +135,7 @@ describe('theory page: tappable sound through the audio contract', () => {
 
 describe('theory page: half versus fully diminished', () => {
 	it('shows both shapes with the notation key captions', () => {
-		render(TheoryPage);
+		renderPage();
 		const section = screen.getByTestId('section-diminished');
 
 		expect(within(section).getByText('Bø7 = Bm7b5. Same chord, two spellings.')).toBeInTheDocument();
@@ -129,7 +145,7 @@ describe('theory page: half versus fully diminished', () => {
 
 describe('theory page: solfege map', () => {
 	it('maps all seven letters to French syllables', () => {
-		render(TheoryPage);
+		renderPage();
 		const section = screen.getByTestId('section-solfege');
 
 		for (const syllable of ['Do', 'Ré', 'Mi', 'Fa', 'Sol', 'La', 'Si']) {

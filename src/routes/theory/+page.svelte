@@ -1,10 +1,14 @@
 <script lang="ts">
+	import { onDestroy, onMount } from 'svelte';
 	import { mnemonicFor } from '$lib/copy/mnemonics';
 	import { ensureAudioReady, playChord } from '$lib/audio/audio';
+	import { getDockRegistry } from '$lib/keyboard/dockContext.svelte';
 	import ChordExample from '$lib/components/ChordExample.svelte';
 	import ChordGlyph from '$lib/components/ChordGlyph.svelte';
 	import NoteLabel from '$lib/components/NoteLabel.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import PianoKeyboard, { type InspectPayload } from '$lib/components/PianoKeyboard.svelte';
+	import InspectRegister from '$lib/components/InspectRegister.svelte';
 
 	/**
 	 * /theory (Track D): six short shape-first lessons decoding jazz chord
@@ -55,7 +59,43 @@
 		playChord(['G', 'B', 'D', 'F']);
 		setTimeout(() => playChord(['C', 'E', 'G']), 800);
 	}
+
+	/**
+	 * Theory's new docked keyboard (KBD-01, Scope Decision 2): unlike every
+	 * other page in this phase, Theory previously had no playable keyboard
+	 * at all - this is a pure addition, not a relocation. Plain always-
+	 * inspectable tap-to-hear board (`notes={[]}`), not bound to any lesson
+	 * chord; every existing section/control below is unchanged.
+	 */
+	let inspectPayload = $state<InspectPayload | null>(null);
+
+	function handleInspect(payload: InspectPayload) {
+		inspectPayload = payload;
+	}
+
+	const dockToken = Symbol('theory-dock');
+	const dockRegistry = getDockRegistry();
+
+	onMount(() => {
+		dockRegistry.register({
+			token: dockToken,
+			keyboard: dockedKeyboard,
+			register: dockedRegister
+		});
+	});
+
+	onDestroy(() => {
+		dockRegistry.clear(dockToken);
+	});
 </script>
+
+{#snippet dockedKeyboard()}
+	<PianoKeyboard notes={[]} inspectable onInspect={handleInspect} />
+{/snippet}
+
+{#snippet dockedRegister()}
+	<InspectRegister payload={inspectPayload} idleText="Tap a key to hear it." />
+{/snippet}
 
 {#snippet hook(suffix: string)}
 	{@const line = mnemonicFor(suffix)}
