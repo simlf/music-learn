@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { Note } from 'tonal';
 	import {
 		introduceNewCards,
 		getDueCards,
@@ -18,16 +19,53 @@
 		type QueueItem
 	} from '$lib/srs/session';
 	import { spellChord } from '$lib/theory/chord';
-	import { intervalFromShort, transposeFrom } from '$lib/theory/interval';
+	import { intervalFromShort, toAsciiAccidentals, transposeFrom } from '$lib/theory/interval';
 	import { majorScaleNotes } from '$lib/theory/scale';
 	import { formulaFor } from '$lib/lookup/chordPresentation';
-	import { playChord, playNote } from '$lib/audio/audio';
+	import { matchChord, type MatchResult } from '$lib/drills/matchChord';
+	import { ensureAudioReady, playChord, playNote } from '$lib/audio/audio';
 	import { toPitch } from '$lib/audio/voicing';
 	import ChordGlyph from './ChordGlyph.svelte';
 	import IntervalChip from './IntervalChip.svelte';
 	import NoteLabel from './NoteLabel.svelte';
 	import PianoKeyboard from './PianoKeyboard.svelte';
 	import Button from './Button.svelte';
+
+	/**
+	 * Mode-signal chip label (UI-SPEC "Mode Surfaces" / Scope Decision 8):
+	 * every mode a queue item can carry, including the pre-existing `formula`
+	 * mode, reads its own uppercase label immediately below the "N LEFT
+	 * TODAY" register. The arrow is the same "→" glyph already used
+	 * elsewhere in this codebase, never an em dash.
+	 */
+	const MODE_LABELS: Record<string, string> = {
+		formula: 'SYMBOL → FORMULA',
+		'formula-build': 'FORMULA → BUILD',
+		'see-play': 'SYMBOL → PLAY',
+		'hear-name': 'SOUND → NAME'
+	};
+
+	/**
+	 * Right-answer/wrong-answer confirmation variants (mirrors
+	 * drills/+page.svelte's own CORRECT_VARIANTS/WRONG_VARIANTS/pickVariant
+	 * verbatim, scoped to this component for Mode A's feedback line).
+	 */
+	const CORRECT_VARIANTS = ['Nailed it.', 'Et voilà.', 'Bang on.', 'Spot on, mon ami.'];
+	const WRONG_VARIANTS = ['Not quite.', 'Close, but no cigar.', 'Not this time.'];
+
+	/**
+	 * Picks a variant, avoiding an immediate repeat, mirroring drills'
+	 * pickVariant. Loop-free (a repeat draw just steps to the next variant)
+	 * so a deterministic Math.random in tests can never spin forever.
+	 */
+	function pickVariant(variants: string[], lastIndex: number): [string, number] {
+		if (variants.length === 1) return [variants[0], 0];
+		let index = Math.floor(Math.random() * variants.length);
+		if (index === lastIndex) {
+			index = (index + 1) % variants.length;
+		}
+		return [variants[index], index];
+	}
 
 	/**
 	 * Review-mode reveal-then-grade session (MEM-01/MEM-02): the first
@@ -64,6 +102,20 @@
 	let cardsByKey = $state(new Map<string, CardRecord>());
 	let revealed = $state(false);
 	let reviewedCount = $state(0);
+
+	// ---- Mode A ('see-play') per-card state --------------------------------
+	// See the symbol, play it on the keyboard, grade by chroma set equality
+	// (D-03). `selected` is shared with the keyboard's own toggle state;
+	// `modeAResult`/`modeARating` drive the transform-on-wrong feedback and
+	// the binary auto-rating Next commits.
+	let selected = $state<Set<string>>(new Set());
+	let modeAAnswered = $state(false);
+	let modeAResult = $state<MatchResult | undefined>();
+	let modeARating = $state<Rating | undefined>();
+	let confirmationText = $state('');
+	let confirmationIndex = $state(-1);
+	let headlineText = $state('');
+	let wrongIndex = $state(-1);
 
 	/** Compound (factId, mode) key, matching deck.ts's own [factId+mode] convention. */
 	function cardKey(factId: string, mode: string): string {
@@ -109,6 +161,111 @@
 	}
 
 	/**
+	 * Mode A's played-but-wrong letters (Sketch 001 Variant A's wrongLetters
+	 * derivation, mirrored verbatim from drills/+page.svelte's own
+	 * isExtraLetter/wrongLetters): a selected letter whose chroma is in the
+	 * graded result's `extra` set gets the gray fill + ✕ mark once the
+	 * keyboard transforms into its wrong-answer reveal.
+	 */
+	const extraLettersPlayed = $derived(
+		new Set(
+			[...selected].filter((letter) =>
+				modeAResult?.extra.includes(Note.chroma(toAsciiAccidentals(letter))) ?? false
+			)
+		)
+	);
+
+	/**
+	 * Shared per-card reset (13-03): both the existing formula-mode grade
+	 * committer and Mode A's Next button return every per-card state field to
+	 * its pre-answer default through this one seam.
+	 */
+	function resetPerCardState(): void {
+		revealed = false;
+		selected = new Set();
+		modeAAnswered = false;
+		modeAResult = undefined;
+		modeARating = undefined;
+	}
+
+	/** Toggles a Mode A key selection (mirrors Drills' toggleKey exactly); no-ops once answered. */
+	function toggleModeAKey(letter: string): void {
+		if (modeAAnswered) return;
+		const next = new Set(selected);
+		if (next.has(letter)) {
+			next.delete(letter);
+		} else {
+			next.add(letter);
+		}
+		selected = next;
+	}
+
+	/** Key-touch sound (mirrors Drills' pressKey exactly); no-ops once answered. */
+	function pressModeAKey(letter: string, octave: number): void {
+		if (modeAAnswered) return;
+		void ensureAudioReady();
+		playNote(toPitch(letter, octave));
+	}
+
+	/**
+	 * Grades the played chroma set against the target chord (D-03: chroma set
+	 * equality only, never letter strings). Writes the FSRS rating
+	 * fire-and-forget (D-04 auto-rating) so the write can never block the
+	 * feedback/Next flow: a rejection is silently swallowed and the card
+	 * simply stays in its pre-write state until a later successful write.
+	 */
+	function handleModeACheck(): void {
+		if (!currentFact || currentFact.factKind !== 'chord-formula') return;
+
+		const target = spellChord(currentFact.symbol);
+		const playedChroma = new Set(
+			[...selected].map((letter) => Note.chroma(toAsciiAccidentals(letter)))
+		);
+		const result = matchChord(playedChroma, target);
+		modeAResult = result;
+		modeAAnswered = true;
+
+		const rating = result.correct ? Rating.Good : Rating.Again;
+		modeARating = rating;
+
+		if (result.correct) {
+			const [text, index] = pickVariant(CORRECT_VARIANTS, confirmationIndex);
+			confirmationText = text;
+			confirmationIndex = index;
+		} else {
+			const [text, index] = pickVariant(WRONG_VARIANTS, wrongIndex);
+			headlineText = text;
+			wrongIndex = index;
+		}
+
+		const cardToGrade = currentCard;
+		const key = currentItem ? cardKey(currentItem.factId, currentItem.mode) : undefined;
+		if (cardToGrade && key) {
+			void recordGrade(cardToGrade, rating, new Date())
+				.then((updated) => {
+					cardsByKey = new Map(cardsByKey).set(key, updated);
+				})
+				.catch(() => {
+					// Best-effort write (D-04 auto-rating): never blocks Mode A's
+					// feedback/Next flow.
+				});
+		}
+	}
+
+	/**
+	 * Advances the recall queue after Mode A's feedback (single Next button,
+	 * never the 4-button grade grid), re-enqueuing the card only when the
+	 * computed rating was Again - the identical advanceQueue contract the
+	 * existing grade buttons already use.
+	 */
+	function handleModeANext(): void {
+		queue = advanceQueue(queue, modeARating ?? Rating.Again);
+		resetPerCardState();
+		reviewedCount += 1;
+		if (isSessionComplete(queue)) pageState = 'complete';
+	}
+
+	/**
 	 * Reveals the current card's answer. Optionally plays the revealed fact's
 	 * sound (best-effort enhancement, per the UI-SPEC's implementation notes) -
 	 * an audio failure never affects `revealed`, which is already set above the
@@ -145,7 +302,7 @@
 			const updated = await recordGrade(currentCard, rating, new Date());
 			cardsByKey = new Map(cardsByKey).set(cardKey(updated.factId, updated.mode), updated);
 			queue = advanceQueue(queue, rating);
-			revealed = false;
+			resetPerCardState();
 			reviewedCount += 1;
 			if (isSessionComplete(queue)) pageState = 'complete';
 		} catch {
@@ -216,90 +373,169 @@
 			{/if}
 		</div>
 	</div>
-{:else if pageState === 'reviewing' && currentFact}
+{:else if pageState === 'reviewing' && currentFact && currentItem}
 	<p class="text-label font-mono uppercase" aria-live="polite" data-testid="recall-register">
 		{remaining} LEFT TODAY
 	</p>
+	<p class="text-label mt-2 font-mono uppercase" data-testid="recall-mode-chip">
+		{MODE_LABELS[currentItem.mode]}
+	</p>
 
-	<div aria-live="polite">
-		<div class="mt-4" data-testid="recall-prompt">
-			{#if currentFact.factKind === 'chord-formula'}
-				{@const chord = spellChord(currentFact.symbol)}
-				<div class="flex items-start gap-4">
-					<ChordGlyph root={chord.root} quality={chord.symbol.slice(chord.root.length)} />
-				</div>
-				<p class="text-body mt-4">What's the formula?</p>
-			{:else if currentFact.factKind === 'interval-size'}
-				{@const targetLetter = transposeFrom('C', currentFact.short)}
-				<p class="text-heading font-serif font-bold">C to {targetLetter}</p>
-				<p class="text-body mt-4">What's the interval?</p>
-			{:else if currentFact.factKind === 'scale-degree'}
-				<p class="text-heading font-bold">
-					Degree {currentFact.degree} of {currentFact.tonic} major
-				</p>
-				<p class="text-body mt-4">Which note?</p>
-			{/if}
-		</div>
-
-		{#if !revealed}
-			<div class="mt-6">
-				<Button type="button" variant="primary" onclick={handleReveal}>Show Answer</Button>
-			</div>
-		{:else}
-			<div class="stamp mt-6" data-testid="recall-reveal">
+	{#if currentItem.mode === 'formula'}
+		<div aria-live="polite">
+			<div class="mt-4" data-testid="recall-prompt">
 				{#if currentFact.factKind === 'chord-formula'}
 					{@const chord = spellChord(currentFact.symbol)}
-					<p class="text-body">Here's the formula:</p>
-					<div class="mt-4 flex flex-wrap gap-4">
-						{#each formulaFor(chord) as entry (entry.role + entry.letter)}
-							<div class="flex flex-col items-center gap-1">
-								<IntervalChip role={entry.role} label={entry.label} longName={entry.longFr} />
-								<span class="text-label font-mono">{entry.letter}</span>
-								<span class="text-label font-mono">{entry.solfege}</span>
-							</div>
-						{/each}
+					<div class="flex items-start gap-4">
+						<ChordGlyph root={chord.root} quality={chord.symbol.slice(chord.root.length)} />
 					</div>
-					<div class="mt-4">
-						<PianoKeyboard notes={chord.notes} />
-					</div>
+					<p class="text-body mt-4">What's the formula?</p>
 				{:else if currentFact.factKind === 'interval-size'}
-					{@const info = intervalFromShort(currentFact.short)}
-					<p class="text-body">Here's the interval:</p>
-					<div class="mt-4">
-						<IntervalChip role={info.role} label={info.short} longName={info.longFr} />
-					</div>
+					{@const targetLetter = transposeFrom('C', currentFact.short)}
+					<p class="text-heading font-serif font-bold">C to {targetLetter}</p>
+					<p class="text-body mt-4">What's the interval?</p>
 				{:else if currentFact.factKind === 'scale-degree'}
-					{@const degreeNote = majorScaleNotes(currentFact.tonic)[currentFact.degree - 1]}
-					<p class="text-body">Here's the note:</p>
-					{#if degreeNote}
-						<div
-							class="mt-4 inline-block border-2 p-2"
-							style={`border-color: var(--color-ink); background-color: var(--color-${degreeNote.role}); color: var(--color-on-${degreeNote.role});`}
-						>
-							<NoteLabel letter={degreeNote.letter} solfege={degreeNote.solfege} highlighted />
-						</div>
-					{/if}
+					<p class="text-heading font-bold">
+						Degree {currentFact.degree} of {currentFact.tonic} major
+					</p>
+					<p class="text-body mt-4">Which note?</p>
 				{/if}
 			</div>
 
-			<div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4" data-testid="recall-grade-grid">
-				{#each GRADES as grade (grade.rating)}
-					<Button
-						type="button"
-						variant="ghost"
-						style={gradeButtonStyle(grade.rating)}
-						data-testid={`recall-grade-${grade.label.toLowerCase()}`}
-						onclick={() => handleGrade(grade.rating)}
-					>
-						<span class="flex flex-col items-center gap-1">
-							<span class="text-heading font-bold">{grade.label}</span>
-							<span class="text-label font-mono">{intervalTag(grade.rating)}</span>
-						</span>
-					</Button>
-				{/each}
+			{#if !revealed}
+				<div class="mt-6">
+					<Button type="button" variant="primary" onclick={handleReveal}>Show Answer</Button>
+				</div>
+			{:else}
+				<div class="stamp mt-6" data-testid="recall-reveal">
+					{#if currentFact.factKind === 'chord-formula'}
+						{@const chord = spellChord(currentFact.symbol)}
+						<p class="text-body">Here's the formula:</p>
+						<div class="mt-4 flex flex-wrap gap-4">
+							{#each formulaFor(chord) as entry (entry.role + entry.letter)}
+								<div class="flex flex-col items-center gap-1">
+									<IntervalChip role={entry.role} label={entry.label} longName={entry.longFr} />
+									<span class="text-label font-mono">{entry.letter}</span>
+									<span class="text-label font-mono">{entry.solfege}</span>
+								</div>
+							{/each}
+						</div>
+						<div class="mt-4">
+							<PianoKeyboard notes={chord.notes} />
+						</div>
+					{:else if currentFact.factKind === 'interval-size'}
+						{@const info = intervalFromShort(currentFact.short)}
+						<p class="text-body">Here's the interval:</p>
+						<div class="mt-4">
+							<IntervalChip role={info.role} label={info.short} longName={info.longFr} />
+						</div>
+					{:else if currentFact.factKind === 'scale-degree'}
+						{@const degreeNote = majorScaleNotes(currentFact.tonic)[currentFact.degree - 1]}
+						<p class="text-body">Here's the note:</p>
+						{#if degreeNote}
+							<div
+								class="mt-4 inline-block border-2 p-2"
+								style={`border-color: var(--color-ink); background-color: var(--color-${degreeNote.role}); color: var(--color-on-${degreeNote.role});`}
+							>
+								<NoteLabel letter={degreeNote.letter} solfege={degreeNote.solfege} highlighted />
+							</div>
+						{/if}
+					{/if}
+				</div>
+
+				<div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4" data-testid="recall-grade-grid">
+					{#each GRADES as grade (grade.rating)}
+						<Button
+							type="button"
+							variant="ghost"
+							style={gradeButtonStyle(grade.rating)}
+							data-testid={`recall-grade-${grade.label.toLowerCase()}`}
+							onclick={() => handleGrade(grade.rating)}
+						>
+							<span class="flex flex-col items-center gap-1">
+								<span class="text-heading font-bold">{grade.label}</span>
+								<span class="text-label font-mono">{intervalTag(grade.rating)}</span>
+							</span>
+						</Button>
+					{/each}
+				</div>
+			{/if}
+		</div>
+	{:else if currentItem.mode === 'see-play' && currentFact.factKind === 'chord-formula'}
+		{@const target = spellChord(currentFact.symbol)}
+		{@const modeAWrong = modeAAnswered && modeAResult !== undefined && !modeAResult.correct}
+		<div aria-live="polite">
+			<div class="mt-4" data-testid="recall-prompt">
+				<div class="flex items-start gap-4">
+					<ChordGlyph root={target.root} quality={target.symbol.slice(target.root.length)} />
+				</div>
+				<p class="text-body mt-4">Play it on the keyboard.</p>
 			</div>
-		{/if}
-	</div>
+
+			<div class="mt-4">
+				<PianoKeyboard
+					notes={modeAWrong ? target.notes : []}
+					interactive
+					selected={selected}
+					onToggle={toggleModeAKey}
+					onPress={pressModeAKey}
+					wrongLetters={modeAWrong ? extraLettersPlayed : undefined}
+				/>
+			</div>
+
+			{#if !modeAAnswered}
+				<div class="mode-a-controls mt-4">
+					<div class="mode-a-controls__primary">
+						<Button
+							type="button"
+							variant="primary"
+							disabled={selected.size === 0}
+							onclick={handleModeACheck}
+						>
+							Check
+						</Button>
+					</div>
+					<div class="mode-a-controls__secondary">
+						<Button type="button" variant="ghost" onclick={() => (selected = new Set())}>
+							Clear
+						</Button>
+					</div>
+				</div>
+			{:else}
+				<div class="stamp mt-6" data-testid="recall-mode-a-feedback">
+					{#if modeAResult?.correct}
+						<p class="text-body font-bold">{confirmationText}</p>
+					{:else}
+						<div class="bg-ink p-4">
+							<p class="text-label text-mustard font-mono uppercase">{headlineText}</p>
+						</div>
+						<p class="text-label mt-4 flex gap-4 font-mono" data-testid="recall-mode-a-legend">
+							<span class="inline-flex items-center gap-2">
+								<span
+									class="inline-block h-3 w-3"
+									style="background-color: var(--color-third);"
+									aria-hidden="true"
+								></span>
+								The chord
+							</span>
+							<span class="inline-flex items-center gap-2">
+								<span
+									class="inline-block h-3 w-3"
+									style="background-color: var(--color-wrong);"
+									aria-hidden="true"
+								></span>
+								Your extra note
+							</span>
+						</p>
+					{/if}
+				</div>
+
+				<div class="mt-6">
+					<Button type="button" variant="primary" onclick={handleModeANext}>Next</Button>
+				</div>
+			{/if}
+		</div>
+	{/if}
 {/if}
 
 <style>
@@ -309,5 +545,28 @@
 	   follows. */
 	.stamp {
 		animation: stamp-in 240ms ease-out;
+	}
+
+	/*
+	 * Mode A's Check/Clear row (13-03): the same 3:1 primary/secondary flex
+	 * ratio Drills' .drill-controls uses, reused here as a local style scoped
+	 * to this component rather than a shared class.
+	 */
+	.mode-a-controls {
+		display: flex;
+		gap: var(--spacing-sm);
+	}
+
+	.mode-a-controls__primary {
+		flex: 3;
+	}
+
+	.mode-a-controls__secondary {
+		flex: 1;
+	}
+
+	.mode-a-controls__primary :global(.ps-button),
+	.mode-a-controls__secondary :global(.ps-button) {
+		width: 100%;
 	}
 </style>

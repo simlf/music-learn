@@ -37,12 +37,16 @@ vi.mock('$lib/audio/audio', () => ({
 
 const NOW = new Date('2026-07-15T12:00:00Z');
 
-function makeCard(factId: string, factKind: CardRecord['factKind']): CardRecord {
+function makeCard(
+	factId: string,
+	factKind: CardRecord['factKind'],
+	mode: CardRecord['mode'] = 'formula'
+): CardRecord {
 	return {
 		...newCard(NOW),
 		factId,
 		factKind,
-		mode: 'formula',
+		mode,
 		lastRating: null
 	};
 }
@@ -118,6 +122,7 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 		await waitFor(() => screen.getByTestId('recall-prompt'));
 
 		expect(screen.getByTestId('recall-register')).toHaveTextContent('1 LEFT TODAY');
+		expect(screen.getByTestId('recall-mode-chip')).toHaveTextContent('SYMBOL → FORMULA');
 		expect(screen.getByText("What's the formula?")).toBeInTheDocument();
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
@@ -295,5 +300,101 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 
 		await waitFor(() => screen.getByTestId('recall-complete'));
 		expect(screen.getByTestId('recall-reviewed-count')).toHaveTextContent('3 REVIEWED TODAY');
+	});
+});
+
+/**
+ * Mode A ('see-play') component tests (13-03): the recognition->production
+ * surface (RECALL-01, D-03). Uses the REAL matchChord/spellChord against a
+ * real catalog factId ('chord-formula:Cm7'), matching this file's existing
+ * convention of exercising real theory-engine derivations against a mocked
+ * deck/audio seam only - no matchChord mock is introduced.
+ */
+describe('RecallSession Mode A (see-play: see symbol, play notes, chroma-graded)', () => {
+	// Verbatim copies of RecallSession's own module-scope confirmation/wrong
+	// variant pools (not exported), so the tests can assert the rendered
+	// feedback text is drawn from the correct rotation without depending on
+	// which exact variant Math.random happens to pick.
+	const CORRECT_VARIANTS = ['Nailed it.', 'Et voilà.', 'Bang on.', 'Spot on, mon ami.'];
+	const WRONG_VARIANTS = ['Not quite.', 'Close, but no cigar.', 'Not this time.'];
+
+	it('renders the see-play prompt (mode chip, chord glyph, keyboard prompt) with Check disabled until a key is played', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'see-play');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		render(RecallSession);
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		expect(screen.getByTestId('recall-mode-chip')).toHaveTextContent('SYMBOL → PLAY');
+		expect(screen.getByText('Play it on the keyboard.')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Check' })).toBeDisabled();
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		expect(screen.getByRole('button', { name: 'Check' })).toBeEnabled();
+	});
+
+	it('a correct Check leaves the keyboard untransformed, shows a CORRECT_VARIANTS confirmation, records Rating.Good, and Next completes the session', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'see-play');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		render(RecallSession);
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		// Cm7's exact chroma set: C (root), D♯/E♭ (third), G (fifth), A♯/B♭ (seventh).
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(recordGradeMock).toHaveBeenCalledWith(card, Rating.Good, expect.any(Date));
+		// No transform-on-wrong feedback: the legend only ever renders on a miss.
+		expect(screen.queryByTestId('recall-mode-a-legend')).not.toBeInTheDocument();
+		const feedback = screen.getByTestId('recall-mode-a-feedback').textContent?.trim();
+		expect(CORRECT_VARIANTS).toContain(feedback);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+		await waitFor(() => screen.getByTestId('recall-complete'));
+		expect(screen.getByTestId('recall-reviewed-count')).toHaveTextContent('1 REVIEWED TODAY');
+	});
+
+	it('a wrong Check transforms the keyboard (interval colors + gray extra-note fill), shows a legend and WRONG_VARIANTS headline, records Rating.Again, and Next re-enqueues the card', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'see-play');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		render(RecallSession);
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		// Missing the seventh (A♯/B♭), plus an extra note (D) not in the chord.
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D key' })[0]);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(recordGradeMock).toHaveBeenCalledWith(card, Rating.Again, expect.any(Date));
+		expect(screen.getByTestId('recall-mode-a-legend')).toBeInTheDocument();
+		expect(screen.getByText('The chord')).toBeInTheDocument();
+		expect(screen.getByText('Your extra note')).toBeInTheDocument();
+		expect(screen.getAllByText('extra note').length).toBeGreaterThan(0);
+		const feedback = screen.getByTestId('recall-mode-a-feedback').textContent ?? '';
+		expect(WRONG_VARIANTS.some((variant) => feedback.includes(variant))).toBe(true);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+		// Re-enqueued (Rating.Again): the session is still 1 LEFT TODAY and the
+		// see-play prompt shows again, fully reset (Check disabled again).
+		await waitFor(() => expect(screen.getByRole('button', { name: 'Check' })).toBeDisabled());
+		expect(screen.getByTestId('recall-register')).toHaveTextContent('1 LEFT TODAY');
+		expect(screen.getByText('Play it on the keyboard.')).toBeInTheDocument();
 	});
 });
