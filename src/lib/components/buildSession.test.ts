@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/svelte';
+import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import { describe, expect, it } from 'vitest';
 import BuildSession from './BuildSession.svelte';
 
@@ -26,7 +26,7 @@ describe('BuildSession picker (BUILD-01/02, Task 1)', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'C' }));
 
 		expect(screen.getByText('Root')).toBeInTheDocument();
-		expect(screen.queryByText(/^Building/)).not.toBeInTheDocument();
+		expect(screen.queryByTestId('build-active')).not.toBeInTheDocument();
 	});
 
 	it('picking root then quality starts the chord construction session immediately', async () => {
@@ -35,7 +35,7 @@ describe('BuildSession picker (BUILD-01/02, Task 1)', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'C' }));
 		await fireEvent.click(screen.getByRole('button', { name: 'minor 7th' }));
 
-		expect(screen.getByText('Building Cm7...')).toBeInTheDocument();
+		expect(screen.getByTestId('build-register')).toHaveTextContent('STEP 1 OF 3');
 		expect(screen.queryByText('Root')).not.toBeInTheDocument();
 	});
 
@@ -45,7 +45,7 @@ describe('BuildSession picker (BUILD-01/02, Task 1)', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'minor 7th' }));
 		await fireEvent.click(screen.getByRole('button', { name: 'C' }));
 
-		expect(screen.getByText('Building Cm7...')).toBeInTheDocument();
+		expect(screen.getByTestId('build-register')).toHaveTextContent('STEP 1 OF 3');
 	});
 
 	it('picking a scale tonic starts the scale construction session immediately', async () => {
@@ -54,7 +54,7 @@ describe('BuildSession picker (BUILD-01/02, Task 1)', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Scales' }));
 		await fireEvent.click(screen.getByRole('button', { name: 'G major' }));
 
-		expect(screen.getByText('Building G...')).toBeInTheDocument();
+		expect(screen.getByTestId('build-register')).toHaveTextContent('STEP 1 OF 7');
 	});
 
 	it('switching kind resets any in-progress pick back to the picking-state defaults, no cross-kind carryover', async () => {
@@ -135,7 +135,7 @@ describe('BuildSession construction step loop (BUILD-01/02/03, Task 2)', () => {
 				screen.getByTestId('build-feedback').textContent?.includes(variant)
 			)
 		).toBe(true);
-		expect(screen.getByText('E♭')).toBeInTheDocument();
+		expect(within(screen.getByTestId('formula-strip')).getByText('E♭')).toBeInTheDocument();
 		// The step prompt itself hasn't advanced yet - it paces with the feedback.
 		expect(screen.getByTestId('build-register')).toHaveTextContent('STEP 1 OF 3');
 
@@ -205,7 +205,7 @@ describe('BuildSession construction step loop (BUILD-01/02/03, Task 2)', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Scales' }));
 		await fireEvent.click(screen.getByRole('button', { name: 'G major' }));
 
-		expect(screen.getByTestId('build-register')).toHaveTextContent('STEP 1 OF 8');
+		expect(screen.getByTestId('build-register')).toHaveTextContent('STEP 1 OF 7');
 		expect(screen.getByTestId('build-step-line')).toHaveTextContent('Take a whole step up from G.');
 		expect(screen.getByTestId('build-why-line')).toHaveTextContent("That's degree 2 of G major.");
 	});
