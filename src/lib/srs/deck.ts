@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { newCard, gradeCard, Rating, State } from '$lib/srs/scheduler';
 import type { Rating as RatingType } from '$lib/srs/scheduler';
 import { allFacts } from '$lib/srs/facts';
-import type { FactKind } from '$lib/srs/facts';
+import type { FactKind, Fact } from '$lib/srs/facts';
 export type { FactKind };
 import { teachClusterModes, clusterGraduated } from '$lib/srs/rotation';
 
@@ -170,6 +170,20 @@ export async function getCard(factId: string, mode: Mode): Promise<CardRecord | 
  * once (D-06's stagger gate). A fact with nothing new to introduce (cluster
  * already complete and hear-name not yet eligible, or already introduced) is
  * skipped entirely and does not count against `limit`.
+ *
+ * WR-02 (deliberate, bounded behavior): a fact that already has at least one
+ * pre-existing card (a Phase-11/12 returning-user fact whose teach cluster is
+ * only partially seeded, or a graduated cluster newly eligible for its
+ * 'hear-name' stagger-unlock) is a RETROFIT, not the introduction of a
+ * genuinely new fact. Retrofits are collected in a first pass and only
+ * written in a SECOND pass, budgeted by their own counter
+ * (`retrofitsTouched`, capped at `limit` exactly like `factsTouched`) that
+ * never shares or competes with the brand-new-fact budget above. This means
+ * a returning user's entire Phase-11 backlog can never silently consume a
+ * session's new-fact introduction budget ahead of a genuinely unseen fact -
+ * the first pass always walks past already-known facts (without spending
+ * `factsTouched`) until it finds `limit` worth of genuinely new ones (or
+ * exhausts the catalog), and the retrofit pass runs independently afterward.
  */
 export async function introduceNewCards(
 	limit: number = NEW_CARDS_PER_SESSION,
@@ -189,6 +203,13 @@ export async function introduceNewCards(
 	const records: CardRecord[] = [];
 	let factsTouched = 0;
 
+	interface RetrofitCandidate {
+		fact: Fact;
+		missingClusterModes: Mode[];
+		introducesHearName: boolean;
+	}
+	const retrofitCandidates: RetrofitCandidate[] = [];
+
 	for (const fact of allFacts()) {
 		if (factsTouched >= limit) break;
 
@@ -206,7 +227,33 @@ export async function introduceNewCards(
 			continue;
 		}
 
+		if (cardsForFact.length > 0) {
+			// Already-known fact (WR-02): defer to the separately-budgeted
+			// retrofit pass below instead of spending the new-fact `limit`.
+			retrofitCandidates.push({ fact, missingClusterModes, introducesHearName });
+			continue;
+		}
+
 		factsTouched += 1;
+		const modesToAdd: Mode[] = [...missingClusterModes];
+		if (introducesHearName) modesToAdd.push('hear-name');
+
+		for (const mode of modesToAdd) {
+			records.push({
+				...newCard(now),
+				factId: fact.factId,
+				factKind: fact.factKind,
+				mode,
+				lastRating: null
+			});
+		}
+	}
+
+	let retrofitsTouched = 0;
+	for (const { fact, missingClusterModes, introducesHearName } of retrofitCandidates) {
+		if (retrofitsTouched >= limit) break;
+		retrofitsTouched += 1;
+
 		const modesToAdd: Mode[] = [...missingClusterModes];
 		if (introducesHearName) modesToAdd.push('hear-name');
 

@@ -18,6 +18,7 @@ import {
 } from './deck';
 import { Rating, State } from '$lib/srs/scheduler';
 import type { CardRecord } from './deck';
+import { allFacts } from '$lib/srs/facts';
 
 /**
  * Fixed instant so due-date comparisons below are exact and reproducible
@@ -131,6 +132,68 @@ describe('deck', () => {
 
 		const stillAllCards = await getAllCards();
 		expect(stillAllCards).toHaveLength(384);
+	});
+
+	it('WR-02: pre-existing legacy formula-only chord facts (pre-13-01 seeding) are retrofitted via a separately-budgeted pass and never starve genuinely new fact introduction', async () => {
+		// Mirror a returning Phase-11 user's deck: the first 5 chord-formula
+		// facts (catalog order) already have exactly one card each -
+		// 'formula' only, no 'see-play'/'formula-build' - the pre-13-01 shape.
+		const legacyFacts = allFacts()
+			.filter((fact) => fact.factKind === 'chord-formula')
+			.slice(0, 5);
+		const legacyCards = legacyFacts.map((fact) =>
+			makeCardRecord({
+				factId: fact.factId,
+				factKind: 'chord-formula',
+				mode: 'formula',
+				state: State.Review
+			})
+		);
+		await _database().cards.bulkPut(legacyCards);
+
+		const count = await introduceNewCards(3, now0);
+		const allCards = await getAllCards();
+
+		const legacyFactIds = new Set(legacyFacts.map((fact) => fact.factId));
+		const cardsByFact = new Map<string, CardRecord[]>();
+		for (const card of allCards) {
+			const forFact = cardsByFact.get(card.factId) ?? [];
+			forFact.push(card);
+			cardsByFact.set(card.factId, forFact);
+		}
+
+		// Genuinely new facts: exactly `limit` (3) brand-new chord-formula
+		// facts got their full 3-card teach cluster, none of them among the
+		// 5 legacy facts - the retrofit-eligible legacy facts never counted
+		// against this budget, so new-fact introduction was NOT starved.
+		const newFactIds = [...cardsByFact.keys()].filter((id) => !legacyFactIds.has(id));
+		expect(newFactIds).toHaveLength(3);
+		for (const id of newFactIds) {
+			expect(new Set(cardsByFact.get(id)!.map((c) => c.mode))).toEqual(
+				new Set(['formula', 'see-play', 'formula-build'])
+			);
+		}
+
+		// Retrofit pass: bounded by the SAME `limit` (3), independently of the
+		// new-fact budget above - only 3 of the 5 legacy facts get backfilled
+		// with 'see-play'/'formula-build' in this call, the other 2 are left
+		// untouched (still formula-only) for a later call to pick up.
+		const retrofittedLegacyIds = [...legacyFactIds].filter(
+			(id) => cardsByFact.get(id)!.length === 3
+		);
+		const untouchedLegacyIds = [...legacyFactIds].filter(
+			(id) => cardsByFact.get(id)!.length === 1
+		);
+		expect(retrofittedLegacyIds).toHaveLength(3);
+		expect(untouchedLegacyIds).toHaveLength(2);
+		for (const id of retrofittedLegacyIds) {
+			expect(new Set(cardsByFact.get(id)!.map((c) => c.mode))).toEqual(
+				new Set(['formula', 'see-play', 'formula-build'])
+			);
+		}
+
+		// 3 new facts x 3 cards + 3 retrofitted legacy facts x 2 new cards each.
+		expect(count).toBe(3 * 3 + 3 * 2);
 	});
 
 	it("CardRecordSchema's widened mode enum accepts 'see-play' and 'hear-name' records without dropping them via safeParse", async () => {
