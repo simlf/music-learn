@@ -393,6 +393,15 @@ Plans:
 
 **Design reference**: `.planning/sketches/008-keyboard-everywhere/` (winner Variant A: docked bottom bar)
 **UI hint**: yes
+**Plans**: 7 plans
+
+- [ ] 15-01-PLAN.md — Dock foundations: collapse-state persistence (music-learn:docked-keyboard-collapsed) + Svelte context registration seam (KBD-02)
+- [ ] 15-02-PLAN.md — KeyboardDock chrome (handle/surface/register, collapse+persist, --dock-height clearance) + layout host wiring (KBD-01/02)
+- [ ] 15-03-PLAN.md — Lookup + Theory: docked always-inspectable tap-to-hear keyboards (Theory gains a new one) (KBD-01)
+- [ ] 15-04-PLAN.md — Scales Practice: relocate ScaleKeyboardDrill's key-strip into the dock, degree register stays in flow (KBD-01)
+- [ ] 15-05-PLAN.md — Drills: single mode-aware docked keyboard for all branches + short-landscape inline fallback (KBD-01/03)
+- [ ] 15-06-PLAN.md — Recall modes A/B/formula: one mode-aware docked keyboard (KBD-01/03)
+- [ ] 15-07-PLAN.md — Recall Mode C: dock the embedded BuildSession constructable keyboard, /build unchanged (KBD-01/03)
 
 ### Phase 16: Hear the Chord
 
