@@ -33,8 +33,9 @@ export function teachClusterModes(factKind: FactKind): Mode[] {
 
 /**
  * True once EVERY mode in `clusterModes` has a matching card in
- * `cardsForFact` that has reached `State.Review` (D-06's stagger gate: "graduate
- * A/C first, unlock D [here: hear-name], then B"). False if any cluster mode
+ * `cardsForFact` that has reached `State.Review` (D-06's stagger gate: the
+ * cluster's modes graduate together; 'hear-name' - CONTEXT's mode B,
+ * demoted/lowest-priority - unlocks only after). False if any cluster mode
  * is missing a card entirely, or has one that has not yet graduated past
  * State.New/Learning. Vacuously true for an empty `clusterModes` array,
  * matching interval-size/scale-degree facts' trivial single-mode case once
