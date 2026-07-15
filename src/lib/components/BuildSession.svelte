@@ -361,7 +361,8 @@
 				factId,
 				factKind,
 				mode: 'formula-build',
-				lastRating: null
+				lastRating: null,
+				masteryDayCount: 0
 			};
 			await recordGrade(card, ratingForWrongTaps(wrongTapCount), now);
 			fsrsSaved = true;

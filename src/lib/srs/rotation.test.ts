@@ -31,6 +31,7 @@ function makeCardRecord(overrides: Partial<CardRecord> = {}): CardRecord {
 		state: State.New,
 		last_review: undefined,
 		lastRating: null,
+		masteryDayCount: 0,
 		...overrides
 	};
 }

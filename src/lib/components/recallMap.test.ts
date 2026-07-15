@@ -39,7 +39,8 @@ function baseCard(factId: string, factKind: CardRecord['factKind']): CardRecord 
 		factId,
 		factKind,
 		mode: 'formula',
-		lastRating: null
+		lastRating: null,
+		masteryDayCount: 0
 	};
 }
 
@@ -53,12 +54,14 @@ describe('RecallMap (MEM-04: fact x mode recall map)', () => {
 		// due: a brand-new card, due <= now, regardless of state/lastRating.
 		const dueCard = baseCard('chord-formula:Cm7', 'chord-formula');
 
-		// mastered: due > now, state === Review, most recent grade not Again.
+		// mastered: due > now, state === Review, most recent grade not Again,
+		// AND masteryDayCount >= 2 (successive-relearning gate, IMP-01).
 		const masteredCard: CardRecord = {
 			...baseCard('interval-size:m3', 'interval-size'),
 			due: FUTURE,
 			state: State.Review,
-			lastRating: Rating.Good
+			lastRating: Rating.Good,
+			masteryDayCount: 2
 		};
 
 		// weak: due > now, most recent grade === Again.
@@ -166,7 +169,8 @@ describe('RecallMap (MEM-04: fact x mode recall map)', () => {
 			mode: 'formula-build',
 			due: FUTURE,
 			state: State.Review,
-			lastRating: Rating.Good
+			lastRating: Rating.Good,
+			masteryDayCount: 2
 		};
 
 		const playCard: CardRecord = {

@@ -59,6 +59,15 @@ export interface CardRecord {
 	state: State;
 	last_review?: Date;
 	lastRating: RatingType | null;
+	/**
+	 * IMP-01 (successive-relearning mastery criterion): the count of DISTINCT
+	 * local calendar days on which this card received a correct (Good/Easy)
+	 * grade. Incremented by at most 1 per calendar day, only on a correct
+	 * grade, and never decremented. deriveCellState gates 'mastered' on this
+	 * reaching 2, since a single correct grade in one sitting does not
+	 * establish durable retrieval (Rawson and Dunlosky).
+	 */
+	masteryDayCount: number;
 }
 
 /**
@@ -81,7 +90,11 @@ const CardRecordSchema = z.object({
 	lapses: z.number(),
 	state: z.number().int().min(0).max(3),
 	last_review: z.coerce.date().optional(),
-	lastRating: z.number().int().min(1).max(4).nullable()
+	lastRating: z.number().int().min(1).max(4).nullable(),
+	// Legacy records written before IMP-01 have no masteryDayCount field at
+	// all; defaulting to 0 here (rather than requiring it) is what keeps
+	// existing IndexedDB records loading without throwing (D-09 boundary).
+	masteryDayCount: z.number().int().min(0).default(0)
 });
 
 class RecallDatabase extends Dexie {
@@ -244,7 +257,8 @@ export async function introduceNewCards(
 				factId: fact.factId,
 				factKind: fact.factKind,
 				mode,
-				lastRating: null
+				lastRating: null,
+				masteryDayCount: 0
 			});
 		}
 	}
@@ -263,7 +277,8 @@ export async function introduceNewCards(
 				factId: fact.factId,
 				factKind: fact.factKind,
 				mode,
-				lastRating: null
+				lastRating: null,
+				masteryDayCount: 0
 			});
 		}
 	}
@@ -276,6 +291,35 @@ export async function introduceNewCards(
 	return records.length;
 }
 
+/** True when `a` and `b` fall on the same LOCAL calendar day (getFullYear/getMonth/getDate, not UTC, matching Phase 08's clientDate convention). */
+function isSameLocalDay(a: Date, b: Date): boolean {
+	return (
+		a.getFullYear() === b.getFullYear() &&
+		a.getMonth() === b.getMonth() &&
+		a.getDate() === b.getDate()
+	);
+}
+
+/**
+ * IMP-01: computes the next masteryDayCount for a grade being committed.
+ * Only a correct grade (Good/Easy) can increment it, and only once per
+ * distinct local calendar day - a card never mastery-counted (no last_review
+ * yet) or last correctly counted on a DIFFERENT local day than `now`
+ * increments by 1; a same-day repeat or an incorrect (Again/Hard) grade
+ * leaves it unchanged. Reads `card.last_review`, the PRE-grade value, so it
+ * always compares against the day of the previous review, not this one.
+ */
+function nextMasteryDayCount(card: CardRecord, rating: RatingType, now: Date): number {
+	const isCorrect = rating === Rating.Good || rating === Rating.Easy;
+	if (!isCorrect) {
+		return card.masteryDayCount;
+	}
+	if (!card.last_review || !isSameLocalDay(card.last_review, now)) {
+		return card.masteryDayCount + 1;
+	}
+	return card.masteryDayCount;
+}
+
 /** Commits a grade via the scheduler, persists the result, and returns the updated CardRecord. */
 export async function recordGrade(
 	card: CardRecord,
@@ -283,9 +327,15 @@ export async function recordGrade(
 	now: Date = new Date()
 ): Promise<CardRecord> {
 	const { card: updatedFsrsFields } = gradeCard(card, rating, now);
+	const masteryDayCount = nextMasteryDayCount(card, rating, now);
 	// Spread order matters: `card` first for factId/factKind/mode, then the
-	// fresh FSRS fields, then lastRating last so it always wins.
-	const updated: CardRecord = { ...card, ...updatedFsrsFields, lastRating: rating };
+	// fresh FSRS fields, then lastRating/masteryDayCount last so they always win.
+	const updated: CardRecord = {
+		...card,
+		...updatedFsrsFields,
+		lastRating: rating,
+		masteryDayCount
+	};
 	await _database().cards.put(updated);
 	return updated;
 }
@@ -303,8 +353,13 @@ export function deriveCellState(card: CardRecord | undefined, now: Date = new Da
 	if (card.lastRating === Rating.Again) {
 		return 'weak';
 	}
+	// IMP-01 (successive-relearning mastery criterion): State.Review alone is
+	// not enough - a card only reports 'mastered' once it has been correctly
+	// recalled on at least 2 DISTINCT calendar days. A Review card that
+	// hasn't cleared that gate yet is a real retrieval path but not yet
+	// durably mastered, so it reports 'weak', not 'mastered'.
 	if (card.state === State.Review) {
-		return 'mastered';
+		return card.masteryDayCount >= 2 ? 'mastered' : 'weak';
 	}
 	// Not-yet-due New/Learning card without a lastRating: provably unreachable
 	// given this app's invariants (New cards are always created with due=now,

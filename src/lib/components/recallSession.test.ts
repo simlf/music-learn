@@ -54,7 +54,8 @@ function makeCard(
 		factId,
 		factKind,
 		mode,
-		lastRating: null
+		lastRating: null,
+		masteryDayCount: 0
 	};
 }
 
@@ -744,6 +745,7 @@ describe('RecallSession queue composition via selectReviewCards (RECALL-03 rotat
 			factKind,
 			mode,
 			lastRating: null,
+			masteryDayCount: 0,
 			...overrides
 		};
 	}

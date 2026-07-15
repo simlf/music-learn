@@ -293,10 +293,10 @@ describe('deck', () => {
 	});
 
 	it('CardRecordSchema: a legacy persisted record with no masteryDayCount field loads via getAllCards and defaults to 0', async () => {
-		const legacyRecord = makeCardRecord({ factId: 'chord-formula:Dm7', mode: 'formula' }) as Record<
-			string,
-			unknown
-		>;
+		const legacyRecord = makeCardRecord({
+			factId: 'chord-formula:Dm7',
+			mode: 'formula'
+		}) as unknown as Record<string, unknown>;
 		delete legacyRecord.masteryDayCount;
 		await _database().cards.put(legacyRecord as unknown as CardRecord);
 
