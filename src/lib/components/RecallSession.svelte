@@ -141,12 +141,16 @@
 	 */
 	async function handleGrade(rating: Rating): Promise<void> {
 		if (!currentCard) return;
-		const updated = await recordGrade(currentCard, rating, new Date());
-		cardsByKey.set(cardKey(updated.factId, updated.mode), updated);
-		queue = advanceQueue(queue, rating);
-		revealed = false;
-		reviewedCount += 1;
-		if (isSessionComplete(queue)) pageState = 'complete';
+		try {
+			const updated = await recordGrade(currentCard, rating, new Date());
+			cardsByKey.set(cardKey(updated.factId, updated.mode), updated);
+			queue = advanceQueue(queue, rating);
+			revealed = false;
+			reviewedCount += 1;
+			if (isSessionComplete(queue)) pageState = 'complete';
+		} catch {
+			pageState = 'error';
+		}
 	}
 
 	const GRADES: { rating: Rating; label: string }[] = [

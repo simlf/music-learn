@@ -176,6 +176,23 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 		expect(screen.getByText(degreeNote.letter)).toBeInTheDocument();
 	});
 
+	it('surfaces the error state when recordGrade throws, instead of leaving the revealed card stuck', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+		recordGradeMock.mockRejectedValueOnce(new Error('quota exceeded'));
+
+		render(RecallSession);
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
+		await fireEvent.click(screen.getByTestId('recall-grade-good'));
+
+		await waitFor(() => screen.getByTestId('recall-error'));
+		expect(screen.getByText(/Couldn't open the practice ledger\./)).toBeInTheDocument();
+	});
+
 	it('re-enqueues an Again grade without decrementing the register, then completes after grading the rest', async () => {
 		const cardA = makeCard('chord-formula:Cm7', 'chord-formula');
 		const cardB = makeCard('interval-size:m3', 'interval-size');
