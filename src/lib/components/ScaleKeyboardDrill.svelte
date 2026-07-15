@@ -4,6 +4,7 @@
 	import Button from './Button.svelte';
 	import { playNote } from '$lib/audio/audio';
 	import { toPitch } from '$lib/audio/voicing';
+	import { getDockRegistry } from '$lib/keyboard/dockContext.svelte';
 	import {
 		createScaleKeyboardDrillState,
 		expectedTarget,
@@ -31,6 +32,11 @@
 	 * returning octave onto the tonic key when the 7th degree is a black key
 	 * (see 10-02-PLAN.md's recorded design decision) and its wrongLetters prop
 	 * paints a permanent-per-reveal cross mark, not a momentary flash.
+	 *
+	 * Only the tappable key-strip docks with the shared keyboard dock
+	 * (KBD-01, Scope Decision 6, Phase 15 Plan 04) - the degree register, the
+	 * ascending/descending prompt, and the completion card stay in this
+	 * component's own scrolling flow, never in the dock.
 	 */
 	type KeyKind = 'white' | 'black';
 
@@ -113,10 +119,33 @@
 		wrongTimer = undefined;
 	}
 
+	const dockToken = Symbol('scale-keyboard-drill-dock');
+	const dockRegistry = getDockRegistry();
+
+	/**
+	 * Hands only the tappable key-strip (`keyStrip`) to the shared dock - no
+	 * `register` snippet, since the degree register/prompt stay inline
+	 * (Scope Decision 6). Cleared whenever the drill completes (`drill.done`)
+	 * so a finished drill's dock shows no stray keys; `reset()` flips
+	 * `drill.done` back to false, which re-registers on the next effect run.
+	 */
+	$effect(() => {
+		if (drill.done) {
+			dockRegistry.clear(dockToken);
+		} else {
+			dockRegistry.register({ token: dockToken, keyboard: keyStrip });
+		}
+	});
+
 	// If the component unmounts (e.g. switching back to Explore, or
 	// navigating away) while a wrong-flash timer is pending, cancel it so
-	// its callback never fires against an already-torn-down instance.
-	onDestroy(() => clearTimeout(wrongTimer));
+	// its callback never fires against an already-torn-down instance. Also
+	// clears the dock registration so a stray key-strip never lingers once
+	// Practice mode unmounts (T-15-03).
+	onDestroy(() => {
+		clearTimeout(wrongTimer);
+		dockRegistry.clear(dockToken);
+	});
 
 	function scrollTonicIntoView() {
 		const el = containerEl?.querySelector('[data-tonic-key="true"]') as HTMLElement | null;
@@ -254,59 +283,61 @@
 		>
 			{register}
 		</p>
-
-		<div
-			class="scroll-wrap mt-2"
-			bind:this={containerEl}
-			role="group"
-			aria-label={`Scale keyboard, ${tonic} major, two octaves`}
-		>
-			<div
-				class="keys"
-				style="min-width: {whiteLetters.length * MIN_WHITE_KEY_PX}px;"
-			>
-				{#each whiteKeys as key (key.index)}
-					{@const placement = filledMap.get(`white:${key.index}`)}
-					<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-					<div
-						class="key key--white {roleClass('white', key.index)} {wrongClass('white', key.index)}"
-						style="left: {key.leftPct}%; width: {whiteKeyWidthPct}%;"
-						role="button"
-						tabindex="0"
-						aria-label={ariaLabelFor('white', key.index, key.letter, key.octave)}
-						aria-current={isExpectedKey('white', key.index) ? 'step' : undefined}
-						data-tonic-key={isTonicKey('white', key.index)}
-						onclick={() => handleTap('white', key.index, key.letter)}
-						onkeydown={(event) => handleKeydown(event, () => handleTap('white', key.index, key.letter))}
-					>
-						{#if placement}
-							<NoteLabel letter={placement.letter} solfege={placement.solfege} highlighted />
-						{/if}
-					</div>
-				{/each}
-				{#each blackKeys as key (key.index)}
-					{@const placement = filledMap.get(`black:${key.index}`)}
-					<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-					<div
-						class="key key--black {roleClass('black', key.index)} {wrongClass('black', key.index)}"
-						style="left: {key.leftPct}%; width: {blackKeyWidthPct}%;"
-						role="button"
-						tabindex="0"
-						aria-label={ariaLabelFor('black', key.index, key.sharpLetter, key.octave)}
-						aria-current={isExpectedKey('black', key.index) ? 'step' : undefined}
-						data-tonic-key={isTonicKey('black', key.index)}
-						onclick={() => handleTap('black', key.index, key.sharpLetter)}
-						onkeydown={(event) => handleKeydown(event, () => handleTap('black', key.index, key.sharpLetter))}
-					>
-						{#if placement}
-							<NoteLabel letter={placement.letter} solfege={placement.solfege} highlighted />
-						{/if}
-					</div>
-				{/each}
-			</div>
-		</div>
 	{/if}
 </div>
+
+{#snippet keyStrip()}
+	<div
+		class="scroll-wrap"
+		bind:this={containerEl}
+		role="group"
+		aria-label={`Scale keyboard, ${tonic} major, two octaves`}
+	>
+		<div
+			class="keys"
+			style="min-width: {whiteLetters.length * MIN_WHITE_KEY_PX}px;"
+		>
+			{#each whiteKeys as key (key.index)}
+				{@const placement = filledMap.get(`white:${key.index}`)}
+				<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+				<div
+					class="key key--white {roleClass('white', key.index)} {wrongClass('white', key.index)}"
+					style="left: {key.leftPct}%; width: {whiteKeyWidthPct}%;"
+					role="button"
+					tabindex="0"
+					aria-label={ariaLabelFor('white', key.index, key.letter, key.octave)}
+					aria-current={isExpectedKey('white', key.index) ? 'step' : undefined}
+					data-tonic-key={isTonicKey('white', key.index)}
+					onclick={() => handleTap('white', key.index, key.letter)}
+					onkeydown={(event) => handleKeydown(event, () => handleTap('white', key.index, key.letter))}
+				>
+					{#if placement}
+						<NoteLabel letter={placement.letter} solfege={placement.solfege} highlighted />
+					{/if}
+				</div>
+			{/each}
+			{#each blackKeys as key (key.index)}
+				{@const placement = filledMap.get(`black:${key.index}`)}
+				<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+				<div
+					class="key key--black {roleClass('black', key.index)} {wrongClass('black', key.index)}"
+					style="left: {key.leftPct}%; width: {blackKeyWidthPct}%;"
+					role="button"
+					tabindex="0"
+					aria-label={ariaLabelFor('black', key.index, key.sharpLetter, key.octave)}
+					aria-current={isExpectedKey('black', key.index) ? 'step' : undefined}
+					data-tonic-key={isTonicKey('black', key.index)}
+					onclick={() => handleTap('black', key.index, key.sharpLetter)}
+					onkeydown={(event) => handleKeydown(event, () => handleTap('black', key.index, key.sharpLetter))}
+				>
+					{#if placement}
+						<NoteLabel letter={placement.letter} solfege={placement.solfege} highlighted />
+					{/if}
+				</div>
+			{/each}
+		</div>
+	</div>
+{/snippet}
 
 <style>
 	.scale-keyboard-drill {
