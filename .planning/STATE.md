@@ -4,16 +4,16 @@ milestone: v2.0
 milestone_name: Learning Upgrade
 current_phase: 11
 current_phase_name: Memorization Engine
-status: verifying
-stopped_at: Completed 10-02-PLAN.md (Phase 10 scale-keyboard-drill fully complete, both plans done)
-last_updated: "2026-07-15T11:17:49.145Z"
+status: executing
+stopped_at: Completed 11-01-PLAN.md (SRS scheduler wrapper)
+last_updated: "2026-07-15T12:07:19.701Z"
 last_activity: 2026-07-15
-last_activity_desc: Phase 10 complete, transitioned to Phase 11
+last_activity_desc: Phase 11 execution started
 progress:
   total_phases: 13
   completed_phases: 6
-  total_plans: 23
-  completed_plans: 23
+  total_plans: 29
+  completed_plans: 24
   percent: 46
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-14)
 
 **Core value:** See a jazz chord symbol and know instantly what to play with the left hand.
-**Current focus:** Phase 10 — scale-keyboard-drill
+**Current focus:** Phase 11 — Memorization Engine
 
 ## Current Position
 
-Phase: 11 — Memorization Engine
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-07-15 — Phase 10 complete, transitioned to Phase 11
+Phase: 11 (Memorization Engine) — EXECUTING
+Plan: 2 of 6
+Status: Executing Phase 11
+Last activity: 2026-07-15 — Phase 11 execution started
 
 **v2.0 phases (execution order 10 → 11 → 12 → 13):**
 
@@ -86,6 +86,7 @@ Last activity: 2026-07-15 — Phase 10 complete, transitioned to Phase 11
 | Phase 09-deploy-to-the-piano P04 | 15min | 2 tasks | 3 files |
 | Phase 10 P01 | 15min | 2 tasks | 2 files |
 | Phase 10 P02 | 20min | 2 tasks | 6 files |
+| Phase 11 P01 | 12min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -147,6 +148,8 @@ Recent decisions affecting current work:
 - [Phase 10-01]: placeAscendingScaleKeys builds its own unified ascending key ordinal rather than reusing assignNotesToKeys, to guarantee the returning octave lands on a key distinct from the tonic.
 - [Phase 10-02]: ScaleKeyboardDrill renders its own 2-octave keyboard from keyboardLayout's pure geometry instead of importing PianoKeyboard, so the returning octave never collapses onto the tonic and the wrong-tap flash is momentary rather than PianoKeyboard's persistent cross-mark
 - [Phase 10-02]: Correct taps always fill/sound the canonical ascending placement (placements[degree-1]) regardless of which board key instance was tapped, keeping the same logic correct for both the ascending and descending legs
+- [Phase 11-01]: fsrs(generatorParameters({ enable_short_term: false, request_retention: 0.9, enable_fuzz: false })) is the one module-level scheduler instance; enable_short_term:false confirmed by test to keep New+Again graduating straight to Review, never Relearning
+- [Phase 11-01]: scheduler.ts re-exports Rating/State/Card verbatim from ts-fsrs (single-seam encapsulation mirroring audio.ts); every later plan in the phase must import these from ./scheduler, never from ts-fsrs directly
 
 ### Pending Todos
 
@@ -171,7 +174,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-15T10:49:01.617Z
-Stopped at: Completed 10-02-PLAN.md (Phase 10 scale-keyboard-drill fully complete, both plans done)
+Last session: 2026-07-15T12:07:19.665Z
+Stopped at: Completed 11-01-PLAN.md (SRS scheduler wrapper)
 Resume file: None
 Next: /gsd-plan-phase 10
