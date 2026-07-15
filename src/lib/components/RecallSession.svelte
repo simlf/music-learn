@@ -143,7 +143,7 @@
 		if (!currentCard) return;
 		try {
 			const updated = await recordGrade(currentCard, rating, new Date());
-			cardsByKey.set(cardKey(updated.factId, updated.mode), updated);
+			cardsByKey = new Map(cardsByKey).set(cardKey(updated.factId, updated.mode), updated);
 			queue = advanceQueue(queue, rating);
 			revealed = false;
 			reviewedCount += 1;

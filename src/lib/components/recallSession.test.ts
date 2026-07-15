@@ -1,7 +1,8 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import RecallSession from './RecallSession.svelte';
-import { newCard, Rating } from '$lib/srs/scheduler';
+import { gradeCard, newCard, previewGrades, Rating } from '$lib/srs/scheduler';
+import { formatDayInterval } from '$lib/srs/session';
 import type { CardRecord } from '$lib/srs/deck';
 import { majorScaleNotes } from '$lib/theory/scale';
 import { transposeFrom } from '$lib/theory/interval';
@@ -191,6 +192,56 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 
 		await waitFor(() => screen.getByTestId('recall-error'));
 		expect(screen.getByText(/Couldn't open the practice ledger\./)).toBeInTheDocument();
+	});
+
+	it("reactively reflects a graded card's real FSRS state on its next reveal, not the stale pre-grade record (WR-01 regression)", async () => {
+		// A single-card queue is the scenario that actually exercises WR-01:
+		// `advanceQueue`'s Again branch on a one-item queue returns a new
+		// array but the SAME queue-item object reference (nothing else to
+		// reorder around), so Svelte's `currentItem` derived produces a
+		// value that is reference-equal to its prior output. If
+		// `cardsByKey`'s .set() mutation isn't itself reactively tracked
+		// (WR-01), the memoized `currentCard`/`previews` deriveds never
+		// re-run on this second reveal, and the grade buttons would keep
+		// showing the stale brand-new-card preview instead of the just
+		// graded record. A multi-card queue would mask this (per the
+		// review's own note) because the queue-item reference DOES change
+		// every other step, forcing a re-read regardless of whether the Map
+		// mutation itself is tracked.
+		const card = makeCard('chord-formula:Cm7', 'chord-formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		let updatedCard: CardRecord | undefined;
+		recordGradeMock.mockImplementation(async (c: CardRecord, rating: Rating, now: Date) => {
+			const { card: fsrsFields } = gradeCard(c, rating, now);
+			updatedCard = { ...c, ...fsrsFields, lastRating: rating };
+			return updatedCard;
+		});
+
+		render(RecallSession);
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		// Grade Again: real FSRS fields change (New -> Review, per D-02); the
+		// only card in the queue is re-enqueued behind itself and shows again.
+		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
+		await fireEvent.click(screen.getByTestId('recall-grade-again'));
+		await waitFor(() => screen.getByRole('button', { name: 'Show Answer' }));
+		expect(updatedCard).toBeDefined();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
+
+		const expectedPreviews = previewGrades(updatedCard!, new Date());
+		const expectedEasy = formatDayInterval(
+			expectedPreviews.find((entry) => entry.rating === Rating.Easy)!.days
+		);
+
+		// The brand-new-card fixed Easy preview is 8d; a real post-Again-grade
+		// Review-state card previews Easy at a different value (4d given this
+		// app's FSRS config), so this only matches the real graded record.
+		expect(expectedEasy).not.toBe('8d');
+		expect(screen.getByTestId('recall-grade-easy')).toHaveTextContent(expectedEasy);
 	});
 
 	it('re-enqueues an Again grade without decrementing the register, then completes after grading the rest', async () => {
