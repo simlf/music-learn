@@ -77,9 +77,9 @@ Grounded in validated spikes 006-009 (`.planning/spikes/MANIFEST.md` Session 2, 
 
 ### Multi-modal Recall
 
-- [ ] **RECALL-01**: User drills one chord across rotating modes: see the symbol then play the notes; given the formula/degrees then build it; hear the chord then name it
+- [x] **RECALL-01**: User drills one chord across rotating modes: see the symbol then play the notes; given the formula/degrees then build it; hear the chord then name it
 - [ ] **RECALL-02**: Ear-based naming is answered by multiple choice against same-root distractors and never gates progress or unlocks
-- [ ] **RECALL-03**: Modes rotate per-fact when teaching a new item and are spaced across sessions when reviewing a known one
+- [x] **RECALL-03**: Modes rotate per-fact when teaching a new item and are spaced across sessions when reviewing a known one
 
 ### Scale Practice
 

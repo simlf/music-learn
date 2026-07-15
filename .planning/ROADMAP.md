@@ -356,10 +356,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Ear-based naming is answered by multiple choice against same-root distractors and never gates progress or unlocks.
   3. Modes rotate per-fact when teaching a new item and are spaced across sessions when reviewing a known one.
 
-**Plans:** 6 plans
+**Plans:** 1/6 plans executed
 
 Plans:
-- [ ] 13-01-PLAN.md — Widen deck.ts's Mode to 4 values and add the RECALL-03 rotation policy (rotation.ts)
+
+- [x] 13-01-PLAN.md — Widen deck.ts's Mode to 4 values and add the RECALL-03 rotation policy (rotation.ts)
 - [ ] 13-02-PLAN.md — RecallMap grows to 4 mode columns with the not-applicable cell treatment
 - [ ] 13-03-PLAN.md — Universal mode-signal chip + Mode A (see-play) surface
 - [ ] 13-04-PLAN.md — Mode B (hear-name) surface: same-root MC, never gates, auto-advance
@@ -390,4 +391,4 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 | 10. Scale Keyboard Drill | 2/2 | Complete    | 2026-07-15 |
 | 11. Memorization Engine | 6/6 | Complete    | 2026-07-15 |
 | 12. Build-it Construction | 6/6 | Complete    | 2026-07-15 |
-| 13. Multi-modal Recall | 0/TBD | Not started | - |
+| 13. Multi-modal Recall | 1/6 | In Progress|  |
