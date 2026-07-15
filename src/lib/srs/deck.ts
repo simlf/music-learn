@@ -4,6 +4,8 @@ import { newCard, gradeCard, Rating, State } from '$lib/srs/scheduler';
 import type { Rating as RatingType } from '$lib/srs/scheduler';
 import { allFacts } from '$lib/srs/facts';
 import type { FactKind } from '$lib/srs/facts';
+export type { FactKind };
+import { teachClusterModes, clusterGraduated } from '$lib/srs/rotation';
 
 /**
  * The Dexie/IndexedDB persistence layer for FSRS cards (MEM-01/MEM-03/MEM-04):
@@ -21,12 +23,13 @@ import type { FactKind } from '$lib/srs/facts';
  */
 
 /**
- * Phase 11's recall mode (D-07), plus Phase 12's construction mode (D-09):
- * completing/missing construction steps records gradeable events under
- * 'formula-build', a card independent of the same fact's 'formula' recall
- * card. Phase 13 may extend this union further.
+ * Phase 11's recall mode (D-07), Phase 12's construction mode (D-09), and
+ * Phase 13's two multi-modal recall additions (RECALL-01, D-01/D-02):
+ * 'see-play' (mode A: see the symbol, play the notes) and 'hear-name'
+ * (mode B: hear the chord, pick the symbol by ear). Mode D ('notes-symbol')
+ * is deferred per D-05 and deliberately excluded from this union.
  */
-export type Mode = 'formula' | 'formula-build';
+export type Mode = 'formula' | 'formula-build' | 'see-play' | 'hear-name';
 
 /** The gradual-introduction batch size (documented discretion, not a literal CONTEXT.md requirement). */
 export const NEW_CARDS_PER_SESSION = 10;
@@ -67,7 +70,7 @@ export interface CardRecord {
 const CardRecordSchema = z.object({
 	factId: z.string(),
 	factKind: z.enum(['chord-formula', 'interval-size', 'scale-degree', 'scale-formula']),
-	mode: z.enum(['formula', 'formula-build']),
+	mode: z.enum(['formula', 'formula-build', 'see-play', 'hear-name']),
 	due: z.coerce.date(),
 	stability: z.number(),
 	difficulty: z.number(),
@@ -147,34 +150,80 @@ export async function getCard(factId: string, mode: Mode): Promise<CardRecord | 
 }
 
 /**
- * Creates up to `limit` New cards (mode 'formula') for facts.ts entries with
- * no existing card, returns the count introduced. Never seeds all 192 facts
- * at once (gradual introduction, documented discretion) — the deck starts
- * genuinely empty and grows incrementally, matching the UI-SPEC's empty-state
- * copy and the recall map's "not yet seen" cell.
+ * Introduces up to `limit` NEW FACTS' worth of cards (not `limit` raw
+ * records - a fact's introduction may write more than one card), returns the
+ * total record count written. Never seeds all 192 facts at once (gradual
+ * introduction, documented discretion) — the deck starts genuinely empty and
+ * grows incrementally, matching the UI-SPEC's empty-state copy and the
+ * recall map's "not yet seen" cell.
+ *
+ * Phase 13 (RECALL-01/03, D-06) rewrites this from Phase 11/12's single
+ * 'formula' card per fact into a teach-cluster + stagger seeding policy:
+ * a chord-formula fact's teach cluster (`teachClusterModes`) - 'formula',
+ * 'see-play', 'formula-build' - is introduced TOGETHER, in the same call, so
+ * a chord fact is always taught across all three of its spine modes at once
+ * (interval-size/scale-degree facts' cluster is just `['formula']`, so their
+ * seeding stays byte-identical to Phase 11). Once every one of a chord fact's
+ * cluster cards has graduated to `State.Review` (`clusterGraduated`), a LATER
+ * call introduces exactly one more card for that fact: 'hear-name' - staggered
+ * behind the rest so FSRS never receives four brand-new cards for one fact at
+ * once (D-06's stagger gate). A fact with nothing new to introduce (cluster
+ * already complete and hear-name not yet eligible, or already introduced) is
+ * skipped entirely and does not count against `limit`.
  */
 export async function introduceNewCards(
 	limit: number = NEW_CARDS_PER_SESSION,
 	now: Date = new Date()
 ): Promise<number> {
 	const existing = await getAllCards();
-	const existingKeys = new Set(existing.map((card) => `${card.factId}|${card.mode}`));
-
-	const mode: Mode = 'formula';
-	const candidates = allFacts().filter((fact) => !existingKeys.has(`${fact.factId}|${mode}`));
-	const toIntroduce = candidates.slice(0, limit);
-
-	if (toIntroduce.length === 0) {
-		return 0;
+	const existingByFact = new Map<string, CardRecord[]>();
+	for (const card of existing) {
+		const cardsForFact = existingByFact.get(card.factId);
+		if (cardsForFact) {
+			cardsForFact.push(card);
+		} else {
+			existingByFact.set(card.factId, [card]);
+		}
 	}
 
-	const records: CardRecord[] = toIntroduce.map((fact) => ({
-		...newCard(now),
-		factId: fact.factId,
-		factKind: fact.factKind,
-		mode,
-		lastRating: null
-	}));
+	const records: CardRecord[] = [];
+	let factsTouched = 0;
+
+	for (const fact of allFacts()) {
+		if (factsTouched >= limit) break;
+
+		const cardsForFact = existingByFact.get(fact.factId) ?? [];
+		const cluster = teachClusterModes(fact.factKind);
+		const missingClusterModes = cluster.filter(
+			(mode) => !cardsForFact.some((card) => card.mode === mode)
+		);
+		const introducesHearName =
+			fact.factKind === 'chord-formula' &&
+			!cardsForFact.some((card) => card.mode === 'hear-name') &&
+			clusterGraduated(cardsForFact, cluster);
+
+		if (missingClusterModes.length === 0 && !introducesHearName) {
+			continue;
+		}
+
+		factsTouched += 1;
+		const modesToAdd: Mode[] = [...missingClusterModes];
+		if (introducesHearName) modesToAdd.push('hear-name');
+
+		for (const mode of modesToAdd) {
+			records.push({
+				...newCard(now),
+				factId: fact.factId,
+				factKind: fact.factKind,
+				mode,
+				lastRating: null
+			});
+		}
+	}
+
+	if (records.length === 0) {
+		return 0;
+	}
 
 	await _database().cards.bulkPut(records);
 	return records.length;

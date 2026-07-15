@@ -242,8 +242,14 @@ describe('deck', () => {
 	});
 
 	it('a record with a genuinely malformed due field is skipped, not thrown, while other valid records still read', async () => {
-		await introduceNewCards(2, now0);
-		const [validCard, malformedCard] = await getAllCards();
+		// Built directly via makeCardRecord/recordGrade (not introduceNewCards)
+		// so this case stays decoupled from the teach-cluster record-count
+		// arithmetic asserted elsewhere: it only needs exactly 2 distinct
+		// records, one of which gets corrupted.
+		const validCard = makeCardRecord({ factId: 'chord-formula:Cm7', mode: 'formula' });
+		const malformedCard = makeCardRecord({ factId: 'chord-formula:Dm7', mode: 'formula' });
+		await recordGrade(validCard, Rating.Good, now0);
+		await recordGrade(malformedCard, Rating.Good, now0);
 
 		await _database().cards.update([malformedCard.factId, malformedCard.mode], {
 			due: 'not-a-date' as unknown as Date
