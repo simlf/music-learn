@@ -1,0 +1,337 @@
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../themes/default.css" />
+<style>
+	* { box-sizing: border-box; }
+	body { margin: 0; background: var(--color-paper); color: var(--color-ink); font-family: var(--font-sans); padding: var(--space-6); }
+	h1 { font-size: var(--text-heading); margin: 0 0 var(--space-1); }
+	.sub { color: var(--color-muted); margin: 0 0 var(--space-6); max-width: 62ch; }
+
+	/* Sound toggle bar (shared across variants) */
+	.sound-bar { display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-6); flex-wrap: wrap; }
+	.sound-label { font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-muted); }
+	.toggle { display: flex; gap: var(--space-1); }
+	.toggle button { font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; border: 2px solid var(--color-ink); background: var(--color-paper-bright); cursor: pointer; padding: var(--space-2) var(--space-4); min-height: 44px; min-width: 44px; }
+	.toggle button[aria-pressed="true"] { background: var(--color-ink); color: var(--color-paper-bright); }
+	.toggle-note { font: 400 12px/1.4 var(--font-mono); color: var(--color-faint); }
+
+	.tabs { display: flex; gap: var(--space-2); margin: 0 0 var(--space-4); flex-wrap: wrap; }
+	.tab { font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; border: 2px solid var(--color-ink); background: var(--color-paper-bright); cursor: pointer; padding: var(--space-2) var(--space-4); min-height: 44px; }
+	.tab[aria-selected="true"] { background: var(--color-ink); color: var(--color-paper-bright); }
+	.panel { display: none; } .panel[data-active="true"] { display: block; }
+	.card { border: 2px solid var(--color-ink); background: var(--color-paper-bright); padding: var(--space-6); }
+	.reg { font: 700 var(--text-label)/1.4 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-muted); margin: 0 0 var(--space-4); }
+	.note-sm { font-size: 13px; color: var(--color-muted); margin-top: var(--space-4); }
+
+	/* Reveal header: chord glyph in serif display + optional HEAR control */
+	.reveal-head { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-4); min-height: 72px; }
+	.glyph { font: 700 var(--text-display)/1 var(--font-serif); color: var(--color-ink); }
+	.glyph .sup { font-size: 0.5em; vertical-align: 0.55em; }
+
+	/* Stamp-in reveal (captured constraint, verbatim) */
+	.stamp { animation: stamp-in 240ms ease-out; }
+	@keyframes stamp-in {
+		0% { transform: scale(0.96); opacity: 0; }
+		60% { transform: scale(1.02); opacity: 1; }
+		100% { transform: scale(1); }
+	}
+
+	/* Audio pulse: keys + glyph flex once when the chord sounds */
+	.pulse { animation: pulse-once 360ms ease-out; }
+	@keyframes pulse-once {
+		0% { transform: scale(1); }
+		35% { transform: scale(1.06); filter: brightness(1.12); }
+		100% { transform: scale(1); }
+	}
+	.glyph.pulse { transform-origin: left center; }
+
+	/* HEAR button — letterpress speaker (Variant B) */
+	.hear-btn { display: inline-flex; align-items: center; gap: var(--space-2); font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; border: 2px solid var(--color-ink); background: var(--color-paper-bright); color: var(--color-ink); cursor: pointer; padding: var(--space-4); min-height: 44px; box-shadow: 3px 3px 0 var(--color-ink); }
+	.hear-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--color-ink); }
+	.hear-btn .spk { font-size: 20px; line-height: 1; }
+	.hear-btn.muted { border-color: var(--color-faint); color: var(--color-faint); box-shadow: 3px 3px 0 var(--color-faint); }
+
+	/* Replay / small control button (Variant A + C) */
+	.replay-btn { font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; border: 2px solid var(--color-ink); background: var(--color-paper-bright); cursor: pointer; padding: var(--space-2) var(--space-4); min-height: 44px; }
+	.replay-btn:active { filter: brightness(0.95); }
+
+	/* Formula strip */
+	.strip { display: flex; gap: var(--space-2); margin-bottom: var(--space-4); min-height: 54px; align-items: stretch; flex-wrap: wrap; }
+	.chip { border: 2px solid var(--color-ink); padding: var(--space-2) var(--space-4); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 64px; opacity: 0.35; transition: opacity 120ms; }
+	.chip[data-lit="true"] { opacity: 1; }
+	.chip .iv { font: 700 13px/1 var(--font-mono); letter-spacing: 0.04em; }
+	.chip .nm { font: 400 11px/1 var(--font-mono); opacity: 0.85; }
+
+	/* Keyboard, shared render */
+	.kbd { position: relative; height: 190px; width: 100%; margin-bottom: var(--space-4); }
+	.wk, .bk { position: absolute; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: var(--space-2); user-select: none; }
+	.wk { height: 100%; background: var(--color-paper-bright); border: 1.5px solid var(--color-ink); z-index: 1; }
+	.bk { height: 60%; background: var(--color-ink); z-index: 2; color: var(--color-paper-bright); }
+	.wk.lit, .bk.lit { transform-origin: bottom center; }
+	.key-label { font: 700 13px/1 var(--font-serif); }
+	.deg-root { background: var(--color-root); color: var(--color-on-root); }
+	.deg-third { background: var(--color-third); color: var(--color-on-third); }
+	.deg-fifth { background: var(--color-fifth); color: var(--color-on-fifth); }
+	.deg-seventh { background: var(--color-seventh); color: var(--color-on-seventh); }
+	/* dark for arpeggio-not-yet-sounded (Variant C) */
+	.deg-pending { opacity: 0.28; }
+
+	/* Register readout — mono print line under the keyboard */
+	.readout { border: 2px solid var(--color-ink); background: var(--color-paper); padding: var(--space-4); min-height: 92px; }
+	.readout .rline { font: 700 15px/1.6 var(--font-mono); letter-spacing: 0.04em; margin: 0; }
+	.readout .rmuted { color: var(--color-faint); font-weight: 400; }
+	.readout .rseq { display: block; font: 400 13px/1.7 var(--font-mono); color: var(--color-muted); margin-top: var(--space-1); }
+	.readout .rseq b { font-weight: 700; }
+	.readout .rseq .c-root { color: var(--color-root); }
+	.readout .rseq .c-third { color: var(--color-third); }
+	.readout .rseq .c-fifth { color: var(--color-tan); }
+	.readout .rseq .c-seventh { color: var(--color-mustard); }
+
+	.controls { display: flex; gap: var(--space-2); margin-top: var(--space-4); flex-wrap: wrap; }
+</style>
+
+<h1>Sketch 009 &middot; Hear the chord</h1>
+<p class="sub">On the FORMULA &rarr; BUILD reveal, how should HEARING the chord surface so audio memory locks in? Three ways to attach sound to the stamped-in answer card. One shared SOUND toggle demos both the on and the silent-fallback paths.</p>
+
+<div class="sound-bar">
+	<span class="sound-label">Sound:</span>
+	<div class="toggle" id="soundToggle" role="group" aria-label="Sound on or off">
+		<button data-sound="on" aria-pressed="true">On</button>
+		<button data-sound="off" aria-pressed="false">Off</button>
+	</div>
+	<span class="toggle-note" id="soundState">audio engine armed &middot; playChord() live</span>
+</div>
+
+<div class="tabs" role="tablist">
+	<button class="tab" role="tab" aria-selected="true" data-tab="A">A &middot; Auto-play + pulse &#9733;</button>
+	<button class="tab" role="tab" aria-selected="false" data-tab="B">B &middot; Tap-to-hear</button>
+	<button class="tab" role="tab" aria-selected="false" data-tab="C">C &middot; Arpeggio &rarr; block</button>
+</div>
+
+<!-- VARIANT A -->
+<div class="panel" data-tab="A" data-active="true">
+	<div class="card">
+		<p class="reg">Variant A &middot; sound fires on stamp-in, keys + glyph pulse in time</p>
+		<div class="reveal-head">
+			<span class="glyph" id="glyphA">C<span class="sup">maj7</span></span>
+		</div>
+		<div class="strip" id="stripA"></div>
+		<div class="kbd" id="kA"></div>
+		<div class="readout"><p class="rline" id="readA">&nbsp;</p></div>
+		<div class="controls">
+			<button class="replay-btn" id="revealA">Reveal answer</button>
+			<button class="replay-btn" id="againA">&#8635; Hear again</button>
+		</div>
+		<p class="note-sm">The instant the answer stamps in, <b>playChord(['C','E','G','B'])</b> fires and the four lit keys plus the serif glyph pulse once, synced to the strike. Zero friction, the sound is just there. &#8635; Hear again replays on demand. With Sound OFF the same reveal still pulses the keys and glyph visually and prints a muted register line, so the moment is never a silent dead end.</p>
+	</div>
+</div>
+
+<!-- VARIANT B -->
+<div class="panel" data-tab="B" data-active="false">
+	<div class="card">
+		<p class="reg">Variant B &middot; reveal is silent, a letterpress HEAR IT button waits</p>
+		<div class="reveal-head">
+			<span class="glyph" id="glyphB">C<span class="sup">maj7</span></span>
+			<button class="hear-btn" id="hearB"><span class="spk">&#128266;</span> Hear it</button>
+		</div>
+		<div class="strip" id="stripB"></div>
+		<div class="kbd" id="kB"></div>
+		<div class="readout"><p class="rline" id="readB">&nbsp;</p></div>
+		<div class="controls">
+			<button class="replay-btn" id="revealB">Reveal answer</button>
+		</div>
+		<p class="note-sm">The reveal stamps in <i>silent</i>. A prominent letterpress speaker button sits beside the glyph, tapping it calls <b>playChord()</b> and pulses the keys + glyph. Respects a quiet room and puts the player in control of when audio happens. With Sound OFF the button dims to a muted state but still pulses the visual on tap and prints the muted register line, so the control is never a broken promise.</p>
+	</div>
+</div>
+
+<!-- VARIANT C -->
+<div class="panel" data-tab="C" data-active="false">
+	<div class="card">
+		<p class="reg">Variant C &middot; roll root&rarr;3rd&rarr;5th&rarr;7th, each key lights as it sounds, then strike the block</p>
+		<div class="reveal-head">
+			<span class="glyph" id="glyphC">C<span class="sup">maj7</span></span>
+		</div>
+		<div class="strip" id="stripC"></div>
+		<div class="kbd" id="kC"></div>
+		<div class="readout"><p class="rline" id="readC">&nbsp;</p><span class="rseq" id="seqC"></span></div>
+		<div class="controls">
+			<button class="replay-btn" id="revealC">Reveal answer</button>
+			<button class="replay-btn" id="againC">&#8635; Roll again</button>
+		</div>
+		<p class="note-sm">Auto-play, but the notes <i>arpeggiate</i>: root, then 3rd, then 5th, then 7th. Each key lights in its interval color and its register line prints the moment it sounds, then the full block chord strikes and every key pulses together. Strongest for mapping a heard pitch back to a named note. With Sound OFF the same stepped light-up and printed sequence still play out visually, just without tone.</p>
+	</div>
+</div>
+
+<script>
+	// Worked example: Cmaj7 = C E G B, all white keys across one C-to-C octave.
+	const CHORD = {
+		sym: 'Cmaj7',
+		notes: [
+			{ n: 'C', role: 'root',    iv: 'R',   ivName: 'root',    pos: 0 },
+			{ n: 'E', role: 'third',   iv: 'M3',  ivName: 'maj 3rd',  pos: 2 },
+			{ n: 'G', role: 'fifth',   iv: 'P5',  ivName: 'perf 5th', pos: 4 },
+			{ n: 'B', role: 'seventh', iv: 'M7',  ivName: 'maj 7th',  pos: 6 }
+		]
+	};
+	const WHITE = ['C', 'D', 'E', 'F', 'G', 'A', 'B', 'C'];
+	const WW = 100 / WHITE.length;
+	const NOTE_STR = CHORD.notes.map(n => n.n).join(' ');
+
+	// Persisted sound toggle (real app: localStorage). Demo mirrors that.
+	let soundOn = (localStorage.getItem('ml-sound') ?? 'on') !== 'off';
+
+	function targetAt(pos) { return CHORD.notes.find(n => n.pos === pos); }
+	function keyAt(el, pos) { return [...el.children].find(c => parseFloat(c.dataset.pos) === pos); }
+
+	function buildKeyboard(el) {
+		el.innerHTML = '';
+		WHITE.forEach((L, i) => {
+			const d = document.createElement('div');
+			d.className = 'wk'; d.style.left = (i * WW) + '%'; d.style.width = WW + '%'; d.dataset.pos = i;
+			const t = targetAt(i);
+			if (t) { const lab = document.createElement('span'); lab.className = 'key-label'; lab.textContent = t.n; d.appendChild(lab); }
+			el.appendChild(d);
+		});
+		[0.5, 1.5, 3.5, 4.5, 5.5].forEach(p => {
+			const d = document.createElement('div');
+			d.className = 'bk'; d.style.left = ((p + 0.5) * WW - (WW * 0.6) / 2) + '%'; d.style.width = (WW * 0.6) + '%'; d.dataset.pos = p;
+			el.appendChild(d);
+		});
+	}
+
+	function pulse(node) {
+		if (!node) return;
+		node.classList.remove('pulse');
+		void node.offsetWidth; // restart animation
+		node.classList.add('pulse');
+	}
+
+	// Fake the audio engine. Real app: playChord(notes) drives Tone.js.
+	function playChord(readEl, glyph) {
+		const line = soundOn
+			? `&#9834; ${CHORD.sym} &mdash; ${NOTE_STR}`
+			: `<span class="rmuted">&#9834; ${CHORD.sym} &mdash; ${NOTE_STR} &middot; (sound off, visual only)</span>`;
+		readEl.innerHTML = line;
+		pulse(glyph);
+	}
+
+	function litKeys(el) { return CHORD.notes.map(n => keyAt(el, n.pos)); }
+
+	// ---- Variant A: auto-play + synced pulse ----
+	function stampA() {
+		const el = document.getElementById('kA'), glyph = document.getElementById('glyphA');
+		buildKeyboard(el);
+		CHORD.notes.forEach(n => keyAt(el, n.pos).classList.add('deg-' + n.role));
+		document.querySelectorAll('#stripA .chip').forEach(c => c.dataset.lit = 'true');
+		glyph.classList.remove('stamp'); void glyph.offsetWidth; glyph.classList.add('stamp');
+		playChord(document.getElementById('readA'), glyph);
+		litKeys(el).forEach(pulse);
+	}
+
+	// ---- Variant B: silent reveal, tap to hear ----
+	function stampB() {
+		const el = document.getElementById('kB'), glyph = document.getElementById('glyphB');
+		buildKeyboard(el);
+		CHORD.notes.forEach(n => keyAt(el, n.pos).classList.add('deg-' + n.role));
+		document.querySelectorAll('#stripB .chip').forEach(c => c.dataset.lit = 'true');
+		glyph.classList.remove('stamp'); void glyph.offsetWidth; glyph.classList.add('stamp');
+		document.getElementById('readB').innerHTML = '&nbsp;'; // silent
+	}
+	function hearB() {
+		const el = document.getElementById('kB'), glyph = document.getElementById('glyphB');
+		playChord(document.getElementById('readB'), glyph);
+		litKeys(el).forEach(pulse);
+	}
+
+	// ---- Variant C: arpeggio, then block ----
+	let seqTimers = [];
+	function clearSeq() { seqTimers.forEach(clearTimeout); seqTimers = []; }
+	function rollC() {
+		clearSeq();
+		const el = document.getElementById('kC'), glyph = document.getElementById('glyphC');
+		const read = document.getElementById('readC'), seq = document.getElementById('seqC');
+		buildKeyboard(el);
+		// start all target keys dim/pending, un-colored
+		CHORD.notes.forEach(n => keyAt(el, n.pos).classList.add('deg-' + n.role, 'deg-pending'));
+		read.innerHTML = soundOn ? `&#9834; rolling ${CHORD.sym}&hellip;` : `<span class="rmuted">&#9834; rolling ${CHORD.sym}&hellip; (sound off, visual only)</span>`;
+		seq.innerHTML = '';
+		CHORD.notes.forEach((n, i) => {
+			seqTimers.push(setTimeout(() => {
+				const k = keyAt(el, n.pos);
+				k.classList.remove('deg-pending');
+				pulse(k);
+				const span = document.createElement('span');
+				span.className = 'c-' + n.role;
+				span.innerHTML = ` &#9834; <b>${n.n}</b> ${n.iv}`;
+				seq.appendChild(span);
+			}, 260 * (i + 1)));
+		});
+		// block strike after the roll
+		seqTimers.push(setTimeout(() => {
+			read.innerHTML = soundOn
+				? `&#9834; ${CHORD.sym} &mdash; ${NOTE_STR} <b>[block]</b>`
+				: `<span class="rmuted">&#9834; ${CHORD.sym} &mdash; ${NOTE_STR} [block] &middot; (sound off, visual only)</span>`;
+			litKeys(el).forEach(pulse);
+			pulse(glyph);
+		}, 260 * (CHORD.notes.length + 1)));
+	}
+	function stampC() {
+		const glyph = document.getElementById('glyphC');
+		document.querySelectorAll('#stripC .chip').forEach(c => c.dataset.lit = 'true');
+		glyph.classList.remove('stamp'); void glyph.offsetWidth; glyph.classList.add('stamp');
+		rollC();
+	}
+
+	// Build formula strips (all four chips, lit on reveal)
+	function fillStrip(id) {
+		const strip = document.getElementById(id);
+		strip.innerHTML = '';
+		CHORD.notes.forEach(n => {
+			const c = document.createElement('div');
+			c.className = 'chip deg-' + n.role; c.dataset.lit = 'false';
+			c.innerHTML = `<span class="iv">${n.iv}</span><span class="nm">${n.n}</span>`;
+			strip.appendChild(c);
+		});
+	}
+	['stripA', 'stripB', 'stripC'].forEach(fillStrip);
+	['kA', 'kB', 'kC'].forEach(id => buildKeyboard(document.getElementById(id)));
+
+	// Wiring
+	document.getElementById('revealA').onclick = stampA;
+	document.getElementById('againA').onclick = () => {
+		const el = document.getElementById('kA');
+		playChord(document.getElementById('readA'), document.getElementById('glyphA'));
+		litKeys(el).forEach(pulse);
+	};
+	document.getElementById('revealB').onclick = stampB;
+	document.getElementById('hearB').onclick = hearB;
+	document.getElementById('revealC').onclick = stampC;
+	document.getElementById('againC').onclick = rollC;
+
+	// Sound toggle
+	function applySound() {
+		document.getElementById('soundState').textContent = soundOn
+			? 'audio engine armed · playChord() live'
+			: 'muted · reveal falls back to visual pulse only';
+		document.getElementById('hearB').classList.toggle('muted', !soundOn);
+	}
+	document.getElementById('soundToggle').querySelectorAll('button').forEach(b => {
+		b.onclick = () => {
+			soundOn = b.dataset.sound === 'on';
+			localStorage.setItem('ml-sound', soundOn ? 'on' : 'off');
+			document.getElementById('soundToggle').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+			applySound();
+		};
+	});
+	document.getElementById('soundToggle').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String((x.dataset.sound === 'on') === soundOn)));
+	applySound();
+
+	// Tabs
+	document.querySelectorAll('.tab').forEach(tab => {
+		tab.onclick = () => {
+			const id = tab.dataset.tab;
+			clearSeq();
+			document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t === tab)));
+			document.querySelectorAll('.panel').forEach(p => p.setAttribute('data-active', String(p.dataset.tab === id)));
+		};
+	});
+</script>
