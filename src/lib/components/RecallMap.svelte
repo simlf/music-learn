@@ -22,12 +22,13 @@
 	let facts = $state<Fact[]>(allFacts());
 	let cardsByKey = $state(new Map<string, CardRecord>());
 	let kindFilter = $state<KindFilter>('all');
-	const now = new Date();
+	let now = $state(new Date());
 
 	onMount(async () => {
 		try {
 			const cards = await getAllCards();
 			cardsByKey = new Map(cards.map((card) => [`${card.factId}|${card.mode}`, card]));
+			now = new Date();
 		} catch {
 			// A load failure just leaves the map empty: this is a secondary,
 			// glanceable surface, not the primary session flow, so it doesn't
