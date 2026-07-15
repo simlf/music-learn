@@ -80,10 +80,16 @@ describe('RecallMap (MEM-04: fact x mode recall map)', () => {
 		const masteredCell = screen.getByTestId('recall-map-cell-interval-size:m3');
 		expect(masteredCell).toHaveAttribute('data-cell-state', 'mastered');
 		expect(masteredCell).toHaveTextContent('✓');
+		expect(masteredCell).toHaveAccessibleName('m3, Formula: Mastered');
 
 		const weakCell = screen.getByTestId('recall-map-cell-scale-degree:G:3');
 		expect(weakCell).toHaveAttribute('data-cell-state', 'weak');
 		expect(weakCell).toHaveTextContent('!');
+		expect(weakCell).toHaveAccessibleName('G major degree 3, Formula: Weak');
+
+		expect(screen.getByTestId('recall-map-cell-interval-size:M2')).toHaveAccessibleName(
+			'M2, Formula: Not yet seen'
+		);
 
 		expect(screen.getByTestId('recall-map-cell-interval-size:M2')).toHaveAttribute(
 			'data-cell-state',

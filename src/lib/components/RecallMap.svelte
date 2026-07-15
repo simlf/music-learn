@@ -45,6 +45,13 @@
 		return chord.root + chord.symbol.slice(chord.root.length);
 	}
 
+	/** Plain-text accessible label for a fact row, mirroring its visual rendering. */
+	function factLabel(fact: Fact): string {
+		if (fact.factKind === 'chord-formula') return chordLabel(fact.symbol);
+		if (fact.factKind === 'interval-size') return fact.short;
+		return `${fact.tonic} major degree ${fact.degree}`;
+	}
+
 	const KIND_TABS: { value: KindFilter; label: string }[] = [
 		{ value: 'all', label: 'All' },
 		{ value: 'chord-formula', label: 'Chords' },
@@ -104,6 +111,8 @@
 				class="recall-map__cell recall-map__cell--{state}"
 				data-testid={`recall-map-cell-${fact.factId}`}
 				data-cell-state={state}
+				role="img"
+				aria-label={`${factLabel(fact)}, ${column.label}: ${LEGEND.find((entry) => entry.state === state)?.label}`}
 			>
 				{#if state === 'weak'}
 					<span aria-hidden="true">!</span>
