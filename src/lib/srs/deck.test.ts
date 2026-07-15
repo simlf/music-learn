@@ -46,61 +46,147 @@ describe('deck', () => {
 		expect(await getAllCards()).toEqual([]);
 	});
 
-	it('introduceNewCards defaults its limit to NEW_CARDS_PER_SESSION when called with no argument', async () => {
+	it('introduceNewCards defaults its limit to NEW_CARDS_PER_SESSION facts, each seeding a chord-formula teach cluster (3 cards/fact)', async () => {
 		const count = await introduceNewCards(undefined, now0);
-		expect(count).toBe(NEW_CARDS_PER_SESSION);
-		expect(await getAllCards()).toHaveLength(NEW_CARDS_PER_SESSION);
+		expect(count).toBe(NEW_CARDS_PER_SESSION * 3);
+		const cards = await getAllCards();
+		expect(cards).toHaveLength(NEW_CARDS_PER_SESSION * 3);
+		expect(new Set(cards.map((c) => c.factId)).size).toBe(NEW_CARDS_PER_SESSION);
 	});
 
-	it('introduceNewCards seeds distinct factIds across repeated calls, growing the deck incrementally', async () => {
+	it('introduceNewCards seeds distinct factIds across repeated calls, growing the deck incrementally (teach-cluster arithmetic)', async () => {
 		const firstCount = await introduceNewCards(5, now0);
-		expect(firstCount).toBe(5);
+		expect(firstCount).toBe(5 * 3);
 
 		const afterFirst = await getAllCards();
-		expect(afterFirst).toHaveLength(5);
+		expect(afterFirst).toHaveLength(15);
 		const firstFactIds = new Set(afterFirst.map((c) => c.factId));
 		expect(firstFactIds.size).toBe(5);
 
 		const secondCount = await introduceNewCards(5, now0);
-		expect(secondCount).toBe(5);
+		expect(secondCount).toBe(5 * 3);
 
 		const afterSecond = await getAllCards();
-		expect(afterSecond).toHaveLength(10);
+		expect(afterSecond).toHaveLength(30);
 		const allFactIds = new Set(afterSecond.map((c) => c.factId));
 		expect(allFactIds.size).toBe(10);
 	});
 
-	it('every newly introduced card is mode formula, state New, due <= now, lastRating null', async () => {
+	it("every card introduced via introduceNewCards(5) belongs to a chord-formula fact's teach cluster (formula/see-play/formula-build), state New, due <= now, lastRating null", async () => {
 		await introduceNewCards(5, now0);
 		const cards = await getAllCards();
+		expect(new Set(cards.map((c) => c.mode))).toEqual(new Set(['formula', 'see-play', 'formula-build']));
 		for (const card of cards) {
-			expect(card.mode).toBe('formula');
+			expect(card.factKind).toBe('chord-formula');
 			expect(card.state).toBe(State.New);
 			expect(card.due.getTime()).toBeLessThanOrEqual(now0.getTime());
 			expect(card.lastRating).toBeNull();
 		}
+
+		const modesByFact = new Map<string, Set<string>>();
+		for (const card of cards) {
+			if (!modesByFact.has(card.factId)) modesByFact.set(card.factId, new Set());
+			modesByFact.get(card.factId)!.add(card.mode);
+		}
+		expect(modesByFact.size).toBe(5);
+		for (const modes of modesByFact.values()) {
+			expect(modes).toEqual(new Set(['formula', 'see-play', 'formula-build']));
+		}
 	});
 
-	it('getDueCards(now) after introduceNewCards(5, now) returns exactly those 5 cards', async () => {
+	it('getDueCards(now) after introduceNewCards(5, now) returns exactly those 15 cluster cards', async () => {
 		await introduceNewCards(5, now0);
 		const introduced = await getAllCards();
 		const due = await getDueCards(now0);
-		expect(due).toHaveLength(5);
-		expect(new Set(due.map((c) => c.factId))).toEqual(new Set(introduced.map((c) => c.factId)));
+		expect(due).toHaveLength(15);
+		expect(new Set(due.map((c) => `${c.factId}|${c.mode}`))).toEqual(
+			new Set(introduced.map((c) => `${c.factId}|${c.mode}`))
+		);
 	});
 
-	it('exhaustion: introduceNewCards(1000, now) seeds all 192 facts and a further call introduces 0', async () => {
+	it('non-chord facts unchanged: introduceNewCards(97, now) from empty seeds 96 chord-formula clusters plus exactly ONE single-card interval-size fact', async () => {
+		const count = await introduceNewCards(97, now0);
+		expect(count).toBe(96 * 3 + 1);
+
+		const cards = await getAllCards();
+		expect(new Set(cards.map((c) => c.factId)).size).toBe(97);
+
+		const nonChordCards = cards.filter((c) => c.factKind !== 'chord-formula');
+		expect(nonChordCards).toHaveLength(1);
+		expect(nonChordCards[0].factKind).toBe('interval-size');
+		expect(nonChordCards[0].mode).toBe('formula');
+	});
+
+	it('exhaustion: introduceNewCards(1000, now) seeds all 192 facts (96 chord clusters x3 + 96 single-card) and a further call introduces 0', async () => {
 		const firstCount = await introduceNewCards(1000, now0);
-		expect(firstCount).toBe(192);
+		expect(firstCount).toBe(96 * 3 + 12 + 84);
+		expect(firstCount).toBe(384);
 
 		const allCards = await getAllCards();
-		expect(allCards).toHaveLength(192);
+		expect(allCards).toHaveLength(384);
+		expect(new Set(allCards.map((c) => c.factId)).size).toBe(192);
 
 		const secondCount = await introduceNewCards(1000, now0);
 		expect(secondCount).toBe(0);
 
 		const stillAllCards = await getAllCards();
-		expect(stillAllCards).toHaveLength(192);
+		expect(stillAllCards).toHaveLength(384);
+	});
+
+	it("CardRecordSchema's widened mode enum accepts 'see-play' and 'hear-name' records without dropping them via safeParse", async () => {
+		const seePlayCard = makeCardRecord({
+			factId: 'chord-formula:Cm7',
+			factKind: 'chord-formula',
+			mode: 'see-play'
+		});
+		const hearNameCard = makeCardRecord({
+			factId: 'chord-formula:Cm7',
+			factKind: 'chord-formula',
+			mode: 'hear-name'
+		});
+		await recordGrade(seePlayCard, Rating.Good, now0);
+		await recordGrade(hearNameCard, Rating.Good, now0);
+
+		const cards = await getAllCards();
+		expect(cards.find((c) => c.mode === 'see-play')).toBeDefined();
+		expect(cards.find((c) => c.mode === 'hear-name')).toBeDefined();
+	});
+
+	it('hear-name stagger gate: hear-name is only introduced once ALL of a chord-formula fact\'s teach-cluster cards reach State.Review', async () => {
+		const firstIntroduced = await introduceNewCards(1, now0);
+		expect(firstIntroduced).toBe(3);
+
+		const clusterCards = await getAllCards();
+		expect(clusterCards).toHaveLength(3);
+		const targetFactId = clusterCards[0].factId;
+		expect(clusterCards.every((c) => c.factId === targetFactId)).toBe(true);
+
+		const formulaCard = clusterCards.find((c) => c.mode === 'formula')!;
+		const seePlayCard = clusterCards.find((c) => c.mode === 'see-play')!;
+		const buildCard = clusterCards.find((c) => c.mode === 'formula-build')!;
+
+		// Grade only 2 of the 3 cluster cards to Review.
+		await recordGrade(formulaCard, Rating.Good, now0);
+		await recordGrade(seePlayCard, Rating.Good, now0);
+
+		await introduceNewCards(1000, now0);
+		const afterTwoGraded = await getAllCards();
+		const hearNameAfterTwo = afterTwoGraded.filter(
+			(c) => c.factId === targetFactId && c.mode === 'hear-name'
+		);
+		expect(hearNameAfterTwo).toHaveLength(0);
+
+		// Grade the third cluster card too: all 3 now State.Review.
+		await recordGrade(buildCard, Rating.Good, now0);
+
+		await introduceNewCards(1000, now0);
+		const afterThreeGraded = await getAllCards();
+		const hearNameAfterThree = afterThreeGraded.filter(
+			(c) => c.factId === targetFactId && c.mode === 'hear-name'
+		);
+		expect(hearNameAfterThree).toHaveLength(1);
+		expect(hearNameAfterThree[0].state).toBe(State.New);
+		expect(hearNameAfterThree[0].due.getTime()).toBeLessThanOrEqual(now0.getTime());
 	});
 
 	it('recordGrade persists an updated CardRecord matching the graded result', async () => {
@@ -250,11 +336,19 @@ describe('formula-build mode seam (Phase 12 D-09)', () => {
 		expect(miss).toBeUndefined();
 	});
 
-	it('regression pin: introduceNewCards(1000, now) never produces a formula-build record (bulk seeding untouched)', async () => {
+	it('regression pin (updated for 13-01 teach-cluster): introduceNewCards(1000, now) produces formula-build ONLY for chord-formula facts, never for interval-size/scale-degree facts', async () => {
 		await introduceNewCards(1000, now0);
 		const cards = await getAllCards();
-		expect(cards.length).toBeGreaterThan(0);
-		expect(cards.every((c) => c.mode === 'formula')).toBe(true);
+		expect(cards.length).toBe(384);
+
+		const nonChordCards = cards.filter((c) => c.factKind !== 'chord-formula');
+		expect(nonChordCards.every((c) => c.mode === 'formula')).toBe(true);
+
+		const chordCards = cards.filter((c) => c.factKind === 'chord-formula');
+		expect(chordCards.every((c) => ['formula', 'see-play', 'formula-build'].includes(c.mode))).toBe(
+			true
+		);
+		expect(chordCards.filter((c) => c.mode === 'formula-build')).toHaveLength(96);
 	});
 });
 
