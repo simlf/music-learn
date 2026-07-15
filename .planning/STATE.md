@@ -4,17 +4,17 @@ milestone: v2.0
 milestone_name: Learning Upgrade
 current_phase: 11
 current_phase_name: Memorization Engine
-status: executing
-stopped_at: Completed 11-05-PLAN.md (RecallSession component + /recall route + nav)
-last_updated: "2026-07-15T12:43:12.429Z"
+status: verifying
+stopped_at: Completed 11-06-PLAN.md (RecallMap fact x mode grid, MEM-04) - Phase 11 fully complete
+last_updated: "2026-07-15T12:53:30.364Z"
 last_activity: 2026-07-15
 last_activity_desc: Phase 11 execution started
 progress:
   total_phases: 13
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 29
-  completed_plans: 28
-  percent: 46
+  completed_plans: 29
+  percent: 54
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 
 Phase: 11 (Memorization Engine) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-15 — Phase 11 execution started
 
 **v2.0 phases (execution order 10 → 11 → 12 → 13):**
@@ -91,6 +91,7 @@ Last activity: 2026-07-15 — Phase 11 execution started
 | Phase 11 P03 | 5min | 2 tasks | 4 files |
 | Phase 11 P04 | 1min | 2 tasks | 2 files |
 | Phase 11 P05 | 24min | 2 tasks | 4 files |
+| Phase 11 P06 | 8min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -162,6 +163,8 @@ Recent decisions affecting current work:
 - [Phase 11-04]: advanceQueue re-enqueues Again-graded items to the back without decrementing count (D-10); every non-empty path returns a brand-new array so callers rely on reference-equality change detection
 - [Phase 11-05]: Again's grade button reuses Button's ghost variant with an inline style override for --color-wrong rather than adding a new Button variant.
 - [Phase 11-05]: Scale-degree reveal badge derives its fill color directly from SpelledNote.role (no separate degree-to-role lookup table).
+- [Phase 11-06]: RecallMap's MODE_COLUMNS array is the one-line extension point for Phase 13's future mode columns (see-play/hear-name/notes-symbol), avoiding a layout rewrite when that phase ships
+- [Phase 11-06]: RecallSession's onViewMap prop is gated (omit => byte-identical render to 11-05); the completion card's ghost 'View Recall Map' CTA switches /recall's own mode state to Map in place, no navigation
 
 ### Pending Todos
 
@@ -186,7 +189,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-15T12:43:12.424Z
+Last session: 2026-07-15T12:53:17.199Z
 Stopped at: Completed 11-05-PLAN.md (RecallSession component + /recall route + nav)
 Resume file: None
 Next: /gsd-plan-phase 10
