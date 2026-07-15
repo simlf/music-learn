@@ -30,9 +30,11 @@ vi.mock('$lib/srs/deck', () => ({
 
 const playChordMock = vi.fn();
 const playNoteMock = vi.fn();
+const ensureAudioReadyMock = vi.fn();
 vi.mock('$lib/audio/audio', () => ({
 	playChord: (...args: unknown[]) => playChordMock(...args),
-	playNote: (...args: unknown[]) => playNoteMock(...args)
+	playNote: (...args: unknown[]) => playNoteMock(...args),
+	ensureAudioReady: (...args: unknown[]) => ensureAudioReadyMock(...args)
 }));
 
 const NOW = new Date('2026-07-15T12:00:00Z');
@@ -62,6 +64,8 @@ beforeEach(() => {
 	}));
 	playChordMock.mockReset();
 	playNoteMock.mockReset();
+	ensureAudioReadyMock.mockReset();
+	ensureAudioReadyMock.mockResolvedValue(undefined);
 });
 
 describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () => {
@@ -396,5 +400,163 @@ describe('RecallSession Mode A (see-play: see symbol, play notes, chroma-graded)
 		await waitFor(() => expect(screen.getByRole('button', { name: 'Check' })).toBeDisabled());
 		expect(screen.getByTestId('recall-register')).toHaveTextContent('1 LEFT TODAY');
 		expect(screen.getByText('Play it on the keyboard.')).toBeInTheDocument();
+	});
+});
+
+/**
+ * Mode B ('hear-name') component tests (13-04): the ear->naming surface
+ * (RECALL-02, D-04). Uses the REAL pickDistractors/spellChord against a real
+ * catalog factId ('chord-formula:Cm7'), matching this file's established
+ * convention of exercising real theory-engine derivations against a mocked
+ * deck/audio seam only. Timer handling mirrors buildSession.test.ts's own
+ * established real-timer-await convention (`await new Promise((resolve) =>
+ * setTimeout(resolve, 700))`) for the 650ms auto-advance.
+ */
+describe('RecallSession Mode B (hear-name: hear the chord, pick its name, never gates)', () => {
+	const CORRECT_VARIANTS = ['Nailed it.', 'Et voilà.', 'Bang on.', 'Spot on, mon ami.'];
+	const WRONG_VARIANTS = ['Not quite.', 'Close, but no cigar.', 'Not this time.'];
+
+	function getChoiceButtons(): HTMLElement[] {
+		return screen.getAllByRole('button', { name: /^Answer: / });
+	}
+
+	it('renders the Play/Play again prompt and a 4-choice grid, all sharing the correct root, with no auto-play on mount', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'hear-name');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		render(RecallSession);
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		expect(screen.getByTestId('recall-mode-chip')).toHaveTextContent('SOUND → NAME');
+		expect(screen.getByText('Listen. Name the chord.')).toBeInTheDocument();
+		expect(playChordMock).not.toHaveBeenCalled();
+
+		const playButton = screen.getByRole('button', { name: 'Play' });
+		const choices = getChoiceButtons();
+		expect(choices).toHaveLength(4);
+		const labels = choices.map((button) => button.textContent?.trim());
+		expect(labels).toContain('Cm7');
+		for (const label of labels) {
+			expect(label).toMatch(/^C(?![#♯b♭])/);
+		}
+
+		await fireEvent.click(playButton);
+		expect(playChordMock).toHaveBeenCalledTimes(1);
+		expect(screen.getByRole('button', { name: 'Play again' })).toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Play again' }));
+		expect(playChordMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('a correct choice records Rating.Good and auto-advances (no manual Next button) after ~650ms, completing the session', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'hear-name');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		render(RecallSession);
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Answer: Cm7' }));
+
+		expect(recordGradeMock).toHaveBeenCalledWith(card, Rating.Good, expect.any(Date));
+		const feedback = screen.getByTestId('recall-hear-name-feedback').textContent ?? '';
+		expect(CORRECT_VARIANTS.some((variant) => feedback.includes(variant))).toBe(true);
+		expect(screen.queryByTestId('reveal-insight')).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
+
+		await new Promise((resolve) => setTimeout(resolve, 700));
+
+		await waitFor(() => screen.getByTestId('recall-complete'));
+		expect(screen.getByTestId('recall-reviewed-count')).toHaveTextContent('1 REVIEWED TODAY');
+	});
+
+	it('a wrong choice records Rating.Again, shows RevealInsight, and still auto-advances (re-enqueuing the card, never gating)', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'hear-name');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		render(RecallSession);
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		const wrongChoice = getChoiceButtons().find(
+			(button) => button.textContent?.trim() !== 'Cm7'
+		);
+		expect(wrongChoice).toBeDefined();
+
+		await fireEvent.click(wrongChoice!);
+
+		expect(recordGradeMock).toHaveBeenCalledWith(card, Rating.Again, expect.any(Date));
+		const feedback = screen.getByTestId('recall-hear-name-feedback').textContent ?? '';
+		expect(WRONG_VARIANTS.some((variant) => feedback.includes(variant))).toBe(true);
+		expect(screen.getByTestId('reveal-insight')).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
+
+		// Choices are all disabled the instant an answer is committed (no
+		// lingering to change one's mind while the auto-advance timer runs).
+		for (const button of getChoiceButtons()) {
+			expect(button).toBeDisabled();
+		}
+
+		await new Promise((resolve) => setTimeout(resolve, 700));
+
+		// Re-enqueued (Rating.Again, never gates): still 1 LEFT TODAY, and the
+		// hear-name prompt is back, fully reset (a fresh Play label, disabled
+		// choices re-enabled, no stale feedback).
+		await waitFor(() => expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument());
+		expect(screen.getByTestId('recall-register')).toHaveTextContent('1 LEFT TODAY');
+		expect(screen.queryByTestId('recall-hear-name-feedback')).not.toBeInTheDocument();
+		for (const button of getChoiceButtons()) {
+			expect(button).toBeEnabled();
+		}
+	});
+
+	it('never gates session completion: a session whose ONLY due card is hear-name still completes normally, a prior wrong answer re-queuing it (never blocking) rather than getting stuck', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'hear-name');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		render(RecallSession);
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		// Answer wrong first: the queue's own re-enqueue-on-Again contract
+		// (D-10, identical for every mode) requeues the card rather than
+		// completing - this is normal FSRS retry behavior, not a gate. Mode
+		// B's "never gates" guarantee is that this wrong answer still
+		// auto-advances (no manual action, no lock-out), not that a single
+		// wrong tap force-completes the session.
+		const wrongChoice = getChoiceButtons().find(
+			(button) => button.textContent?.trim() !== 'Cm7'
+		);
+		await fireEvent.click(wrongChoice!);
+		expect(recordGradeMock).toHaveBeenCalledWith(card, Rating.Again, expect.any(Date));
+
+		await new Promise((resolve) => setTimeout(resolve, 700));
+
+		await waitFor(() => expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument());
+		expect(screen.getByTestId('recall-register')).toHaveTextContent('1 LEFT TODAY');
+		expect(screen.queryByTestId('recall-complete')).not.toBeInTheDocument();
+
+		// Now answer correctly: the same only-due hear-name card completes the
+		// session normally, with no extra unlock step required. The card
+		// object is the post-first-grade record (its lastRating field now
+		// reflects the prior Again write), so assert on its identity
+		// (factId/mode) rather than deep-equality against the original.
+		await fireEvent.click(screen.getByRole('button', { name: 'Answer: Cm7' }));
+		expect(recordGradeMock).toHaveBeenLastCalledWith(
+			expect.objectContaining({ factId: 'chord-formula:Cm7', mode: 'hear-name' }),
+			Rating.Good,
+			expect.any(Date)
+		);
+
+		await new Promise((resolve) => setTimeout(resolve, 700));
+
+		await waitFor(() => screen.getByTestId('recall-complete'));
 	});
 });

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { Note } from 'tonal';
 	import {
 		introduceNewCards,
@@ -23,6 +23,7 @@
 	import { majorScaleNotes } from '$lib/theory/scale';
 	import { formulaFor } from '$lib/lookup/chordPresentation';
 	import { matchChord, type MatchResult } from '$lib/drills/matchChord';
+	import { pickDistractors } from '$lib/drills/generateQuestion';
 	import { ensureAudioReady, playChord, playNote } from '$lib/audio/audio';
 	import { toPitch } from '$lib/audio/voicing';
 	import ChordGlyph from './ChordGlyph.svelte';
@@ -30,6 +31,7 @@
 	import NoteLabel from './NoteLabel.svelte';
 	import PianoKeyboard from './PianoKeyboard.svelte';
 	import Button from './Button.svelte';
+	import RevealInsight from './RevealInsight.svelte';
 
 	/**
 	 * Mode-signal chip label (UI-SPEC "Mode Surfaces" / Scope Decision 8):
@@ -65,6 +67,21 @@
 			index = (index + 1) % variants.length;
 		}
 		return [variants[index], index];
+	}
+
+	/**
+	 * Fisher-Yates shuffle via Math.random(), a per-module private copy
+	 * mirroring generateQuestion.ts's/generateIntervalQuestion.ts's own
+	 * established convention (a shared export is not this codebase's pattern).
+	 * Used by Mode B ('hear-name') to shuffle its once-per-card choice grid.
+	 */
+	function shuffle<T>(items: T[]): T[] {
+		const result = [...items];
+		for (let i = result.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[result[i], result[j]] = [result[j], result[i]];
+		}
+		return result;
 	}
 
 	/**
@@ -116,6 +133,19 @@
 	let confirmationIndex = $state(-1);
 	let headlineText = $state('');
 	let wrongIndex = $state(-1);
+
+	// ---- Mode B ('hear-name') per-card state -------------------------------
+	// Hear the chord, pick its name from 4 same-root multiple-choice options
+	// (D-04). Never gates progress: both a correct and a wrong choice auto-
+	// advance the queue after HEAR_NAME_ADVANCE_MS, with no manual Next.
+	let hearNameAnswered = $state(false);
+	let hearNameGiven = $state('');
+	let hearNameChoices = $state<string[]>([]);
+	let hearNamePlayCount = $state(0);
+	/** Not reactive state - a plain timer handle, mirroring BuildSession's flashTimer/feedbackTimer discipline. */
+	let hearNameAdvanceTimer: ReturnType<typeof setTimeout> | undefined;
+	/** Reuses BuildSession's exact feedbackTimer pacing value (Scope Decision 6) - not a new number invented for this plan. */
+	const HEAR_NAME_ADVANCE_MS = 650;
 
 	/** Compound (factId, mode) key, matching deck.ts's own [factId+mode] convention. */
 	function cardKey(factId: string, mode: string): string {
@@ -186,6 +216,11 @@
 		modeAAnswered = false;
 		modeAResult = undefined;
 		modeARating = undefined;
+		hearNameAnswered = false;
+		hearNameGiven = '';
+		hearNameChoices = [];
+		hearNamePlayCount = 0;
+		clearTimeout(hearNameAdvanceTimer);
 	}
 
 	/** Toggles a Mode A key selection (mirrors Drills' toggleKey exactly); no-ops once answered. */
@@ -264,6 +299,96 @@
 		reviewedCount += 1;
 		if (isSessionComplete(queue)) pageState = 'complete';
 	}
+
+	/**
+	 * Idempotent per-card choice-grid generation (D-04/UI-SPEC Mode B): the
+	 * shuffled 4-choice grid is computed exactly once per card, never
+	 * re-shuffled on every render, by guarding on `hearNameChoices` already
+	 * being empty. `pickDistractors` is called unmodified (Phase 3's proven
+	 * same-root distractor guarantee - no new distractor logic here).
+	 */
+	function ensureHearNameChoices(symbol: string): void {
+		if (hearNameChoices.length === 0) {
+			hearNameChoices = shuffle([symbol, ...pickDistractors(symbol, 3)]);
+		}
+	}
+
+	/**
+	 * Drives ensureHearNameChoices from an $effect rather than from inside the
+	 * template ({@const} mutating $state during render trips Svelte 5's
+	 * state_unsafe_mutation guard) - runs once per fresh hear-name card
+	 * (guarded internally by ensureHearNameChoices' own idempotence check) and
+	 * re-runs whenever the current queue item changes.
+	 */
+	$effect(() => {
+		if (currentItem?.mode === 'hear-name' && currentFact?.factKind === 'chord-formula') {
+			ensureHearNameChoices(currentFact.symbol);
+		}
+	});
+
+	/**
+	 * Plays (or replays) the current card's chord via the existing audio
+	 * engine, verbatim reuse of the exact call shape `handleReveal` already
+	 * makes for the `formula` mode. Never auto-plays on mount - only ever
+	 * triggered by this explicit Play/Play again tap (browser gesture
+	 * requirement).
+	 */
+	function handleHearNamePlay(chord: ReturnType<typeof spellChord>): void {
+		hearNamePlayCount += 1;
+		void ensureAudioReady();
+		playChord(chord.notes.map((note) => note.letter));
+	}
+
+	/**
+	 * Tapping a choice IS the complete answer (D-05): grades immediately,
+	 * writes the FSRS rating fire-and-forget (never blocks the advance), and
+	 * always auto-advances after HEAR_NAME_ADVANCE_MS regardless of
+	 * correctness - Mode B's D-04 "never gates" mandate applies to a wrong
+	 * answer exactly as much as a correct one.
+	 */
+	function handleHearNameChoice(choice: string): void {
+		if (hearNameAnswered || !currentFact || currentFact.factKind !== 'chord-formula') return;
+
+		hearNameAnswered = true;
+		hearNameGiven = choice;
+
+		const rating = choice === currentFact.symbol ? Rating.Good : Rating.Again;
+
+		if (rating === Rating.Good) {
+			const [text, index] = pickVariant(CORRECT_VARIANTS, confirmationIndex);
+			confirmationText = text;
+			confirmationIndex = index;
+		} else {
+			const [text, index] = pickVariant(WRONG_VARIANTS, wrongIndex);
+			headlineText = text;
+			wrongIndex = index;
+		}
+
+		const cardToGrade = currentCard;
+		const key = currentItem ? cardKey(currentItem.factId, currentItem.mode) : undefined;
+		if (cardToGrade && key) {
+			void recordGrade(cardToGrade, rating, new Date())
+				.then((updated) => {
+					cardsByKey = new Map(cardsByKey).set(key, updated);
+				})
+				.catch(() => {
+					// Best-effort write (D-04 auto-rating): never blocks Mode B's
+					// never-gates auto-advance.
+				});
+		}
+
+		clearTimeout(hearNameAdvanceTimer);
+		hearNameAdvanceTimer = setTimeout(() => {
+			queue = advanceQueue(queue, rating);
+			resetPerCardState();
+			reviewedCount += 1;
+			if (isSessionComplete(queue)) pageState = 'complete';
+		}, HEAR_NAME_ADVANCE_MS);
+	}
+
+	onDestroy(() => {
+		clearTimeout(hearNameAdvanceTimer);
+	});
 
 	/**
 	 * Reveals the current card's answer. Optionally plays the revealed fact's
@@ -532,6 +657,51 @@
 
 				<div class="mt-6">
 					<Button type="button" variant="primary" onclick={handleModeANext}>Next</Button>
+				</div>
+			{/if}
+		</div>
+	{:else if currentItem.mode === 'hear-name' && currentFact.factKind === 'chord-formula'}
+		{@const chord = spellChord(currentFact.symbol)}
+		{@const hearNameCorrect = hearNameAnswered && hearNameGiven === currentFact.symbol}
+		<div aria-live="polite">
+			<div class="mt-4" data-testid="recall-prompt">
+				<p class="text-body">Listen. Name the chord.</p>
+			</div>
+
+			<div class="mt-4">
+				<Button
+					type="button"
+					variant="primary"
+					onclick={() => handleHearNamePlay(chord)}
+				>
+					{hearNamePlayCount === 0 ? 'Play' : 'Play again'}
+				</Button>
+			</div>
+
+			<div class="mt-4 grid grid-cols-2 gap-2 xl:grid-cols-4" data-testid="hear-name-choice-grid">
+				{#each hearNameChoices as choice (choice)}
+					<Button
+						type="button"
+						variant="ghost"
+						disabled={hearNameAnswered}
+						aria-label={`Answer: ${choice}`}
+						onclick={() => handleHearNameChoice(choice)}
+					>
+						<span class="font-serif text-heading font-bold">{choice}</span>
+					</Button>
+				{/each}
+			</div>
+
+			{#if hearNameAnswered}
+				<div class="stamp mt-6" data-testid="recall-hear-name-feedback">
+					{#if hearNameCorrect}
+						<p class="text-body font-bold">{confirmationText}</p>
+					{:else}
+						<div class="bg-ink p-4">
+							<p class="text-label text-mustard font-mono uppercase">{headlineText}</p>
+						</div>
+						<RevealInsight correctSymbol={currentFact.symbol} givenSymbol={hearNameGiven} />
+					{/if}
 				</div>
 			{/if}
 		</div>
