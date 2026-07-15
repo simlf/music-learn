@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onDestroy, tick, untrack } from 'svelte';
 	import { Note } from 'tonal';
+	import { getDockRegistry } from '$lib/keyboard/dockContext.svelte';
 	import { ROOTS, QUALITY_SUFFIXES } from '$lib/theory/randomChord';
 	import { MAJOR_SCALE_ROOTS } from '$lib/theory/scale';
 	import {
@@ -445,9 +446,47 @@
 		}, 650);
 	}
 
+	/**
+	 * Docks the constructable input keyboard (Task 1, 15-07) only when
+	 * embedded (`embedFact` set) - standalone `/build` keeps its keyboard in
+	 * flow, unchanged (Scope Decision 4). `getDockRegistry()` is captured
+	 * once here at component-init time (matching every other docking page's
+	 * established pattern - calling `getContext()` again inside a teardown
+	 * callback throws Svelte's `lifecycle_outside_component`). A standalone
+	 * unit render with no dock provider in context degrades to inline
+	 * rendering: `getContext()` returns `undefined` rather than throwing
+	 * when no provider ever set the key, so `dockRegistry` is simply falsy
+	 * and `shouldDock` stays `false`.
+	 */
+	const dockRegistry = getDockRegistry();
+	const buildDockToken = Symbol('build-session-dock');
+	// untrack: embedFact never changes for the lifetime of an instance (same
+	// rationale as the embedding-seam untrack block below) - this is a
+	// deliberate init-time capture, not a reactive dependency.
+	const shouldDock = untrack(() => Boolean(embedFact)) && Boolean(dockRegistry);
+
+	/**
+	 * Registers `buildKeyboard` (defined in the template below) with the
+	 * shared dock only while a build is actively awaiting taps (KBD-03: the
+	 * constructable keyboard and free exploration are never simultaneous
+	 * input surfaces), and clears it the instant `sessionState` leaves
+	 * `'building'` (reaching `complete`) so a finished build shows no stray
+	 * keys in the dock. Mirrors ScaleKeyboardDrill's own
+	 * register-else-clear effect shape (Phase 15 Plan 04).
+	 */
+	$effect(() => {
+		if (!shouldDock) return;
+		if (sessionState === 'building') {
+			dockRegistry.register({ token: buildDockToken, keyboard: buildKeyboard });
+		} else {
+			dockRegistry.clear(buildDockToken);
+		}
+	});
+
 	onDestroy(() => {
 		clearTimeout(flashTimer);
 		clearTimeout(feedbackTimer);
+		if (shouldDock) dockRegistry.clear(buildDockToken);
 	});
 
 	// Embedding seam (13-05): runs once at component init, after every function
@@ -478,6 +517,33 @@
 		}
 	});
 </script>
+
+<!--
+	The constructable input keyboard (Task 1, 15-07): docked when embedded
+	(shouldDock), rendered inline exactly as before when standalone
+	(`/build`, Scope Decision 4). Referenced from the `<script>` block's
+	registration effect above - Svelte hoists top-level snippet bindings, so
+	textual order relative to `<script>` doesn't matter (mirrors
+	RecallSession's/ScaleKeyboardDrill's own dockedKeyboard/keyStrip
+	precedent). `containerEl`'s `bind:this` lives here rather than at the
+	call site so `scrollRootIntoView` still resolves the real DOM node
+	whichever surface (inline or dock) renders it.
+-->
+{#snippet buildKeyboard()}
+	{#if construction}
+		<div class="scroll-wrap mt-4" bind:this={containerEl}>
+			<div style="min-width: {15 * 44}px;">
+				<PianoKeyboard
+					notes={construction.earnedNotes}
+					constructable
+					octaves={2}
+					onConstructTap={handleConstructTap}
+					flashWrongKey={flashKey}
+				/>
+			</div>
+		</div>
+	{/if}
+{/snippet}
 
 <div class="build-session" data-testid="build-session">
 	{#if !embedFact}
@@ -630,17 +696,9 @@
 				{/if}
 			</div>
 
-			<div class="scroll-wrap mt-4" bind:this={containerEl}>
-				<div style="min-width: {15 * 44}px;">
-					<PianoKeyboard
-						notes={construction.earnedNotes}
-						constructable
-						octaves={2}
-						onConstructTap={handleConstructTap}
-						flashWrongKey={flashKey}
-					/>
-				</div>
-			</div>
+			{#if !shouldDock}
+				{@render buildKeyboard()}
+			{/if}
 
 			<div class="mt-4 flex flex-wrap gap-2" data-testid="formula-strip">
 				{#each construction.earnedNotes as note, i (i)}
