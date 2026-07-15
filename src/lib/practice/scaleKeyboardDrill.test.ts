@@ -119,6 +119,26 @@ describe('scale keyboard drill sequence (chroma-graded, ascending then descendin
 		expect(result.correct).toBe(false);
 		expect(result.state.position).toBe(0);
 	});
+
+	it('createScaleKeyboardDrillState returns an inert empty state for non-7-note input', () => {
+		const state = createScaleKeyboardDrillState(majorScaleNotes('C').slice(0, 5));
+
+		expect(state.targets).toEqual([]);
+		expect(state.position).toBe(0);
+		expect(expectedTarget(state)).toBeNull();
+	});
+
+	it('createScaleKeyboardDrillState fails safe (empty targets) rather than defaulting an unparseable letter to chroma 0', () => {
+		const notes = majorScaleNotes('C');
+		const malformed = notes.map((note, index) =>
+			index === 3 ? { ...note, letter: 'H' } : note
+		);
+
+		const state = createScaleKeyboardDrillState(malformed);
+
+		expect(state.targets).toEqual([]);
+		expect(expectedTarget(state)).toBeNull();
+	});
 });
 
 describe('placeAscendingScaleKeys (ascending key placement on a fixed 2-octave board)', () => {
@@ -146,5 +166,16 @@ describe('placeAscendingScaleKeys (ascending key placement on a fixed 2-octave b
 		expect(placements[6]).toMatchObject({ kind: 'white', keyIndex: 10 });
 		expect(placements[7]).toMatchObject({ kind: 'black' });
 		expect(placements[7]).not.toEqual(placements[0]);
+	});
+
+	it('returns [] for non-7-note input', () => {
+		expect(placeAscendingScaleKeys(majorScaleNotes('C').slice(0, 5))).toEqual([]);
+	});
+
+	it('fails safe (returns []) rather than desyncing degree numbering when a letter is unparseable', () => {
+		const notes = majorScaleNotes('C');
+		const malformed = notes.map((note, index) => (index === 3 ? { ...note, letter: 'H' } : note));
+
+		expect(placeAscendingScaleKeys(malformed)).toEqual([]);
 	});
 });

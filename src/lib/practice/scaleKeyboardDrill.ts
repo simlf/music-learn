@@ -69,34 +69,49 @@ export interface ScaleKeyPlacement {
 /** Fixed board span the scale keyboard drill always renders (Success Criterion 1). */
 export const SCALE_DRILL_OCTAVES = 2;
 
-/** Pitch class (0-11) for a display-glyph letter, or undefined if unparseable. */
+/**
+ * Pitch class (0-11) for a display-glyph letter, or undefined if unparseable.
+ * `Note.chroma` returns `NaN` (not `undefined`) for input it can't resolve to
+ * a pitch class, so this normalizes that into `undefined` to honor this
+ * function's own return type - without this, every `=== undefined` guard
+ * downstream (grading, degree-numbering fail-safes) would silently never
+ * fire for genuinely unparseable input.
+ */
 function chromaFor(letter: string): number | undefined {
-	return Note.chroma(toAsciiAccidentals(letter));
+	const chroma = Note.chroma(toAsciiAccidentals(letter));
+	return Number.isNaN(chroma) ? undefined : chroma;
 }
 
 /**
  * Builds the 15-target ascending-then-descending sequence from 7 spelled
  * scale degrees: degrees 1..8 ascending (degree 8 is the octave, sharing
  * degree 1's chroma), then degrees 7..1 descending. Total: input that isn't
- * exactly 7 notes yields an inert empty state rather than throwing.
+ * exactly 7 notes, or contains a note whose letter doesn't resolve to a
+ * pitch class, yields an inert empty state rather than throwing or silently
+ * defaulting the unparseable degree to chroma 0 (C) - a bad chroma would
+ * otherwise grade an unrelated tap as correct for that degree.
  */
 export function createScaleKeyboardDrillState(notes: SpelledNote[]): ScaleKeyboardDrillState {
 	if (notes.length !== 7) {
 		return { targets: [], position: 0, done: false };
 	}
 
-	const chromas = notes.map((note) => chromaFor(note.letter) ?? 0);
+	const chromas = notes.map((note) => chromaFor(note.letter));
+	if (chromas.some((chroma) => chroma === undefined)) {
+		return { targets: [], position: 0, done: false };
+	}
+	const resolvedChromas = chromas as number[];
 
 	const ascending: ScaleTarget[] = notes.map((_, index) => ({
-		chroma: chromas[index],
+		chroma: resolvedChromas[index],
 		degree: index + 1,
 		direction: 'ascending' as const
 	}));
-	ascending.push({ chroma: chromas[0], degree: 8, direction: 'ascending' });
+	ascending.push({ chroma: resolvedChromas[0], degree: 8, direction: 'ascending' });
 
 	const descending: ScaleTarget[] = [];
 	for (let degree = 7; degree >= 1; degree -= 1) {
-		descending.push({ chroma: chromas[degree - 1], degree, direction: 'descending' });
+		descending.push({ chroma: resolvedChromas[degree - 1], degree, direction: 'descending' });
 	}
 
 	return { targets: [...ascending, ...descending], position: 0, done: false };
@@ -182,10 +197,20 @@ function buildOrderedKeys(): OrderedKey[] {
  * guarantees the octave (degree 8) lands on a distinct, later key from the
  * tonic even when the 7th degree is a black key right before it (the
  * assignNotesToKeys collision this module deliberately avoids by not
- * importing it). Total: input that isn't exactly 7 notes returns [].
+ * importing it). Total: input that isn't exactly 7 notes, or contains a
+ * note whose letter doesn't resolve to a pitch class, returns []. Each
+ * placement's `degree` is derived from its position in the fixed 8-note
+ * ascending sequence (never from `placements.length`), so a skipped note
+ * (e.g. no matching key found on the board) can never desync every
+ * subsequent placement's degree number.
  */
 export function placeAscendingScaleKeys(notes: SpelledNote[]): ScaleKeyPlacement[] {
 	if (notes.length !== 7) {
+		return [];
+	}
+
+	const chromas = notes.map((note) => chromaFor(note.letter));
+	if (chromas.some((chroma) => chroma === undefined)) {
 		return [];
 	}
 
@@ -198,9 +223,9 @@ export function placeAscendingScaleKeys(notes: SpelledNote[]): ScaleKeyPlacement
 	let cursor = 0;
 	const placements: ScaleKeyPlacement[] = [];
 
-	for (const note of ascendingNotes) {
+	ascendingNotes.forEach((note, index) => {
 		const chroma = chromaFor(note.letter);
-		if (chroma === undefined) continue;
+		if (chroma === undefined) return;
 
 		let foundIndex = -1;
 		for (let i = cursor; i < orderedKeys.length; i += 1) {
@@ -209,11 +234,11 @@ export function placeAscendingScaleKeys(notes: SpelledNote[]): ScaleKeyPlacement
 				break;
 			}
 		}
-		if (foundIndex === -1) continue;
+		if (foundIndex === -1) return;
 
 		const key = orderedKeys[foundIndex];
 		placements.push({
-			degree: placements.length + 1,
+			degree: index + 1,
 			role: note.role,
 			letter: note.letter,
 			solfege: note.solfege,
@@ -223,7 +248,7 @@ export function placeAscendingScaleKeys(notes: SpelledNote[]): ScaleKeyPlacement
 			octave: key.octave
 		});
 		cursor = foundIndex + 1;
-	}
+	});
 
 	return placements;
 }
