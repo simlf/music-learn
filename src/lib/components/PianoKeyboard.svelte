@@ -110,6 +110,30 @@
 		 * Additive and gated; omitting it leaves the render byte-identical.
 		 */
 		showIntervalBadges?: boolean;
+		/**
+		 * Tap-to-construct mode (Phase 12, D-06): every key becomes tappable -
+		 * whether or not it is one of the highlighted `notes` - and fires
+		 * `onConstructTap` with the tapped key's own letter (sharp spelling for
+		 * black keys, matching onPress/onToggle's existing convention) and its
+		 * key-position octave. Unlike inspectable's emitInspect, constructable
+		 * taps never call playNote - the caller owns correct/wrong audio
+		 * feedback. Mutually exclusive with `inspectable` (constructable wins
+		 * when both are passed without interactive); `interactive` still wins
+		 * over both. Omitted keeps the display-only render byte-identical,
+		 * following the component's gated-prop compatibility contract.
+		 */
+		constructable?: boolean;
+		/** Called with the tapped key's letter and octave; only meaningful when `constructable`. */
+		onConstructTap?: (letter: string, octave: number) => void;
+		/**
+		 * Transient, octave-specific wrong-tap indicator (Phase 12): when set,
+		 * only the exact key whose own letter+octave match gets the wrong-fill
+		 * class - a same-letter duplicate key at a different octave is
+		 * unaffected. Distinct from `wrongLetters` (a permanent-per-reveal,
+		 * letter-only Set from the drills feedback surface) - the two props and
+		 * their rendering paths stay fully separate.
+		 */
+		flashWrongKey?: { letter: string; octave: number } | null;
 	}
 
 	let {
@@ -122,7 +146,10 @@
 		wrongLetters,
 		inspectable = false,
 		onInspect,
-		showIntervalBadges = false
+		showIntervalBadges = false,
+		constructable = false,
+		onConstructTap,
+		flashWrongKey
 	}: Props = $props();
 
 	/** Interval-from-root short label for a highlighted note (sketch 003). "R" for the root. */
@@ -131,10 +158,17 @@
 		return intervalFromRoot(rootLetter, note.letter).short;
 	}
 
-	/** Inspect mode is subordinate to interactive: the two never coexist (contract). */
-	const inspecting = $derived(inspectable && !interactive);
-	/** Keys carry button semantics and pointer handlers in either active mode. */
-	const keysActive = $derived(interactive || inspecting);
+	/**
+	 * Inspect mode is subordinate to interactive: the two never coexist
+	 * (contract). Also subordinate to constructable - the two "tap-driven,
+	 * non-toggle" modes are never expected to be passed together in practice,
+	 * but when they are, constructable wins (precedence choice, D-06).
+	 */
+	const inspecting = $derived(inspectable && !interactive && !constructable);
+	/** Construct mode (Phase 12): subordinate to interactive, wins over inspectable. */
+	const constructing = $derived(constructable && !interactive);
+	/** Keys carry button semantics and pointer handlers in any active mode. */
+	const keysActive = $derived(interactive || inspecting || constructing);
 
 	let containerEl: HTMLDivElement | undefined = $state();
 	let measuredWidth: number | undefined = $state(undefined);
@@ -219,14 +253,21 @@
 		emitInspect(letter, octave, key.note !== undefined);
 	}
 
-	/** One activation path per key: toggle in interactive mode, inspect in inspect mode. */
+	/**
+	 * One activation path per key: toggle in interactive mode, report-only in
+	 * construct mode (no playNote - the caller owns audio feedback), inspect
+	 * in inspect mode.
+	 */
 	function activateWhiteKey(key: WhiteKey) {
 		if (interactive) toggleKey(key.letter);
+		else if (constructing) onConstructTap?.(key.letter, octaveForWhiteIndex(key.index));
 		else inspectWhiteKey(key);
 	}
 
 	function activateBlackKey(key: BlackKey) {
 		if (interactive) toggleKey(key.sharpLetter);
+		else if (constructing)
+			onConstructTap?.(key.sharpLetter, octaveForBlackAfterWhiteIndex(key.position - 1));
 		else inspectBlackKey(key);
 	}
 
@@ -390,6 +431,19 @@
 	function pressedClass(letter: string): string {
 		return keysActive && pressedLetter === letter ? 'piano-keyboard__key--pressed' : '';
 	}
+
+	/**
+	 * Construct-mode wrong-tap flash (Phase 12, D-06): transient and
+	 * octave-specific, unlike `wrongClass`'s permanent, letter-only
+	 * `wrongLetters` semantic. Reuses the same `.piano-keyboard__key--wrong`
+	 * CSS rule verbatim - only this key's own letter+octave match flags it, so
+	 * a same-letter duplicate key at a different octave never flashes.
+	 */
+	function flashWrongClass(letter: string, octave: number): string {
+		return flashWrongKey?.letter === letter && flashWrongKey?.octave === octave
+			? 'piano-keyboard__key--wrong'
+			: '';
+	}
 </script>
 
 <div
@@ -407,7 +461,10 @@
 			)} {selectedClass(key.letter, key.note?.role)} {wrongClass(
 				key.letter,
 				key.note?.role
-			)} {stampedClass(key.letter, key.note?.role)} {pressedClass(key.letter)}"
+			)} {stampedClass(key.letter, key.note?.role)} {pressedClass(key.letter)} {flashWrongClass(
+				key.letter,
+				octaveForWhiteIndex(key.index)
+			)}"
 			style="left: {key.leftPct}%; width: {whiteKeyWidthPct}%;"
 			role={keysActive ? 'button' : undefined}
 			tabindex={keysActive ? 0 : undefined}
@@ -443,7 +500,9 @@
 			)} {selectedClass(key.sharpLetter, key.note?.role)} {wrongClass(
 				key.sharpLetter,
 				key.note?.role
-			)} {stampedClass(key.sharpLetter, key.note?.role)} {pressedClass(key.sharpLetter)}"
+			)} {stampedClass(key.sharpLetter, key.note?.role)} {pressedClass(
+				key.sharpLetter
+			)} {flashWrongClass(key.sharpLetter, octaveForBlackAfterWhiteIndex(key.position - 1))}"
 			style="left: {key.leftPct}%; width: {blackKeyWidthPct}%;"
 			role={keysActive ? 'button' : undefined}
 			tabindex={keysActive ? 0 : undefined}
