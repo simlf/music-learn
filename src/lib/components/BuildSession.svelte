@@ -18,6 +18,9 @@
 		transposeFrom
 	} from '$lib/theory/interval';
 	import { blackKeysForOctaves } from './keyboardLayout';
+	import { getCard, recordGrade, type CardRecord } from '$lib/srs/deck';
+	import { newCard, Rating } from '$lib/srs/scheduler';
+	import { scaleFormulaFactId } from '$lib/srs/facts';
 	import Button from './Button.svelte';
 	import ChordGlyph from './ChordGlyph.svelte';
 	import IntervalChip from './IntervalChip.svelte';
@@ -64,6 +67,10 @@
 	let promptState = $state<ConstructionState | undefined>();
 	/** Opt-in count-up hint reveal (BUILD-03, D-08): chords only, stays revealed for the rest of the current target's session, reset alongside the other per-target fields below. */
 	let countUpRevealed = $state(false);
+	/** The ORIGINAL ASCII chord symbol (e.g. "F#m7") that started this chord construction - construction.label is the display-glyph form and is NOT safe to reuse for the factId (BUILD-04, D-09). Unused for scale targets. */
+	let startedSymbol: string | undefined = $state();
+	/** Whether recordConstructionOutcome's best-effort FSRS write succeeded, driving the completion summary's "SAVED TO RECALL" status line (BUILD-04). */
+	let fsrsSaved = $state(false);
 	let feedback = $state<Feedback | undefined>();
 	let flashKey = $state<{ letter: string; octave: number } | null>(null);
 	/** The letter last tapped (kept beyond the 320ms flash window so the wrong-octave restatement, shown for the full 650ms, can still name it). */
@@ -122,6 +129,7 @@
 		confirmationIndex = -1;
 		wrongIndex = -1;
 		countUpRevealed = false;
+		fsrsSaved = false;
 		clearTimeout(flashTimer);
 		clearTimeout(feedbackTimer);
 		flashTimer = undefined;
@@ -152,7 +160,8 @@
 
 	function startChordConstruction() {
 		if (pickedRoot === undefined || pickedQuality === undefined) return;
-		construction = createChordConstruction(`${pickedRoot}${pickedQuality}`);
+		startedSymbol = `${pickedRoot}${pickedQuality}`;
+		construction = createChordConstruction(startedSymbol);
 		promptState = construction;
 		resetSessionUiState();
 		sessionState = 'building';
@@ -282,6 +291,48 @@
 		return `${pickedTonic ?? ''} major: ${parts.join(', ')}.`;
 	}
 
+	/** Maps a completed session's wrongTapCount to an FSRS rating (BUILD-04): 0 -> Easy, 1-2 -> Good, 3+ -> Hard. Again is never returned - there is no give-up/reset path in this design. */
+	function ratingForWrongTaps(count: number): Rating {
+		if (count === 0) return Rating.Easy;
+		if (count <= 2) return Rating.Good;
+		return Rating.Hard;
+	}
+
+	/**
+	 * Fires exactly once when a construction session completes (BUILD-04,
+	 * D-09): records a gradeable event into the fact's 'formula-build' mode
+	 * card via deck.ts's getCard/recordGrade, rated by the session's own
+	 * wrongTapCount. Chords reuse the SAME 'chord-formula:{symbol}' factId
+	 * already used by Phase 11's Recall 'formula' mode (the ORIGINAL ASCII
+	 * symbol, never construction.label's display-glyph form); scales use the
+	 * new scaleFormulaFactId(tonic). Never introduces/touches mode 'formula' -
+	 * only ever the (factId, 'formula-build') card. Best-effort: any thrown
+	 * error is swallowed silently (mirrors RecallSession's handleReveal
+	 * audio-failure precedent), never blocking or altering the already-
+	 * rendered completion summary.
+	 */
+	async function recordConstructionOutcome(): Promise<void> {
+		if (!construction || !construction.done) return;
+		try {
+			const now = new Date();
+			const factId =
+				kind === 'chords' ? `chord-formula:${startedSymbol}` : scaleFormulaFactId(pickedTonic ?? '');
+			const factKind = kind === 'chords' ? ('chord-formula' as const) : ('scale-formula' as const);
+			const existing = await getCard(factId, 'formula-build');
+			const card: CardRecord = existing ?? {
+				...newCard(now),
+				factId,
+				factKind,
+				mode: 'formula-build',
+				lastRating: null
+			};
+			await recordGrade(card, ratingForWrongTaps(construction.wrongTapCount), now);
+			fsrsSaved = true;
+		} catch {
+			// Best-effort write; never let it block or alter the completion summary.
+		}
+	}
+
 	function handleConstructTap(letter: string, octave: number) {
 		if (!construction || feedback) return;
 		lastTappedLetter = letter;
@@ -338,7 +389,10 @@
 		feedbackTimer = setTimeout(() => {
 			feedback = undefined;
 			if (advancesPrompt) promptState = nextPromptState;
-			if (willComplete) sessionState = 'complete';
+			if (willComplete) {
+				sessionState = 'complete';
+				void recordConstructionOutcome();
+			}
 		}, 650);
 	}
 
@@ -529,6 +583,12 @@
 			<div class="mt-4">
 				<PianoKeyboard notes={construction.earnedNotes} octaves={2} />
 			</div>
+
+			{#if fsrsSaved}
+				<p class="text-label mt-4 font-mono uppercase" data-testid="build-fsrs-status">
+					SAVED TO RECALL · FORMULA-BUILD MODE
+				</p>
+			{/if}
 
 			<div class="mt-6 flex flex-wrap gap-2">
 				<Button type="button" variant="primary" onclick={resetPicker}>Build Another</Button>
