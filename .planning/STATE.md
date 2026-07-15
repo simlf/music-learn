@@ -5,15 +5,15 @@ milestone_name: Learning Upgrade
 current_phase: 13
 current_phase_name: Multi-modal Recall
 status: verifying
-stopped_at: Completed 13-04-PLAN.md
-last_updated: "2026-07-15T17:24:08.628Z"
+stopped_at: Completed 13-05-PLAN.md
+last_updated: "2026-07-15T17:37:30.071Z"
 last_activity: 2026-07-15
 last_activity_desc: Completed 13-01-PLAN.md (deck Mode union widening + rotation policy module)
 progress:
   total_phases: 13
   completed_phases: 8
   total_plans: 41
-  completed_plans: 39
+  completed_plans: 40
   percent: 62
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 ## Current Position
 
 Phase: 13 — Multi-modal Recall
-Plan: 5 of 6 in current phase
+Plan: 6 of 6 in current phase
 Status: Ready to execute
 Last activity: 2026-07-15 — Completed 13-01-PLAN.md (deck Mode union widening + rotation policy module)
 
@@ -104,6 +104,7 @@ Last activity: 2026-07-15 — Completed 13-01-PLAN.md (deck Mode union widening 
 | Phase 13-multi-modal-recall P02 | 4min | 1 tasks | 2 files |
 | Phase 13-multi-modal-recall P03 | 22min | 1 tasks | 2 files |
 | Phase 13 P04 | 9min | 1 tasks | 2 files |
+| Phase 13 P05 | 9min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -195,6 +196,8 @@ Recent decisions affecting current work:
 - [Phase ?]: selected stays bound to the keyboard unconditionally (never set to undefined on reveal), letting the correct-answer no-transform requirement and the wrong-answer's simultaneous selected-hatch + interval-color + wrong-gray-fill layering fall out of PianoKeyboard's existing class rules with no new prop.
 - [Phase ?]: Mode B's ensureHearNameChoices is driven from an $effect, not an {@const} in the template — Svelte 5 forbids mutating $state from a template expression (state_unsafe_mutation)
 - [Phase ?]: Mode B's never-gates regression test answers wrong then right on the same re-presented card — A 1-item queue re-enqueues an Again-rated card per the existing D-10 contract, unchanged across every mode - a lone wrong answer cannot complete a 1-card session
+- [Phase ?]: [Phase 13-05]: BuildSession's embedFact/onComplete embedding seam gates picker markup and completion CTA/status-line behind prop presence; untrack() wraps the init-time embedFact read to avoid Svelte 5's state_referenced_locally warning
+- [Phase ?]: [Phase 13-05]: RecallSession's embedTargetFor parses chord-formula:/scale-formula: factId prefixes independent of factById()/allFacts(), letting a scale-formula card render without adding scale-formula to facts.ts's shared catalog
 
 ### Pending Todos
 
@@ -219,7 +222,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-15T17:24:08.620Z
-Stopped at: Completed 13-04-PLAN.md
+Last session: 2026-07-15T17:37:30.065Z
+Stopped at: Completed 13-05-PLAN.md
 Resume file: 
-Next: /gsd-plan-phase 10
+None

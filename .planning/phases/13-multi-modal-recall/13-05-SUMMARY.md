@@ -184,3 +184,13 @@ None - no external service configuration required.
 ---
 *Phase: 13-multi-modal-recall*
 *Completed: 2026-07-15*
+
+## Self-Check: PASSED
+
+- FOUND: src/lib/components/BuildSession.svelte
+- FOUND: src/lib/components/buildSession.test.ts
+- FOUND: src/lib/components/RecallSession.svelte
+- FOUND: src/lib/components/recallSession.test.ts
+- FOUND: .planning/phases/13-multi-modal-recall/13-05-SUMMARY.md
+- FOUND: commit e18c4a7 (feat(13-05): add BuildSession embedFact/onComplete embedding seam)
+- FOUND: commit 3ae3026 (feat(13-05): mount embedded BuildSession as Recall's formula-build mode)
