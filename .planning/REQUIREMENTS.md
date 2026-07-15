@@ -86,6 +86,45 @@ Grounded in validated spikes 006-009 (`.planning/spikes/MANIFEST.md` Session 2, 
 - [x] **SCALE-04**: User practices a scale by playing it ascending and descending on a movable piano keyboard whose leftmost key is the tonic, graded by pitch class, ending on the octave
 - [x] **SCALE-05**: The confusing degree-ladder Practice surface is replaced by the keyboard drill; the Explore surface (degree strip + interval inspect) stays
 
+## v2.1 Milestone Requirements — Playability & Comprehension (active)
+
+Grounded in Session 4 sketches 008–013 (`.planning/sketches/MANIFEST.md`). Locked house reference: reuse the `ChordGlyph` serif display + `stamp-in` reveal for every chord reveal. Same cross-cutting constraints as v2.0 (grade by chroma, tonal's spelling, local-first, no em dashes).
+
+### Playable Keyboard Everywhere
+
+- [ ] **KBD-01**: Every keyboard-bearing page (Lookup, /drills, /recall, /scales, /theory) shows a keyboard whose keys sound on tap through the existing audio engine, honoring the persisted sound toggle
+- [ ] **KBD-02**: The keyboard is docked to the bottom of the viewport, thumb-reachable on phone with content scrolling above it, and collapses/expands via a handle whose state persists
+- [ ] **KBD-03**: Free exploration on the docked keyboard never corrupts the active drill/recall answer input — exploration and answering stay distinguishable
+
+### Hear the Chord
+
+- [ ] **HEAR-01**: On the BUILD reveal the correct chord auto-plays via `playChord` the instant the answer stamps in, with the lit keys and serif glyph pulsing once in time; a "Hear again" control replays
+- [ ] **HEAR-02**: With sound off the reveal still runs the visual pulse (no dead-end); an optional roll-then-block "study" playback (arpeggiate root→3rd→5th→7th, each key lighting) is available as a toggle
+
+### Chord Explainer
+
+- [ ] **HINT-01**: Every Recall card offers a "Need a hint?" affordance that escalates one layer per tap: plain-English quality → formula chips → notes on a mini keyboard → full spelling
+- [ ] **HINT-02**: The learner can stop at any layer; the Again/Hard/Good/Easy grading row stays present and grading still commits after help is used
+- [ ] **HINT-03**: Hint copy comes from the existing hints/mnemonics layer and stays beginner-plain
+
+### Your Songs' Chords
+
+- [ ] **SONG-01**: Any chord in one of the user's added songs carries a consistent provenance mark wherever it appears (Drills prompt, Recall card, Chord Lookup result)
+- [ ] **SONG-02**: Drills and Recall expose a "From my songs" filter restricting the practiced set to song chords; with it off the full library shows but song chords keep their mark
+- [ ] **SONG-03**: Provenance is derived from the songs stored on the /songs profile surface (single source of truth)
+
+### Interactive Theory
+
+- [ ] **LEARN-01**: A lesson runs as a vertical sequence of small do-then-check steps pairing a plain-English sentence with a keyboard action; correct advances with confirmation, wrong gives a gentle retry
+- [ ] **LEARN-02**: Steps can play their interval/chord so the learner hears what they build
+- [ ] **LEARN-03**: Each lesson ends with an explicit "Try this in a drill" handoff into the beginner course on /drills
+
+### French Translation
+
+- [ ] **I18N-01**: A header EN|FR toggle switches all UI copy to correct French and persists the choice; chord symbols and the serif glyph never translate
+- [ ] **I18N-02**: An i18n layer holds every user-facing string as a keyed EN/FR translation, replacing loose inline strings
+- [ ] **I18N-03**: The tight Print Shop surfaces audited in sketch 013 (mono register labels, grading buttons, nav) render French without overflow
+
 ## Future Requirements
 
 Deferred beyond v2.0.
@@ -149,6 +188,23 @@ Deferred beyond v2.0.
 | RECALL-01 | Phase 13 |
 | RECALL-02 | Phase 13 |
 | RECALL-03 | Phase 13 |
+| KBD-01 | Phase 15 |
+| KBD-02 | Phase 15 |
+| KBD-03 | Phase 15 |
+| HEAR-01 | Phase 16 |
+| HEAR-02 | Phase 16 |
+| HINT-01 | Phase 17 |
+| HINT-02 | Phase 17 |
+| HINT-03 | Phase 17 |
+| SONG-01 | Phase 18 |
+| SONG-02 | Phase 18 |
+| SONG-03 | Phase 18 |
+| LEARN-01 | Phase 19 |
+| LEARN-02 | Phase 19 |
+| LEARN-03 | Phase 19 |
+| I18N-01 | Phase 20 |
+| I18N-02 | Phase 20 |
+| I18N-03 | Phase 20 |
 
 **Coverage:** 25/25 v1 requirements mapped (Phases 1-9). v2.0 Learning Upgrade: 13/13 requirements mapped (Phases 10-13), no orphans, no duplicates. Old Phases 4-7 retain their original v1 mappings and are deferred/superseded (see ROADMAP.md); no v2.0 requirement is mapped onto Phases 4-7.
 

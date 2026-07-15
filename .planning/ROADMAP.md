@@ -32,6 +32,17 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 12: Build-it Construction** - Earn each note by stacking one interval at a time; derive chords and scales from the formula and feed the memorization engine (completed 2026-07-15)
 - [x] **Phase 13: Multi-modal Recall** - Drill one fact across rotating modes (see-play, formula-build, hear-name) on top of the scheduler (completed 2026-07-15)
 
+### v2.1 Playability & Comprehension
+
+*(Phase 14 is the standalone `14-mastery-criterion` improvement; this v2.1 batch continues at 15. Design winners are Session 4 sketches 008–013.)*
+
+- [ ] **Phase 15: Playable Keyboard Everywhere** - A docked, always-playable keyboard on every keyboard-bearing page (sketch 008-A) (planned 2026-07-15)
+- [ ] **Phase 16: Hear the Chord** - Auto-play + synced pulse on the BUILD reveal for audio memory (sketch 009-A) (planned 2026-07-15)
+- [ ] **Phase 17: Chord Explainer** - Escalating in-place hints for unknown chords in Recall (sketch 010-A) (planned 2026-07-15)
+- [ ] **Phase 18: Your Songs' Chords** - Song-provenance marks + a From-my-songs filter across the app (sketch 011-A) (planned 2026-07-15)
+- [ ] **Phase 19: Interactive Theory** - Guided-step beginner lessons that hand off into the first drill (sketch 012-A) (planned 2026-07-15)
+- [ ] **Phase 20: French Translation** - Header EN|FR toggle and a full French i18n layer (sketch 013-A) (planned 2026-07-15)
+
 ## Phase Details
 
 ### Phase 1: Print Shop Foundation & Theory Core
@@ -369,6 +380,89 @@ Plans:
 
 **UI hint**: yes
 
+### Phase 15: Playable Keyboard Everywhere
+
+**Goal**: Every page that shows a piano keyboard carries a docked, always-playable keyboard — tapping any key sounds immediately through the existing audio engine — so practice input is uniform across Lookup, Drills, Recall, Scales, and Theory.
+**Depends on**: Phase 3 (PianoKeyboard component + audio engine)
+**Requirements**: KBD-01, KBD-02, KBD-03
+**Success Criteria** (what must be TRUE):
+
+  1. On every keyboard-bearing surface (root chord Lookup, /drills, /recall, /scales, /theory) a keyboard is present and tapping a key plays its pitch through the existing audio engine, honoring the persisted sound toggle.
+  2. The keyboard is docked to the bottom of the viewport, thumb-reachable on a phone, with page content scrolling above it; a handle collapses/expands it and the collapsed state persists.
+  3. Playing the docked keyboard for free exploration never corrupts the active drill/recall answer input on that page — exploration and answering stay distinguishable.
+
+**Design reference**: `.planning/sketches/008-keyboard-everywhere/` (winner Variant A: docked bottom bar)
+**UI hint**: yes
+
+### Phase 16: Hear the Chord
+
+**Goal**: When a BUILD (formula→build) answer is revealed, the chord sounds automatically with a visual pulse synced to the strike so audio memory forms; with sound off the reveal still pulses visually, never a silent dead-end.
+**Depends on**: Phase 12 (BuildSession reveal), Phase 15 (playable keyboard)
+**Requirements**: HEAR-01, HEAR-02
+**Success Criteria** (what must be TRUE):
+
+  1. On the BUILD reveal the correct chord plays via the existing `playChord` engine the instant the answer stamps in, and the lit keys plus the serif chord glyph pulse once in time; a "Hear again" control replays on demand.
+  2. With sound disabled the same reveal still runs the visual pulse (no audio, no error); an optional roll-then-block "study" playback (arpeggiate root→3rd→5th→7th, each key lighting as it sounds, then the block chord) is available as a toggle.
+
+**Design reference**: `.planning/sketches/009-hear-the-chord/` (winner Variant A: auto-play + pulse; C arpeggio kept as a study option). Reuses the `ChordGlyph` serif display + `stamp-in` reveal — locked house reference.
+**UI hint**: yes
+
+### Phase 17: Chord Explainer
+
+**Goal**: In a Recall review, a learner who does not know the prompted chord can pull escalating help in place — plain-English family → formula → notes on a keyboard → full spelling — without leaving the review, then still grade honestly.
+**Depends on**: Phase 11 (RecallSession)
+**Requirements**: HINT-01, HINT-02, HINT-03
+**Success Criteria** (what must be TRUE):
+
+  1. Every Recall card offers a "Need a hint?" affordance that reveals help one layer at a time, each tap escalating: plain-English chord quality, then the formula as interval-color chips, then the notes lit on a mini keyboard, then the full spelling.
+  2. The learner can stop at any layer; the Again/Hard/Good/Easy grading row stays present and grading still commits after help is used.
+  3. Hint copy is sourced from the existing hints/mnemonics layer and stays beginner-plain (no jargon dumps).
+
+**Design reference**: `.planning/sketches/010-chord-explainer/` (winner Variant A: hint ladder; C dossier folded into the deepest layer)
+**UI hint**: yes
+
+### Phase 18: Your Songs' Chords
+
+**Goal**: Chords that appear in songs the user has added surface throughout the app with a provenance mark, and drills/recall can be filtered to just those chords, so app practice reinforces the exact chords the user must play at the piano.
+**Depends on**: Phase 3 (drills), Phase 11 (recall)
+**Requirements**: SONG-01, SONG-02, SONG-03
+**Success Criteria** (what must be TRUE):
+
+  1. Any chord that belongs to one of the user's added songs carries a consistent letterpress provenance mark (e.g. "In: Autumn Leaves") wherever it appears — a Drills prompt, a Recall card, and a Chord Lookup result.
+  2. Drills and Recall expose a "From my songs" filter that restricts the practiced set to chords drawn from the user's songs; with it off the full library is practiced but song chords still show their mark.
+  3. The song→chord provenance is derived from the songs stored on the /songs profile surface (single source of truth).
+
+**Design reference**: `.planning/sketches/011-your-songs-chords/` (winner Variant A: provenance mark + filter)
+**UI hint**: yes
+
+### Phase 19: Interactive Theory
+
+**Goal**: A returning classical pianist with beginner theory can work through short, interactive, do-then-check lessons (starting with major vs. minor third) on a real keyboard, each ending with a clean handoff into the matching first drill.
+**Depends on**: Phase 15 (playable keyboard), Phase 3 (drill handoff)
+**Requirements**: LEARN-01, LEARN-02, LEARN-03
+**Success Criteria** (what must be TRUE):
+
+  1. A lesson runs as a vertical sequence of small steps that each pair one plain-English sentence with a keyboard action (tap the note a major third above C); a correct tap advances with confirmation, a wrong tap gives a gentle retry.
+  2. Steps can play their interval/chord so the learner hears what they are building.
+  3. Each lesson ends with an explicit "Try this in a drill" handoff into the beginner course on /drills.
+
+**Design reference**: `.planning/sketches/012-interactive-theory/` (winner Variant A: guided steps; B lesson-map as the later container)
+**UI hint**: yes
+
+### Phase 20: French Translation
+
+**Goal**: The entire UI can switch to French via a header EN|FR toggle backed by a real i18n layer, while chord symbols stay language-neutral and no Print Shop surface overflows.
+**Depends on**: Phases 15-19 (translate their copy once the surfaces are stable)
+**Requirements**: I18N-01, I18N-02, I18N-03
+**Success Criteria** (what must be TRUE):
+
+  1. An EN|FR toggle in the page header switches all UI copy to correct French and persists the choice; chord symbols and the serif chord glyph never translate.
+  2. An i18n layer holds every user-facing string as a keyed translation (English + French), replacing the loose inline strings.
+  3. The tight Print Shop surfaces audited in sketch 013 (mono register labels, grading buttons, nav) render French without overflow — long terms are abbreviated or their slots widened per the audit.
+
+**Design reference**: `.planning/sketches/013-french-fit-test/` (winner Variant A: header toggle; C stress-panel is the overflow audit)
+**UI hint**: yes
+
 ## Progress
 
 **Execution Order:**
@@ -392,3 +486,9 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 | 11. Memorization Engine | 6/6 | Complete    | 2026-07-15 |
 | 12. Build-it Construction | 6/6 | Complete    | 2026-07-15 |
 | 13. Multi-modal Recall | 6/6 | Complete    | 2026-07-15 |
+| 15. Playable Keyboard Everywhere | 0/TBD | Pending | - |
+| 16. Hear the Chord | 0/TBD | Pending | - |
+| 17. Chord Explainer | 0/TBD | Pending | - |
+| 18. Your Songs' Chords | 0/TBD | Pending | - |
+| 19. Interactive Theory | 0/TBD | Pending | - |
+| 20. French Translation | 0/TBD | Pending | - |
