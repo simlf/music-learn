@@ -109,7 +109,7 @@
 			{@const state = deriveCellState(cardsByKey.get(`${fact.factId}|${column.mode}`), now)}
 			<div
 				class="recall-map__cell recall-map__cell--{state}"
-				data-testid={`recall-map-cell-${fact.factId}`}
+				data-testid={`recall-map-cell-${fact.factId}-${column.mode}`}
 				data-cell-state={state}
 				role="img"
 				aria-label={`${factLabel(fact)}, ${column.label}: ${LEGEND.find((entry) => entry.state === state)?.label}`}

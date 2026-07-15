@@ -71,27 +71,27 @@ describe('RecallMap (MEM-04: fact x mode recall map)', () => {
 		// asynchronously on mount, so wait for the loaded cell state to land
 		// before asserting on it (otherwise every cell reads not-yet-seen).
 		await waitFor(() =>
-			expect(screen.getByTestId('recall-map-cell-chord-formula:Cm7')).toHaveAttribute(
+			expect(screen.getByTestId('recall-map-cell-chord-formula:Cm7-formula')).toHaveAttribute(
 				'data-cell-state',
 				'due'
 			)
 		);
 
-		const masteredCell = screen.getByTestId('recall-map-cell-interval-size:m3');
+		const masteredCell = screen.getByTestId('recall-map-cell-interval-size:m3-formula');
 		expect(masteredCell).toHaveAttribute('data-cell-state', 'mastered');
 		expect(masteredCell).toHaveTextContent('✓');
 		expect(masteredCell).toHaveAccessibleName('m3, Formula: Mastered');
 
-		const weakCell = screen.getByTestId('recall-map-cell-scale-degree:G:3');
+		const weakCell = screen.getByTestId('recall-map-cell-scale-degree:G:3-formula');
 		expect(weakCell).toHaveAttribute('data-cell-state', 'weak');
 		expect(weakCell).toHaveTextContent('!');
 		expect(weakCell).toHaveAccessibleName('G major degree 3, Formula: Weak');
 
-		expect(screen.getByTestId('recall-map-cell-interval-size:M2')).toHaveAccessibleName(
+		expect(screen.getByTestId('recall-map-cell-interval-size:M2-formula')).toHaveAccessibleName(
 			'M2, Formula: Not yet seen'
 		);
 
-		expect(screen.getByTestId('recall-map-cell-interval-size:M2')).toHaveAttribute(
+		expect(screen.getByTestId('recall-map-cell-interval-size:M2-formula')).toHaveAttribute(
 			'data-cell-state',
 			'not-yet-seen'
 		);
