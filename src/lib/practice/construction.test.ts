@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { Note } from 'tonal';
 import {
 	createChordConstruction,
 	createScaleConstruction,
@@ -8,6 +9,7 @@ import {
 	CONSTRUCTION_BASE_OCTAVE,
 	type ConstructionState
 } from './construction';
+import { toAsciiAccidentals } from '$lib/theory/interval';
 import { ROOTS, QUALITY_SUFFIXES } from '$lib/theory/randomChord';
 import { MAJOR_SCALE_ROOTS } from '$lib/theory/scale';
 
@@ -21,9 +23,24 @@ import { MAJOR_SCALE_ROOTS } from '$lib/theory/scale';
  * fits the fixed 2-octave C4-C6 board.
  */
 
-/** Scientific-pitch octave for a MIDI number (60 -> 4), matching the app's C4-based convention. */
-function octaveOf(midi: number): number {
-	return Math.floor(midi / 12) - 1;
+/**
+ * Octave that makes `letter` (display glyphs allowed) resolve to exactly
+ * `midi` via Note.midi. A pure midi-to-octave formula (floor(midi/12)-1)
+ * does not round-trip for multi-accidental letters that the
+ * ascending-voicing algorithm places by bumping an extra octave (e.g. a
+ * target's own C♭♭ sitting a full octave above where that naive formula
+ * would place it) - this searches the practical keyboard span for the
+ * concrete octave that actually reproduces the target's own MIDI when
+ * tapped with the given letter.
+ */
+function octaveForTap(letter: string, midi: number): number {
+	const pitchClass = toAsciiAccidentals(letter);
+	for (let octave = 0; octave <= 9; octave += 1) {
+		if (Note.midi(`${pitchClass}${octave}`) === midi) {
+			return octave;
+		}
+	}
+	throw new Error(`no octave found for ${letter} at midi ${midi}`);
 }
 
 /**
@@ -37,7 +54,11 @@ function walkAllCorrect(state: ConstructionState): ConstructionState {
 	while (!current.done) {
 		const step = expectedStep(current);
 		if (!step) break;
-		const result = gradeConstructionTap(current, step.letter, octaveOf(step.midi));
+		const result = gradeConstructionTap(
+			current,
+			step.letter,
+			octaveForTap(step.letter, step.midi)
+		);
 		expect(result.outcome).toBe('correct');
 		current = result.state;
 	}
@@ -112,7 +133,7 @@ describe('gradeConstructionTap: ascending walk-through', () => {
 		for (let i = 0; i < 2; i += 1) {
 			const step = expectedStep(state);
 			if (!step) throw new Error('expected a step');
-			const result = gradeConstructionTap(state, step.letter, octaveOf(step.midi));
+			const result = gradeConstructionTap(state, step.letter, octaveForTap(step.letter, step.midi));
 			expect(result.outcome).toBe('correct');
 			state = result.state;
 		}
@@ -121,7 +142,7 @@ describe('gradeConstructionTap: ascending walk-through', () => {
 		if (!seventhStep) throw new Error('expected the seventh step');
 		expect(seventhStep.letter).toBe('B♭♭');
 
-		const result = gradeConstructionTap(state, 'A', octaveOf(seventhStep.midi));
+		const result = gradeConstructionTap(state, 'A', octaveForTap('A', seventhStep.midi));
 
 		expect(result.outcome).toBe('correct');
 		expect(result.state.done).toBe(true);
@@ -137,7 +158,7 @@ describe('gradeConstructionTap: wrong-pitch-class and wrong-octave grading', () 
 		const snapshotPosition = initial.position;
 		const snapshotWrongTapCount = initial.wrongTapCount;
 
-		const result = gradeConstructionTap(initial, 'F', octaveOf(step.midi));
+		const result = gradeConstructionTap(initial, 'F', octaveForTap(step.letter, step.midi));
 
 		expect(result.outcome).toBe('wrong-pitch-class');
 		expect(result.semitones).toBe(2);
@@ -155,7 +176,11 @@ describe('gradeConstructionTap: wrong-pitch-class and wrong-octave grading', () 
 		const step = expectedStep(initial);
 		if (!step) throw new Error('expected a step');
 
-		const result = gradeConstructionTap(initial, step.letter, octaveOf(step.midi) + 1);
+		const result = gradeConstructionTap(
+			initial,
+			step.letter,
+			octaveForTap(step.letter, step.midi) + 1
+		);
 
 		expect(result.outcome).toBe('wrong-octave');
 		expect(result.semitones).toBeUndefined();
@@ -169,9 +194,10 @@ describe('gradeConstructionTap: wrong-pitch-class and wrong-octave grading', () 
 		const step = expectedStep(initial);
 		if (!step) throw new Error('expected a step');
 
-		const miss1 = gradeConstructionTap(initial, 'F', octaveOf(step.midi));
-		const miss2 = gradeConstructionTap(miss1.state, 'F', octaveOf(step.midi));
-		const hit = gradeConstructionTap(miss2.state, step.letter, octaveOf(step.midi));
+		const octave = octaveForTap(step.letter, step.midi);
+		const miss1 = gradeConstructionTap(initial, 'F', octave);
+		const miss2 = gradeConstructionTap(miss1.state, 'F', octave);
+		const hit = gradeConstructionTap(miss2.state, step.letter, octave);
 
 		expect(miss1.state.wrongTapCount).toBe(1);
 		expect(miss2.state.wrongTapCount).toBe(2);
