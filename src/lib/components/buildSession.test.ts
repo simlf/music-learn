@@ -329,3 +329,97 @@ describe('BuildSession count-up hint (BUILD-03, 12-05 Task 1)', () => {
 		expect(screen.queryByTestId('build-enharmonic-line')).not.toBeInTheDocument();
 	});
 });
+
+/**
+ * Component test for BuildSession (Phase 12, Task 2 of 12-05): the full
+ * completion summary (heading, rule statement, finalized formula strip and
+ * keyboard, both CTAs), driven end to end through the public component API
+ * for one full chord run and one full scale run.
+ */
+describe('BuildSession completion summary (BUILD-01/02, 12-05 Task 2)', () => {
+	it('a full Cm7 build ends with the exact heading/rule copy, a fully-filled formula strip, a non-interactive keyboard, and both CTAs', async () => {
+		render(BuildSession);
+		await fireEvent.click(screen.getByRole('button', { name: 'C' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'minor 7th' }));
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+
+		expect(screen.getByTestId('build-complete-heading')).toHaveTextContent('Voila. You built Cm7.');
+		expect(screen.getByTestId('build-complete-rule')).toHaveTextContent(
+			'C, then minor 3rd, then major 3rd, then minor 3rd.'
+		);
+		expect(screen.queryByTestId('formula-placeholder')).not.toBeInTheDocument();
+		expect(within(screen.getByTestId('formula-strip')).getByText('B♭')).toBeInTheDocument();
+		// Display-mode PianoKeyboard: no interactive/inspectable/constructable
+		// keys, so no key carries button semantics anymore.
+		expect(screen.queryAllByRole('button', { name: /key$/ })).toHaveLength(0);
+
+		expect(screen.getByRole('button', { name: 'Build Another' })).toBeInTheDocument();
+		const recallLink = screen.getByRole('link', { name: 'Recall It Now' });
+		expect(recallLink).toHaveAttribute('href', '/recall');
+	});
+
+	it('"Build Another" returns to the picker with the SAME kind (chords) preserved, not reset', async () => {
+		render(BuildSession);
+		await fireEvent.click(screen.getByRole('button', { name: 'C' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'minor 7th' }));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Build Another' }));
+
+		expect(screen.getByText('Root')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Chords' })).toHaveAttribute('aria-pressed', 'true');
+		expect(screen.getByRole('button', { name: 'C' })).toHaveAttribute('aria-pressed', 'false');
+	});
+
+	it(
+		'a full G major scale build ends with the exact heading/rule copy and "Build Another" returns to the Scales picker',
+		async () => {
+			render(BuildSession);
+			await fireEvent.click(screen.getByRole('button', { name: 'Scales' }));
+			await fireEvent.click(screen.getByRole('button', { name: 'G major' }));
+
+			await fireEvent.click(screen.getAllByRole('button', { name: 'A key' })[0]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			await fireEvent.click(screen.getAllByRole('button', { name: 'B key' })[0]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[1]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			await fireEvent.click(screen.getAllByRole('button', { name: 'D key' })[1]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			await fireEvent.click(screen.getAllByRole('button', { name: 'E key' })[1]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			await fireEvent.click(screen.getAllByRole('button', { name: 'F♯ key' })[1]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[1]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+
+			expect(screen.getByTestId('build-complete-heading')).toHaveTextContent(
+				'Voila. G major, built from scratch.'
+			);
+			expect(screen.getByTestId('build-complete-rule')).toHaveTextContent(
+				'G major: whole, whole, half, whole, whole, whole, half.'
+			);
+			expect(screen.queryByTestId('formula-placeholder')).not.toBeInTheDocument();
+
+			await fireEvent.click(screen.getByRole('button', { name: 'Build Another' }));
+
+			expect(screen.getByText('Tonic')).toBeInTheDocument();
+			expect(screen.getByRole('button', { name: 'Scales' })).toHaveAttribute(
+				'aria-pressed',
+				'true'
+			);
+		},
+		10000
+	);
+});

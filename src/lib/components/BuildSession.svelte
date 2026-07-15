@@ -256,6 +256,32 @@
 		return construction?.steps[index - 1]?.interval.short ?? '';
 	}
 
+	/** Completion-summary heading: "Voila. You built {symbol}." (chords) / "Voila. {tonic} major, built from scratch." (scales). */
+	function headingFor(): string {
+		if (kind === 'chords') return `Voila. You built ${construction?.label ?? ''}.`;
+		return `Voila. ${pickedTonic ?? ''} major, built from scratch.`;
+	}
+
+	/**
+	 * Completion-summary rule statement, derived straight from the final
+	 * `construction.steps` (already fully advanced/done): "{root}, then
+	 * {interval1Long}, then ..." for chords (comma-joined with 'then'), or
+	 * "{tonic} major: {whole/half list}" for scales (comma-joined, no 'then').
+	 */
+	function ruleStatementFor(): string {
+		if (!construction) return '';
+		if (kind === 'chords') {
+			const root = construction.earnedNotes[0]?.letter ?? '';
+			const parts = construction.steps.map((step) => phraseStep(step.interval.short));
+			return `${root}, then ${parts.join(', then ')}.`;
+		}
+		// Bare "whole"/"half" words (not phraseStep's "whole step"/"half step" -
+		// the list format already implies steps, per the UI-SPEC's literal
+		// "C major: whole, whole, half, ..." example).
+		const parts = construction.steps.map((step) => (step.interval.quality === 'M' ? 'whole' : 'half'));
+		return `${pickedTonic ?? ''} major: ${parts.join(', ')}.`;
+	}
+
 	function handleConstructTap(letter: string, octave: number) {
 		if (!construction || feedback) return;
 		lastTappedLetter = letter;
@@ -486,8 +512,29 @@
 				{/if}
 			</div>
 		</div>
-	{:else if sessionState === 'complete'}
-		<p class="text-body mt-8" data-testid="build-complete">Building {construction?.label}... done.</p>
+	{:else if sessionState === 'complete' && construction}
+		<div class="mt-8" data-testid="build-complete">
+			<p class="text-heading font-bold" data-testid="build-complete-heading">{headingFor()}</p>
+			<p class="text-body mt-2" data-testid="build-complete-rule">{ruleStatementFor()}</p>
+
+			<div class="mt-4 flex flex-wrap gap-2" data-testid="formula-strip">
+				{#each construction.earnedNotes as note, i (i)}
+					<div class="flex flex-col items-center gap-1">
+						<IntervalChip role={note.role} label={chipLabelFor(i)} />
+						<span class="text-label font-mono">{note.letter}</span>
+					</div>
+				{/each}
+			</div>
+
+			<div class="mt-4">
+				<PianoKeyboard notes={construction.earnedNotes} octaves={2} />
+			</div>
+
+			<div class="mt-6 flex flex-wrap gap-2">
+				<Button type="button" variant="primary" onclick={resetPicker}>Build Another</Button>
+				<Button variant="ghost" href="/recall">Recall It Now</Button>
+			</div>
+		</div>
 	{/if}
 </div>
 
