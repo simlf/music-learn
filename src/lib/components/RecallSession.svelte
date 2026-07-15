@@ -192,15 +192,14 @@
 	const remaining = $derived(sessionRemaining(queue));
 
 	/**
-	 * Docked keyboard (KBD-01/KBD-03, 15-06): Mode A ('see-play'), Mode B
-	 * ('hear-name'), and the `formula`-mode reveal keyboard collapse into ONE
-	 * mode-aware `dockedKeyboard` snippet (defined in the template below),
-	 * registered with the shared dock whenever a reviewable card OTHER than
-	 * Mode C ('formula-build', embedded BuildSession - Plan 07's own docked
-	 * keyboard) is showing. `getDockRegistry()` is captured once here at
-	 * component-init time (matching Plans 02-05's established pattern) -
-	 * calling it again inside a teardown callback throws Svelte's
-	 * lifecycle_outside_component.
+	 * Docked keyboard (KBD-01/KBD-03, 15-06/15-07): Mode A ('see-play'), Mode
+	 * B ('hear-name'), and the `formula`-mode reveal keyboard collapse into
+	 * ONE mode-aware `dockedKeyboard` snippet (defined in the template
+	 * below), registered with the shared dock whenever a reviewable card
+	 * OTHER than Mode C is showing. `getDockRegistry()` is captured once
+	 * here at component-init time (matching Plans 02-05's established
+	 * pattern) - calling it again inside a teardown callback throws
+	 * Svelte's lifecycle_outside_component.
 	 */
 	const dockRegistry = getDockRegistry();
 	const dockToken = Symbol('recall-dock');
@@ -209,8 +208,17 @@
 	 * Registers `dockedKeyboard` whenever the page is actively reviewing a
 	 * non-Mode-C card, and clears it (effect cleanup, which also fires on
 	 * unmount) the instant that's no longer true - loading/empty/complete/
-	 * error states and Mode C's own embedded-BuildSession keyboard never show
-	 * a stale docked keyboard (T-15-03).
+	 * error states never show a stale docked keyboard. Mode C
+	 * ('formula-build') is skipped here NOT to "force-clear" a competing
+	 * registration (Plan 06's framing, now stale) but because the embedded
+	 * BuildSession instance is the sole registrant for that mode (Plan 07,
+	 * Task 1) - RecallSession simply never writes to the registry while a
+	 * Mode C card is current, so there is no last-writer race to reason
+	 * about: on entering Mode C this effect's cleanup fires and nothing
+	 * re-registers in its place (BuildSession's own effect, mounting a beat
+	 * later, is the only writer); on leaving Mode C (BuildSession unmounts
+	 * and clears its own token-guarded registration first) this effect
+	 * re-runs and restores the next card's real docked keyboard.
 	 */
 	$effect(() => {
 		if (pageState !== 'reviewing' || currentItem?.mode === 'formula-build') return;

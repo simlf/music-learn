@@ -1045,7 +1045,7 @@ describe('RecallSession docked keyboard (KBD-01/KBD-03, Phase 15 Plan 06)', () =
 		expect(registry.current).toBeNull();
 	});
 
-	it('clears its registration while a formula-build (Mode C) card is showing, so no stale keyboard exists alongside the embedded BuildSession', async () => {
+	it("on a formula-build (Mode C) card, the embedded BuildSession's own constructable keyboard is the docked element (Plan 07) - RecallSession contributes no competing registration", async () => {
 		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'formula-build');
 		introduceNewCardsMock.mockResolvedValue(0);
 		getDueCardsMock.mockResolvedValue([card]);
@@ -1054,7 +1054,39 @@ describe('RecallSession docked keyboard (KBD-01/KBD-03, Phase 15 Plan 06)', () =
 		const { registry } = renderRecallSessionPageOnly();
 		await waitFor(() => screen.getByTestId('build-session'));
 
-		expect(registry.current).toBeNull();
+		// The dock holds exactly one registration - BuildSession's own,
+		// carrying its constructable keyboard, not RecallSession's own
+		// no-op-for-Mode-C dockedKeyboard snippet.
+		expect(registry.current).not.toBeNull();
+		expect(registry.current?.keyboard).toBeTypeOf('function');
+	});
+
+	it("advancing past a Mode C card (BuildSession's onComplete) clears back to the next card's docked keyboard, with no stale registration in between", async () => {
+		const cardA = makeCard('chord-formula:Cm7', 'chord-formula', 'formula-build');
+		const cardB = makeCard('interval-size:m3', 'interval-size', 'formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([cardA, cardB]);
+		getAllCardsMock.mockResolvedValue([cardA, cardB]);
+
+		const { registry } = renderRecallSession();
+		await waitFor(() => screen.getByTestId('build-session'));
+		expect(registry.current).not.toBeNull();
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+		await waitFor(() => expect(screen.getByText("What's the interval?")).toBeInTheDocument());
+		// The next card (formula mode) is now docked - registry.current
+		// switched back to RecallSession's own dockedKeyboard registration,
+		// never left null.
+		expect(registry.current).not.toBeNull();
+		expect(registry.current?.keyboard).toBeTypeOf('function');
 	});
 
 	it('Mode A (see-play): the docked keyboard is interactive - tapping sounds via mocked playNote and toggles selection', async () => {
