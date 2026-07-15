@@ -5,16 +5,16 @@ milestone_name: Learning Upgrade
 current_phase: 12
 current_phase_name: Build-it Construction
 status: verifying
-stopped_at: Completed 12-05-PLAN.md
-last_updated: "2026-07-15T15:16:08.443Z"
+stopped_at: Completed 12-06-PLAN.md
+last_updated: "2026-07-15T15:31:14.896Z"
 last_activity: 2026-07-15
 last_activity_desc: Completed 12-02-PLAN.md (PianoKeyboard constructable mode)
 progress:
   total_phases: 13
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 35
-  completed_plans: 34
-  percent: 54
+  completed_plans: 35
+  percent: 62
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 
 Phase: 12 — Build-it Construction
 Plan: 6 of 6 in current phase
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-15 — Completed 12-02-PLAN.md (PianoKeyboard constructable mode)
 
 **v2.0 phases (execution order 10 → 11 → 12 → 13):**
@@ -98,6 +98,7 @@ Last activity: 2026-07-15 — Completed 12-02-PLAN.md (PianoKeyboard constructab
 | Phase 12 P03 | 9min | 2 tasks | 2 files |
 | Phase 12 P04 | 8min | 2 tasks | 4 files |
 | Phase 12 P05 | 13min | 2 tasks | 2 files |
+| Phase 12-build-it-construction P06 | 12min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -180,6 +181,8 @@ Recent decisions affecting current work:
 - [Phase 12 P05]: countUpRevealed resets inside the existing resetSessionUiState() (shared by fresh-target-pick and Build Another), avoiding duplicate reset logic
 - [Phase 12 P05]: Enharmonic teaching line intervalWord uses the consecutive interval's own role (step.interval.role), not the chord-tone role (step.role), so Cdim7's B-flat-flat reads minor thirds not minor sevenths
 - [Phase 12 P05]: Scale rule statement uses bare whole/half words (step.interval.quality check) rather than phraseStep's asScaleStep phrase, matching the UI-SPEC's literal list-format example
+- [Phase 12-06]: recordConstructionOutcome fires fire-and-forget from the sessionState->'complete' timer, wrapped in try/catch mirroring RecallSession.handleReveal's silent-catch (never handleGrade's error-surfacing)
+- [Phase 12-06]: startedSymbol state retains the ORIGINAL ASCII chord symbol separately from construction.label, since the display-glyph label is unsafe to reuse for the chord-formula factId
 
 ### Pending Todos
 
@@ -204,7 +207,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-15T15:16:08.436Z
-Stopped at: Completed 12-05-PLAN.md
+Last session: 2026-07-15T15:31:14.891Z
+Stopped at: Completed 12-06-PLAN.md
 Resume file: None
 Next: /gsd-plan-phase 10

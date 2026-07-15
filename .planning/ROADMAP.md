@@ -21,7 +21,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 4: MIDI Play-to-Answer** - Answer the same drills by playing the connected digital piano — DEFERRED (needs hardware present; out of v2.0 scope)
 - [ ] **Phase 5: Smart Drill Design** - Interleaved sessions, scoped practice, and fading label scaffolds — SUPERSEDED by v2.0 Phase 13 (Multi-modal Recall)
 - [x] **Phase 6: Major Scales** - Drill and see fingerings for all 12 major scales, expanding from G major — SUPERSEDED by v2.0 Phase 10 (Scale Keyboard Drill) (completed 2026-07-15)
-- [ ] **Phase 7: Theory Lessons** - Short shape-first lessons explaining what the symbols mean — SUPERSEDED by v2.0 Phase 12 (Build-it Construction)
+- [x] **Phase 7: Theory Lessons** - Short shape-first lessons explaining what the symbols mean — SUPERSEDED by v2.0 Phase 12 (Build-it Construction) (completed 2026-07-15)
 - [x] **Phase 8: Progress & Streaks** - Cross-device answer history, weakness-aware stats, and a daily streak (completed 2026-07-13)
 - [x] **Phase 9: Deploy to the Piano** - Live on the Oracle server over HTTPS, usable on laptop and phone (completed 2026-07-13)
 
@@ -323,7 +323,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Each step shows a plain-English interval instruction and why that note belongs; a wrong tap gives diagnostic feedback (e.g., "2 half steps too high"), grading by pitch class while teaching the correct enharmonic spelling.
   4. Completing or missing construction steps records gradeable events into the memorization engine as that fact's formula-build mode.
 
-**Plans**: 5/6 plans executed
+**Plans**: 6/6 plans complete
 
 **Wave 1** *(parallel: disjoint file sets)*
 
@@ -341,7 +341,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 4** *(blocked on Wave 3: shares BuildSession.svelte)*
 
-- [ ] 12-06-PLAN.md — FSRS integration: record construction outcomes as formula-build mode cards
+- [x] 12-06-PLAN.md — FSRS integration: record construction outcomes as formula-build mode cards
 
 **UI hint**: yes
 
@@ -380,5 +380,5 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 | 9. Deploy to the Piano | 6/6 | Complete   | 2026-07-13 |
 | 10. Scale Keyboard Drill | 2/2 | Complete    | 2026-07-15 |
 | 11. Memorization Engine | 6/6 | Complete    | 2026-07-15 |
-| 12. Build-it Construction | 5/6 | In Progress|  |
+| 12. Build-it Construction | 6/6 | Complete   | 2026-07-15 |
 | 13. Multi-modal Recall | 0/TBD | Not started | - |
