@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import RecallSession from './RecallSession.svelte';
-import { gradeCard, newCard, previewGrades, Rating } from '$lib/srs/scheduler';
+import { gradeCard, newCard, previewGrades, Rating, State } from '$lib/srs/scheduler';
 import { formatDayInterval } from '$lib/srs/session';
 import type { CardRecord } from '$lib/srs/deck';
 import { majorScaleNotes } from '$lib/theory/scale';
@@ -654,5 +654,223 @@ describe('RecallSession Mode C (formula-build: embeds BuildSession directly, REC
 
 		await waitFor(() => screen.getByTestId('recall-complete'));
 		expect(screen.getByTestId('recall-reviewed-count')).toHaveTextContent('1 REVIEWED TODAY');
+	});
+});
+
+/**
+ * Integration coverage for 13-06: load()'s queue composition now filters
+ * getDueCards()'s raw output through rotation.ts's REAL (unmocked)
+ * selectReviewCards (13-01) before building cardsByKey/queue - this is the
+ * plan's entire wiring change, proven end to end here rather than only in
+ * rotation.test.ts's own unit coverage. `state`/`stability` overrides use a
+ * distinct local helper (not `makeCard`, which hardcodes State.New via
+ * newCard(NOW) with no override hook) so review-mode fixtures can be built
+ * without reshaping the existing helper's signature.
+ */
+describe('RecallSession queue composition via selectReviewCards (RECALL-03 rotation policy, 13-06)', () => {
+	function makeCardWithState(
+		factId: string,
+		factKind: CardRecord['factKind'],
+		mode: CardRecord['mode'],
+		overrides: Partial<CardRecord> = {}
+	): CardRecord {
+		return {
+			...newCard(NOW),
+			factId,
+			factKind,
+			mode,
+			lastRating: null,
+			...overrides
+		};
+	}
+
+	it('teach cluster (all State.New, same fact): all 3 cluster cards queue together uncapped, each reachable in sequence', async () => {
+		const formulaCard = makeCardWithState('chord-formula:Cm7', 'chord-formula', 'formula', {
+			state: State.New
+		});
+		const seePlayCard = makeCardWithState('chord-formula:Cm7', 'chord-formula', 'see-play', {
+			state: State.New
+		});
+		const buildCard = makeCardWithState('chord-formula:Cm7', 'chord-formula', 'formula-build', {
+			state: State.New
+		});
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([formulaCard, seePlayCard, buildCard]);
+		getAllCardsMock.mockResolvedValue([formulaCard, seePlayCard, buildCard]);
+
+		render(RecallSession);
+		await waitFor(() => screen.getByTestId('recall-register'));
+		expect(screen.getByTestId('recall-register')).toHaveTextContent('3 LEFT TODAY');
+		expect(screen.getByTestId('recall-mode-chip')).toHaveTextContent('SYMBOL → FORMULA');
+
+		// Card 1 (formula): reveal, then grade Good.
+		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
+		await fireEvent.click(screen.getByTestId('recall-grade-good'));
+
+		// Card 2 (see-play): a correct Check, then Next - none of the teach
+		// cluster's cards were capped out by the fact-level cap.
+		await waitFor(() =>
+			expect(screen.getByTestId('recall-mode-chip')).toHaveTextContent('SYMBOL → PLAY')
+		);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+		// Card 3 (formula-build): the embedded BuildSession runs to completion,
+		// then Next.
+		await waitFor(() =>
+			expect(screen.getByTestId('recall-mode-chip')).toHaveTextContent('FORMULA → BUILD')
+		);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		expect(screen.getByTestId('build-complete')).toBeInTheDocument();
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+		await waitFor(() => screen.getByTestId('recall-complete'));
+		expect(screen.getByTestId('recall-reviewed-count')).toHaveTextContent('3 REVIEWED TODAY');
+	});
+
+	it('review cards (State.Review, one fact, different stabilities): caps to 2 per encounter and deprioritizes hear-name below its raw stability rank', async () => {
+		const hearNameCard = makeCardWithState('chord-formula:Cm7', 'chord-formula', 'hear-name', {
+			state: State.Review,
+			stability: 0.1,
+			difficulty: 5
+		});
+		const formulaCard = makeCardWithState('chord-formula:Cm7', 'chord-formula', 'formula', {
+			state: State.Review,
+			stability: 10,
+			difficulty: 5
+		});
+		const seePlayCard = makeCardWithState('chord-formula:Cm7', 'chord-formula', 'see-play', {
+			state: State.Review,
+			stability: 5,
+			difficulty: 5
+		});
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([hearNameCard, formulaCard, seePlayCard]);
+		getAllCardsMock.mockResolvedValue([hearNameCard, formulaCard, seePlayCard]);
+
+		render(RecallSession);
+		await waitFor(() => screen.getByTestId('recall-register'));
+
+		// Capped: only 2 of this fact's 3 due cards are selected.
+		expect(screen.getByTestId('recall-register')).toHaveTextContent('2 LEFT TODAY');
+		// The weaker non-hear-name card (see-play, stability 5) surfaces first,
+		// ahead of the stronger formula card (stability 10) - and hear-name,
+		// despite having the LOWEST raw stability of the three, is excluded
+		// entirely (D-07's "always lowest priority").
+		expect(screen.getByTestId('recall-mode-chip')).toHaveTextContent('SYMBOL → PLAY');
+		expect(screen.queryByText('Listen. Name the chord.')).not.toBeInTheDocument();
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+		await waitFor(() =>
+			expect(screen.getByTestId('recall-mode-chip')).toHaveTextContent('SYMBOL → FORMULA')
+		);
+		expect(screen.queryByText('Listen. Name the chord.')).not.toBeInTheDocument();
+		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
+		await fireEvent.click(screen.getByTestId('recall-grade-good'));
+
+		// The session completes at 2, having never encountered the hear-name
+		// card - the cap held for the whole session, not just its first item.
+		await waitFor(() => screen.getByTestId('recall-complete'));
+		expect(screen.getByTestId('recall-reviewed-count')).toHaveTextContent('2 REVIEWED TODAY');
+	});
+
+	it('a fact whose ONLY due card is hear-name still gets included (register reads 1, not 0) and completes normally', async () => {
+		const card = makeCardWithState('chord-formula:Cm7', 'chord-formula', 'hear-name', {
+			state: State.Review,
+			stability: 1,
+			difficulty: 5
+		});
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		render(RecallSession);
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		expect(screen.getByTestId('recall-register')).toHaveTextContent('1 LEFT TODAY');
+		expect(screen.getByTestId('recall-mode-chip')).toHaveTextContent('SOUND → NAME');
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Answer: Cm7' }));
+		await new Promise((resolve) => setTimeout(resolve, 700));
+
+		await waitFor(() => screen.getByTestId('recall-complete'));
+		expect(screen.getByTestId('recall-reviewed-count')).toHaveTextContent('1 REVIEWED TODAY');
+	});
+
+	it("a full mixed-mode session (one card per mode, different facts) completes via every mode's own advance mechanism (RECALL-01/02/03 together)", async () => {
+		const formulaCard = makeCardWithState('interval-size:m3', 'interval-size', 'formula', {
+			state: State.New
+		});
+		const seePlayCard = makeCardWithState('chord-formula:Dm7', 'chord-formula', 'see-play', {
+			state: State.New
+		});
+		const hearNameCard = makeCardWithState('chord-formula:G7', 'chord-formula', 'hear-name', {
+			state: State.New
+		});
+		const buildCard = makeCardWithState('chord-formula:Cm7', 'chord-formula', 'formula-build', {
+			state: State.New
+		});
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([formulaCard, seePlayCard, hearNameCard, buildCard]);
+		getAllCardsMock.mockResolvedValue([formulaCard, seePlayCard, hearNameCard, buildCard]);
+
+		render(RecallSession);
+		await waitFor(() => screen.getByTestId('recall-register'));
+		expect(screen.getByTestId('recall-register')).toHaveTextContent('4 LEFT TODAY');
+
+		// Card 1 (formula, interval-size:m3): reveal + grade buttons.
+		expect(screen.getByTestId('recall-mode-chip')).toHaveTextContent('SYMBOL → FORMULA');
+		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
+		await fireEvent.click(screen.getByTestId('recall-grade-good'));
+
+		// Card 2 (see-play, chord-formula:Dm7): Check + Next.
+		await waitFor(() =>
+			expect(screen.getByTestId('recall-mode-chip')).toHaveTextContent('SYMBOL → PLAY')
+		);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'F key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+		// Card 3 (hear-name, chord-formula:G7): choice-tap + timer-advance
+		// (never a manual Next).
+		await waitFor(() =>
+			expect(screen.getByTestId('recall-mode-chip')).toHaveTextContent('SOUND → NAME')
+		);
+		await fireEvent.click(screen.getByRole('button', { name: 'Answer: G7' }));
+		await new Promise((resolve) => setTimeout(resolve, 700));
+
+		// Card 4 (formula-build, chord-formula:Cm7): the embedded BuildSession's
+		// own completion, then Next.
+		await waitFor(() =>
+			expect(screen.getByTestId('recall-mode-chip')).toHaveTextContent('FORMULA → BUILD')
+		);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+		await waitFor(() => screen.getByTestId('recall-complete'));
+		expect(screen.getByTestId('recall-reviewed-count')).toHaveTextContent('4 REVIEWED TODAY');
 	});
 });

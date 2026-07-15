@@ -8,6 +8,7 @@
 		recordGrade,
 		type CardRecord
 	} from '$lib/srs/deck';
+	import { selectReviewCards } from '$lib/srs/rotation';
 	import { previewGrades, Rating } from '$lib/srs/scheduler';
 	import { factById } from '$lib/srs/facts';
 	import {
@@ -163,8 +164,11 @@
 				pageState = all.length === 0 ? 'empty-no-deck' : 'empty-none-due';
 				return;
 			}
-			cardsByKey = new Map(due.map((card) => [cardKey(card.factId, card.mode), card]));
-			queue = buildQueue(due.map((card) => ({ factId: card.factId, mode: card.mode })));
+			const selectedCards = selectReviewCards(due);
+			cardsByKey = new Map(
+				selectedCards.map((card) => [cardKey(card.factId, card.mode), card])
+			);
+			queue = buildQueue(selectedCards.map((card) => ({ factId: card.factId, mode: card.mode })));
 			revealed = false;
 			reviewedCount = 0;
 			pageState = 'reviewing';
