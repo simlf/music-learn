@@ -252,6 +252,60 @@ describe('deck', () => {
 		expect(hearNameAfterThree[0].due.getTime()).toBeLessThanOrEqual(now0.getTime());
 	});
 
+	it('recordGrade: a first correct grade (Good) on a never-mastery-counted card sets masteryDayCount to 1', async () => {
+		const card = makeCardRecord({ masteryDayCount: 0, last_review: undefined });
+		const graded = await recordGrade(card, Rating.Good, now0);
+		expect(graded.masteryDayCount).toBe(1);
+	});
+
+	it('recordGrade: a second correct grade on the SAME local calendar day leaves masteryDayCount unchanged', async () => {
+		const card = makeCardRecord({ masteryDayCount: 0, last_review: undefined });
+		const first = await recordGrade(card, Rating.Good, now0);
+		expect(first.masteryDayCount).toBe(1);
+
+		const laterSameDay = new Date(now0.getTime() + 60 * 60 * 1000); // +1h, same local day
+		const second = await recordGrade(first, Rating.Easy, laterSameDay);
+		expect(second.masteryDayCount).toBe(1);
+	});
+
+	it('recordGrade: a correct grade on a LATER distinct local calendar day raises masteryDayCount to 2', async () => {
+		const card = makeCardRecord({ masteryDayCount: 0, last_review: undefined });
+		const first = await recordGrade(card, Rating.Good, now0);
+		expect(first.masteryDayCount).toBe(1);
+
+		const nextDay = new Date(now0.getTime() + 24 * 60 * 60 * 1000);
+		const second = await recordGrade(first, Rating.Good, nextDay);
+		expect(second.masteryDayCount).toBe(2);
+	});
+
+	it('recordGrade: a Rating.Again grade never increments masteryDayCount, even on a distinct day', async () => {
+		const card = makeCardRecord({ masteryDayCount: 0, last_review: undefined });
+		const nextDay = new Date(now0.getTime() + 24 * 60 * 60 * 1000);
+		const graded = await recordGrade(card, Rating.Again, nextDay);
+		expect(graded.masteryDayCount).toBe(0);
+	});
+
+	it('recordGrade: a Rating.Hard grade never increments masteryDayCount', async () => {
+		const card = makeCardRecord({ masteryDayCount: 1, last_review: now0 });
+		const nextDay = new Date(now0.getTime() + 24 * 60 * 60 * 1000);
+		const graded = await recordGrade(card, Rating.Hard, nextDay);
+		expect(graded.masteryDayCount).toBe(1);
+	});
+
+	it('CardRecordSchema: a legacy persisted record with no masteryDayCount field loads via getAllCards and defaults to 0', async () => {
+		const legacyRecord = makeCardRecord({ factId: 'chord-formula:Dm7', mode: 'formula' }) as Record<
+			string,
+			unknown
+		>;
+		delete legacyRecord.masteryDayCount;
+		await _database().cards.put(legacyRecord as unknown as CardRecord);
+
+		const cards = await getAllCards();
+		const found = cards.find((c) => c.factId === 'chord-formula:Dm7' && c.mode === 'formula');
+		expect(found).toBeDefined();
+		expect(found?.masteryDayCount).toBe(0);
+	});
+
 	it('recordGrade persists an updated CardRecord matching the graded result', async () => {
 		await introduceNewCards(1, now0);
 		const [card] = await getAllCards();
@@ -352,13 +406,32 @@ describe('deck', () => {
 		expect(deriveCellState(weakCard, now0)).toBe('weak');
 	});
 
-	it("deriveCellState === 'mastered' when card.due > now, state === Review, lastRating !== Again", () => {
+	it("deriveCellState === 'mastered' when card.due > now, state === Review, lastRating !== Again, AND masteryDayCount >= 2 (successive-relearning gate)", () => {
 		const masteredCard: CardRecord = makeCardRecord({
 			due: new Date(now0.getTime() + 24 * 60 * 60 * 1000),
 			state: State.Review,
-			lastRating: Rating.Good
+			lastRating: Rating.Good,
+			masteryDayCount: 2
 		});
 		expect(deriveCellState(masteredCard, now0)).toBe('mastered');
+	});
+
+	it("deriveCellState === 'weak', NOT 'mastered', when card.due > now, state === Review, lastRating !== Again, but masteryDayCount < 2 (a single successful grade is not yet durable mastery)", () => {
+		const singleGradeCard: CardRecord = makeCardRecord({
+			due: new Date(now0.getTime() + 24 * 60 * 60 * 1000),
+			state: State.Review,
+			lastRating: Rating.Good,
+			masteryDayCount: 1
+		});
+		expect(deriveCellState(singleGradeCard, now0)).toBe('weak');
+
+		const neverCountedCard: CardRecord = makeCardRecord({
+			due: new Date(now0.getTime() + 24 * 60 * 60 * 1000),
+			state: State.Review,
+			lastRating: Rating.Good,
+			masteryDayCount: 0
+		});
+		expect(deriveCellState(neverCountedCard, now0)).toBe('weak');
 	});
 });
 
@@ -438,6 +511,7 @@ function makeCardRecord(overrides: Partial<CardRecord>): CardRecord {
 		state: State.New,
 		last_review: undefined,
 		lastRating: null,
+		masteryDayCount: 0,
 		...overrides
 	};
 }
