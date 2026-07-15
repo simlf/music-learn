@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Learning Upgrade
-current_phase: 13
+current_phase: 15
+current_phase_name: playable-keyboard-everywhere
 status: executing
 stopped_at: Phase 15 UI-SPEC approved
-last_updated: "2026-07-15T20:53:15.055Z"
+last_updated: "2026-07-15T21:04:08.120Z"
 last_activity: 2026-07-15
-last_activity_desc: Phase 13 complete
+last_activity_desc: Phase 15 execution started
 progress:
   total_phases: 11
   completed_phases: 10
-  total_plans: 42
-  completed_plans: 42
-  percent: 91
-current_phase_name: Multi-modal Recall
+  total_plans: 49
+  completed_plans: 43
+  percent: 88
 ---
 
 # Project State
@@ -24,14 +24,14 @@ current_phase_name: Multi-modal Recall
 See: .planning/PROJECT.md (updated 2026-07-14)
 
 **Core value:** See a jazz chord symbol and know instantly what to play with the left hand.
-**Current focus:** Phase 11 — Memorization Engine
+**Current focus:** Phase 15 — playable-keyboard-everywhere
 
 ## Current Position
 
-Phase: 13
-Plan: Not started
+Phase: 15 (playable-keyboard-everywhere) — EXECUTING
+Plan: 2 of 7
 Status: Ready to execute
-Last activity: 2026-07-15 — Phase 13 complete
+Last activity: 2026-07-15 — Phase 15 execution started
 
 **v2.0 phases (execution order 10 → 11 → 12 → 13):**
 
@@ -107,6 +107,7 @@ Last activity: 2026-07-15 — Phase 13 complete
 | Phase 13 P04 | 9min | 1 tasks | 2 files |
 | Phase 13 P05 | 9min | 2 tasks | 4 files |
 | Phase 13 P06 | 25min | 1 tasks | 2 files |
+| Phase 15 P01 | 9min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -202,6 +203,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 13-05]: RecallSession's embedTargetFor parses chord-formula:/scale-formula: factId prefixes independent of factById()/allFacts(), letting a scale-formula card render without adding scale-formula to facts.ts's shared catalog
 - [Phase 13-06]: selectedCards local (not selected) avoids shadowing Mode A's selected Set<string> state
 - [Phase 13-06]: Review-state test fixtures need explicit difficulty override alongside stability, since ts-fsrs previewGrades rejects difficulty:0 combined with non-default stability for a State.Review card
+- [Phase 15-01]: dockContext's registry uses $state.raw (not $state) so registered DockKeyboardConfig objects keep reference identity through register/clear
 
 ### Pending Todos
 
@@ -226,7 +228,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-15T20:28:32.226Z
+Last session: 2026-07-15T21:03:16.851Z
 Stopped at: Phase 15 UI-SPEC approved
 Resume file: 
-.planning/phases/15-playable-keyboard-everywhere/15-UI-SPEC.md
+None
