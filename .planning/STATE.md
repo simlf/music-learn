@@ -6,15 +6,15 @@ current_phase: 15
 current_phase_name: playable-keyboard-everywhere
 status: executing
 stopped_at: Completed 15-02-PLAN.md
-last_updated: "2026-07-15T21:15:50.715Z"
+last_updated: "2026-07-15T21:30:41.480Z"
 last_activity: 2026-07-15
 last_activity_desc: Phase 15 execution started
 progress:
   total_phases: 11
   completed_phases: 10
   total_plans: 49
-  completed_plans: 44
-  percent: 90
+  completed_plans: 45
+  percent: 91
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 ## Current Position
 
 Phase: 15 (playable-keyboard-everywhere) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 Status: Ready to execute
 Last activity: 2026-07-15 — Phase 15 execution started
 
@@ -109,6 +109,7 @@ Last activity: 2026-07-15 — Phase 15 execution started
 | Phase 13 P06 | 25min | 1 tasks | 2 files |
 | Phase 15 P01 | 9min | 2 tasks | 4 files |
 | Phase 15 P02 | 18min | 2 tasks | 3 files |
+| Phase 15 P03 | 25min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -206,6 +207,8 @@ Recent decisions affecting current work:
 - [Phase 13-06]: Review-state test fixtures need explicit difficulty override alongside stability, since ts-fsrs previewGrades rejects difficulty:0 combined with non-default stability for a State.Review card
 - [Phase 15-01]: dockContext's registry uses $state.raw (not $state) so registered DockKeyboardConfig objects keep reference identity through register/clear
 - [Phase ?]: [Phase 15-02]: bind:offsetHeight replaced with bind:this + a manually-guarded ResizeObserver effect (mirrors PianoKeyboard.svelte), since Svelte 5's built-in box-size bindings unconditionally construct a ResizeObserver and throw in jsdom test environments lacking one
+- [Phase ?]: [Phase 15-03]: getDockRegistry() captured once at component-init time and reused in both onMount and onDestroy - calling getContext() again inside onDestroy throws Svelte's lifecycle_outside_component
+- [Phase ?]: [Phase 15-03]: Lookup/Theory e2e test suites gained a renderPage() helper supplying a real dock registry via the render() context option, since both pages now call getDockRegistry() unconditionally at init
 
 ### Pending Todos
 
@@ -230,7 +233,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-15T21:15:50.709Z
+Last session: 2026-07-15T21:29:27.580Z
 Stopped at: Completed 15-02-PLAN.md
 Resume file: 
 None
