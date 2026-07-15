@@ -25,7 +25,7 @@ import { spellChord } from '$lib/theory/chord';
  * Pure module: no DOM, no Svelte, no Dexie imports.
  */
 
-export type FactKind = 'chord-formula' | 'interval-size' | 'scale-degree';
+export type FactKind = 'chord-formula' | 'interval-size' | 'scale-degree' | 'scale-formula';
 
 export interface ChordFormulaFact {
 	factId: string;
@@ -115,4 +115,16 @@ export function allFacts(): Fact[] {
 /** Total lookup by factId: undefined (never throws) if no fact has that id. */
 export function factById(factId: string): Fact | undefined {
 	return CATALOG_BY_ID.get(factId);
+}
+
+/**
+ * Phase 12's scale-level factId shape (D-09): a buildable major-scale target,
+ * e.g. 'scale-formula:C'. Deliberately NOT a Fact union member and NOT added
+ * to CATALOG/allFacts(): introduceNewCards iterates allFacts() unconditionally
+ * and RecallSession/RecallMap have no render branch for a scale-formula shape
+ * (see this plan's prohibitions). Tonic is preserved verbatim, matching
+ * scale-degree's own factId tonic convention.
+ */
+export function scaleFormulaFactId(tonic: string): string {
+	return `scale-formula:${tonic}`;
 }

@@ -135,6 +135,11 @@ describe('scaleFormulaFactId (Phase 12 D-09 seam)', () => {
 	});
 
 	it('regression pin: no fact in the catalog carries factKind scale-formula', () => {
-		expect(allFacts().every((f) => f.factKind !== 'scale-formula')).toBe(true);
+		// Cast to string: the Fact union's factKind is statically known to
+		// exclude 'scale-formula' (that's the whole point of this pin), so TS
+		// correctly flags a direct literal comparison as a type error. This is
+		// a runtime regression guard against a FUTURE catalog change, not a
+		// type-level check.
+		expect(allFacts().every((f) => (f.factKind as string) !== 'scale-formula')).toBe(true);
 	});
 });

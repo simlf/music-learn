@@ -251,3 +251,22 @@ export function intervalFromShort(short: string): IntervalInfo {
 	if (tonalName === null) return EMPTY_INTERVAL;
 	return infoFromTonal(Interval.get(tonalName));
 }
+
+/**
+ * Plain-English phrasing for a CONSECUTIVE-note interval (Phase 12 D-03):
+ * "stack a minor 3rd", "step a whole step". Delegates to intervalFromShort's
+ * `.long` field for every case except scale-step seconds, which
+ * `opts.asScaleStep` overrides to the scale-degree vocabulary ("whole step" /
+ * "half step") rather than "major 2nd" / "minor 2nd" — every other degree
+ * (thirds, fourths, etc.) is unaffected by asScaleStep. Total: unparseable
+ * input returns the empty string (matching EMPTY_INTERVAL.long), never
+ * throws.
+ */
+export function phraseStep(short: string, opts?: { asScaleStep?: boolean }): string {
+	const info = intervalFromShort(short);
+	if (opts?.asScaleStep && info.degree === 2) {
+		if (info.quality === 'M') return 'whole step';
+		if (info.quality === 'm') return 'half step';
+	}
+	return info.long;
+}

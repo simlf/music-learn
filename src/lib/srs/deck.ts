@@ -20,8 +20,13 @@ import type { FactKind } from '$lib/srs/facts';
  * scheduler.ts's single-seam encapsulation of ts-fsrs).
  */
 
-/** Phase 11's sole mode value (D-07). Phase 12/13 extend this union later. */
-export type Mode = 'formula';
+/**
+ * Phase 11's recall mode (D-07), plus Phase 12's construction mode (D-09):
+ * completing/missing construction steps records gradeable events under
+ * 'formula-build', a card independent of the same fact's 'formula' recall
+ * card. Phase 13 may extend this union further.
+ */
+export type Mode = 'formula' | 'formula-build';
 
 /** The gradual-introduction batch size (documented discretion, not a literal CONTEXT.md requirement). */
 export const NEW_CARDS_PER_SESSION = 10;
@@ -61,8 +66,8 @@ export interface CardRecord {
  */
 const CardRecordSchema = z.object({
 	factId: z.string(),
-	factKind: z.enum(['chord-formula', 'interval-size', 'scale-degree']),
-	mode: z.enum(['formula']),
+	factKind: z.enum(['chord-formula', 'interval-size', 'scale-degree', 'scale-formula']),
+	mode: z.enum(['formula', 'formula-build']),
 	due: z.coerce.date(),
 	stability: z.number(),
 	difficulty: z.number(),
@@ -127,6 +132,18 @@ export async function getAllCards(): Promise<CardRecord[]> {
 export async function getDueCards(now: Date = new Date()): Promise<CardRecord[]> {
 	const all = await getAllCards();
 	return all.filter((card) => card.due <= now);
+}
+
+/**
+ * Total single-record lookup by the (factId, mode) compound key, undefined
+ * when no such card exists. The single-record, non-bulk counterpart to
+ * introduceNewCards: Phase 12's construction session uses this to fetch-or-
+ * create exactly one (factId, mode) card, independent of introduceNewCards'
+ * bulk/limit semantics.
+ */
+export async function getCard(factId: string, mode: Mode): Promise<CardRecord | undefined> {
+	const all = await getAllCards();
+	return all.find((card) => card.factId === factId && card.mode === mode);
 }
 
 /**
