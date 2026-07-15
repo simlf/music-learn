@@ -6,7 +6,8 @@
 		getDueCards,
 		getAllCards,
 		recordGrade,
-		type CardRecord
+		type CardRecord,
+		type Mode
 	} from '$lib/srs/deck';
 	import { selectReviewCards } from '$lib/srs/rotation';
 	import { previewGrades, Rating } from '$lib/srs/scheduler';
@@ -42,7 +43,7 @@
 	 * TODAY" register. The arrow is the same "→" glyph already used
 	 * elsewhere in this codebase, never an em dash.
 	 */
-	const MODE_LABELS: Record<string, string> = {
+	const MODE_LABELS: Record<Mode, string> = {
 		formula: 'SYMBOL → FORMULA',
 		'formula-build': 'FORMULA → BUILD',
 		'see-play': 'SYMBOL → PLAY',
@@ -547,7 +548,7 @@
 		{remaining} LEFT TODAY
 	</p>
 	<p class="text-label mt-2 font-mono uppercase" data-testid="recall-mode-chip">
-		{MODE_LABELS[currentItem.mode]}
+		{MODE_LABELS[currentItem.mode as Mode]}
 	</p>
 
 	{#if currentItem.mode === 'formula-build'}
