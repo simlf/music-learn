@@ -5,16 +5,16 @@ milestone_name: Learning Upgrade
 current_phase: 13
 current_phase_name: Multi-modal Recall
 status: verifying
-stopped_at: Completed 13-05-PLAN.md
-last_updated: "2026-07-15T17:37:30.071Z"
+stopped_at: Completed 13-06-PLAN.md
+last_updated: "2026-07-15T17:48:35.409Z"
 last_activity: 2026-07-15
 last_activity_desc: Completed 13-01-PLAN.md (deck Mode union widening + rotation policy module)
 progress:
   total_phases: 13
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 41
-  completed_plans: 40
-  percent: 62
+  completed_plans: 41
+  percent: 69
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 
 Phase: 13 — Multi-modal Recall
 Plan: 6 of 6 in current phase
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-15 — Completed 13-01-PLAN.md (deck Mode union widening + rotation policy module)
 
 **v2.0 phases (execution order 10 → 11 → 12 → 13):**
@@ -105,6 +105,7 @@ Last activity: 2026-07-15 — Completed 13-01-PLAN.md (deck Mode union widening 
 | Phase 13-multi-modal-recall P03 | 22min | 1 tasks | 2 files |
 | Phase 13 P04 | 9min | 1 tasks | 2 files |
 | Phase 13 P05 | 9min | 2 tasks | 4 files |
+| Phase 13 P06 | 25min | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -198,6 +199,8 @@ Recent decisions affecting current work:
 - [Phase ?]: Mode B's never-gates regression test answers wrong then right on the same re-presented card — A 1-item queue re-enqueues an Again-rated card per the existing D-10 contract, unchanged across every mode - a lone wrong answer cannot complete a 1-card session
 - [Phase ?]: [Phase 13-05]: BuildSession's embedFact/onComplete embedding seam gates picker markup and completion CTA/status-line behind prop presence; untrack() wraps the init-time embedFact read to avoid Svelte 5's state_referenced_locally warning
 - [Phase ?]: [Phase 13-05]: RecallSession's embedTargetFor parses chord-formula:/scale-formula: factId prefixes independent of factById()/allFacts(), letting a scale-formula card render without adding scale-formula to facts.ts's shared catalog
+- [Phase 13-06]: selectedCards local (not selected) avoids shadowing Mode A's selected Set<string> state
+- [Phase 13-06]: Review-state test fixtures need explicit difficulty override alongside stability, since ts-fsrs previewGrades rejects difficulty:0 combined with non-default stability for a State.Review card
 
 ### Pending Todos
 
@@ -222,7 +225,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-15T17:37:30.065Z
-Stopped at: Completed 13-05-PLAN.md
+Last session: 2026-07-15T17:48:35.403Z
+Stopped at: Completed 13-06-PLAN.md
 Resume file: 
 None

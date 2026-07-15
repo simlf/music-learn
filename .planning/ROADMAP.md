@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Chord Lookup Companion** - Type a symbol, see notes on a colored keyboard diagram next to the piano (completed 2026-07-12)
 - [x] **Phase 3: On-Screen Drill Loop** - Construction & identification drills with instant elaborative feedback on the clickable keyboard (completed 2026-07-13)
 - [ ] **Phase 4: MIDI Play-to-Answer** - Answer the same drills by playing the connected digital piano — DEFERRED (needs hardware present; out of v2.0 scope)
-- [ ] **Phase 5: Smart Drill Design** - Interleaved sessions, scoped practice, and fading label scaffolds — SUPERSEDED by v2.0 Phase 13 (Multi-modal Recall)
+- [x] **Phase 5: Smart Drill Design** - Interleaved sessions, scoped practice, and fading label scaffolds — SUPERSEDED by v2.0 Phase 13 (Multi-modal Recall) (completed 2026-07-15)
 - [x] **Phase 6: Major Scales** - Drill and see fingerings for all 12 major scales, expanding from G major — SUPERSEDED by v2.0 Phase 10 (Scale Keyboard Drill) (completed 2026-07-15)
 - [x] **Phase 7: Theory Lessons** - Short shape-first lessons explaining what the symbols mean — SUPERSEDED by v2.0 Phase 12 (Build-it Construction) (completed 2026-07-15)
 - [x] **Phase 8: Progress & Streaks** - Cross-device answer history, weakness-aware stats, and a daily streak (completed 2026-07-13)
@@ -356,7 +356,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Ear-based naming is answered by multiple choice against same-root distractors and never gates progress or unlocks.
   3. Modes rotate per-fact when teaching a new item and are spaced across sessions when reviewing a known one.
 
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans complete
 
 Plans:
 
@@ -365,7 +365,7 @@ Plans:
 - [x] 13-03-PLAN.md — Universal mode-signal chip + Mode A (see-play) surface
 - [x] 13-04-PLAN.md — Mode B (hear-name) surface: same-root MC, never gates, auto-advance
 - [x] 13-05-PLAN.md — Mode C: embed BuildSession as a recall mode
-- [ ] 13-06-PLAN.md — Wire the rotation policy into RecallSession's queue composition
+- [x] 13-06-PLAN.md — Wire the rotation policy into RecallSession's queue composition
 
 **UI hint**: yes
 
@@ -391,4 +391,4 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 | 10. Scale Keyboard Drill | 2/2 | Complete    | 2026-07-15 |
 | 11. Memorization Engine | 6/6 | Complete    | 2026-07-15 |
 | 12. Build-it Construction | 6/6 | Complete    | 2026-07-15 |
-| 13. Multi-modal Recall | 5/6 | In Progress|  |
+| 13. Multi-modal Recall | 6/6 | Complete   | 2026-07-15 |
