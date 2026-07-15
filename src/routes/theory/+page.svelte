@@ -54,10 +54,12 @@
 	let anchorPick = $state(ANCHOR_CHORDS[0]);
 
 	/** The V7 to I demo: G7 first, C major on the next beat. */
+	let resolutionTimer: ReturnType<typeof setTimeout> | undefined;
 	function hearResolution() {
-		ensureAudioReady();
+		void ensureAudioReady();
 		playChord(['G', 'B', 'D', 'F']);
-		setTimeout(() => playChord(['C', 'E', 'G']), 800);
+		clearTimeout(resolutionTimer);
+		resolutionTimer = setTimeout(() => playChord(['C', 'E', 'G']), 800);
 	}
 
 	/**
@@ -85,6 +87,7 @@
 	});
 
 	onDestroy(() => {
+		clearTimeout(resolutionTimer);
 		dockRegistry.clear(dockToken);
 	});
 </script>
