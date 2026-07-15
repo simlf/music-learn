@@ -38,9 +38,18 @@
 	 * with live day-interval-labeled buttons (previewGrades + formatDayInterval,
 	 * D-04). Tapping a grade both commits the FSRS rating (recordGrade) and
 	 * advances the in-memory session queue (advanceQueue) in one action - no
-	 * separate Next step. Self-contained: loads its own data on mount, no
-	 * props (mirrors Progress's onMount(() => void load()) pattern).
+	 * separate Next step. Self-contained: loads its own data on mount
+	 * (mirrors Progress's onMount(() => void load()) pattern). Accepts an
+	 * optional onViewMap callback (11-06): when provided, the completion
+	 * card additionally renders a "View Recall Map" secondary CTA. Omitting
+	 * the prop leaves the completion card's render byte-identical to 11-05.
 	 */
+
+	interface Props {
+		onViewMap?: () => void;
+	}
+
+	let { onViewMap }: Props = $props();
 
 	type PageState =
 		| 'loading'
@@ -198,6 +207,9 @@
 		</p>
 		<div class="mt-6">
 			<Button variant="primary" href="/drills">Practice Now</Button>
+			{#if onViewMap}
+				<Button type="button" variant="ghost" onclick={onViewMap}>View Recall Map</Button>
+			{/if}
 		</div>
 	</div>
 {:else if pageState === 'reviewing' && currentFact}
