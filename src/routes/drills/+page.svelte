@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { Note } from 'tonal';
+	import { getDockRegistry } from '$lib/keyboard/dockContext.svelte';
 	import { spellChord } from '$lib/theory/chord';
 	import { intervalFromShort, toAsciiAccidentals } from '$lib/theory/interval';
 	import { formulaFor } from '$lib/lookup/chordPresentation';
@@ -64,6 +65,19 @@
 	import LevelPicker from '$lib/components/LevelPicker.svelte';
 	import IntervalScaffold from '$lib/components/IntervalScaffold.svelte';
 	import { intervalScaffoldLevel } from '$lib/practice/scaffoldLevel';
+
+	/**
+	 * Shared keyboard dock registration (KBD-01/KBD-03): the four former inline
+	 * `<PianoKeyboard>` sites (construction input/reveal, identification,
+	 * interval identification, interval construction) plus the identification
+	 * reveal keyboard collapse into ONE mode-aware `dockedKeyboard` snippet
+	 * (below) registered with the shared dock. The registry reference is
+	 * captured once at component-init time and reused in both `onMount` and
+	 * `onDestroy` - calling `getDockRegistry()` again inside `onDestroy` throws
+	 * Svelte's `lifecycle_outside_component` (Plan 03's established fix).
+	 */
+	const dockRegistry = getDockRegistry();
+	const dockToken = Symbol('drills-dock');
 
 	/**
 	 * Right-answer confirmation variants (D-08): the stamp beat is the reward,
@@ -286,6 +300,19 @@
 	// Drain any answers queued from a previous offline session (PROG-01).
 	onMount(() => {
 		flushQueue();
+	});
+
+	// Docked keyboard (KBD-01/KBD-03): registers the single mode-aware
+	// `dockedKeyboard` snippet (defined in the template below) with the
+	// shared dock. No `register` snippet - the in-flow feedback block already
+	// hosts `InspectRegister` for `drillInspect`, so the dock never duplicates
+	// that readout.
+	onMount(() => {
+		dockRegistry.register({ token: dockToken, keyboard: dockedKeyboard });
+	});
+
+	onDestroy(() => {
+		dockRegistry.clear(dockToken);
 	});
 
 	// Server-derived stats (D-02): need-weighting, the review bucket, and the
@@ -608,6 +635,68 @@
 	}
 </script>
 
+<!--
+	The ONE mode-aware docked keyboard (KBD-01/KBD-03): closes over the page's
+	existing reactive state, so it reproduces exactly the props each of the
+	four former inline sites rendered - never two input surfaces for the same
+	fact (interactive/inspectable are mutually exclusive per question branch).
+-->
+{#snippet dockedKeyboard()}
+	{#if question.kind === 'chord' && question.direction === 'construction'}
+		<PianoKeyboard
+			notes={showConstructionReveal ? target.notes : []}
+			interactive={!showConstructionReveal}
+			selected={showConstructionReveal ? undefined : selected}
+			onToggle={showConstructionReveal ? undefined : toggleKey}
+			onPress={showConstructionReveal ? undefined : pressKey}
+			wrongLetters={showConstructionReveal ? wrongLetters : undefined}
+			inspectable={showConstructionReveal}
+			onInspect={showConstructionReveal ? handleDrillInspect : undefined}
+			showIntervalBadges={showConstructionReveal}
+		/>
+	{:else if question.kind === 'chord'}
+		<!--
+			Identification: keys always play on tap (inspectable). Before
+			answering, no onInspect/badges are wired (ear support only, no
+			give-away); once answered, the SAME docked element becomes the
+			reveal - onInspect + showIntervalBadges wire up, matching the prior
+			separate feedback-block keyboard exactly (no second element).
+		-->
+		<PianoKeyboard
+			notes={target.notes}
+			inspectable
+			onInspect={answered ? handleDrillInspect : undefined}
+			showIntervalBadges={answered}
+		/>
+	{:else if question.direction === 'identification'}
+		<!--
+			Interval identification: keys always play on tap (ear support), but
+			the inspect register that names the interval only wires up once
+			answered, so tapping to hear the pitches never spoils the answer.
+		-->
+		<PianoKeyboard
+			notes={intervalNotes}
+			inspectable
+			onInspect={answered ? handleDrillInspect : undefined}
+		/>
+	{:else}
+		<PianoKeyboard
+			notes={answered ? intervalNotes : [intervalNotes[0]]}
+			interactive={!answered}
+			selected={answered ? undefined : new Set()}
+			onToggle={answered ? undefined : tapIntervalKey}
+			onPress={answered ? undefined : pressKey}
+			wrongLetters={answered
+				? feedback?.correct
+					? new Set()
+					: new Set(tappedLetter === null ? [] : [tappedLetter])
+				: undefined}
+			inspectable={answered}
+			onInspect={answered ? handleDrillInspect : undefined}
+		/>
+	{/if}
+{/snippet}
+
 <main class="bg-paper text-ink min-h-screen px-2 py-8 font-sans sm:px-8">
 	<h1 class="text-heading mt-2 font-bold">Drills</h1>
 
@@ -768,19 +857,7 @@
 				{/if}
 			</div>
 
-			<div class="drill-layout__keyboard">
-				<PianoKeyboard
-					notes={showConstructionReveal ? target.notes : []}
-					interactive={!showConstructionReveal}
-					selected={showConstructionReveal ? undefined : selected}
-					onToggle={showConstructionReveal ? undefined : toggleKey}
-					onPress={showConstructionReveal ? undefined : pressKey}
-					wrongLetters={showConstructionReveal ? wrongLetters : undefined}
-					inspectable={showConstructionReveal}
-					onInspect={showConstructionReveal ? handleDrillInspect : undefined}
-					showIntervalBadges={showConstructionReveal}
-				/>
-			</div>
+			<div class="drill-layout__keyboard"></div>
 
 			<div class="drill-layout__controls drill-controls">
 				<div class="drill-controls__primary">
@@ -807,14 +884,7 @@
 				<p class="text-body">Name this chord.</p>
 			</div>
 
-			<div class="drill-layout__keyboard">
-				<!--
-					Identification: keys play on tap (inspectable) but pass no
-					onInspect, so tapping sounds the note for ear support without
-					printing the interval register that would spoil the answer.
-				-->
-				<PianoKeyboard notes={target.notes} inspectable />
-			</div>
+			<div class="drill-layout__keyboard"></div>
 
 			<div class="drill-layout__controls">
 				<div class="grid grid-cols-2 gap-2 xl:grid-cols-4" data-testid="choice-grid">
@@ -841,18 +911,7 @@
 				<p class="text-body">Name this interval.</p>
 			</div>
 
-			<div class="drill-layout__keyboard">
-				<!--
-					Interval question: keys always play on tap (ear support), but the
-					inspect register that names the interval only wires up once
-					answered, so tapping to hear the pitches never spoils the answer.
-				-->
-				<PianoKeyboard
-					notes={intervalNotes}
-					inspectable
-					onInspect={answered ? handleDrillInspect : undefined}
-				/>
-			</div>
+			<div class="drill-layout__keyboard"></div>
 
 			<div class="drill-layout__controls">
 				<div class="grid grid-cols-2 gap-2 xl:grid-cols-4" data-testid="interval-choice-grid">
@@ -886,22 +945,7 @@
 				</p>
 			</div>
 
-			<div class="drill-layout__keyboard">
-				<PianoKeyboard
-					notes={answered ? intervalNotes : [intervalNotes[0]]}
-					interactive={!answered}
-					selected={answered ? undefined : new Set()}
-					onToggle={answered ? undefined : tapIntervalKey}
-					onPress={answered ? undefined : pressKey}
-					wrongLetters={answered
-						? feedback?.correct
-							? new Set()
-							: new Set(tappedLetter === null ? [] : [tappedLetter])
-						: undefined}
-					inspectable={answered}
-					onInspect={answered ? handleDrillInspect : undefined}
-				/>
-			</div>
+			<div class="drill-layout__keyboard"></div>
 		{/if}
 
 		{#if answered && feedback}
@@ -917,14 +961,6 @@
 						{#if question.direction === 'identification'}
 							<div class="mt-4 flex items-start gap-4">
 								<ChordGlyph root={target.root} quality={target.symbol.slice(target.root.length)} />
-							</div>
-							<div class="mt-4">
-								<PianoKeyboard
-									notes={target.notes}
-									inspectable
-									onInspect={handleDrillInspect}
-									showIntervalBadges
-								/>
 							</div>
 						{/if}
 						{#if question.direction === 'construction'}

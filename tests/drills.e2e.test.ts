@@ -3,6 +3,25 @@ import { createRawSnippet } from 'svelte';
 import { readable } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DrillsPage from '../src/routes/drills/+page.svelte';
+import KeyboardDock from '../src/lib/components/KeyboardDock.svelte';
+import { createDockRegistry, DOCK_CONTEXT_KEY } from '../src/lib/keyboard/dockContext.svelte';
+
+/**
+ * Drills' keyboard now lives in the shared dock (Phase 15 Plan 05) rather
+ * than rendering inline. This helper supplies a real dock registry via the
+ * `context` option (the same seam `+layout.svelte`'s `setDockRegistry` uses)
+ * and renders `KeyboardDock` alongside the page so the docked keyboard
+ * content is present in the same `document.body` that `screen` queries -
+ * mirrors `drillsDock.test.ts`'s own harness (established by
+ * lookup.e2e.test.ts/theory.e2e.test.ts in Plan 03).
+ */
+function renderDrillsPage() {
+	const registry = createDockRegistry();
+	const context = new Map([[DOCK_CONTEXT_KEY, registry]]);
+	const page = render(DrillsPage, { context });
+	render(KeyboardDock, { context });
+	return page;
+}
 
 // +layout.svelte reads the `$page` store from $app/stores to mark the active
 // nav link. That store is populated by the real SvelteKit client router at
@@ -168,7 +187,7 @@ afterEach(() => {
 
 describe('drills page zero-friction construction load', () => {
 	it('renders a construction prompt with the instruction line and the interactive keyboard, no setup screen', () => {
-		render(DrillsPage);
+		renderDrillsPage();
 
 		expect(screen.getByText('Click the notes for Cm7.')).toBeInTheDocument();
 
@@ -180,7 +199,7 @@ describe('drills page zero-friction construction load', () => {
 
 describe('drills page Check button gating', () => {
 	it('disables Check on load and enables it after selecting one key', async () => {
-		render(DrillsPage);
+		renderDrillsPage();
 
 		const checkButton = screen.getByRole('button', { name: 'Check' });
 		expect(checkButton).toBeDisabled();
@@ -194,7 +213,7 @@ describe('drills page Check button gating', () => {
 
 describe('drills page correct construction answer', () => {
 	it('grades a correct Cm7 voicing and shows the stamp feedback with a right-answer confirmation', async () => {
-		render(DrillsPage);
+		renderDrillsPage();
 
 		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
 		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
@@ -211,7 +230,7 @@ describe('drills page correct construction answer', () => {
 	});
 
 	it('accepts the correct pitch classes played in a different octave (any-voicing acceptance)', async () => {
-		render(DrillsPage);
+		renderDrillsPage();
 
 		// Click the second-octave duplicate of C and E♭ (indices 7+), and the
 		// first-octave G and B♭, exercising matchChord's chroma equality across
@@ -235,7 +254,7 @@ describe('drills page correct construction answer', () => {
 
 describe('drills page wrong construction answer teaches', () => {
 	it('shows ONE merged feedback keyboard (interval colors + gray ✕ extra) and a legend, no text diff', async () => {
-		render(DrillsPage);
+		renderDrillsPage();
 
 		// Omit B♭, add A: an incorrect set (missing the 7th, an extra 6th).
 		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
@@ -288,7 +307,7 @@ describe('drills page wrong construction answer teaches', () => {
 	});
 
 	it('a wrong answer with only a missing note (no extras) still reveals the full chord with no gray keys', async () => {
-		render(DrillsPage);
+		renderDrillsPage();
 
 		// Play only 3 of the 4 Cm7 notes (missing the 7th, B♭), no extras.
 		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
@@ -313,7 +332,7 @@ describe('drills page wrong construction answer teaches', () => {
 
 describe('drills page Clear', () => {
 	it('deselects all keys, disables Check again, and renders no feedback', async () => {
-		render(DrillsPage);
+		renderDrillsPage();
 
 		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
 		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
@@ -330,13 +349,13 @@ describe('drills page Clear', () => {
 
 describe('drills page rotate hint (D-05)', () => {
 	it('shows a dismissable rotate hint on load when not yet dismissed', () => {
-		render(DrillsPage);
+		renderDrillsPage();
 
 		expect(screen.getByTestId('rotate-hint')).toBeInTheDocument();
 	});
 
 	it('clicking the dismiss control hides the hint and calls dismissRotateHint', async () => {
-		render(DrillsPage);
+		renderDrillsPage();
 
 		const hint = screen.getByTestId('rotate-hint');
 		const dismissButton = within(hint).getByRole('button');
@@ -348,7 +367,7 @@ describe('drills page rotate hint (D-05)', () => {
 
 	it('is absent on load when isRotateHintDismissed is mocked true', () => {
 		isRotateHintDismissedMock.mockReturnValue(true);
-		render(DrillsPage);
+		renderDrillsPage();
 
 		expect(screen.queryByTestId('rotate-hint')).not.toBeInTheDocument();
 	});
@@ -383,7 +402,7 @@ function forceIdentificationCm7() {
 describe('drills page identification prompt', () => {
 	it('shows the Name this chord instruction, the interval-colored mystery keyboard, and 4 answer choices with no give-away symbol', () => {
 		forceIdentificationCm7();
-		render(DrillsPage);
+		renderDrillsPage();
 
 		expect(screen.getByText('Name this chord.')).toBeInTheDocument();
 
@@ -409,7 +428,7 @@ describe('drills page identification prompt', () => {
 describe('drills page identification immediate grading', () => {
 	it('grades the correct choice immediately with no separate Check step', async () => {
 		forceIdentificationCm7();
-		render(DrillsPage);
+		renderDrillsPage();
 
 		const correctChoice = screen.getByRole('button', { name: 'Answer: Cm7' });
 		await fireEvent.click(correctChoice);
@@ -422,7 +441,7 @@ describe('drills page identification immediate grading', () => {
 
 	it('reveals the correct symbol, interval formula, and wrong-answer headline on an incorrect choice', async () => {
 		forceIdentificationCm7();
-		render(DrillsPage);
+		renderDrillsPage();
 
 		const choices = screen.getAllByRole('button', { name: /^Answer: / });
 		const wrongChoice = choices.find(
@@ -451,7 +470,7 @@ describe('drills page identification immediate grading', () => {
 
 	it('locks further choice taps once answered', async () => {
 		forceIdentificationCm7();
-		render(DrillsPage);
+		renderDrillsPage();
 
 		const correctChoice = screen.getByRole('button', { name: 'Answer: Cm7' });
 		await fireEvent.click(correctChoice);
@@ -463,7 +482,7 @@ describe('drills page identification immediate grading', () => {
 describe('drills page Next advances the loop', () => {
 	it('is absent before answering and appears only after an answer, clearing feedback on click', async () => {
 		forceConstructionCm7();
-		render(DrillsPage);
+		renderDrillsPage();
 
 		expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
 
@@ -485,7 +504,7 @@ describe('drills page Next advances the loop', () => {
 
 	it('never auto-advances: feedback persists until Next is pressed', async () => {
 		forceIdentificationCm7();
-		render(DrillsPage);
+		renderDrillsPage();
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Answer: Cm7' }));
 
@@ -497,14 +516,14 @@ describe('drills page Next advances the loop', () => {
 describe('drills page ScoreRegister', () => {
 	it('reads 0 RIGHT · 0 STREAK on load (literal mid-dot, not an em dash)', () => {
 		forceConstructionCm7();
-		render(DrillsPage);
+		renderDrillsPage();
 
 		expect(screen.getByTestId('score-register')).toHaveTextContent('0 RIGHT · 0 STREAK');
 	});
 
 	it('increments correct and streak after a right answer', async () => {
 		forceIdentificationCm7();
-		render(DrillsPage);
+		renderDrillsPage();
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Answer: Cm7' }));
 
@@ -513,7 +532,7 @@ describe('drills page ScoreRegister', () => {
 
 	it('resets the streak to 0 on a wrong answer while keeping the correct count', async () => {
 		forceIdentificationCm7();
-		render(DrillsPage);
+		renderDrillsPage();
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Answer: Cm7' }));
 		expect(screen.getByTestId('score-register')).toHaveTextContent('1 RIGHT · 1 STREAK');
@@ -537,7 +556,7 @@ describe('drills page ScoreRegister', () => {
 describe('drills page answer persistence (PROG-01 + telemetry)', () => {
 	it('records a right identification answer with the given choice and a duration', async () => {
 		forceIdentificationCm7();
-		render(DrillsPage);
+		renderDrillsPage();
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Answer: Cm7' }));
 
@@ -553,7 +572,7 @@ describe('drills page answer persistence (PROG-01 + telemetry)', () => {
 
 	it('records a wrong identification answer with the picked symbol as given', async () => {
 		forceIdentificationCm7();
-		render(DrillsPage);
+		renderDrillsPage();
 
 		const choices = screen.getAllByRole('button', { name: /^Answer: / });
 		const wrongChoice = choices.find(
@@ -575,7 +594,7 @@ describe('drills page answer persistence (PROG-01 + telemetry)', () => {
 
 	it('records a construction answer with a duration and no given field', async () => {
 		forceConstructionCm7();
-		render(DrillsPage);
+		renderDrillsPage();
 
 		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
 		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
@@ -592,7 +611,7 @@ describe('drills page answer persistence (PROG-01 + telemetry)', () => {
 
 	it('appends every graded answer to the local practice log (unlock windows, warm-up)', async () => {
 		forceIdentificationCm7();
-		render(DrillsPage);
+		renderDrillsPage();
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Answer: Cm7' }));
 
@@ -607,7 +626,7 @@ describe('drills page answer persistence (PROG-01 + telemetry)', () => {
 
 	it('flushes the queue on mount', () => {
 		forceConstructionCm7();
-		render(DrillsPage);
+		renderDrillsPage();
 
 		expect(flushQueueMock).toHaveBeenCalledTimes(1);
 	});
@@ -625,7 +644,7 @@ describe('drills page sound (Track A)', () => {
 
 	it('pressing a key plays its note and unlocks audio inside the gesture', async () => {
 		forceConstructionCm7();
-		render(DrillsPage);
+		renderDrillsPage();
 
 		const cKey = screen.getAllByRole('button', { name: 'C key' })[0];
 		await fireEvent.pointerDown(cKey);
@@ -636,7 +655,7 @@ describe('drills page sound (Track A)', () => {
 
 	it('a correct construction answer still plays the correct chord on reveal', async () => {
 		forceConstructionCm7();
-		render(DrillsPage);
+		renderDrillsPage();
 
 		await playCm7Correctly();
 		expect(playChordMock).not.toHaveBeenCalled();
@@ -649,7 +668,7 @@ describe('drills page sound (Track A)', () => {
 
 	it('a wrong construction answer plays the CORRECT chord, not the played one', async () => {
 		forceConstructionCm7();
-		render(DrillsPage);
+		renderDrillsPage();
 
 		// Wrong set: missing the 7th, extra 6th (A).
 		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
@@ -664,7 +683,7 @@ describe('drills page sound (Track A)', () => {
 
 	it('a correct identification answer plays the chord on reveal', async () => {
 		forceIdentificationCm7();
-		render(DrillsPage);
+		renderDrillsPage();
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Answer: Cm7' }));
 
@@ -674,7 +693,7 @@ describe('drills page sound (Track A)', () => {
 
 	it('a wrong identification answer plays the correct chord on reveal', async () => {
 		forceIdentificationCm7();
-		render(DrillsPage);
+		renderDrillsPage();
 
 		const choices = screen.getAllByRole('button', { name: /^Answer: / });
 		const wrongChoice = choices.find(
@@ -709,7 +728,7 @@ function forceIntervalConstructionCm3() {
 describe('drills page mode row (Track C)', () => {
 	it('shows CHORDS, INTERVALS, and MIX with MIX active by default', () => {
 		forceConstructionCm7();
-		render(DrillsPage);
+		renderDrillsPage();
 
 		const row = screen.getByTestId('drill-mode-row');
 		expect(within(row).getByRole('button', { name: 'Chords' })).toHaveAttribute(
@@ -728,7 +747,7 @@ describe('drills page mode row (Track C)', () => {
 
 	it('switching to INTERVALS re-deals the fresh pool question immediately', async () => {
 		forceConstructionCm7();
-		render(DrillsPage);
+		renderDrillsPage();
 		expect(screen.getByText('Click the notes for Cm7.')).toBeInTheDocument();
 
 		forceIntervalIdentificationCm3();
@@ -740,7 +759,7 @@ describe('drills page mode row (Track C)', () => {
 
 	it('switching back to CHORDS re-deals a pool chord question', async () => {
 		forceConstructionCm7();
-		render(DrillsPage);
+		renderDrillsPage();
 
 		forceIntervalIdentificationCm3();
 		await fireEvent.click(screen.getByRole('button', { name: 'Intervals' }));
@@ -756,7 +775,7 @@ describe('drills page mode row (Track C)', () => {
 describe('interval identification drill (Track C)', () => {
 	async function renderIntervalIdentification() {
 		forceConstructionCm7();
-		render(DrillsPage);
+		renderDrillsPage();
 		forceIntervalIdentificationCm3();
 		await fireEvent.click(screen.getByRole('button', { name: 'Intervals' }));
 	}
@@ -842,7 +861,7 @@ describe('interval identification drill (Track C)', () => {
 describe('interval construction drill (Track C)', () => {
 	async function renderIntervalConstruction() {
 		forceConstructionCm7();
-		render(DrillsPage);
+		renderDrillsPage();
 		forceIntervalConstructionCm3();
 		await fireEvent.click(screen.getByRole('button', { name: 'Intervals' }));
 	}
@@ -926,7 +945,7 @@ describe('interval construction drill (Track C)', () => {
 describe('drills wrong-answer reveal is inspectable (Track C)', () => {
 	it('after a wrong construction answer, tapping a revealed key plays it and fills the register', async () => {
 		forceConstructionCm7();
-		render(DrillsPage);
+		renderDrillsPage();
 
 		// Wrong answer: only 3 of the 4 Cm7 notes.
 		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
@@ -946,7 +965,7 @@ describe('drills wrong-answer reveal is inspectable (Track C)', () => {
 
 	it('feedback formula chips carry the French tooltip', async () => {
 		forceConstructionCm7();
-		render(DrillsPage);
+		renderDrillsPage();
 
 		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
 		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
@@ -957,7 +976,7 @@ describe('drills wrong-answer reveal is inspectable (Track C)', () => {
 
 	it('interval keys always play on tap, but only report the interval register once answered', async () => {
 		forceConstructionCm7();
-		render(DrillsPage);
+		renderDrillsPage();
 		forceIntervalIdentificationCm3();
 		await fireEvent.click(screen.getByRole('button', { name: 'Intervals' }));
 

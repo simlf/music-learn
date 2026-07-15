@@ -2,6 +2,8 @@ import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import { readable } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DrillsPage from '../src/routes/drills/+page.svelte';
+import KeyboardDock from '../src/lib/components/KeyboardDock.svelte';
+import { createDockRegistry, DOCK_CONTEXT_KEY } from '../src/lib/keyboard/dockContext.svelte';
 
 // Same mock scaffolding as tests/drills.e2e.test.ts, kept in its own file so
 // Track D's reveal-card additions do not contend with the other tracks'
@@ -119,7 +121,14 @@ afterEach(() => {
  * by the click: they never re-deal and never consumed a family draw.
  */
 async function renderChordsDeck() {
-	render(DrillsPage);
+	// Drills' keyboard now lives in the shared dock (Phase 15 Plan 05) rather
+	// than rendering inline - supply a real dock registry via context and
+	// render KeyboardDock alongside the page (mirrors drillsDock.test.ts's
+	// own harness) so screen queries still find the docked keyboard/keys.
+	const registry = createDockRegistry();
+	const context = new Map([[DOCK_CONTEXT_KEY, registry]]);
+	render(DrillsPage, { context });
+	render(KeyboardDock, { context });
 	await fireEvent.click(screen.getByRole('button', { name: 'Chords' }));
 }
 
