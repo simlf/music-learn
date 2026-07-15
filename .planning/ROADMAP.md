@@ -323,7 +323,26 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Each step shows a plain-English interval instruction and why that note belongs; a wrong tap gives diagnostic feedback (e.g., "2 half steps too high"), grading by pitch class while teaching the correct enharmonic spelling.
   4. Completing or missing construction steps records gradeable events into the memorization engine as that fact's formula-build mode.
 
-**Plans**: TBD
+**Plans**: 6 plans
+
+**Wave 1** *(parallel: disjoint file sets)*
+
+- [ ] 12-01-PLAN.md — Theory + SRS seams: phraseStep consecutive-interval phrasing, scale-formula factId, deck.ts formula-build mode
+- [ ] 12-02-PLAN.md — PianoKeyboard constructable gated mode (onConstructTap, flashWrongKey)
+- [ ] 12-03-PLAN.md — Pure construction engine (one engine, two grammars; MIDI/chroma grading; full-catalog reachability)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 12-04-PLAN.md — BuildSession core: picker, route, nav, full step loop (both feedback branches, pacing, formula strip)
+
+**Wave 3** *(blocked on Wave 2: shares BuildSession.svelte)*
+
+- [ ] 12-05-PLAN.md — Count-up hint, enharmonic teaching line, completion summary
+
+**Wave 4** *(blocked on Wave 3: shares BuildSession.svelte)*
+
+- [ ] 12-06-PLAN.md — FSRS integration: record construction outcomes as formula-build mode cards
+
 **UI hint**: yes
 
 ### Phase 13: Multi-modal Recall
