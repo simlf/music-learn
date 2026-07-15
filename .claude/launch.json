@@ -31,6 +31,12 @@
 			"runtimeExecutable": "npx",
 			"runtimeArgs": ["-y", "serve", ".planning/spikes/009-recall-modes", "-l", "4809"],
 			"port": 4809
+		},
+		{
+			"name": "sketch-static",
+			"runtimeExecutable": "npx",
+			"runtimeArgs": ["-y", "serve", ".planning/sketches", "-l", "4599"],
+			"port": 4599
 		}
 	]
 }

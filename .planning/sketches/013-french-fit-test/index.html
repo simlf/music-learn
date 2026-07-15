@@ -1,0 +1,380 @@
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../themes/default.css" />
+<style>
+	* { box-sizing: border-box; }
+	body {
+		margin: 0;
+		background: var(--color-paper);
+		color: var(--color-ink);
+		font-family: var(--font-sans);
+		padding: var(--space-6);
+	}
+	h1 { font-size: var(--text-heading); margin: 0 0 var(--space-1); }
+	.sub { color: var(--color-muted); margin: 0 0 var(--space-6); font-size: var(--text-body); max-width: 52em; }
+
+	.reg { font: 700 var(--text-label)/1.4 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-muted); }
+	.note-sm { font-size: 13px; color: var(--color-muted); margin-top: var(--space-2); }
+
+	/* --- global EN/FR switch driving the whole page --- */
+	.lang-strip { border: 2px solid var(--color-ink); background: var(--color-paper-bright); padding: var(--space-4); margin-bottom: var(--space-6); display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
+	.lang-strip .reg { margin: 0; }
+	.seg { display: inline-flex; border: 2px solid var(--color-ink); }
+	.seg button {
+		font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase;
+		min-width: 52px; min-height: 44px; border: 0; border-left: 2px solid var(--color-ink);
+		background: var(--color-paper-bright); cursor: pointer; color: var(--color-ink);
+	}
+	.seg button:first-child { border-left: 0; }
+	.seg button[aria-pressed="true"] { background: var(--color-ink); color: var(--color-paper-bright); }
+
+	.tabs { display: flex; gap: var(--space-2); margin-bottom: var(--space-4); flex-wrap: wrap; }
+	.tab {
+		font: 700 var(--text-label)/1 var(--font-mono);
+		letter-spacing: 0.12em; text-transform: uppercase;
+		padding: var(--space-2) var(--space-4); border: 2px solid var(--color-ink);
+		background: var(--color-paper-bright); cursor: pointer;
+		min-height: 44px;
+	}
+	.tab[aria-selected="true"] { background: var(--color-ink); color: var(--color-paper-bright); }
+	.panel { display: none; }
+	.panel[data-active="true"] { display: block; }
+
+	/* --- phone frame: a representative page mock --- */
+	.phone { border: 2px solid var(--color-ink); background: var(--color-paper-bright); max-width: 420px; }
+	.phone-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) var(--space-4); border-bottom: 2px solid var(--color-ink); min-height: 44px; }
+	.brand { font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; }
+	.phone-body { padding: var(--space-6); }
+
+	/* nav */
+	.nav { display: flex; gap: 0; border-bottom: 2px solid var(--color-ink); overflow-x: auto; }
+	.nav a {
+		font: 700 11px/1 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase;
+		padding: var(--space-2) var(--space-4); min-height: 44px; display: flex; align-items: center;
+		border-left: 2px solid var(--color-ink); color: var(--color-muted); white-space: nowrap; text-decoration: none;
+	}
+	.nav a:first-child { border-left: 0; }
+	.nav a.active { background: var(--color-mustard); color: var(--color-ink); }
+
+	/* drill prompt */
+	.prompt-label { font: 700 var(--text-label)/1.2 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-vermilion); margin: 0 0 var(--space-2); }
+	.chord-glyph { font: 700 var(--text-display)/1 var(--font-serif); margin: 0 0 var(--space-6); }
+	.chord-glyph .neutral-tag { display: block; font: 700 10px/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-verdigris); margin-top: var(--space-2); }
+
+	/* register labels row (the tight slots) */
+	.registers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; margin-bottom: var(--space-6); }
+	.reg-slot { border: 2px solid var(--color-ink); padding: var(--space-2); text-align: center; overflow: hidden; }
+	.reg-slot .role { font: 700 var(--text-label)/1.1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; white-space: nowrap; }
+	.reg-slot .note-name { font: 700 var(--text-heading)/1 var(--font-serif); margin-top: var(--space-1); }
+	.reg-slot.root { background: var(--color-root); color: var(--color-on-root); border-color: var(--color-ink); }
+	.reg-slot.third { background: var(--color-third); color: var(--color-on-third); border-color: var(--color-ink); }
+	.reg-slot.fifth { background: var(--color-fifth); color: var(--color-on-fifth); border-color: var(--color-ink); }
+	.reg-slot.seventh { background: var(--color-seventh); color: var(--color-on-seventh); border-color: var(--color-ink); }
+	.reg-slot .role.overflows { color: var(--color-vermilion); text-decoration: underline wavy; }
+
+	/* action buttons */
+	.actions { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-6); }
+	.btn {
+		font: 700 var(--text-body)/1 var(--font-mono); letter-spacing: 0.02em; text-transform: uppercase;
+		background: var(--color-vermilion); color: #fff; border: 2px solid var(--color-ink);
+		padding: var(--space-4) var(--space-6); cursor: pointer; min-height: 44px; white-space: nowrap;
+	}
+	.btn.ghost { background: var(--color-paper-bright); color: var(--color-ink); }
+
+	/* grading buttons — 4 across, a notoriously tight slot */
+	.grades { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
+	.grade {
+		font: 700 12px/1.1 var(--font-mono); letter-spacing: 0.02em; text-transform: uppercase;
+		border: 2px solid var(--color-ink); background: var(--color-paper-bright); cursor: pointer;
+		min-height: 44px; padding: var(--space-2) 2px; text-align: center; overflow: hidden;
+	}
+	.grade.overflows { color: var(--color-vermilion); }
+	.hint { font-size: 13px; color: var(--color-muted); margin-top: var(--space-4); }
+
+	/* --- settings row (variant B) --- */
+	.settings { border: 2px solid var(--color-ink); background: var(--color-paper-bright); }
+	.set-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-4); border-bottom: 2px solid var(--color-ink); min-height: 44px; }
+	.set-row:last-child { border-bottom: 0; }
+	.set-row .k { font: 700 var(--text-body)/1.2 var(--font-serif); }
+	.set-row .sub-k { font-size: 13px; color: var(--color-muted); margin-top: 2px; }
+	.set-row.disabled { opacity: 0.5; }
+
+	/* --- variant C: EN/FR stress pairs --- */
+	.stress { display: flex; flex-direction: column; gap: var(--space-4); }
+	.pair { border: 2px solid var(--color-ink); background: var(--color-paper-bright); }
+	.pair-head { font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-muted); padding: var(--space-2) var(--space-4); border-bottom: 2px dashed var(--color-faint); }
+	.pair-rows { display: grid; grid-template-columns: 40px 1fr; }
+	.pair-rows .lang { font: 700 11px/1 var(--font-mono); letter-spacing: 0.08em; color: var(--color-muted); display: flex; align-items: center; justify-content: center; border-right: 2px dashed var(--color-faint); }
+	.pair-rows .en { padding: var(--space-2) var(--space-4); border-bottom: 2px dashed var(--color-faint); }
+	.pair-rows .en-lang { border-bottom: 2px dashed var(--color-faint); }
+	.pair-rows .fr { padding: var(--space-2) var(--space-4); }
+	/* show each string inside a real fixed-width slot so overflow is literal */
+	.slot-demo { display: inline-block; max-width: 100%; }
+	.slot-fixed { display: inline-block; border: 2px solid var(--color-faint); padding: 4px 6px; font: 700 var(--text-label)/1.1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; white-space: nowrap; }
+	.slot-fixed.wide { width: 92px; overflow: hidden; text-overflow: clip; }
+	.over-flag { color: var(--color-vermilion); font: 700 10px/1 var(--font-mono); letter-spacing: 0.06em; margin-left: var(--space-2); text-transform: uppercase; }
+	.fits-flag { color: var(--color-verdigris); font: 700 10px/1 var(--font-mono); letter-spacing: 0.06em; margin-left: var(--space-2); text-transform: uppercase; }
+	.grow { font: 700 10px/1 var(--font-mono); color: var(--color-muted); margin-left: var(--space-2); }
+	.verdict { border: 2px solid var(--color-ink); background: var(--color-mustard); padding: var(--space-4); margin-top: var(--space-6); }
+	.verdict .reg { color: var(--color-ink); margin: 0 0 var(--space-2); }
+	.verdict ul { margin: 0; padding-left: 1.2em; font-size: 14px; }
+	.verdict li { margin-bottom: var(--space-1); }
+</style>
+
+<h1>Sketch 013 &middot; French fit-test</h1>
+<p class="sub">Where should the EN/FR language toggle live, and does French copy (which runs 15 to 25 percent longer) fit the tightest Print Shop surfaces without breaking the uppercase mono register labels, the 12px labels, the 56px serif chord glyph, buttons, and nav? Chord symbols themselves never translate. Flip the switch and watch the words around them grow.</p>
+
+<div class="lang-strip">
+	<p class="reg">Live language (drives A &amp; B mocks)</p>
+	<div class="seg" id="langSeg">
+		<button data-lang="en" aria-pressed="false">EN</button>
+		<button data-lang="fr" aria-pressed="true">FR</button>
+	</div>
+	<p class="note-sm" style="margin:0;">Starts on FR so overflow is visible immediately. Variant C shows both at once.</p>
+</div>
+
+<div class="tabs" role="tablist">
+	<button class="tab" role="tab" aria-selected="true" data-tab="A">A &middot; Header toggle &#9733;</button>
+	<button class="tab" role="tab" aria-selected="false" data-tab="B">B &middot; Settings toggle</button>
+	<button class="tab" role="tab" aria-selected="false" data-tab="C">C &middot; EN/FR stress panel</button>
+</div>
+
+<!-- ===== Variant A: header segmented toggle ===== -->
+<div class="panel" data-tab="A" data-active="true">
+	<p class="note-sm" style="margin-bottom:var(--space-4)">Toggle sits top-right of the app bar on every page. Always one tap away, always visible, costs a slot of bar width that competes with the brand on a 375px phone.</p>
+	<div class="phone">
+		<div class="phone-bar">
+			<span class="brand">Music&nbsp;Learn</span>
+			<div class="seg" id="langSegA">
+				<button data-lang="en" aria-pressed="false">EN</button>
+				<button data-lang="fr" aria-pressed="true">FR</button>
+			</div>
+		</div>
+		<nav class="nav" id="navA"></nav>
+		<div class="phone-body" id="bodyA"></div>
+	</div>
+	<p class="note-sm">The top-right toggle and the six-item nav both fight for the same narrow bar. In FR the nav words are longer (Exercices, Revision, Theorie) and the row already scrolls.</p>
+</div>
+
+<!-- ===== Variant B: settings-only toggle ===== -->
+<div class="panel" data-tab="B" data-active="false">
+	<p class="note-sm" style="margin-bottom:var(--space-4)">Language lives one level down in Settings. The app bar stays clean, but changing language is a 3-tap detour and not discoverable mid-drill.</p>
+	<div class="phone" style="margin-bottom:var(--space-6)">
+		<div class="phone-bar">
+			<span class="brand">Reglages</span>
+			<span class="reg" style="margin:0">&#9881;</span>
+		</div>
+		<div class="settings" id="settingsB"></div>
+	</div>
+	<div class="phone">
+		<div class="phone-bar">
+			<span class="brand">Music&nbsp;Learn</span>
+			<span class="reg" style="margin:0">&#9776;</span>
+		</div>
+		<nav class="nav" id="navB"></nav>
+		<div class="phone-body" id="bodyB"></div>
+	</div>
+	<p class="note-sm">Bar is roomier without the toggle, so the drill page itself has the same FR overflow to solve, just without the top-right control competing for width.</p>
+</div>
+
+<!-- ===== Variant C: inline EN/FR stress panel ===== -->
+<div class="panel" data-tab="C" data-active="false">
+	<p class="note-sm" style="margin-bottom:var(--space-4)">The real deliverable: every tight string stacked EN-above / FR-below. Red wavy underline or OVERFLOWS = the FR string is too wide for its Print Shop slot at the same font. This is the audit that scopes the i18n phase.</p>
+	<div class="stress" id="stressC"></div>
+	<div class="verdict">
+		<p class="reg">What breaks</p>
+		<ul>
+			<li><strong>FONDAMENTALE</strong> (root) is the killer: 12 chars vs ROOT's 4, blows every fixed register slot. Needs an abbreviation (FOND.) or a wider/2-line slot.</li>
+			<li>Grading <strong>A&nbsp;REVOIR</strong> and <strong>DIFFICILE</strong> stress the 4-across grade row; needs smaller type or 2x2 grid in FR.</li>
+			<li>Nav <strong>EXERCICES</strong> / <strong>THEORIE</strong> push the already-scrolling 6-item bar wider.</li>
+			<li>Chord glyph (Cmaj7, F&#9839;&oslash;7) is <strong>unaffected</strong>: symbols are language-neutral, serif size holds.</li>
+			<li>Body prompt "Nomme cet accord" fits fine; the danger is uppercase mono fixed-width slots, not sentences.</li>
+		</ul>
+	</div>
+</div>
+
+<script>
+	// ---- string tables ----
+	const T = {
+		nav: [
+			{ en: 'Drills', fr: 'Exercices' },
+			{ en: 'Recall', fr: 'Revision' },
+			{ en: 'Scales', fr: 'Gammes' },
+			{ en: 'Theory', fr: 'Theorie' },
+			{ en: 'Songs', fr: 'Morceaux' },
+			{ en: 'Progress', fr: 'Progres' }
+		],
+		prompt: { en: 'Name this chord', fr: 'Nomme cet accord' },
+		build: { en: 'Build it', fr: 'Construis-le' },
+		hear: { en: 'Hear it', fr: 'Ecouter' },
+		start: { en: 'Start practicing', fr: "Commencer l'entrainement" },
+		registers: [
+			{ role: 'root', en: 'ROOT', fr: 'FONDAMENTALE', note: 'C' },
+			{ role: 'third', en: 'THIRD', fr: 'TIERCE', note: 'E' },
+			{ role: 'fifth', en: 'FIFTH', fr: 'QUINTE', note: 'G' },
+			{ role: 'seventh', en: 'SEVENTH', fr: 'SEPTIEME', note: 'B' }
+		],
+		grades: [
+			{ en: 'Again', fr: 'A revoir' },
+			{ en: 'Hard', fr: 'Difficile' },
+			{ en: 'Good', fr: 'Correct' },
+			{ en: 'Easy', fr: 'Facile' }
+		],
+		hint: {
+			en: 'Minor seventh: root, flat third, fifth, flat seventh.',
+			fr: 'Septieme mineure : fondamentale, tierce mineure, quinte, septieme mineure.'
+		}
+	};
+
+	// register slots overflow when the FR word is long (7+ chars is the practical break)
+	const REG_MAX = 7;
+	const GRADE_MAX = 7;
+
+	let lang = 'fr';
+
+	function navHtml(activeIdx){
+		return T.nav.map((n, i) =>
+			`<a href="#" class="${i === activeIdx ? 'active' : ''}">${n[lang]}</a>`
+		).join('');
+	}
+
+	function drillBody(){
+		const regs = T.registers.map((r) => {
+			const word = r[lang];
+			const over = lang === 'fr' && word.length > REG_MAX;
+			return `<div class="reg-slot ${r.role}">
+				<div class="role ${over ? 'overflows' : ''}">${word}</div>
+				<div class="note-name">${r.note}</div>
+			</div>`;
+		}).join('');
+		const grades = T.grades.map((g) => {
+			const word = g[lang];
+			const over = lang === 'fr' && word.length > GRADE_MAX;
+			return `<button class="grade ${over ? 'overflows' : ''}">${word}</button>`;
+		}).join('');
+		return `
+			<p class="prompt-label">${T.prompt[lang]}</p>
+			<div class="chord-glyph">Cmaj7<span class="neutral-tag">symbol never translates</span></div>
+			<div class="registers">${regs}</div>
+			<div class="actions">
+				<button class="btn">${T.build[lang]}</button>
+				<button class="btn ghost">${T.hear[lang]}</button>
+			</div>
+			<div class="grades">${grades}</div>
+			<p class="hint">${T.hint[lang]}</p>
+		`;
+	}
+
+	function renderAB(){
+		document.getElementById('navA').innerHTML = navHtml(0);
+		document.getElementById('bodyA').innerHTML = drillBody();
+		document.getElementById('navB').innerHTML = navHtml(0);
+		document.getElementById('bodyB').innerHTML = drillBody();
+		document.querySelectorAll('#langSeg button, #langSegA button').forEach((b) => {
+			b.setAttribute('aria-pressed', String(b.dataset.lang === lang));
+		});
+	}
+
+	function renderSettingsB(){
+		const el = document.getElementById('settingsB');
+		el.innerHTML = `
+			<div class="set-row">
+				<div><div class="k">Langue</div><div class="sub-k">Language of the app interface</div></div>
+				<div class="seg" id="langSegB">
+					<button data-lang="en" aria-pressed="${lang === 'en'}">EN</button>
+					<button data-lang="fr" aria-pressed="${lang === 'fr'}">FR</button>
+				</div>
+			</div>
+			<div class="set-row disabled"><div><div class="k">Son</div><div class="sub-k">Audio feedback</div></div><span class="reg" style="margin:0">On</span></div>
+			<div class="set-row disabled"><div><div class="k">Peripherique MIDI</div><div class="sub-k">MIDI device</div></div><span class="reg" style="margin:0">Auto</span></div>
+		`;
+		document.querySelectorAll('#langSegB button').forEach((b) => {
+			b.onclick = () => { lang = b.dataset.lang; renderAll(); };
+		});
+	}
+
+	function renderStressC(){
+		const el = document.getElementById('stressC');
+		const pair = (head, rows) => `
+			<div class="pair">
+				<div class="pair-head">${head}</div>
+				${rows}
+			</div>`;
+
+		// register words in FIXED slots so overflow is literal
+		const regRows = T.registers.map((r) => {
+			const enOver = r.en.length > REG_MAX;
+			const frOver = r.fr.length > REG_MAX;
+			return `
+			<div class="pair-rows">
+				<div class="lang en-lang">EN</div>
+				<div class="en"><span class="slot-fixed wide">${r.en}</span>${enOver ? '<span class="over-flag">clip</span>' : '<span class="fits-flag">fits</span>'}</div>
+				<div class="lang">FR</div>
+				<div class="fr"><span class="slot-fixed wide">${r.fr}</span>${frOver ? `<span class="over-flag">overflows +${r.fr.length - r.en.length}ch</span>` : '<span class="fits-flag">fits</span>'}</div>
+			</div>`;
+		}).join('');
+
+		const gradeRows = T.grades.map((g) => {
+			const frOver = g.fr.length > GRADE_MAX;
+			return `
+			<div class="pair-rows">
+				<div class="lang en-lang">EN</div>
+				<div class="en"><span class="slot-fixed">${g.en}</span></div>
+				<div class="lang">FR</div>
+				<div class="fr"><span class="slot-fixed">${g.fr}</span>${frOver ? '<span class="over-flag">tight</span>' : '<span class="fits-flag">fits</span>'}</div>
+			</div>`;
+		}).join('');
+
+		const navRows = T.nav.map((n) => {
+			const grow = Math.round(((n.fr.length - n.en.length) / n.en.length) * 100);
+			return `
+			<div class="pair-rows">
+				<div class="lang en-lang">EN</div>
+				<div class="en"><span class="slot-fixed">${n.en}</span></div>
+				<div class="lang">FR</div>
+				<div class="fr"><span class="slot-fixed">${n.fr}</span>${grow > 0 ? `<span class="grow">+${grow}%</span>` : '<span class="fits-flag">same</span>'}</div>
+			</div>`;
+		}).join('');
+
+		const sentence = (obj, label) => `
+			<div class="pair-rows">
+				<div class="lang en-lang">EN</div>
+				<div class="en">${obj.en}</div>
+				<div class="lang">FR</div>
+				<div class="fr">${obj.fr} <span class="grow">+${Math.round(((obj.fr.length - obj.en.length) / obj.en.length) * 100)}%</span></div>
+			</div>`;
+
+		el.innerHTML =
+			pair('Register labels &middot; uppercase mono, fixed 92px slot', regRows) +
+			pair('Grading buttons &middot; 4-across slot', gradeRows) +
+			pair('Nav items &middot; 6-item bar', navRows) +
+			pair('Drill prompt sentence', sentence(T.prompt)) +
+			pair('Primary button: Start practicing', sentence(T.start)) +
+			pair('Hint sentence', sentence(T.hint)) +
+			pair('Chord symbol (never translates)', `
+				<div class="pair-rows">
+					<div class="lang en-lang">EN</div>
+					<div class="en" style="font:700 32px/1 var(--font-serif)">Cmaj7 &nbsp; F&#9839;&oslash;7</div>
+					<div class="lang">FR</div>
+					<div class="fr" style="font:700 32px/1 var(--font-serif)">Cmaj7 &nbsp; F&#9839;&oslash;7 <span class="fits-flag" style="vertical-align:middle">identical</span></div>
+				</div>`);
+	}
+
+	function renderAll(){
+		renderAB();
+		renderSettingsB();
+		renderStressC();
+	}
+
+	document.querySelectorAll('#langSeg button, #langSegA button').forEach((b) => {
+		b.onclick = () => { lang = b.dataset.lang; renderAll(); };
+	});
+	document.querySelectorAll('.tab').forEach((tab) => {
+		tab.onclick = () => {
+			const id = tab.dataset.tab;
+			document.querySelectorAll('.tab').forEach((t) => t.setAttribute('aria-selected', String(t === tab)));
+			document.querySelectorAll('.panel').forEach((p) => p.setAttribute('data-active', String(p.dataset.tab === id)));
+		};
+	});
+
+	renderAll();
+</script>

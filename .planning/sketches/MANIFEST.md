@@ -30,3 +30,18 @@ Sketched three of five user asks; two were logic fixes handled directly (every-k
 ## Session 3 (2026-07-14): interval visibility + beginner on-ramp
 
 Locked decisions: always-on interval scaffold that fades with level (005); optional tap-to-reveal famous-tune hooks using a vetted 12-interval table, no cheese (006); beginner start-here course with the level picker moved onto the Drills page, tier NAMES not numbers, advanced tiers hidden/ghosted until reached (007). Built by parallel Sonnet agents, verified in browser by the Opus orchestrator. Winners proposed; 007-A (course stepper) is the strongest "not overwhelmed" default, with 007-B (ladder) as a motivating progress view.
+
+## Session 4 (2026-07-15): playability, audio memory, in-place teaching, your-song chords, theory, i18n
+
+Six user asks from a roadmap sketch pass. Captured constraint: reuse the chord-lookup serif display glyph (`ChordGlyph`, `--font-serif`/`--text-display`) and the `stamp-in` 240ms reveal animation — the user explicitly loves both; propagate into audio reveals and dossiers. French (i18n) is mostly an implementation phase; 013 only fit-tests the visual risk. "Add to roadmap" handled after sketch winners land, via /gsd-phase.
+
+| # | Name | Design Question | Winner | Tags |
+|---|------|----------------|--------|------|
+| 008 | keyboard-everywhere | Where does an always-playable keyboard live on pages that already carry content, so every keyboard page is playable? | A: Docked bottom bar | keyboard, layout, global, mobile |
+| 009 | hear-the-chord | On FORMULA→BUILD reveal, how does hearing the chord surface (auto/tap/arpeggio) for audio memory? | A: Auto-play + pulse (C arpeggio as study option) | audio, drills, build, reveal, memory |
+| 010 | chord-explainer | In Recall, when you meet a chord you don't know (Cdim), how do you get escalating help in place? | A: Hint ladder (C dossier as deepest rung) | recall, hints, teaching, beginner |
+| 011 | your-songs-chords | How do chords from your added songs surface + get prioritized app-wide (drills, recall, lookup)? | A: Provenance mark + filter | songs, provenance, drills, motivation |
+| 012 | interactive-theory | How do interactive beginner theory lessons look/flow and hand off into first drills? | A: Guided steps (B lesson-map as later container) | theory, lessons, beginner, interactive |
+| 013 | french-fit-test | Where does the language toggle live, and does French copy fit the tightest Print Shop surfaces? | A: Header toggle (C stress-panel = the audit) | i18n, french, copy, layout |
+
+**Session 4 winners locked (2026-07-15):** all Variant A. Notes: 008-A docked keyboard is the only treatment that structurally guarantees playability on every keyboard page (drills/recall/scales/theory/lookup). 009 keeps C's arpeggio-then-block as an optional "study" mode. 010 folds C's dossier content into the deepest hint rung. 011 provenance mark travels app-wide + opt-in "From my songs" filter. 012-A guided steps is the first-drill bridge; B lesson-map becomes the container once lessons multiply. 013 ships the EN|FR toggle in the header; C's stress panel is the deliverable audit — register slots must abbreviate long French (FONDAMENTALE, MORCEAUX) or widen. Captured constraint: serif ChordGlyph + stamp-in reveal reused across 008/009/010/011 — locked house reference.
