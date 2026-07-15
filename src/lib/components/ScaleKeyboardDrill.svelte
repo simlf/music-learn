@@ -66,6 +66,26 @@
 	 */
 	let filledMap = $state<Map<string, ScaleKeyPlacement>>(new Map());
 	const tonicPlacement = $derived(placements[0]);
+	/**
+	 * Static (fill-independent) map from every physical key that IS one of
+	 * the 8 canonical ascending placements to its scale degree - restores the
+	 * degree semantics the retired ladder's `aria-label` carried (WR-04),
+	 * without depending on tap/fill history (so a key's accessible name never
+	 * changes mid-drill, keeping repeated lookups - e.g. the descending leg
+	 * re-tapping the same keys - stable).
+	 */
+	const placementByKey = $derived.by(() => {
+		const map = new Map<string, ScaleKeyPlacement>();
+		for (const placement of placements) {
+			map.set(`${placement.kind}:${placement.keyIndex}`, placement);
+		}
+		return map;
+	});
+	/** The canonical key for the currently-expected target, or undefined once done. */
+	const expectedPlacement = $derived.by(() => {
+		const target = expectedTarget(drill);
+		return target ? placements[target.degree - 1] : undefined;
+	});
 
 	const register = $derived.by(() => {
 		const target: ScaleTarget | null = expectedTarget(drill);
@@ -151,6 +171,25 @@
 		return wrongKey?.kind === kind && wrongKey.keyIndex === keyIndex ? 'key--wrong' : '';
 	}
 
+	/**
+	 * Restores scale-degree semantics to the per-key label (WR-04): a
+	 * screen-reader user can always tell which scale degree a key represents
+	 * in the ascending sequence, not just its raw keyboard-key identity.
+	 * Non-canonical duplicate keys (same pitch class, no assigned degree)
+	 * keep the plain board-identity label.
+	 */
+	function ariaLabelFor(kind: KeyKind, keyIndex: number, letter: string, octave: number): string {
+		const canonical = placementByKey.get(`${kind}:${keyIndex}`);
+		return canonical
+			? `${letter}${octave} key, scale degree ${canonical.degree}`
+			: `${letter}${octave} key`;
+	}
+
+	/** Whether this key is the canonical key for the currently-expected degree. */
+	function isExpectedKey(kind: KeyKind, keyIndex: number): boolean {
+		return expectedPlacement?.kind === kind && expectedPlacement?.keyIndex === keyIndex;
+	}
+
 	/** Base octave of the keyboard's leftmost C (matches the audio voicing's octave 4). */
 	const BASE_OCTAVE = 4;
 
@@ -208,7 +247,11 @@
 		</div>
 	{:else}
 		<p class="text-body">Play {tonic} major ascending, then descending.</p>
-		<p class="register text-label mt-2 font-mono uppercase" data-testid="scale-keyboard-register">
+		<p
+			class="register text-label mt-2 font-mono uppercase"
+			data-testid="scale-keyboard-register"
+			aria-live="polite"
+		>
 			{register}
 		</p>
 
@@ -230,7 +273,8 @@
 						style="left: {key.leftPct}%; width: {whiteKeyWidthPct}%;"
 						role="button"
 						tabindex="0"
-						aria-label={`${key.letter}${key.octave} key`}
+						aria-label={ariaLabelFor('white', key.index, key.letter, key.octave)}
+						aria-current={isExpectedKey('white', key.index) ? 'step' : undefined}
 						data-tonic-key={isTonicKey('white', key.index)}
 						onclick={() => handleTap('white', key.index, key.letter)}
 						onkeydown={(event) => handleKeydown(event, () => handleTap('white', key.index, key.letter))}
@@ -248,7 +292,8 @@
 						style="left: {key.leftPct}%; width: {blackKeyWidthPct}%;"
 						role="button"
 						tabindex="0"
-						aria-label={`${key.sharpLetter}${key.octave} key`}
+						aria-label={ariaLabelFor('black', key.index, key.sharpLetter, key.octave)}
+						aria-current={isExpectedKey('black', key.index) ? 'step' : undefined}
 						data-tonic-key={isTonicKey('black', key.index)}
 						onclick={() => handleTap('black', key.index, key.sharpLetter)}
 						onkeydown={(event) => handleKeydown(event, () => handleTap('black', key.index, key.sharpLetter))}

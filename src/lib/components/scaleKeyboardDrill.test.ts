@@ -26,8 +26,14 @@ function ariaLabelFor(kind: 'white' | 'black', keyIndex: number): string {
 	return `${pattern.sharpLetter}${octave} key`;
 }
 
+// Every placement passed to tapButtonFor is one of the 8 canonical ascending
+// placements, so its accessible name always carries the WR-04 scale-degree
+// suffix (a static, fill-independent label - see the component's
+// placementByKey/ariaLabelFor).
 function tapButtonFor(placement: ScaleKeyPlacement): HTMLElement {
-	return screen.getByRole('button', { name: ariaLabelFor(placement.kind, placement.keyIndex) });
+	return screen.getByRole('button', {
+		name: `${ariaLabelFor(placement.kind, placement.keyIndex)}, scale degree ${placement.degree}`
+	});
 }
 
 async function tapAscending(placements: ScaleKeyPlacement[]) {
@@ -179,7 +185,7 @@ describe('ScaleKeyboardDrill (tonic-anchored 2-octave keyboard, SCALE-04)', () =
 		expect(placements[0]).toMatchObject({ kind: 'white', keyIndex: 0 });
 		expect(placements[7]).toMatchObject({ kind: 'white', keyIndex: 7 });
 
-		const tappedKey = screen.getByRole('button', { name: 'C5 key' });
+		const tappedKey = tapButtonFor(placements[7]);
 		await fireEvent.click(tappedKey);
 
 		// The tapped key itself gets the fill...
@@ -190,6 +196,28 @@ describe('ScaleKeyboardDrill (tonic-anchored 2-octave keyboard, SCALE-04)', () =
 		// The tap was graded correct: audio played and the drill advanced.
 		expect(playNoteMock).toHaveBeenCalledTimes(1);
 		expect(screen.getByTestId('scale-keyboard-register')).toHaveTextContent('DEGREE 2 OF 8 · ASCENDING');
+	});
+
+	it('WR-04: per-key aria-labels carry scale-degree semantics, and the currently-expected key is aria-current', () => {
+		const notes = majorScaleNotes('C');
+		const placements = placeAscendingScaleKeys(notes);
+		render(ScaleKeyboardDrill, { notes, tonic: 'C' });
+
+		// A canonical placement key's accessible name includes its degree...
+		const tonicKey = tapButtonFor(placements[0]);
+		expect(tonicKey).toHaveAccessibleName('C4 key, scale degree 1');
+		// ...and is marked as the currently-expected step (degree 1 is first).
+		expect(tonicKey).toHaveAttribute('aria-current', 'step');
+
+		// A non-canonical duplicate key (e.g. the higher octave C, degree 8's
+		// canonical key) is not yet expected, so it carries no aria-current,
+		// though it does have its own (different) degree semantics.
+		const octaveKey = tapButtonFor(placements[7]);
+		expect(octaveKey).toHaveAccessibleName('C5 key, scale degree 8');
+		expect(octaveKey).not.toHaveAttribute('aria-current');
+
+		// The register text is live so degree/direction changes are announced.
+		expect(screen.getByTestId('scale-keyboard-register')).toHaveAttribute('aria-live', 'polite');
 	});
 
 	it('accepts F♯ major degree 7 (E♯) on the white F key and labels it E♯ (enharmonic acceptance by chroma)', async () => {
