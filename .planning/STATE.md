@@ -6,14 +6,14 @@ current_phase: 12
 current_phase_name: Build-it Construction
 status: verifying
 stopped_at: Completed 12-01-PLAN.md (theory phraseStep + facts scale-formula factId + deck.ts formula-build mode + getCard)
-last_updated: "2026-07-15T14:11:36.542Z"
+last_updated: "2026-07-15T14:18:46.711Z"
 last_activity: 2026-07-15
-last_activity_desc: Phase 11 complete, transitioned to Phase 12
+last_activity_desc: Completed 12-02-PLAN.md (PianoKeyboard constructable mode)
 progress:
   total_phases: 13
   completed_phases: 7
   total_plans: 35
-  completed_plans: 30
+  completed_plans: 31
   percent: 54
 ---
 
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 ## Current Position
 
 Phase: 12 — Build-it Construction
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-07-15 — Phase 11 complete, transitioned to Phase 12
+Plan: 3 of 6 in current phase
+Status: Ready to execute
+Last activity: 2026-07-15 — Completed 12-02-PLAN.md (PianoKeyboard constructable mode)
 
 **v2.0 phases (execution order 10 → 11 → 12 → 13):**
 
@@ -94,6 +94,7 @@ Last activity: 2026-07-15 — Phase 11 complete, transitioned to Phase 12
 | Phase 11 P05 | 24min | 2 tasks | 4 files |
 | Phase 11 P06 | 8min | 2 tasks | 4 files |
 | Phase 12 P01 | 3min | 2 tasks | 6 files |
+| Phase 12 P02 | 8min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -170,6 +171,8 @@ Recent decisions affecting current work:
 - [Phase 12 P01]: phraseStep delegates to intervalFromShort(short).long except when asScaleStep is true AND degree is 2 (whole/half step), matching D-03 exactly
 - [Phase 12 P01]: scaleFormulaFactId and widened FactKind/Mode are additive-only: Fact union, CATALOG, allFacts(), factById() byte-unchanged so introduceNewCards/RecallSession/RecallMap stay unaware of scale-formula facts
 - [Phase 12 P01]: getCard is a filter over getAllCards() (not a raw Dexie compound-key get), so it inherits the same Zod-validation/Date-coercion read boundary as every other deck.ts read path
+- [Phase 12 P02]: constructable/onConstructTap/flashWrongKey are a third gated tap-driven mode on PianoKeyboard; constructable wins over inspectable (interactive still wins over both), and onConstructTap never triggers audio inside PianoKeyboard - the caller owns feedback sound
+- [Phase 12 P02]: flashWrongKey stays a fully separate prop/helper from wrongLetters (transient + octave-specific vs permanent + letter-only), reusing the existing --wrong CSS class verbatim
 
 ### Pending Todos
 
@@ -194,7 +197,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-15T14:11:36.533Z
+Last session: 2026-07-15T14:18:21.464Z
 Stopped at: Completed 12-01-PLAN.md (theory phraseStep + facts scale-formula factId + deck.ts formula-build mode + getCard)
 Resume file: None
 Next: /gsd-plan-phase 10
