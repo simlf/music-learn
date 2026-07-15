@@ -27,7 +27,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### v2.0 Learning Upgrade
 
-- [ ] **Phase 10: Scale Keyboard Drill** - Play a scale on a movable tonic-anchored keyboard graded by pitch class; retires the confusing degree ladder
+- [x] **Phase 10: Scale Keyboard Drill** - Play a scale on a movable tonic-anchored keyboard graded by pitch class; retires the confusing degree ladder (completed 2026-07-15)
 - [ ] **Phase 11: Memorization Engine** - Real spaced repetition (ts-fsrs): surface facts due today, reveal-and-grade, persist a card per (fact, mode), recall map
 - [ ] **Phase 12: Build-it Construction** - Earn each note by stacking one interval at a time; derive chords and scales from the formula and feed the memorization engine
 - [ ] **Phase 13: Multi-modal Recall** - Drill one fact across rotating modes (see-play, formula-build, hear-name) on top of the scheduler
@@ -341,7 +341,7 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 | 7. Theory Lessons | 0/TBD | Superseded (Phase 12) | - |
 | 8. Progress & Streaks | 4/4 | Complete    | 2026-07-13 |
 | 9. Deploy to the Piano | 6/6 | Complete   | 2026-07-13 |
-| 10. Scale Keyboard Drill | 2/2 | Complete   | 2026-07-15 |
+| 10. Scale Keyboard Drill | 2/2 | Complete    | 2026-07-15 |
 | 11. Memorization Engine | 0/TBD | Not started | - |
 | 12. Build-it Construction | 0/TBD | Not started | - |
 | 13. Multi-modal Recall | 0/TBD | Not started | - |
