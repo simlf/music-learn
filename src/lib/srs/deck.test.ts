@@ -131,7 +131,7 @@ describe('deck', () => {
 		// fields with their own ISO string forms, simulating a record whose
 		// date fields arrived as strings (whatever the future storage-shape
 		// drift cause might be).
-		const rawKey: [string, string] = [graded.factId, graded.mode];
+		const rawKey: [string, typeof graded.mode] = [graded.factId, graded.mode];
 		await _database().cards.update(rawKey, {
 			due: graded.due.toISOString() as unknown as Date,
 			last_review: graded.last_review
