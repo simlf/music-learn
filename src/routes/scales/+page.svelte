@@ -2,7 +2,7 @@
 	import { MAJOR_SCALE_ROOTS, majorScaleNotes } from '$lib/theory/scale';
 	import ScaleDegreeStrip, { type InspectPayload } from '$lib/components/ScaleDegreeStrip.svelte';
 	import InspectRegister from '$lib/components/InspectRegister.svelte';
-	import ScalePractice from '$lib/components/ScalePractice.svelte';
+	import ScaleKeyboardDrill from '$lib/components/ScaleKeyboardDrill.svelte';
 	import Button from '$lib/components/Button.svelte';
 
 	/**
@@ -13,10 +13,11 @@
 	 * which stranded non-C scales across a fixed C-to-C octave span. Fully
 	 * client-side and prerender-safe.
 	 *
-	 * A mode toggle (sketch 004) adds a Practice tab alongside Explore: the
-	 * same tonic drives ScalePractice's ascending tap drill (degree ladder,
-	 * winner A). Explore stays the default so the existing degree-strip
-	 * behavior (and its tests) are unaffected.
+	 * A mode toggle adds a Practice tab alongside Explore: the same tonic
+	 * drives ScaleKeyboardDrill, a tonic-anchored 2-octave keyboard graded by
+	 * pitch class (SCALE-04, replacing the retired degree-ladder surface).
+	 * Explore stays the default so the existing degree-strip behavior (and its
+	 * tests) are unaffected.
 	 */
 	type Mode = 'explore' | 'practice';
 
@@ -89,7 +90,7 @@
 			<InspectRegister payload={inspectPayload} />
 		{:else}
 			<div class="mt-4">
-				<ScalePractice {notes} {tonic} />
+				<ScaleKeyboardDrill {notes} {tonic} />
 			</div>
 		{/if}
 	</div>

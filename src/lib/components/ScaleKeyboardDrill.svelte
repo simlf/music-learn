@@ -19,11 +19,11 @@
 
 	/**
 	 * Tonic-anchored 2-octave scale keyboard drill (SCALE-04). Replaces the
-	 * retired degree-ladder ScalePractice: the user taps a real keyboard
+	 * retired degree-ladder Practice surface: the user taps a real keyboard
 	 * ascending then descending, graded by pitch class (never letter-string
-	 * equality) via scaleKeyboardDrill.ts's pure state machine. The tonic
-	 * (degree 1) is always the leftmost highlighted key; the octave (degree 8)
-	 * lands on a distinct higher key, placed by placeAscendingScaleKeys.
+	 * equality) via the pure scale-drill state machine in $lib/practice. The
+	 * tonic (degree 1) is always the leftmost highlighted key; the octave
+	 * (degree 8) lands on a distinct higher key, placed by placeAscendingScaleKeys.
 	 *
 	 * Renders its own keyboard from the shared, pure keyboardLayout geometry
 	 * (whiteLettersForOctaves/blackKeysForOctaves) rather than delegating to
