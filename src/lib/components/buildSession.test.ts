@@ -686,3 +686,90 @@ describe('BuildSession FSRS write on completion (BUILD-04, 12-06)', () => {
 		expect('introduceNewCards' in deckModule).toBe(false);
 	});
 });
+
+/**
+ * Component test for BuildSession (13-05, Task 1): the embedFact/onComplete
+ * embedding seam Mode C (RecallSession) relies on. Omitting both props keeps
+ * every pre-existing case above passing unmodified (a full regression run,
+ * not just a spot check) - proven by this file's untouched earlier suites.
+ */
+describe('BuildSession embedding seam (13-05, Task 1)', () => {
+	it('embedFact={kind: chord, symbol: Cm7} renders directly into the building state for Cm7, with no kind-toggle/picker in the DOM', () => {
+		render(BuildSession, { props: { embedFact: { kind: 'chord', symbol: 'Cm7' } } });
+
+		expect(screen.queryByTestId('kind-toggle')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('picker')).not.toBeInTheDocument();
+		expect(screen.getByTestId('build-register')).toHaveTextContent('STEP 1 OF 3');
+		expect(screen.getByTestId('build-step-line')).toHaveTextContent('Stack a minor 3rd up from C.');
+	});
+
+	it('embedFact={kind: scale, tonic: G} renders directly into the building state for G major, with no kind-toggle/picker in the DOM', () => {
+		render(BuildSession, { props: { embedFact: { kind: 'scale', tonic: 'G' } } });
+
+		expect(screen.queryByTestId('kind-toggle')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('picker')).not.toBeInTheDocument();
+		expect(screen.getByTestId('build-register')).toHaveTextContent('STEP 1 OF 7');
+		expect(screen.getByTestId('build-step-line')).toHaveTextContent('Take a whole step up from G.');
+	});
+
+	it('completing an embedded chord build with onComplete provided shows a single Next button and NO "SAVED TO RECALL" text, and clicking Next calls onComplete exactly once', async () => {
+		const onComplete = vi.fn();
+		render(BuildSession, {
+			props: { embedFact: { kind: 'chord', symbol: 'Cm7' }, onComplete }
+		});
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+
+		expect(screen.getByTestId('build-complete')).toBeInTheDocument();
+		expect(screen.queryByTestId('build-fsrs-status')).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Build Another' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('link', { name: 'Recall It Now' })).not.toBeInTheDocument();
+		const nextButton = screen.getByRole('button', { name: 'Next' });
+
+		await fireEvent.click(nextButton);
+
+		expect(onComplete).toHaveBeenCalledTimes(1);
+	});
+
+	it('completing an embedded scale build with onComplete provided shows a single Next button and NO "SAVED TO RECALL" text', async () => {
+		const onComplete = vi.fn();
+		render(BuildSession, {
+			props: { embedFact: { kind: 'scale', tonic: 'G' }, onComplete }
+		});
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'B key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[1]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D key' })[1]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'E key' })[1]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'F♯ key' })[1]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[1]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+
+		expect(screen.getByTestId('build-complete')).toBeInTheDocument();
+		expect(screen.queryByTestId('build-fsrs-status')).not.toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+		expect(onComplete).toHaveBeenCalledTimes(1);
+	}, 10000);
+
+	it('omitting both embedFact/onComplete still renders the picker (byte-identical pre-embedding behavior)', () => {
+		render(BuildSession);
+
+		expect(screen.getByTestId('kind-toggle')).toBeInTheDocument();
+		expect(screen.getByTestId('picker')).toBeInTheDocument();
+		expect(screen.getByText('Root')).toBeInTheDocument();
+	});
+});

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy, tick } from 'svelte';
+	import { onDestroy, tick, untrack } from 'svelte';
 	import { Note } from 'tonal';
 	import { ROOTS, QUALITY_SUFFIXES } from '$lib/theory/randomChord';
 	import { MAJOR_SCALE_ROOTS } from '$lib/theory/scale';
@@ -42,6 +42,23 @@
 	 * (no position/earnedNotes change), so promptState updates immediately
 	 * for those.
 	 */
+
+	/**
+	 * Embedding seam (13-05, Mode C): when `embedFact` is provided, BuildSession
+	 * skips its own picker entirely and starts construction immediately for the
+	 * given fact; `onComplete` (when provided alongside) replaces the
+	 * standalone completion CTAs ("Build Another"/"Recall It Now") with a
+	 * single "Next" and suppresses the "SAVED TO RECALL" status line, since the
+	 * embedding surface (RecallSession) already IS Recall. Omitting both props
+	 * leaves every render byte-identical to this component's pre-embedding
+	 * behavior.
+	 */
+	interface Props {
+		embedFact?: { kind: 'chord'; symbol: string } | { kind: 'scale'; tonic: string };
+		onComplete?: () => void;
+	}
+
+	let { embedFact, onComplete }: Props = $props();
 
 	type SessionState = 'picking' | 'building' | 'complete';
 	type Kind = 'chords' | 'scales';
@@ -431,27 +448,57 @@
 		clearTimeout(flashTimer);
 		clearTimeout(feedbackTimer);
 	});
+
+	// Embedding seam (13-05): runs once at component init, after every function
+	// above is declared. Skips the picker entirely and starts construction
+	// immediately for the given fact - a chord's ASCII symbol is split into
+	// pickedRoot/pickedQuality via the same longest-match ROOTS-prefix
+	// technique pickDistractors uses, so startChordConstruction()'s own
+	// `startedSymbol` reconstructs the exact original symbol.
+	// Read once via untrack: this is a deliberate init-time snapshot (embedFact
+	// never changes for the lifetime of an embedded instance - RecallSession
+	// mounts a fresh keyed instance per queue item), not a reactive dependency.
+	untrack(() => {
+		if (embedFact) {
+			if (embedFact.kind === 'chord') {
+				kind = 'chords';
+				const root =
+					ROOTS.filter((r) => embedFact.symbol.startsWith(r)).sort(
+						(a, b) => b.length - a.length
+					)[0] ?? '';
+				pickedRoot = root;
+				pickedQuality = embedFact.symbol.slice(root.length);
+				startChordConstruction();
+			} else {
+				kind = 'scales';
+				pickedTonic = embedFact.tonic;
+				startScaleConstruction();
+			}
+		}
+	});
 </script>
 
 <div class="build-session" data-testid="build-session">
-	<div class="flex gap-2" data-testid="kind-toggle" role="group" aria-label="Build kind">
-		<Button
-			type="button"
-			variant={kind === 'chords' ? 'primary' : 'ghost'}
-			aria-pressed={kind === 'chords'}
-			onclick={() => setKind('chords')}
-		>
-			Chords
-		</Button>
-		<Button
-			type="button"
-			variant={kind === 'scales' ? 'primary' : 'ghost'}
-			aria-pressed={kind === 'scales'}
-			onclick={() => setKind('scales')}
-		>
-			Scales
-		</Button>
-	</div>
+	{#if !embedFact}
+		<div class="flex gap-2" data-testid="kind-toggle" role="group" aria-label="Build kind">
+			<Button
+				type="button"
+				variant={kind === 'chords' ? 'primary' : 'ghost'}
+				aria-pressed={kind === 'chords'}
+				onclick={() => setKind('chords')}
+			>
+				Chords
+			</Button>
+			<Button
+				type="button"
+				variant={kind === 'scales' ? 'primary' : 'ghost'}
+				aria-pressed={kind === 'scales'}
+				onclick={() => setKind('scales')}
+			>
+				Scales
+			</Button>
+		</div>
+	{/if}
 
 	{#if sessionState === 'picking'}
 		<div class="mt-8" data-testid="picker">
@@ -630,15 +677,19 @@
 				<PianoKeyboard notes={construction.earnedNotes} octaves={2} />
 			</div>
 
-			{#if fsrsSaved}
+			{#if fsrsSaved && !onComplete}
 				<p class="text-label mt-4 font-mono uppercase" data-testid="build-fsrs-status">
 					SAVED TO RECALL · FORMULA-BUILD MODE
 				</p>
 			{/if}
 
 			<div class="mt-6 flex flex-wrap gap-2">
-				<Button type="button" variant="primary" onclick={resetPicker}>Build Another</Button>
-				<Button variant="ghost" href="/recall">Recall It Now</Button>
+				{#if onComplete}
+					<Button type="button" variant="primary" onclick={onComplete}>Next</Button>
+				{:else}
+					<Button type="button" variant="primary" onclick={resetPicker}>Build Another</Button>
+					<Button variant="ghost" href="/recall">Recall It Now</Button>
+				{/if}
 			</div>
 		</div>
 	{/if}
