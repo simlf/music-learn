@@ -360,6 +360,6 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 | 8. Progress & Streaks | 4/4 | Complete    | 2026-07-13 |
 | 9. Deploy to the Piano | 6/6 | Complete   | 2026-07-13 |
 | 10. Scale Keyboard Drill | 2/2 | Complete    | 2026-07-15 |
-| 11. Memorization Engine | 6/6 | Complete   | 2026-07-15 |
+| 11. Memorization Engine | 6/6 | Complete    | 2026-07-15 |
 | 12. Build-it Construction | 0/TBD | Not started | - |
 | 13. Multi-modal Recall | 0/TBD | Not started | - |
