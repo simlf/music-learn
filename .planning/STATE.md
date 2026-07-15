@@ -4,17 +4,17 @@ milestone: v2.0
 milestone_name: Learning Upgrade
 current_phase: 10
 current_phase_name: scale-keyboard-drill
-status: executing
-stopped_at: v2.0 Learning Upgrade roadmap created (Phases 10-13; 13/13 v2 requirements mapped; old Phases 4-7 marked deferred/superseded in place)
-last_updated: "2026-07-14T22:14:25.505Z"
+status: verifying
+stopped_at: Completed 10-02-PLAN.md (Phase 10 scale-keyboard-drill fully complete, both plans done)
+last_updated: "2026-07-15T10:49:01.623Z"
 last_activity: 2026-07-14
 last_activity_desc: Phase 10 execution started
 progress:
   total_phases: 13
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 23
-  completed_plans: 22
-  percent: 38
+  completed_plans: 23
+  percent: 46
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 
 Phase: 10 (scale-keyboard-drill) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-14 — Phase 10 execution started
 
 **v2.0 phases (execution order 10 → 11 → 12 → 13):**
@@ -84,6 +84,7 @@ Last activity: 2026-07-14 — Phase 10 execution started
 | Phase 09-deploy-to-the-piano P03 | 30min | 2 tasks | 3 files |
 | Phase 09-deploy-to-the-piano P04 | 15min | 2 tasks | 3 files |
 | Phase 10 P01 | 15min | 2 tasks | 2 files |
+| Phase 10 P02 | 20min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -143,6 +144,8 @@ Recent decisions affecting current work:
 - [Phase 09-04]: navigator.vibrate call duration kept to a single short (~10ms) pulse, no repeating pattern, per the plan's own DoS mitigation for T-09-04
 - [Phase 10-01]: Grading scope is chroma/pitch-class, octave-agnostic: any visible key matching the expected degree's chroma is accepted (2-octave board can show a pitch class twice).
 - [Phase 10-01]: placeAscendingScaleKeys builds its own unified ascending key ordinal rather than reusing assignNotesToKeys, to guarantee the returning octave lands on a key distinct from the tonic.
+- [Phase 10-02]: ScaleKeyboardDrill renders its own 2-octave keyboard from keyboardLayout's pure geometry instead of importing PianoKeyboard, so the returning octave never collapses onto the tonic and the wrong-tap flash is momentary rather than PianoKeyboard's persistent cross-mark
+- [Phase 10-02]: Correct taps always fill/sound the canonical ascending placement (placements[degree-1]) regardless of which board key instance was tapped, keeping the same logic correct for both the ascending and descending legs
 
 ### Pending Todos
 
@@ -167,7 +170,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-14T22:13:38.093Z
-Stopped at: v2.0 Learning Upgrade roadmap created (Phases 10-13; 13/13 v2 requirements mapped; old Phases 4-7 marked deferred/superseded in place)
+Last session: 2026-07-15T10:49:01.617Z
+Stopped at: Completed 10-02-PLAN.md (Phase 10 scale-keyboard-drill fully complete, both plans done)
 Resume file: None
 Next: /gsd-plan-phase 10

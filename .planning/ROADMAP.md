@@ -20,7 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: On-Screen Drill Loop** - Construction & identification drills with instant elaborative feedback on the clickable keyboard (completed 2026-07-13)
 - [ ] **Phase 4: MIDI Play-to-Answer** - Answer the same drills by playing the connected digital piano — DEFERRED (needs hardware present; out of v2.0 scope)
 - [ ] **Phase 5: Smart Drill Design** - Interleaved sessions, scoped practice, and fading label scaffolds — SUPERSEDED by v2.0 Phase 13 (Multi-modal Recall)
-- [ ] **Phase 6: Major Scales** - Drill and see fingerings for all 12 major scales, expanding from G major — SUPERSEDED by v2.0 Phase 10 (Scale Keyboard Drill)
+- [x] **Phase 6: Major Scales** - Drill and see fingerings for all 12 major scales, expanding from G major — SUPERSEDED by v2.0 Phase 10 (Scale Keyboard Drill) (completed 2026-07-15)
 - [ ] **Phase 7: Theory Lessons** - Short shape-first lessons explaining what the symbols mean — SUPERSEDED by v2.0 Phase 12 (Build-it Construction)
 - [x] **Phase 8: Progress & Streaks** - Cross-device answer history, weakness-aware stats, and a daily streak (completed 2026-07-13)
 - [x] **Phase 9: Deploy to the Piano** - Live on the Oracle server over HTTPS, usable on laptop and phone (completed 2026-07-13)
@@ -266,7 +266,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. The degree-ladder Practice surface is gone, replaced by the keyboard with no keyboard-vs-ladder toggle; the Explore surface (degree strip + interval inspect) is unchanged.
   4. A wrong tap gives immediate feedback (wrong-key flash) and the drill reports a clean pass when the full ascending-and-descending scale is completed.
 
-**Plans**: 1/2 plans executed
+**Plans**: 2/2 plans complete
 
 **Wave 1**
 
@@ -274,7 +274,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 10-02-PLAN.md — ScaleKeyboardDrill component + /scales wiring: tonic-anchored 2-octave keyboard, position register, wrong-tap flash, completion card; retires the degree-ladder surface
+- [x] 10-02-PLAN.md — ScaleKeyboardDrill component + /scales wiring: tonic-anchored 2-octave keyboard, position register, wrong-tap flash, completion card; retires the degree-ladder surface
 
 **UI hint**: yes
 
@@ -341,7 +341,7 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 | 7. Theory Lessons | 0/TBD | Superseded (Phase 12) | - |
 | 8. Progress & Streaks | 4/4 | Complete    | 2026-07-13 |
 | 9. Deploy to the Piano | 6/6 | Complete   | 2026-07-13 |
-| 10. Scale Keyboard Drill | 1/2 | In Progress|  |
+| 10. Scale Keyboard Drill | 2/2 | Complete   | 2026-07-15 |
 | 11. Memorization Engine | 0/TBD | Not started | - |
 | 12. Build-it Construction | 0/TBD | Not started | - |
 | 13. Multi-modal Recall | 0/TBD | Not started | - |
