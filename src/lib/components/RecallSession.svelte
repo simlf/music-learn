@@ -436,6 +436,24 @@
 	}
 
 	/**
+	 * Escape hatch (WR-01) for a selected queue item that resolves to no
+	 * renderable branch: an `embedTargetFor` miss on a `formula-build` card,
+	 * a missing `currentFact`, or a `mode` that doesn't match the current
+	 * fact's `factKind`. There is nothing to grade here, so this never calls
+	 * `recordGrade` - it only advances the LOCAL in-memory queue so the
+	 * session can't stall permanently. `Rating.Good` is passed purely to
+	 * satisfy `advanceQueue`'s signature and drop the item for this session
+	 * (never `Rating.Again`, which would just re-enqueue the same
+	 * unrenderable item and stall the session again later). `reviewedCount`
+	 * is deliberately left untouched - nothing was actually reviewed.
+	 */
+	function handleUnrenderableSkip(): void {
+		queue = advanceQueue(queue, Rating.Good);
+		resetPerCardState();
+		if (isSessionComplete(queue)) pageState = 'complete';
+	}
+
+	/**
 	 * Reveals the current card's answer. Optionally plays the revealed fact's
 	 * sound (best-effort enhancement, per the UI-SPEC's implementation notes) -
 	 * an audio failure never affects `revealed`, which is already set above the
@@ -559,6 +577,13 @@
 					<BuildSession embedFact={embedTarget} onComplete={handleModeCNext} />
 				</div>
 			{/key}
+		{:else}
+			<p class="text-body mt-4" data-testid="recall-unrenderable">
+				Couldn't show this card.
+			</p>
+			<div class="mt-6">
+				<Button type="button" variant="ghost" onclick={handleUnrenderableSkip}>Skip</Button>
+			</div>
 		{/if}
 	{:else if currentFact}
 	{#if currentItem.mode === 'formula'}
@@ -760,8 +785,20 @@
 				</div>
 			{/if}
 		</div>
+	{:else}
+		<p class="text-body mt-4" data-testid="recall-unrenderable">
+			Couldn't show this card.
+		</p>
+		<div class="mt-6">
+			<Button type="button" variant="ghost" onclick={handleUnrenderableSkip}>Skip</Button>
+		</div>
 	{/if}
-	{/if}
+{:else}
+	<p class="text-body mt-4" data-testid="recall-unrenderable">Couldn't show this card.</p>
+	<div class="mt-6">
+		<Button type="button" variant="ghost" onclick={handleUnrenderableSkip}>Skip</Button>
+	</div>
+{/if}
 {/if}
 
 <style>

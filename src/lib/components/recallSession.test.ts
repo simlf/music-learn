@@ -658,6 +658,70 @@ describe('RecallSession Mode C (formula-build: embeds BuildSession directly, REC
 });
 
 /**
+ * Unrenderable-fallback coverage (WR-01): a selected queue item whose
+ * (mode, fact) combination resolves to no renderable branch must never
+ * leave the card blank/control-less and permanently stalled. Every one of
+ * these scenarios is an edge case the current invariants prevent from
+ * occurring naturally (a `formula-build` factId always parses, `see-play`/
+ * `hear-name` cards are only ever created for `chord-formula` facts), so
+ * they're constructed directly via the mocked deck seam rather than through
+ * `introduceNewCards`' real behavior.
+ */
+describe('RecallSession unrenderable fallback (WR-01: no dead-end card)', () => {
+	it('a formula-build card whose factId does not parse (embedTargetFor miss) shows the fallback message and Skip advances/completes the session', async () => {
+		const card = makeCard('bogus:not-a-real-shape', 'chord-formula', 'formula-build');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		render(RecallSession);
+		await waitFor(() => screen.getByTestId('recall-unrenderable'));
+
+		expect(screen.getByTestId('recall-unrenderable')).toHaveTextContent("Couldn't show this card.");
+		// No FSRS write happens for an unrenderable card - there's nothing to grade.
+		expect(recordGradeMock).not.toHaveBeenCalled();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+
+		await waitFor(() => screen.getByTestId('recall-complete'));
+		// Nothing was actually reviewed, so the count stays at 0.
+		expect(screen.getByTestId('recall-reviewed-count')).toHaveTextContent('0 REVIEWED TODAY');
+	});
+
+	it('a see-play card for a non-chord-formula fact (mode/factKind mismatch) shows the fallback message and Skip advances the queue to the next item', async () => {
+		const mismatchedCard = makeCard('interval-size:m3', 'interval-size', 'see-play');
+		const nextCard = makeCard('chord-formula:Cm7', 'chord-formula', 'formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([mismatchedCard, nextCard]);
+		getAllCardsMock.mockResolvedValue([mismatchedCard, nextCard]);
+
+		render(RecallSession);
+		await waitFor(() => screen.getByTestId('recall-unrenderable'));
+		expect(screen.getByTestId('recall-register')).toHaveTextContent('2 LEFT TODAY');
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+
+		await waitFor(() => expect(screen.getByText("What's the formula?")).toBeInTheDocument());
+		expect(screen.getByTestId('recall-register')).toHaveTextContent('1 LEFT TODAY');
+	});
+
+	it('a queue item whose fact has been deleted from the catalog (currentFact undefined) shows the outer fallback message and Skip completes the session', async () => {
+		const card = makeCard('chord-formula:this-symbol-does-not-exist', 'chord-formula', 'formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		render(RecallSession);
+		await waitFor(() => screen.getByTestId('recall-unrenderable'));
+		expect(screen.getByTestId('recall-unrenderable')).toHaveTextContent("Couldn't show this card.");
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+
+		await waitFor(() => screen.getByTestId('recall-complete'));
+	});
+});
+
+/**
  * Integration coverage for 13-06: load()'s queue composition now filters
  * getDueCards()'s raw output through rotation.ts's REAL (unmocked)
  * selectReviewCards (13-01) before building cardsByKey/queue - this is the
