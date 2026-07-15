@@ -1,21 +1,38 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { allFacts, type Fact } from '$lib/srs/facts';
-	import { getAllCards, deriveCellState, type CardRecord, type CellState } from '$lib/srs/deck';
+	import {
+		getAllCards,
+		deriveCellState,
+		type CardRecord,
+		type CellState,
+		type Mode
+	} from '$lib/srs/deck';
 	import { spellChord } from '$lib/theory/chord';
 	import Button from './Button.svelte';
 
 	/**
-	 * The fact x mode recall map (MEM-04): every fact from the 192-entry
-	 * catalog (11-02), joined against whatever cards actually exist (11-03),
-	 * filterable by kind. Renders a genuine N-column CSS grid (N=1 today, via
-	 * MODE_COLUMNS below) so Phase 13's future mode columns are a one-line
-	 * addition to that array, never a layout rewrite. Self-contained: loads
-	 * its own data on mount, no props (mirrors RecallSession's pattern).
+	 * The fact x mode recall map (MEM-04/RECALL-01): every fact from the
+	 * 192-entry catalog (11-02), joined against whatever cards actually exist
+	 * (11-03), filterable by kind. Renders a genuine N-column CSS grid (N=4,
+	 * via MODE_COLUMNS below) in fading-scaffold order: recall the formula ->
+	 * build it -> play it -> name it by ear (most-scaffolded to least).
+	 * Self-contained: loads its own data on mount, no props (mirrors
+	 * RecallSession's pattern).
 	 */
 
-	/** Phase 11 ships exactly one mode column; Phase 13 appends more here. */
-	const MODE_COLUMNS = [{ mode: 'formula', label: 'Formula' }] as const;
+	/**
+	 * Formula is a real cell for every fact kind (Phase 11 baseline).
+	 * Build/Play/Name are chord-formula-only per the UI-SPEC's applicability
+	 * map (13-02): interval-size/scale-degree rows render the "not
+	 * applicable" texture for these three columns instead.
+	 */
+	const MODE_COLUMNS = [
+		{ mode: 'formula', label: 'Formula' },
+		{ mode: 'formula-build', label: 'Build' },
+		{ mode: 'see-play', label: 'Play' },
+		{ mode: 'hear-name', label: 'Name' }
+	] as const satisfies readonly { mode: Mode; label: string }[];
 
 	type KindFilter = 'all' | Fact['factKind'];
 
@@ -51,6 +68,16 @@
 		if (fact.factKind === 'chord-formula') return chordLabel(fact.symbol);
 		if (fact.factKind === 'interval-size') return fact.short;
 		return `${fact.tonic} major degree ${fact.degree}`;
+	}
+
+	/**
+	 * Applicability map (UI-SPEC "Recall Map Extension"): Formula always
+	 * applies; Build/Play/Name apply only to chord-formula rows. Computed
+	 * BEFORE calling deriveCellState - deck.ts's CellState vocabulary is never
+	 * touched by this check.
+	 */
+	function columnApplies(fact: Fact, column: (typeof MODE_COLUMNS)[number]): boolean {
+		return column.mode === 'formula' || fact.factKind === 'chord-formula';
 	}
 
 	const KIND_TABS: { value: KindFilter; label: string }[] = [
@@ -107,20 +134,32 @@
 			{/if}
 		</div>
 		{#each MODE_COLUMNS as column (column.mode)}
-			{@const state = deriveCellState(cardsByKey.get(`${fact.factId}|${column.mode}`), now)}
-			<div
-				class="recall-map__cell recall-map__cell--{state}"
-				data-testid={`recall-map-cell-${fact.factId}-${column.mode}`}
-				data-cell-state={state}
-				role="img"
-				aria-label={`${factLabel(fact)}, ${column.label}: ${LEGEND.find((entry) => entry.state === state)?.label}`}
-			>
-				{#if state === 'weak'}
-					<span aria-hidden="true">!</span>
-				{:else if state === 'mastered'}
-					<span aria-hidden="true">✓</span>
-				{/if}
-			</div>
+			{#if columnApplies(fact, column)}
+				{@const state = deriveCellState(cardsByKey.get(`${fact.factId}|${column.mode}`), now)}
+				<div
+					class="recall-map__cell recall-map__cell--{state}"
+					data-testid={`recall-map-cell-${fact.factId}-${column.mode}`}
+					data-cell-state={state}
+					role="img"
+					aria-label={`${factLabel(fact)}, ${column.label}: ${LEGEND.find((entry) => entry.state === state)?.label}`}
+				>
+					{#if state === 'weak'}
+						<span aria-hidden="true">!</span>
+					{:else if state === 'mastered'}
+						<span aria-hidden="true">✓</span>
+					{/if}
+				</div>
+			{:else}
+				<div
+					class="recall-map__cell recall-map__cell--not-applicable"
+					data-testid={`recall-map-cell-${fact.factId}-${column.mode}`}
+					data-cell-state="not-applicable"
+					role="img"
+					aria-label={`${factLabel(fact)}, ${column.label}: Not applicable`}
+				>
+					<span aria-hidden="true">·</span>
+				</div>
+			{/if}
 		{/each}
 	{/each}
 </div>
@@ -194,6 +233,16 @@
 	.recall-map__swatch--mastered {
 		background-color: var(--color-ink);
 		color: var(--color-paper-bright);
+	}
+
+	/* Not applicable: flat paper fill, no border at all - deliberately quieter
+	   than "not-yet-seen" (which has a visible --color-faint border), so the
+	   two read as distinct: "not-yet-seen" implies "will happen later," "n/a"
+	   implies "will never happen for this fact." No legend entry needed - this
+	   is self-evident from its own quiet texture plus its aria-label. */
+	.recall-map__cell--not-applicable {
+		background-color: var(--color-paper);
+		color: var(--color-faint);
 	}
 
 	.recall-map__swatch {
