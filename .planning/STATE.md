@@ -5,15 +5,15 @@ milestone_name: Learning Upgrade
 current_phase: 13
 current_phase_name: Multi-modal Recall
 status: verifying
-stopped_at: Completed 13-01-PLAN.md
-last_updated: "2026-07-15T16:53:42.871Z"
+stopped_at: Completed 13-02-PLAN.md
+last_updated: "2026-07-15T17:01:32.648Z"
 last_activity: 2026-07-15
 last_activity_desc: Completed 13-01-PLAN.md (deck Mode union widening + rotation policy module)
 progress:
   total_phases: 13
   completed_phases: 8
   total_plans: 41
-  completed_plans: 36
+  completed_plans: 37
   percent: 62
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 ## Current Position
 
 Phase: 13 — Multi-modal Recall
-Plan: 2 of 6 in current phase
+Plan: 3 of 6 in current phase
 Status: Ready to execute
 Last activity: 2026-07-15 — Completed 13-01-PLAN.md (deck Mode union widening + rotation policy module)
 
@@ -101,6 +101,7 @@ Last activity: 2026-07-15 — Completed 13-01-PLAN.md (deck Mode union widening 
 | Phase 12 P05 | 13min | 2 tasks | 2 files |
 | Phase 12-build-it-construction P06 | 12min | 2 tasks | 2 files |
 | Phase 13 P01 | 8min | 2 tasks | 4 files |
+| Phase 13-multi-modal-recall P02 | 4min | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -186,6 +187,8 @@ Recent decisions affecting current work:
 - [Phase 12-06]: recordConstructionOutcome fires fire-and-forget from the sessionState->'complete' timer, wrapped in try/catch mirroring RecallSession.handleReveal's silent-catch (never handleGrade's error-surfacing)
 - [Phase 12-06]: startedSymbol state retains the ORIGINAL ASCII chord symbol separately from construction.label, since the display-glyph label is unsafe to reuse for the chord-formula factId
 - [Phase ?]: 13-01: introduceNewCards' limit param counts facts touched (not raw records); rotation.ts imports Mode/CardRecord/FactKind from ./deck as type-only to avoid a runtime circular dep (deck.ts imports rotation.ts's functions at runtime)
+- [Phase ?]: columnApplies() computed inline per-cell (not precomputed) so deriveCellState's non-invocation for not-applicable cells is mechanically guaranteed, not just visually true
+- [Phase ?]: not-applicable glyph color set on parent .recall-map__cell--not-applicable class, inherited by child span
 
 ### Pending Todos
 
@@ -210,7 +213,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-15T16:53:03.886Z
-Stopped at: Completed 13-01-PLAN.md
+Last session: 2026-07-15T17:01:32.642Z
+Stopped at: Completed 13-02-PLAN.md
 Resume file: None
 Next: /gsd-plan-phase 10
