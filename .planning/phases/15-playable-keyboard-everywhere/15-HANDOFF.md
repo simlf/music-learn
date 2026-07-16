@@ -31,20 +31,19 @@ Phase 15 executed end-to-end via `/gsd-execute-phase 15`:
 
 - MILESTONE TRACKING fixed by hand (ROADMAP was already correct). `STATE.md` now: milestone v2.1 / milestone_name "Playability & Comprehension" / status cleaned off the stale "verifying"+"15-05" / progress rescoped to v2.1 (1/6 phases, 7/7 plans). `PROJECT.md` "Current Milestone" section rewritten to v2.1 with v2.0 marked shipped; footer dated 2026-07-16. Note: this was a surgical edit, NOT a `/gsd-complete-milestone` + `/gsd-new-milestone` ceremony (v2.1 phases were already planned/executing, so the ceremony didn't fit). If a formal v2.0 archive is wanted later, run `/gsd-complete-milestone` — but check it won't disturb the in-progress v2.1 phase dirs first.
 
+## Also closed out this session
+
+- INFO FINDINGS IN-01/02/03 all fixed (commits 8eb4025, 77a4681, 9b7244f; report bf814d2). 1008/1008 tests, `npm run check` clean. All 6 review findings now resolved in code except WR-03 (which is test-verified as non-reproducing).
+- WR-01 VERIFIED IN A REAL BROWSER (mobile 375x812): on /drills construction the docked keyboard shows all 13 keys with NO collapse handle even when `music-learn:docked-keyboard-collapsed=true`; on /theory (inspectable) the handle IS present and collapse/expand/persist works. Confirmed the `inputRequired` flag differentiates correctly — the sole answer keyboard cannot be hidden. No console errors anywhere.
+- SECURITY GATE closed: `15-SECURITY.md` written, 8 threats all closed (7 mitigated + 1 accepted: T-15-05 sound reuse), `threats_open: 0`, status verified. Pure client-side UI, no new deps/network/auth. ASVS L1 short-circuit (register authored at plan time), no auditor spawn needed.
+- WR-03 status: NOT reproduced. The fixer's exact repro unit test + the verifier's Mode C ordering regression both pass. In-browser Mode C (embedded BuildSession) was not chased because a fresh deck has no due formula-build card and seeding wasn't worth it against two green tests. If you want the belt-and-suspenders browser check, seed a due `chord-formula` card in `formula-build` mode and confirm the root key scrolls into view on first render.
+
 ## Outstanding — what the next agent could pick up
 
-Nothing blocks. Ordered by value:
+Nothing blocks.
 
 1. NEXT PHASE = 16 (Hear the Chord — auto-play + synced pulse on BUILD reveal, HEAR-01/02). No `16-CONTEXT.md` yet.
-   Recommended start: `/gsd-discuss-phase 16` then `/gsd-plan-phase 16`. Note Phase 16 also touches BuildSession reveal — WR-03 (below) lives near that code, worth folding in.
-
-3. VERIFY THE TWO UI ITEMS IN A REAL BROWSER (Web MIDI / phone; iOS has no MIDI, on-screen path is primary):
-   - WR-01: manual phone pass on the collapse-UX change across the 5 answer-required surfaces — confirm the keyboard truly can't be hidden mid-drill and the handle absence reads right.
-   - WR-03: open embedded Recall Mode C first render, confirm the root key scrolls into view. Closes the `partial` status in 15-REVIEW-FIX.md.
-
-4. OPTIONAL: info findings IN-01/02/03 from 15-REVIEW.md not fixed (default scope was critical+warning). Run `/gsd-code-review 15 --fix --all` to include them. IN-01 = empty keyboard on formula-mode interval/scale-degree recall cards; IN-02 = needless per-tap re-registration in ScaleKeyboardDrill; IN-03 = `getDockRegistry()` return type hides the undefined case.
-
-5. OPTIONAL: `/gsd-secure-phase 15` — security capability is enabled and no `15-SECURITY.md` exists. Low value: phase is pure client-side UI (no auth/network/data boundary).
+   Recommended start: `/gsd-discuss-phase 16` then `/gsd-plan-phase 16`. Phase 16 also touches BuildSession reveal — near the WR-03 code, worth a glance while there.
 
 ## Key artifacts
 
