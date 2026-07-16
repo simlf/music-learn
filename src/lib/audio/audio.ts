@@ -1,5 +1,5 @@
 import type * as ToneNS from 'tone';
-import { toAsciiPitchClass, toAscendingPitches } from './voicing';
+import { toAsciiPitchClass, toAscendingPitches, toPitch } from './voicing';
 import { SALAMANDER_BASE_URL, SALAMANDER_URLS } from './samples';
 
 /**
@@ -32,6 +32,7 @@ export interface PlayOpts {
 }
 
 const STORAGE_KEY = 'music-learn:sound';
+const STUDY_MODE_STORAGE_KEY = 'music-learn:study-mode';
 const NOTE_VELOCITY = 0.75;
 const CHORD_VELOCITY = 0.85;
 const NOTE_DURATION = '8n';
@@ -51,6 +52,8 @@ let samplesLoaded = false;
 let samplerFailed = false;
 /** null = not read from localStorage yet (lazy, so import stays side-effect free). */
 let enabled: boolean | null = null;
+/** null = not read from localStorage yet (lazy, so import stays side-effect free). */
+let studyMode: boolean | null = null;
 /** Per-note last-attack timestamps for the 50ms retrigger guard. */
 const lastAttackAt = new Map<string, number>();
 /** Held (noteOn without noteOff) pitches in attack order, for the voice cap. */
@@ -83,6 +86,35 @@ export function setSoundEnabled(value: boolean): void {
 		// Storage disabled or full: keep the in-memory toggle working.
 	}
 	if (!value) releaseAll();
+}
+
+function readStoredStudyMode(): boolean {
+	try {
+		return localStorage.getItem(STUDY_MODE_STORAGE_KEY) === 'true';
+	} catch {
+		return false;
+	}
+}
+
+/** Whether study mode (slower arpeggio roll on reveal) is on. Default false; persisted per device. */
+export function studyModeEnabled(): boolean {
+	if (studyMode === null) studyMode = readStoredStudyMode();
+	return studyMode;
+}
+
+/**
+ * Flips study mode on or off, persisting to localStorage (write failures
+ * degrade to a session-only toggle). This is a playback-shape flag read at
+ * call time, not an audio-output toggle, so it has no releaseAll() side
+ * effect.
+ */
+export function setStudyModeEnabled(value: boolean): void {
+	studyMode = value;
+	try {
+		localStorage.setItem(STUDY_MODE_STORAGE_KEY, String(value));
+	} catch {
+		// Storage disabled or full: keep the in-memory toggle working.
+	}
 }
 
 function loadTone(): Promise<ToneModule> {
@@ -230,6 +262,28 @@ export function playChord(notes: string[], opts: PlayOpts = {}): void {
 	});
 }
 
+/**
+ * Plays spelled-note letters as a staggered arpeggio roll (study mode), one
+ * single-note attack per entry at `index * opts.staggerMs` ms, starting
+ * synchronously at index 0. Notes are normalized and voiced at octave 4,
+ * matching the reveal keyboard's voicing.
+ *
+ * This primitive owns ONLY the audio stagger; it does not drive pulse or
+ * per-key lighting timing (that is a BuildSession-level concern).
+ */
+export function playArpeggio(notes: string[], opts: { staggerMs: number }): void {
+	if (!soundEnabled()) return;
+	if (notes.length === 0) return;
+	notes.forEach((note, index) => {
+		const pitch = toPitch(note, 4);
+		setTimeout(() => {
+			void withInstrument((instrument) => {
+				instrument.triggerAttackRelease(pitch, NOTE_DURATION, undefined, NOTE_VELOCITY);
+			});
+		}, index * opts.staggerMs);
+	});
+}
+
 /** Releases every sounding note on every instrument (component teardown). */
 export function releaseAll(): void {
 	heldNotes.length = 0;
@@ -263,6 +317,7 @@ export function _resetForTests(): void {
 	samplesLoaded = false;
 	samplerFailed = false;
 	enabled = null;
+	studyMode = null;
 	lastAttackAt.clear();
 	heldNotes.length = 0;
 }

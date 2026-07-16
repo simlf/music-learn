@@ -98,8 +98,8 @@ Grounded in Session 4 sketches 008–013 (`.planning/sketches/MANIFEST.md`). Loc
 
 ### Hear the Chord
 
-- [ ] **HEAR-01**: On the BUILD reveal the correct chord auto-plays via `playChord` the instant the answer stamps in, with the lit keys and serif glyph pulsing once in time; a "Hear again" control replays
-- [ ] **HEAR-02**: With sound off the reveal still runs the visual pulse (no dead-end); an optional roll-then-block "study" playback (arpeggiate root→3rd→5th→7th, each key lighting) is available as a toggle
+- [x] **HEAR-01**: On the BUILD reveal the correct chord auto-plays via `playChord` the instant the answer stamps in, with the lit keys and serif glyph pulsing once in time; a "Hear again" control replays
+- [x] **HEAR-02**: With sound off the reveal still runs the visual pulse (no dead-end); an optional roll-then-block "study" playback (arpeggiate root→3rd→5th→7th, each key lighting) is available as a toggle
 
 ### Chord Explainer
 

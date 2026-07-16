@@ -3,7 +3,12 @@
 	import { goto } from '$app/navigation';
 	import { fetchStats, fetchStreak, localDateString, type StatItem } from '$lib/api/progress';
 	import { getApiToken, setApiToken } from '$lib/api/client';
-	import { setSoundEnabled, soundEnabled } from '$lib/audio/audio';
+	import {
+		setSoundEnabled,
+		soundEnabled,
+		setStudyModeEnabled,
+		studyModeEnabled
+	} from '$lib/audio/audio';
 	import { pickStreakLine } from '$lib/copy/streak';
 	import { setDrillSeeds } from '$lib/practice/drillSeeds';
 	import { getLevelState, setCurrentTier } from '$lib/practice/levelState';
@@ -79,6 +84,7 @@
 
 	let levelState = $state(getLevelState());
 	let sound = $state(soundEnabled());
+	let studyMode = $state(studyModeEnabled());
 
 	/** Manual tier override (R3): no confirmation friction, always available. */
 	function selectTier(tier: TierId): void {
@@ -88,6 +94,11 @@
 	function toggleSound(): void {
 		sound = !sound;
 		setSoundEnabled(sound);
+	}
+
+	function toggleStudyMode(): void {
+		studyMode = !studyMode;
+		setStudyModeEnabled(studyMode);
 	}
 
 	/** Seeds a drill session from the weakest chord items (R6 proposal 2). */
@@ -204,6 +215,20 @@
 			<div class="mt-2">
 				<Button type="button" variant="ghost" aria-label="Toggle sound" onclick={toggleSound}>
 					{sound ? 'SOUND ON' : 'SOUND OFF'}
+				</Button>
+			</div>
+		</div>
+
+		<div class="mt-6">
+			<p class="text-label font-mono uppercase">STUDY MODE</p>
+			<div class="mt-2">
+				<Button
+					type="button"
+					variant="ghost"
+					aria-label="Toggle study mode"
+					onclick={toggleStudyMode}
+				>
+					{studyMode ? 'STUDY MODE ON' : 'STUDY MODE OFF'}
 				</Button>
 			</div>
 		</div>

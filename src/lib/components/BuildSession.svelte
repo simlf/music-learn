@@ -22,6 +22,7 @@
 	import { getCard, recordGrade, type CardRecord } from '$lib/srs/deck';
 	import { newCard, Rating } from '$lib/srs/scheduler';
 	import { scaleFormulaFactId } from '$lib/srs/facts';
+	import { ensureAudioReady, playArpeggio, playChord, soundEnabled, studyModeEnabled } from '$lib/audio/audio';
 	import Button from './Button.svelte';
 	import ChordGlyph from './ChordGlyph.svelte';
 	import IntervalChip from './IntervalChip.svelte';
@@ -89,6 +90,10 @@
 	let startedSymbol: string | undefined = $state();
 	/** Whether recordConstructionOutcome's best-effort FSRS write succeeded, driving the completion summary's "SAVED TO RECALL" status line (BUILD-04). */
 	let fsrsSaved = $state(false);
+	/** Bumped once per reveal (initial completion) and once per "Hear again" tap (HEAR-01/02): drives PianoKeyboard's and ChordGlyph's shared pulse-once retrigger. Starts at 0 (no pulse before any reveal has happened). */
+	let revealPulseToken = $state(0);
+	/** Study-mode arpeggio roll (HEAR-02): earned letters still "pending" (dimmed) awaiting their turn to sound. Empty outside a study-mode roll, so the complete-block PianoKeyboard renders byte-identical to a non-study reveal. */
+	let pendingLetters = $state<Set<string>>(new Set());
 	let feedback = $state<Feedback | undefined>();
 	let flashKey = $state<{ letter: string; octave: number } | null>(null);
 	/** The letter last tapped (kept beyond the 320ms flash window so the wrong-octave restatement, shown for the full 650ms, can still name it). */
@@ -98,6 +103,10 @@
 	let containerEl: HTMLDivElement | undefined = $state();
 	let flashTimer: ReturnType<typeof setTimeout> | undefined;
 	let feedbackTimer: ReturnType<typeof setTimeout> | undefined;
+	/** One timer per earned note (pending -> lit) plus one final block-strike timer, for the study-mode arpeggio roll (HEAR-02). Always cleared before rescheduling and on reset/destroy, mirroring flashTimer/feedbackTimer's own discipline. */
+	let rollTimers: ReturnType<typeof setTimeout>[] = [];
+	/** Stagger between each arpeggio note's sound/lighting, per the UI-SPEC's Arpeggio Roll Contract. */
+	const ARPEGGIO_STAGGER_MS = 260;
 
 	/**
 	 * Right-answer confirmation variants (D-08): rotated with a
@@ -152,6 +161,8 @@
 		clearTimeout(feedbackTimer);
 		flashTimer = undefined;
 		feedbackTimer = undefined;
+		clearRollTimers();
+		pendingLetters = new Set();
 	}
 
 	function resetPicker() {
@@ -372,6 +383,113 @@
 		}
 	}
 
+	/** Clears every scheduled roll timer (pending->lit + block-strike) and empties the collection - clear-before-reschedule, so a "Hear again" mid-roll restarts cleanly, and safe to call on reset/destroy. */
+	function clearRollTimers(): void {
+		rollTimers.forEach((timer) => clearTimeout(timer));
+		rollTimers = [];
+	}
+
+	/**
+	 * Study-mode arpeggio roll (D-05/D-06, HEAR-02): seeds every earned
+	 * letter as "pending" (dimmed via PianoKeyboard's --pending modifier),
+	 * fires the audio stagger via playArpeggio (which owns ONLY the audio
+	 * timing), then schedules one visual timer per note - removing it from
+	 * pendingLetters as its own tick lands, so the key cross-fades from
+	 * pending to fully lit - and a final block-strike timer that clears any
+	 * remaining pending state, strikes the block chord, and bumps the
+	 * shared pulse on every lit key + the glyph together.
+	 * `firstNoteDelayMs` is 260ms on the initial reveal (the roll begins as
+	 * the stamp-in settles) and 0ms on "Hear again" replay (no entrance to
+	 * wait out), per the UI-SPEC's timing tables.
+	 */
+	function startArpeggioRoll(letters: string[], opts: { firstNoteDelayMs: number }): void {
+		clearRollTimers();
+		pendingLetters = new Set(letters);
+		playArpeggio(letters, { staggerMs: ARPEGGIO_STAGGER_MS });
+		letters.forEach((letter, index) => {
+			const timer = setTimeout(
+				() => {
+					const next = new Set(pendingLetters);
+					next.delete(letter);
+					pendingLetters = next;
+				},
+				opts.firstNoteDelayMs + index * ARPEGGIO_STAGGER_MS
+			);
+			rollTimers.push(timer);
+		});
+		const strikeTimer = setTimeout(
+			() => {
+				pendingLetters = new Set();
+				playChord(letters);
+				revealPulseToken += 1;
+			},
+			opts.firstNoteDelayMs + letters.length * ARPEGGIO_STAGGER_MS
+		);
+		rollTimers.push(strikeTimer);
+	}
+
+	/**
+	 * Fires exactly once, at the sessionState -> 'complete' transition
+	 * (HEAR-01/02, D-02/D-03/D-05/D-06/D-07/D-11): when study mode AND
+	 * sound are both on, rolls the arpeggio (root->3rd->5th->7th, each key
+	 * lighting as its note sounds) then strikes the block chord + full
+	 * pulse - REPLACING the plain block auto-play, never a second
+	 * simultaneous playback (D-05). Otherwise (study off, OR sound off
+	 * regardless of study), plays the just-completed chord/scale once via
+	 * playChord when sound is on, and ALWAYS bumps revealPulseToken so the
+	 * lit keys (and, for chords, the ChordGlyph - both already wired to
+	 * retrigger their shared `.pulse-once` cycle off a bumped `pulseToken`,
+	 * Plans 16-02/16-03) pulse once in time. Sound off always collapses to
+	 * this single visual pulse, never a fake silent roll (D-07). The pulse
+	 * bump lives OUTSIDE the soundEnabled() gate so the reveal never
+	 * dead-ends with sound off. Called inline from the feedbackTimer
+	 * callback below, in the SAME branch that sets sessionState = 'complete'
+	 * - mirrors recordConstructionOutcome's fire-once-on-transition
+	 * precedent - never from a reactive $effect, which could re-fire on an
+	 * unrelated re-render while already in 'complete'.
+	 */
+	function triggerReveal(): void {
+		if (!construction) return;
+		const letters = construction.earnedNotes.map((n) => n.letter);
+		if (studyModeEnabled() && soundEnabled()) {
+			void ensureAudioReady();
+			startArpeggioRoll(letters, { firstNoteDelayMs: 260 });
+			return;
+		}
+		if (soundEnabled()) {
+			void ensureAudioReady();
+			playChord(letters);
+		}
+		revealPulseToken += 1;
+	}
+
+	/**
+	 * "Hear again" (D-08/D-09/D-10): replays the completed chord/scale on
+	 * demand. Reads studyModeEnabled()/soundEnabled() LIVE at click time
+	 * (never a snapshot of the state at reveal time), branching exactly
+	 * like triggerReveal - study+sound on rolls the arpeggio again (with no
+	 * stamp-in to wait out, so the roll starts immediately), otherwise the
+	 * block chord (or silent pulse-only) path, mirroring
+	 * RecallSession.handleHearNamePlay's ensureAudioReady()+playChord shape.
+	 * ALWAYS bumps revealPulseToken (directly, or via the roll's own
+	 * block-strike timer) to re-pulse even with sound off - the control is
+	 * never disabled and never a dead-end.
+	 */
+	function hearAgain(): void {
+		if (!construction) return;
+		const letters = construction.earnedNotes.map((n) => n.letter);
+		if (studyModeEnabled() && soundEnabled()) {
+			void ensureAudioReady();
+			startArpeggioRoll(letters, { firstNoteDelayMs: 0 });
+			return;
+		}
+		if (soundEnabled()) {
+			void ensureAudioReady();
+			playChord(letters);
+		}
+		revealPulseToken += 1;
+	}
+
 	function handleConstructTap(letter: string, octave: number) {
 		if (!construction || feedback) return;
 		lastTappedLetter = letter;
@@ -442,6 +560,7 @@
 			if (advancesPrompt) promptState = nextPromptState;
 			if (willComplete) {
 				sessionState = 'complete';
+				triggerReveal();
 			}
 		}, 650);
 	}
@@ -489,6 +608,7 @@
 	onDestroy(() => {
 		clearTimeout(flashTimer);
 		clearTimeout(feedbackTimer);
+		clearRollTimers();
 		if (shouldDock) dockRegistry?.clear(buildDockToken);
 	});
 
@@ -723,6 +843,16 @@
 		</div>
 	{:else if sessionState === 'complete' && construction}
 		<div class="mt-8" data-testid="build-complete">
+			{#if kind === 'chords'}
+				<div class="flex items-start gap-4" data-testid="build-complete-target">
+					<ChordGlyph
+						root={chordRootGlyph}
+						quality={pickedQuality ?? ''}
+						stamped
+						pulseToken={revealPulseToken}
+					/>
+				</div>
+			{/if}
 			<p class="text-heading font-bold" data-testid="build-complete-heading">{headingFor()}</p>
 			<p class="text-body mt-2" data-testid="build-complete-rule">{ruleStatementFor()}</p>
 
@@ -736,7 +866,12 @@
 			</div>
 
 			<div class="mt-4">
-				<PianoKeyboard notes={construction.earnedNotes} octaves={2} />
+				<PianoKeyboard
+					notes={construction.earnedNotes}
+					octaves={2}
+					pulseToken={revealPulseToken}
+					pendingLetters={pendingLetters}
+				/>
 			</div>
 
 			{#if fsrsSaved && !onComplete}
@@ -746,6 +881,7 @@
 			{/if}
 
 			<div class="mt-6 flex flex-wrap gap-2">
+				<Button type="button" variant="ghost" onclick={hearAgain}>Hear again</Button>
 				{#if onComplete}
 					<Button type="button" variant="primary" onclick={onComplete}>Next</Button>
 				{:else}

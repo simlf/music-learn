@@ -22,11 +22,32 @@ vi.mock('$lib/srs/deck', () => ({
 	recordGrade: (...args: unknown[]) => recordGradeMock(...args)
 }));
 
+const playChordMock = vi.fn();
+const playArpeggioMock = vi.fn();
+const ensureAudioReadyMock = vi.fn();
+const soundEnabledMock = vi.fn();
+const studyModeEnabledMock = vi.fn();
+vi.mock('$lib/audio/audio', () => ({
+	playChord: (...args: unknown[]) => playChordMock(...args),
+	playArpeggio: (...args: unknown[]) => playArpeggioMock(...args),
+	ensureAudioReady: (...args: unknown[]) => ensureAudioReadyMock(...args),
+	soundEnabled: (...args: unknown[]) => soundEnabledMock(...args),
+	studyModeEnabled: (...args: unknown[]) => studyModeEnabledMock(...args)
+}));
+
 beforeEach(() => {
 	getCardMock.mockReset();
 	getCardMock.mockResolvedValue(undefined);
 	recordGradeMock.mockReset();
 	recordGradeMock.mockImplementation(async (card, rating) => ({ ...card, lastRating: rating }));
+	playChordMock.mockReset();
+	playArpeggioMock.mockReset();
+	ensureAudioReadyMock.mockReset();
+	ensureAudioReadyMock.mockResolvedValue(undefined);
+	soundEnabledMock.mockReset();
+	soundEnabledMock.mockReturnValue(true);
+	studyModeEnabledMock.mockReset();
+	studyModeEnabledMock.mockReturnValue(false);
 });
 
 describe('BuildSession picker (BUILD-01/02, Task 1)', () => {
@@ -905,4 +926,224 @@ describe('BuildSession docked constructable keyboard (Task 1, 15-07, KBD-01/KBD-
 			Element.prototype.scrollIntoView = original;
 		}
 	});
+});
+
+/**
+ * Component test for BuildSession reveal wiring (16-05, HEAR-01/02): the
+ * fire-once auto-play + pulse at the sessionState -> 'complete' transition,
+ * the sound-off pulse-only path (no dead-end), the chords-only ChordGlyph
+ * gate, and the "Hear again" replay control.
+ */
+describe('BuildSession reveal, HEAR-01/02', () => {
+	async function completeCm7() {
+		render(BuildSession);
+		await fireEvent.click(screen.getByRole('button', { name: 'C' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'minor 7th' }));
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+	}
+
+	async function completeGMajorScale() {
+		render(BuildSession);
+		await fireEvent.click(screen.getByRole('button', { name: 'Scales' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'G major' }));
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'B key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[1]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D key' })[1]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'E key' })[1]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'F♯ key' })[1]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[1]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+	}
+
+	it('completing Cm7 with sound on calls playChord exactly once with the earned-note letters, at reveal', async () => {
+		await completeCm7();
+
+		expect(screen.getByTestId('build-complete')).toBeInTheDocument();
+		expect(playChordMock).toHaveBeenCalledTimes(1);
+		expect(playChordMock).toHaveBeenCalledWith(['C', 'E♭', 'G', 'B♭']);
+	});
+
+	it('renders build-complete-target containing the ChordGlyph for a completed chord reveal', async () => {
+		await completeCm7();
+
+		const target = screen.getByTestId('build-complete-target');
+		expect(target.querySelector('.chord-glyph')).not.toBeNull();
+	});
+
+	it(
+		'a completed G-major SCALE reveal renders NO build-complete-target (glyph is chords-only) while still reaching build-complete',
+		async () => {
+			await completeGMajorScale();
+
+			expect(screen.getByTestId('build-complete')).toBeInTheDocument();
+			expect(screen.queryByTestId('build-complete-target')).not.toBeInTheDocument();
+		},
+		10000
+	);
+
+	it('a ghost "Hear again" button renders in the complete block, is never disabled, and replays playChord with the same letters on click', async () => {
+		await completeCm7();
+
+		const hearAgainButton = screen.getByRole('button', { name: 'Hear again' });
+		expect(hearAgainButton).not.toBeDisabled();
+		expect(playChordMock).toHaveBeenCalledTimes(1);
+
+		await fireEvent.click(hearAgainButton);
+
+		expect(playChordMock).toHaveBeenCalledTimes(2);
+		expect(playChordMock).toHaveBeenNthCalledWith(2, ['C', 'E♭', 'G', 'B♭']);
+	});
+
+	it('with sound off, completing Cm7 does NOT call playChord, yet build-complete renders and Hear again is present and enabled (sound-off pulse path, no dead-end)', async () => {
+		soundEnabledMock.mockReturnValue(false);
+
+		await completeCm7();
+
+		expect(screen.getByTestId('build-complete')).toBeInTheDocument();
+		expect(playChordMock).not.toHaveBeenCalled();
+		const hearAgainButton = screen.getByRole('button', { name: 'Hear again' });
+		expect(hearAgainButton).not.toBeDisabled();
+
+		await fireEvent.click(hearAgainButton);
+
+		expect(playChordMock).not.toHaveBeenCalled();
+	});
+});
+
+/**
+ * Component test for BuildSession's study-mode arpeggio roll (16-06,
+ * HEAR-02): the roll branch (playArpeggio + per-key pending->lit) versus the
+ * plain block-strike path, the sound-off collapse to a single pulse
+ * regardless of study toggle (D-07), "Hear again" honoring LIVE study+sound
+ * state (D-09), and roll-timer cleanup on unmount.
+ */
+describe('BuildSession study-mode roll, HEAR-02', () => {
+	async function completeCm7() {
+		render(BuildSession);
+		await fireEvent.click(screen.getByRole('button', { name: 'C' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'minor 7th' }));
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+	}
+
+	it(
+		'study ON + sound ON rolls the arpeggio via playArpeggio (not an immediate block strike), dimming earned keys as pending until each sounds, then strikes the block chord',
+		async () => {
+			studyModeEnabledMock.mockReturnValue(true);
+			await completeCm7();
+
+			expect(playArpeggioMock).toHaveBeenCalledTimes(1);
+			expect(playArpeggioMock).toHaveBeenCalledWith(['C', 'E♭', 'G', 'B♭'], { staggerMs: 260 });
+			// Study mode REPLACES the plain block auto-play: no immediate block strike.
+			expect(playChordMock).not.toHaveBeenCalled();
+			// Every earned key starts dimmed (pending), awaiting its own turn to sound.
+			expect(document.querySelectorAll('.piano-keyboard__key--pending').length).toBeGreaterThan(0);
+
+			await new Promise((resolve) => setTimeout(resolve, 1400));
+
+			expect(playChordMock).toHaveBeenCalledTimes(1);
+			expect(playChordMock).toHaveBeenCalledWith(['C', 'E♭', 'G', 'B♭']);
+			expect(document.querySelectorAll('.piano-keyboard__key--pending').length).toBe(0);
+		},
+		10000
+	);
+
+	it('study ON + sound OFF collapses to the single visual pulse: neither playArpeggio nor playChord fires, and the reveal is not a dead end', async () => {
+		studyModeEnabledMock.mockReturnValue(true);
+		soundEnabledMock.mockReturnValue(false);
+
+		await completeCm7();
+
+		expect(playArpeggioMock).not.toHaveBeenCalled();
+		expect(playChordMock).not.toHaveBeenCalled();
+		expect(screen.getByTestId('build-complete')).toBeInTheDocument();
+		const hearAgainButton = screen.getByRole('button', { name: 'Hear again' });
+		expect(hearAgainButton).not.toBeDisabled();
+	});
+
+	it('study OFF + sound ON (regression): completing Cm7 still calls the block playChord once and never playArpeggio', async () => {
+		studyModeEnabledMock.mockReturnValue(false);
+
+		await completeCm7();
+
+		expect(playChordMock).toHaveBeenCalledTimes(1);
+		expect(playChordMock).toHaveBeenCalledWith(['C', 'E♭', 'G', 'B♭']);
+		expect(playArpeggioMock).not.toHaveBeenCalled();
+	});
+
+	it(
+		'"Hear again" honors LIVE study+sound state, not a snapshot from reveal time: replays the roll while study is on, then falls back to the block strike once study flips off',
+		async () => {
+			studyModeEnabledMock.mockReturnValue(true);
+			await completeCm7();
+			await new Promise((resolve) => setTimeout(resolve, 1400));
+			playArpeggioMock.mockClear();
+			playChordMock.mockClear();
+
+			await fireEvent.click(screen.getByRole('button', { name: 'Hear again' }));
+
+			expect(playArpeggioMock).toHaveBeenCalledTimes(1);
+			expect(playChordMock).not.toHaveBeenCalled();
+
+			await new Promise((resolve) => setTimeout(resolve, 1100));
+			expect(playChordMock).toHaveBeenCalledTimes(1);
+
+			playArpeggioMock.mockClear();
+			playChordMock.mockClear();
+			studyModeEnabledMock.mockReturnValue(false);
+
+			await fireEvent.click(screen.getByRole('button', { name: 'Hear again' }));
+
+			expect(playChordMock).toHaveBeenCalledTimes(1);
+			expect(playArpeggioMock).not.toHaveBeenCalled();
+		},
+		10000
+	);
+
+	it(
+		'unmounting mid-roll clears the roll timers so no stray block-strike audio fires afterward',
+		async () => {
+			studyModeEnabledMock.mockReturnValue(true);
+			const { unmount } = render(BuildSession);
+			await fireEvent.click(screen.getByRole('button', { name: 'C' }));
+			await fireEvent.click(screen.getByRole('button', { name: 'minor 7th' }));
+
+			await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+
+			// The roll has started (playArpeggio fired at reveal) but hasn't
+			// reached the block-strike timer yet - unmount mid-roll.
+			expect(playArpeggioMock).toHaveBeenCalledTimes(1);
+			unmount();
+			playChordMock.mockClear();
+
+			await new Promise((resolve) => setTimeout(resolve, 1400));
+
+			expect(playChordMock).not.toHaveBeenCalled();
+		},
+		10000
+	);
 });

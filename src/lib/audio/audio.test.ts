@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
  * The audio engine is tested entirely against a mocked 'tone' module: no
@@ -72,11 +72,14 @@ import {
 	ensureAudioReady,
 	noteOff,
 	noteOn,
+	playArpeggio,
 	playChord,
 	playNote,
 	releaseAll,
 	setSoundEnabled,
-	soundEnabled
+	setStudyModeEnabled,
+	soundEnabled,
+	studyModeEnabled
 } from './audio';
 
 /** Lets every queued ensureReady -> play chain settle. */
@@ -238,6 +241,96 @@ describe('playChord', () => {
 		await flush();
 
 		expect(mockTone.synths).toHaveLength(0);
+	});
+});
+
+describe('playArpeggio', () => {
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('sounds the first note synchronously, then later notes at their staggered ticks in order', async () => {
+		vi.useFakeTimers();
+		try {
+			playArpeggio(['C', 'E', 'G'], { staggerMs: 260 });
+			await vi.advanceTimersByTimeAsync(0);
+			expect(synth().triggerAttackRelease).toHaveBeenNthCalledWith(
+				1,
+				'C4',
+				'8n',
+				undefined,
+				0.75
+			);
+
+			await vi.advanceTimersByTimeAsync(260);
+			expect(synth().triggerAttackRelease).toHaveBeenNthCalledWith(
+				2,
+				'E4',
+				'8n',
+				undefined,
+				0.75
+			);
+
+			await vi.advanceTimersByTimeAsync(260);
+			expect(synth().triggerAttackRelease).toHaveBeenNthCalledWith(
+				3,
+				'G4',
+				'8n',
+				undefined,
+				0.75
+			);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('never attacks when sound is off', async () => {
+		setSoundEnabled(false);
+		vi.useFakeTimers();
+		try {
+			playArpeggio(['C', 'E', 'G'], { staggerMs: 260 });
+			await vi.advanceTimersByTimeAsync(1000);
+			expect(mockTone.synths).toHaveLength(0);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('does nothing for an empty note list', async () => {
+		vi.useFakeTimers();
+		try {
+			playArpeggio([], { staggerMs: 260 });
+			await vi.advanceTimersByTimeAsync(1000);
+			expect(mockTone.synths).toHaveLength(0);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+});
+
+describe('study mode toggle', () => {
+	it('defaults to disabled with no stored value', () => {
+		expect(studyModeEnabled()).toBe(false);
+	});
+
+	it('persists the toggle to localStorage under music-learn:study-mode', () => {
+		setStudyModeEnabled(true);
+		expect(localStorage.getItem('music-learn:study-mode')).toBe('true');
+		expect(studyModeEnabled()).toBe(true);
+	});
+
+	it('reads a persisted true back on a fresh session', () => {
+		localStorage.setItem('music-learn:study-mode', 'true');
+		_resetForTests();
+
+		expect(studyModeEnabled()).toBe(true);
+	});
+
+	it('treats a non-boolean garbage value as the disabled default', () => {
+		localStorage.setItem('music-learn:study-mode', 'banana');
+		_resetForTests();
+
+		expect(studyModeEnabled()).toBe(false);
 	});
 });
 

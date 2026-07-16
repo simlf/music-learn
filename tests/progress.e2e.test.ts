@@ -51,9 +51,15 @@ let soundOn = true;
 const setSoundEnabledMock = vi.fn((enabled: boolean) => {
 	soundOn = enabled;
 });
+let studyModeOn = false;
+const setStudyModeEnabledMock = vi.fn((enabled: boolean) => {
+	studyModeOn = enabled;
+});
 vi.mock('$lib/audio/audio', () => ({
 	soundEnabled: () => soundOn,
-	setSoundEnabled: (enabled: boolean) => setSoundEnabledMock(enabled)
+	setSoundEnabled: (enabled: boolean) => setSoundEnabledMock(enabled),
+	studyModeEnabled: () => studyModeOn,
+	setStudyModeEnabled: (enabled: boolean) => setStudyModeEnabledMock(enabled)
 }));
 
 const setDrillSeedsMock = vi.fn();
@@ -72,6 +78,7 @@ beforeEach(() => {
 	storedToken = '';
 	currentTier = 1;
 	soundOn = true;
+	studyModeOn = false;
 	fetchStatsMock.mockReset();
 	fetchStreakMock.mockReset();
 	fetchStreakMock.mockResolvedValue({ streak: 0, practicedToday: false });
@@ -79,6 +86,7 @@ beforeEach(() => {
 	setApiTokenMock.mockClear();
 	setCurrentTierMock.mockClear();
 	setSoundEnabledMock.mockClear();
+	setStudyModeEnabledMock.mockClear();
 	setDrillSeedsMock.mockClear();
 	gotoMock.mockClear();
 });
