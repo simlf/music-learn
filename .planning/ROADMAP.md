@@ -425,6 +425,30 @@ Plans:
 
 **Design reference**: `.planning/sketches/009-hear-the-chord/` (winner Variant A: auto-play + pulse; C arpeggio kept as a study option). Reuses the `ChordGlyph` serif display + `stamp-in` reveal — locked house reference.
 **UI hint**: yes
+**Plans**: 6 original plans executed + 2 gap-closure plans (verification gaps)
+
+**Wave 1**
+
+- [x] 16-01-PLAN.md — Audio + CSS primitives: playArpeggio, studyMode persistence, pulse-once keyframe
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [x] 16-02-PLAN.md — PianoKeyboard pulseToken + pendingLetters
+- [x] 16-03-PLAN.md — ChordGlyph stamped + pulseToken
+- [x] 16-04-PLAN.md — /progress STUDY MODE toggle
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [x] 16-05-PLAN.md — BuildSession core reveal: glyph + fire-once auto-play + synced pulse + Hear again (HEAR-01, sound-off pulse)
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 16-06-PLAN.md — BuildSession study-mode arpeggio roll (HEAR-02 study playback)
+
+**Gap Closure** *(closes 3 verification gaps in the study-mode roll — HEAR-02)*
+
+- [ ] 16-07-PLAN.md — Fix playArpeggio: ascending voicing (scale roll) + startDelayMs option (audio sync)
+- [ ] 16-08-PLAN.md — Sync roll audio to visual un-dim + pending keyed by {letter, octave} (duplicate tonic)
 
 ### Phase 17: Chord Explainer
 
@@ -506,7 +530,7 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 | 12. Build-it Construction | 6/6 | Complete    | 2026-07-15 |
 | 13. Multi-modal Recall | 6/6 | Complete    | 2026-07-15 |
 | 15. Playable Keyboard Everywhere | 7/7 | Complete    | 2026-07-15 |
-| 16. Hear the Chord | 0/TBD | Pending | - |
+| 16. Hear the Chord | 5/6 | In Progress|  |
 | 17. Chord Explainer | 0/TBD | Pending | - |
 | 18. Your Songs' Chords | 0/TBD | Pending | - |
 | 19. Interactive Theory | 0/TBD | Pending | - |

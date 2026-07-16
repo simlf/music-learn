@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Playability & Comprehension
-current_phase: 15
+current_phase: 16
+current_phase_name: hear-the-chord
 status: executing
-stopped_at: Phase 15 complete and verified; next: Phase 16 (Hear the Chord)
-last_updated: "2026-07-16T00:00:00.000Z"
+stopped_at: Completed 16-01-PLAN.md
+last_updated: "2026-07-16T20:44:14.163Z"
 last_activity: 2026-07-16
-last_activity_desc: Phase 15 complete + reviewed; milestone tracking reconciled to v2.1
+last_activity_desc: Phase 16 execution started
 progress:
-  total_phases: 6
-  completed_phases: 1
-  total_plans: 7
-  completed_plans: 7
-  percent: 17
-current_phase_name: playable-keyboard-everywhere
+  total_phases: 19
+  completed_phases: 10
+  total_plans: 54
+  completed_plans: 53
+  percent: 53
 ---
 
 # Project State
@@ -24,14 +24,14 @@ current_phase_name: playable-keyboard-everywhere
 See: .planning/PROJECT.md (updated 2026-07-14)
 
 **Core value:** See a jazz chord symbol and know instantly what to play with the left hand.
-**Current focus:** Phase 15 — playable-keyboard-everywhere
+**Current focus:** Phase 16 — hear-the-chord
 
 ## Current Position
 
-Phase: 15
-Plan: 7/7 complete
-Status: Phase 15 complete and verified. Milestone v2.0 (Phases 10-13) shipped; v2.1 active. Next: Phase 16.
-Last activity: 2026-07-16 — Phase 15 complete + reviewed; milestone reconciled to v2.1
+Phase: 16 (hear-the-chord) — EXECUTING
+Plan: 6 of 6
+Status: Ready to execute
+Last activity: 2026-07-16 — Phase 16 execution started
 
 **v2.0 Learning Upgrade (Phases 10-13): COMPLETE (shipped 2026-07-15).**
 
@@ -121,6 +121,11 @@ Last activity: 2026-07-16 — Phase 15 complete + reviewed; milestone reconciled
 | Phase 15 P05 | 14min | 2 tasks | 5 files |
 | Phase 15 P06 | 20min | 1 tasks | 2 files |
 | Phase 15 P07 | 25min | 2 tasks | 4 files |
+| Phase 16 P01 | 9min | 2 tasks | 3 files |
+| Phase 16 P02 | 12min | 1 tasks | 2 files |
+| Phase 16 P03 | 12min | 1 tasks | 2 files |
+| Phase 16 P04 | 8min | 1 tasks | 2 files |
+| Phase 16 P5 | 12 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -225,6 +230,12 @@ Recent decisions affecting current work:
 - [Phase 15-05]: Dock registration is $effect-driven (register + returned cleanup that clears), keyed off a feature-detected isShortLandscape flag, mirroring Plan 04's drill.done-driven ScaleKeyboardDrill pattern rather than a mount-once register()/onDestroy pair
 - [Phase ?]: [Phase 15-06] Dock registration is $effect-driven (register, return cleanup that clears), keyed off pageState !== 'reviewing' || currentItem?.mode === 'formula-build' - reacts live to queue advances, not just mount/unmount
 - [Phase 15-07]: BuildSession's constructable keyboard docks only when embedFact is set; RecallSession's Mode C skip guard is kept (not removed) since unconditional per-card re-registration races non-deterministically against BuildSession's own mount-time registration
+- [Phase 16-01]: playArpeggio uses toPitch(note, 4) not bare toAsciiPitchClass, matching the reveal keyboard's octave-4 voicing start point
+- [Phase 16-01]: studyMode toggle has no releaseAll() side effect on set, unlike setSoundEnabled(false), since it is a playback-shape flag not an audio-output kill switch
+- [Phase 16-02]: pulseToken retrigger uses a $state 'pulsing' flag + setTimeout(0)/setTimeout(200) pair (not a {#key pulseToken} remount) so pulseToken bumps never destroy/recreate sibling keys mid-arpeggio-roll, preserving pendingLetters' opacity cross-fade transition once BuildSession combines both signals
+- [Phase 16]: ChordGlyph pulseToken retrigger reuses PianoKeyboard's exact off/on setTimeout(0)/setTimeout(200) idiom (Plan 16-02) rather than a key-block remount, for consistency across both components sharing the same app.css keyframes
+- [Phase ?]: [Phase 16-04]: STUDY MODE toggle is a byte-for-byte structural sibling of the existing SOUND toggle (same ghost Button, same mono label, same mt-6 spacing) per D-04
+- [Phase ?]: [Phase 16-05]: triggerReveal()/hearAgain() gate only the playChord call on soundEnabled(), always bumping revealPulseToken - no extra stamp-settle delay needed in BuildSession since the shared app.css combined-animation selector already sequences the glyph's stamp-in and pulse, and the complete-block PianoKeyboard never receives wrongLetters so its keys never carry --stamped
 
 ### Pending Todos
 
@@ -249,7 +260,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-15T22:29:35.041Z
-Stopped at: Completed 15-05-PLAN.md
+Last session: 2026-07-16T20:42:44.397Z
+Stopped at: Completed 16-01-PLAN.md
 Resume file: 
 None

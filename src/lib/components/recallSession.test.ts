@@ -77,7 +77,13 @@ const ensureAudioReadyMock = vi.fn();
 vi.mock('$lib/audio/audio', () => ({
 	playChord: (...args: unknown[]) => playChordMock(...args),
 	playNote: (...args: unknown[]) => playNoteMock(...args),
-	ensureAudioReady: (...args: unknown[]) => ensureAudioReadyMock(...args)
+	ensureAudioReady: (...args: unknown[]) => ensureAudioReadyMock(...args),
+	// Embedded BuildSession (Mode C) fires its reveal on completion; keep sound and
+	// study mode off so the reveal takes the visual-only path and never adds stray
+	// playChord/playArpeggio calls to this file's assertions.
+	soundEnabled: () => false,
+	studyModeEnabled: () => false,
+	playArpeggio: () => {}
 }));
 
 const NOW = new Date('2026-07-15T12:00:00Z');

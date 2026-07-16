@@ -118,9 +118,47 @@ body {
 	}
 }
 
+/*
+ * Shared reveal "pulse" beat (Phase 16, hear-the-chord). A quick 200ms
+ * flex/brighten used on the BUILD reveal's PianoKeyboard keys and ChordGlyph
+ * to sync with playChord/playArpeggio audio ticks — lives here (not
+ * component-scoped) so both consumers share one definition, same rationale
+ * as stamp-in above.
+ */
+@keyframes pulse-once {
+	0% {
+		transform: scale(1);
+		filter: brightness(1);
+	}
+	40% {
+		transform: scale(1.05);
+		filter: brightness(1.1);
+	}
+	100% {
+		transform: scale(1);
+		filter: brightness(1);
+	}
+}
+
+.pulse-once {
+	animation: pulse-once 200ms ease-out;
+}
+
+/* First-reveal only: stamp-in plays 0-240ms, pulse-once starts at 240ms. */
+.piano-keyboard__key--stamped.pulse-once,
+.chord-glyph--stamped.pulse-once {
+	animation:
+		stamp-in 240ms ease-out,
+		pulse-once 200ms ease-out 240ms;
+}
+
 @media (prefers-reduced-motion: reduce) {
 	.stamp,
-	.piano-keyboard__key--stamped {
+	.piano-keyboard__key--stamped,
+	.pulse-once {
 		animation: none !important;
+	}
+	.piano-keyboard__key--pending {
+		transition: none;
 	}
 }

@@ -134,6 +134,25 @@
 		 * their rendering paths stay fully separate.
 		 */
 		flashWrongKey?: { letter: string; octave: number } | null;
+		/**
+		 * Bump this number to re-trigger a one-shot `.pulse-once` animation
+		 * cycle (shared keyframe, app.css) on every currently role-lit key
+		 * (Phase 16, HEAR-01) — the reveal's chord-strike pulse, synced to
+		 * `playChord`. Retriggers even while the component stays mounted: each
+		 * new value restarts the cycle, mirroring `flashWrongKey`'s transient-
+		 * signal shape. Omitting it leaves every prior render byte-identical
+		 * (no `.pulse-once` class is ever applied).
+		 */
+		pulseToken?: number;
+		/**
+		 * Letters whose already-role-lit key should sit dimmed (`--pending`,
+		 * opacity 0.28) during the study-mode arpeggio roll (Phase 16, HEAR-02)
+		 * — each chord tone stays pending until its own tick sounds. Only ever
+		 * dims a key that already carries an interval-role fill; a letter with
+		 * no role in `notes` is unaffected even if listed here. Omitting it
+		 * leaves rendering byte-identical.
+		 */
+		pendingLetters?: Set<string>;
 	}
 
 	let {
@@ -149,7 +168,9 @@
 		showIntervalBadges = false,
 		constructable = false,
 		onConstructTap,
-		flashWrongKey
+		flashWrongKey,
+		pulseToken,
+		pendingLetters
 	}: Props = $props();
 
 	/** Interval-from-root short label for a highlighted note (sketch 003). "R" for the root. */
@@ -393,6 +414,43 @@
 		}))
 	);
 
+	/**
+	 * Reveal chord-strike pulse (Phase 16, HEAR-01, T-16-03): flips off then
+	 * on whenever `pulseToken` changes to a new value, so the shared
+	 * `.pulse-once` class (app.css) is genuinely removed-then-re-added -
+	 * forcing its keyframe animation to restart - rather than staying
+	 * statically applied across bumps. The 0ms timer creates the DOM-commit
+	 * boundary needed between the off write and the on write; the 200ms
+	 * timer matches `.pulse-once`'s own animation duration and clears the
+	 * flag once the cycle finishes. Any prior timer is cleared before
+	 * scheduling a new one (mirrors this file's existing clearTimeout
+	 * discipline), so a rapid re-bump or unmount can never pile up timers.
+	 */
+	let pulsing = $state(false);
+	let pulseRestartTimer: ReturnType<typeof setTimeout> | undefined;
+	let pulseOffTimer: ReturnType<typeof setTimeout> | undefined;
+
+	$effect(() => {
+		const token = pulseToken;
+		if (token === undefined) return;
+
+		clearTimeout(pulseRestartTimer);
+		clearTimeout(pulseOffTimer);
+		pulsing = false;
+
+		pulseRestartTimer = setTimeout(() => {
+			pulsing = true;
+			pulseOffTimer = setTimeout(() => {
+				pulsing = false;
+			}, 200);
+		}, 0);
+
+		return () => {
+			clearTimeout(pulseRestartTimer);
+			clearTimeout(pulseOffTimer);
+		};
+	});
+
 	function roleClass(role: IntervalRole | undefined): string {
 		return role ? `piano-keyboard__key--${role}` : '';
 	}
@@ -453,6 +511,28 @@
 			? 'piano-keyboard__key--wrong'
 			: '';
 	}
+
+	/**
+	 * Reveal chord-strike pulse (Phase 16, HEAR-01): applies the shared
+	 * `pulse-once` keyframe class (app.css) to every role-lit key while
+	 * `pulsing` is active, following `stampedClass`'s role-gated shape.
+	 * Never applies to a roleless (wrong/selected) key, per the UI-SPEC
+	 * mutual-exclusion note.
+	 */
+	function pulseClass(letter: string, role: IntervalRole | undefined): string {
+		return pulsing && role ? 'pulse-once' : '';
+	}
+
+	/**
+	 * Study-mode arpeggio "not yet sounded" dim state (Phase 16, HEAR-02):
+	 * mirrors `selectedClass`'s `!role` guard shape but INVERTED - applies
+	 * only WHEN there IS a role AND the key's letter is in `pendingLetters`,
+	 * since pending only ever dims an already-role-lit key, never an unlit
+	 * one.
+	 */
+	function pendingClass(letter: string, role: IntervalRole | undefined): string {
+		return role && pendingLetters?.has(letter) ? 'piano-keyboard__key--pending' : '';
+	}
 </script>
 
 <div
@@ -473,7 +553,10 @@
 			)} {stampedClass(key.letter, key.note?.role)} {pressedClass(
 				key.letter,
 				octaveForWhiteIndex(key.index)
-			)} {flashWrongClass(key.letter, octaveForWhiteIndex(key.index))}"
+			)} {flashWrongClass(key.letter, octaveForWhiteIndex(key.index))} {pulseClass(
+				key.letter,
+				key.note?.role
+			)} {pendingClass(key.letter, key.note?.role)}"
 			style="left: {key.leftPct}%; width: {whiteKeyWidthPct}%;"
 			role={keysActive ? 'button' : undefined}
 			tabindex={keysActive ? 0 : undefined}
@@ -518,7 +601,13 @@
 			)} {stampedClass(key.sharpLetter, key.note?.role)} {pressedClass(
 				key.sharpLetter,
 				octaveForBlackAfterWhiteIndex(key.position - 1)
-			)} {flashWrongClass(key.sharpLetter, octaveForBlackAfterWhiteIndex(key.position - 1))}"
+			)} {flashWrongClass(
+				key.sharpLetter,
+				octaveForBlackAfterWhiteIndex(key.position - 1)
+			)} {pulseClass(key.sharpLetter, key.note?.role)} {pendingClass(
+				key.sharpLetter,
+				key.note?.role
+			)}"
 			style="left: {key.leftPct}%; width: {blackKeyWidthPct}%;"
 			role={keysActive ? 'button' : undefined}
 			tabindex={keysActive ? 0 : undefined}
@@ -599,7 +688,8 @@
 		user-select: none;
 		transition:
 			transform 90ms ease-out,
-			filter 90ms ease-out;
+			filter 90ms ease-out,
+			opacity 120ms ease-out;
 	}
 
 	.piano-keyboard__key--white {
@@ -725,6 +815,20 @@
 			transparent 7px
 		);
 		box-shadow: inset 0 0 0 2px var(--color-paper-bright);
+	}
+
+	/*
+	 * Study-mode "not yet sounded" dim (Phase 16, HEAR-02): the key already
+	 * shows its final interval-color fill; this modifier just lowers its
+	 * opacity until its own arpeggio-roll tick clears it. The cross-fade
+	 * back to full opacity comes from the `opacity` entry already added to
+	 * `.piano-keyboard__key`'s shared `transition` list above - no separate
+	 * transition rule needed here. The `.pulse-once` keyframe and the
+	 * reduced-motion handling for both of these live in app.css (shared with
+	 * ChordGlyph), not duplicated here (Plan 16-01).
+	 */
+	.piano-keyboard__key--pending {
+		opacity: 0.28;
 	}
 
 	/*
