@@ -4,17 +4,17 @@ milestone: v2.1
 milestone_name: Playability & Comprehension
 current_phase: 16
 current_phase_name: hear-the-chord
-status: executing
-stopped_at: Completed 16-01-PLAN.md
-last_updated: "2026-07-16T20:44:14.163Z"
+status: verified
+stopped_at: Completed 16-08-PLAN.md — phase 16 verified
+last_updated: "2026-07-16T22:52:19.262Z"
 last_activity: 2026-07-16
-last_activity_desc: Phase 16 execution started
+last_activity_desc: Phase 16 gap-closure executed + verified (16-07, 16-08)
 progress:
   total_phases: 19
-  completed_phases: 10
-  total_plans: 54
-  completed_plans: 53
-  percent: 53
+  completed_phases: 11
+  total_plans: 57
+  completed_plans: 57
+  percent: 58
 ---
 
 # Project State
@@ -28,17 +28,17 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 
 ## Current Position
 
-Phase: 16 (hear-the-chord) — EXECUTING
-Plan: 6 of 6
-Status: Ready to execute
-Last activity: 2026-07-16 — Phase 16 execution started
+Phase: 16 (hear-the-chord) — COMPLETE (verified)
+Plan: 8 of 8 (6 original + 2 gap-closure)
+Status: Verified — HEAR-01, HEAR-02 delivered; ready to ship
+Last activity: 2026-07-16 — Phase 16 gap-closure executed + verified (16-07, 16-08)
 
 **v2.0 Learning Upgrade (Phases 10-13): COMPLETE (shipped 2026-07-15).**
 
 **v2.1 Playability & Comprehension (Phases 15-20) — active batch; design winners = Session 4 sketches 008-013:**
 
 - Phase 15: Playable Keyboard Everywhere (KBD-01..03) — COMPLETE. Shared docked keyboard on every keyboard-bearing page.
-- Phase 16: Hear the Chord (HEAR-01, HEAR-02) — NEXT. Auto-play + synced pulse on the BUILD reveal. Depends on Phases 12 and 15. No CONTEXT.md yet.
+- Phase 16: Hear the Chord (HEAR-01, HEAR-02) — COMPLETE (verified). Auto-play + synced pulse on the BUILD reveal, plus gap-closure of the study-mode roll (ascending voicing, tick-synced audio/visual, octave-keyed pending).
 - Phase 17: Chord Explainer — escalating in-place hints for unknown chords in Recall.
 - Phase 18: Your Songs' Chords — song-provenance marks + a From-my-songs filter.
 - Phase 19: Interactive Theory — guided-step beginner lessons handing off into the first drill.
