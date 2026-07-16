@@ -4,6 +4,10 @@ CI builds two images and pushes them to GHCR; a manual GitHub Actions run
 ("deploy" workflow) SSHes into the VM and redeploys. This file covers the
 one-time setup CI cannot do for you.
 
+Requires Docker Compose v2.24 or newer on the VM (`docker compose version`);
+`docker-compose.prod.yml` uses the `env_file:` long syntax, which older
+versions reject at parse time.
+
 ## Required GitHub repo secrets
 
 Settings -> Secrets and variables -> Actions:
@@ -24,6 +28,17 @@ Pushing images uses the built-in `GITHUB_TOKEN` - no secret needed.
    mkdir -p ~/music-learn/data
    cd ~/music-learn
    ```
+   The `api` container runs as a non-root user, and the `./data:/data` bind
+   mount hides the image's own ownership of `/data`. So the container cannot
+   write `music-learn.db` unless the host `data` dir is writable by the
+   container's user. Discover its uid and chown the dir once (run after
+   step 4, when the image can be pulled):
+   ```
+   uid=$(docker run --rm ghcr.io/simlf/music-learn-api:latest id -u)
+   sudo chown -R "$uid" ~/music-learn/data
+   ```
+   Symptom if skipped: the api container restarts in a loop with a
+   `SQLITE_CANTOPEN` / EACCES error on `/data/music-learn.db`.
 2. Copy `docker-compose.prod.yml` from the repo into `~/music-learn/`.
 3. Create `~/music-learn/.env`:
    ```
