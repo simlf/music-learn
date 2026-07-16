@@ -1,28 +1,96 @@
 ---
 phase: 15-playable-keyboard-everywhere
-fixed_at: 2026-07-15T23:13:08Z
+fixed_at: 2026-07-16T18:50:49Z
 review_path: .planning/phases/15-playable-keyboard-everywhere/15-REVIEW.md
-iteration: 1
+iteration: 2
 findings_in_scope: 3
-fixed: 2
-skipped: 1
-status: partial
+fixed: 3
+skipped: 0
+status: all_fixed
 ---
 
 # Phase 15: Code Review Fix Report
 
-**Fixed at:** 2026-07-15T23:13:08Z
+**Fixed at:** 2026-07-16T18:50:49Z (iteration 2)
 **Source review:** .planning/phases/15-playable-keyboard-everywhere/15-REVIEW.md
-**Iteration:** 1
+**Iteration:** 2
+
+This report covers two fix passes. Iteration 2 (this run) fixed the 3 info
+findings; iteration 1 fixed the 3 warnings. Frontmatter reflects iteration 2's
+scope (3 info findings, all fixed). All fixes committed to the main working
+tree with hooks enabled (`npm run check` clean, relevant Vitest files green
+before each commit). Worktree isolation was disabled for both runs per
+instructions.
+
+## Iteration 2 — Info findings
+
+**Summary:**
+- Findings in scope: 3 (IN-01, IN-02, IN-03 — the 3 info findings)
+- Fixed: 3
+- Skipped: 0
+
+### IN-01: Formula-mode interval / scale-degree recall cards get an unrelated empty playable dock keyboard
+
+**Files modified:** `src/lib/components/RecallSession.svelte`,
+`src/lib/components/recallSession.test.ts`
+**Commit:** 8eb4025
+**Applied fix:** Applied the reviewer's suggested option. The dock-registration
+effect already skipped Mode C (`formula-build`); added a second guard so a
+`formula`-mode card only registers when its fact is a chord
+(`currentFact?.factKind === 'chord-formula'`). An `interval-size` or
+`scale-degree` formula card has no keyboard relationship — its `dockedKeyboard`
+snippet would fall through to `<PianoKeyboard notes={[]} inspectable />`, an
+unrelated blank playable board — so registration is now skipped entirely for
+those cards. Updated one handoff test (`recallSession.test.ts`) that encoded
+the old behavior: it advances from a Mode C card to an `interval-size` formula
+card and previously asserted `registry.current` was non-null; it now asserts
+the card docks nothing (`registry.current` is null), which still proves the
+Mode C registration was cleared rather than left stale.
+Verified: `npm run check` clean; `recallSession.test.ts` (39) passes.
+
+### IN-02: ScaleKeyboardDrill re-registers a fresh dock config object on every correct tap
+
+**Files modified:** `src/lib/components/ScaleKeyboardDrill.svelte`
+**Commit:** 77a4681
+**Applied fix:** The register/clear effect read `drill.done` directly, but
+`drill` is reassigned (`drill = result.state`) on every correct tap, so the
+effect re-ran and re-registered a fresh dock config object each tap —
+needlessly re-triggering KeyboardDock's `--dock-height` effect. Introduced a
+`const drillDone = $derived(drill.done)` boolean and made the effect depend on
+it. A `$derived` only notifies its consumers when the value actually changes
+(`false === false`), so the effect now runs once per done↔not-done edge and
+registration fires once, not per tap.
+Verified: `npm run check` clean; `scaleKeyboardDrill.test.ts` (13) passes.
+
+### IN-03: `getDockRegistry()` return type asserts non-null but `getContext` can return undefined
+
+**Files modified:** `src/lib/keyboard/dockContext.svelte.ts`,
+`src/lib/components/KeyboardDock.svelte`, `src/lib/components/RecallSession.svelte`,
+`src/lib/components/ScaleKeyboardDrill.svelte`, `src/lib/components/BuildSession.svelte`,
+`src/routes/+page.svelte`, `src/routes/theory/+page.svelte`,
+`src/routes/drills/+page.svelte`
+**Commit:** 9b7244f
+**Applied fix:** Chose the reviewer's option (a) — made the return type honest
+rather than throwing. Throwing was ruled out because BuildSession deliberately
+relies on a falsy return to degrade to inline rendering in standalone `/build`
+(guarded by `Boolean(dockRegistry)`, covered by an existing test). Changed the
+signature to `DockRegistry | undefined` (and the inner `getContext` type
+parameter to match) and updated every caller to access the registry optionally
+(`dockRegistry?.register(...)` / `?.clear(...)`, and `registry?.current ?? null`
+in KeyboardDock). For the layout-hosted pages this is a runtime no-op — the
+layout always provides the registry — but the type now forces callers to
+acknowledge the standalone-render seam instead of blindly dereferencing and
+throwing at an arbitrary call site.
+Verified: `npm run check` clean; 132 dock-related unit tests pass
+(dockContext, keyboardDock, buildSession, scaleKeyboardDrill, recallSession,
+lookupDock, theoryDock, drillsDock).
+
+## Iteration 1 — Warnings
 
 **Summary:**
 - Findings in scope: 3 (WR-01, WR-02, WR-03 — the 3 warnings; the 3 info findings were out of scope)
 - Fixed: 2
 - Skipped: 1 (WR-03 — defect not reproduced, regression guard added, needs browser verification)
-
-All fixes committed to the main working tree with hooks enabled (`npm run check`
-clean, relevant Vitest files green before each commit). Worktree isolation was
-disabled for this run per instructions.
 
 ## Fixed Issues
 
