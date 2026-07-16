@@ -65,19 +65,21 @@ describe('PianoKeyboard pulse (pulseToken)', () => {
 	});
 });
 
-describe('PianoKeyboard pending (pendingLetters)', () => {
+describe('PianoKeyboard pending (pendingKeys)', () => {
 	afterEach(() => {
 		cleanup();
 	});
 
-	it('pendingLetters dims only an already-role-lit key matching the letter', () => {
+	it('pendingKeys dims only an already-role-lit key matching the letter+octave', () => {
 		const notes = spellChord('Cm7').notes;
 		const rootLetter = notes.find((note) => note.role === 'root')?.letter;
 		expect(rootLetter).toBeDefined();
 
 		const { container } = render(PianoKeyboard, {
 			notes,
-			pendingLetters: new Set([rootLetter as string])
+			// Root of a display-mode (octaves-unset -> 2 octave) Cm7 keyboard
+			// renders at the keyboard's BASE_OCTAVE (4).
+			pendingKeys: [{ letter: rootLetter as string, octave: 4 }]
 		});
 
 		const rootKey = container.querySelector('.piano-keyboard__key--root');
@@ -85,12 +87,12 @@ describe('PianoKeyboard pending (pendingLetters)', () => {
 		expect(container.querySelectorAll('.piano-keyboard__key--pending')).toHaveLength(1);
 	});
 
-	it('a letter with no role in notes gets no --pending even when listed in pendingLetters', () => {
+	it('a letter with no role in notes gets no --pending even when listed in pendingKeys', () => {
 		const notes = spellChord('Cm7').notes;
 		// 'D' is not part of Cm7 (C, E♭, G, B♭), so it never carries a role.
 		const { container } = render(PianoKeyboard, {
 			notes,
-			pendingLetters: new Set(['D'])
+			pendingKeys: [{ letter: 'D', octave: 4 }]
 		});
 
 		expect(container.querySelectorAll('.piano-keyboard__key--pending')).toHaveLength(0);
@@ -103,11 +105,38 @@ describe('PianoKeyboard pending (pendingLetters)', () => {
 		const { container } = render(PianoKeyboard, {
 			notes,
 			wrongLetters,
-			pendingLetters: new Set(['D'])
+			pendingKeys: [{ letter: 'D', octave: 4 }]
 		});
 
 		const wrongKey = container.querySelector('.piano-keyboard__key--wrong');
 		expect(wrongKey).not.toBeNull();
 		expect(wrongKey?.className).not.toContain('piano-keyboard__key--pending');
+	});
+
+	it('octave-discrimination (gap 3 / WR-03): the SAME letter with a role at two octaves only dims the octave whose { letter, octave } is listed', () => {
+		// A scale-like note list: the tonic 'C' at both the low root (octave 4,
+		// the keyboard's BASE_OCTAVE) and the octave-up close (assigned to the
+		// second C on a 2-octave keyboard, octave 5) - mirrors createScaleConstruction's
+		// duplicate-tonic earnedNotes shape.
+		const notes = [
+			{ letter: 'C', solfege: 'Do', role: 'root' as const },
+			{ letter: 'D', solfege: 'Ré', role: 'second' as const },
+			{ letter: 'C', solfege: 'Do', role: 'root' as const }
+		];
+
+		const { container } = render(PianoKeyboard, {
+			notes,
+			octaves: 2,
+			pendingKeys: [{ letter: 'C', octave: 5 }]
+		});
+
+		const pendingKeysInDom = container.querySelectorAll('.piano-keyboard__key--pending');
+		expect(pendingKeysInDom).toHaveLength(1);
+
+		const rootKeys = container.querySelectorAll('.piano-keyboard__key--root');
+		expect(rootKeys).toHaveLength(2);
+		const [octave4TonicKey, octave5TonicKey] = rootKeys;
+		expect(octave4TonicKey.className).not.toContain('piano-keyboard__key--pending');
+		expect(octave5TonicKey.className).toContain('piano-keyboard__key--pending');
 	});
 });
