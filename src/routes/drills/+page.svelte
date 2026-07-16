@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { Note } from 'tonal';
-	import { getDockRegistry } from '$lib/keyboard/dockContext.svelte';
 	import { spellChord } from '$lib/theory/chord';
 	import { intervalFromShort, toAsciiAccidentals } from '$lib/theory/interval';
 	import { formulaFor } from '$lib/lookup/chordPresentation';
@@ -65,22 +64,6 @@
 	import LevelPicker from '$lib/components/LevelPicker.svelte';
 	import IntervalScaffold from '$lib/components/IntervalScaffold.svelte';
 	import { intervalScaffoldLevel } from '$lib/practice/scaffoldLevel';
-
-	/**
-	 * Shared keyboard dock registration (KBD-01/KBD-03): the four former inline
-	 * `<PianoKeyboard>` sites (construction input/reveal, identification,
-	 * interval identification, interval construction) plus the identification
-	 * reveal keyboard collapse into ONE mode-aware `dockedKeyboard` snippet
-	 * (below) registered with the shared dock. The registry reference is
-	 * captured once at component-init time and reused inside the register/
-	 * clear `$effect` further down - calling `getDockRegistry()` again during
-	 * teardown throws Svelte's `lifecycle_outside_component` (Plan 03's
-	 * established fix), so the effect's own returned cleanup (which fires on
-	 * both re-run and unmount) is what clears the registration, never a
-	 * separate `onDestroy`.
-	 */
-	const dockRegistry = getDockRegistry();
-	const dockToken = Symbol('drills-dock');
 
 	/**
 	 * Right-answer confirmation variants (D-08): the stamp beat is the reward,
@@ -303,58 +286,6 @@
 	// Drain any answers queued from a previous offline session (PROG-01).
 	onMount(() => {
 		flushQueue();
-	});
-
-	/**
-	 * Short-landscape carve-out (Scope Decision 7): on a genuinely short
-	 * rotated-phone viewport, Drills keeps its existing two-pane layout
-	 * (Phase 09-03) instead of feeding the fixed dock chrome, which would
-	 * eat vertical space twice over an already height-cleared layout.
-	 * Feature-detected (matchMedia isn't implemented by jsdom, so this stays
-	 * `false` - dock-by-default - in tests and in any browser lacking it),
-	 * mirroring the existing rotate-hint orientation listener above.
-	 */
-	let isShortLandscape = $state(false);
-
-	onMount(() => {
-		if (typeof window.matchMedia !== 'function') return;
-		const mql = window.matchMedia('(max-height: 600px) and (orientation: landscape)');
-		isShortLandscape = mql.matches;
-		const handleShortLandscapeChange = (event: MediaQueryListEvent) => {
-			isShortLandscape = event.matches;
-		};
-		mql.addEventListener('change', handleShortLandscapeChange);
-		return () => mql.removeEventListener('change', handleShortLandscapeChange);
-	});
-
-	/**
-	 * Docked keyboard (KBD-01/KBD-03): registers the single mode-aware
-	 * `dockedKeyboard` snippet (defined in the template below) with the
-	 * shared dock whenever the viewport is NOT short-landscape, and clears
-	 * the registration (effect cleanup, which also fires on unmount)
-	 * whenever it flips to short-landscape - the same snippet then renders
-	 * inline in `.drill-layout__keyboard` instead (see template). No
-	 * `register` snippet - the in-flow feedback block already hosts
-	 * `InspectRegister` for `drillInspect`, so the dock never duplicates
-	 * that readout.
-	 */
-	// inputRequired only on construction questions: there the docked keyboard
-	// is the sole answer-input surface (Check stays disabled until keys are
-	// selected; interval construction grades the first tap), so the dock must
-	// never hide it, even if collapse was persisted elsewhere (WR-01).
-	// Identification questions answer via in-flow choice buttons, so their
-	// ear-support keyboard keeps the normal collapse handle. The flag stays
-	// true across the answered reveal of a construction question so the
-	// in-place reveal keyboard never vanishes mid-question.
-	const dockInputRequired = $derived(question.direction === 'construction');
-	$effect(() => {
-		if (isShortLandscape) return;
-		dockRegistry?.register({
-			token: dockToken,
-			keyboard: dockedKeyboard,
-			inputRequired: dockInputRequired
-		});
-		return () => dockRegistry?.clear(dockToken);
 	});
 
 	// Server-derived stats (D-02): need-weighting, the review bucket, and the
@@ -678,12 +609,13 @@
 </script>
 
 <!--
-	The ONE mode-aware docked keyboard (KBD-01/KBD-03): closes over the page's
-	existing reactive state, so it reproduces exactly the props each of the
-	four former inline sites rendered - never two input surfaces for the same
-	fact (interactive/inspectable are mutually exclusive per question branch).
+	The ONE mode-aware keyboard: closes over the page's existing reactive
+	state, so it reproduces exactly the props each of the four question
+	branches needs - never two input surfaces for the same fact
+	(interactive/inspectable are mutually exclusive per question branch).
+	Rendered inline in `.drill-layout__keyboard` for every branch.
 -->
-{#snippet dockedKeyboard()}
+{#snippet boardKeyboard()}
 	{#if question.kind === 'chord' && question.direction === 'construction'}
 		<PianoKeyboard
 			notes={showConstructionReveal ? target.notes : []}
@@ -700,7 +632,7 @@
 		<!--
 			Identification: keys always play on tap (inspectable). Before
 			answering, no onInspect/badges are wired (ear support only, no
-			give-away); once answered, the SAME docked element becomes the
+			give-away); once answered, the SAME element becomes the
 			reveal - onInspect + showIntervalBadges wire up, matching the prior
 			separate feedback-block keyboard exactly (no second element).
 		-->
@@ -900,9 +832,7 @@
 			</div>
 
 			<div class="drill-layout__keyboard">
-				{#if isShortLandscape}
-					{@render dockedKeyboard()}
-				{/if}
+				{@render boardKeyboard()}
 			</div>
 
 			<div class="drill-layout__controls drill-controls">
@@ -931,9 +861,7 @@
 			</div>
 
 			<div class="drill-layout__keyboard">
-				{#if isShortLandscape}
-					{@render dockedKeyboard()}
-				{/if}
+				{@render boardKeyboard()}
 			</div>
 
 			<div class="drill-layout__controls">
@@ -962,9 +890,7 @@
 			</div>
 
 			<div class="drill-layout__keyboard">
-				{#if isShortLandscape}
-					{@render dockedKeyboard()}
-				{/if}
+				{@render boardKeyboard()}
 			</div>
 
 			<div class="drill-layout__controls">
@@ -1000,9 +926,7 @@
 			</div>
 
 			<div class="drill-layout__keyboard">
-				{#if isShortLandscape}
-					{@render dockedKeyboard()}
-				{/if}
+				{@render boardKeyboard()}
 			</div>
 		{/if}
 

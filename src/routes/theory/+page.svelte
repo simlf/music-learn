@@ -1,8 +1,7 @@
 <script lang="ts">
-	import { onDestroy, onMount } from 'svelte';
+	import { onDestroy } from 'svelte';
 	import { mnemonicFor } from '$lib/copy/mnemonics';
 	import { ensureAudioReady, playChord } from '$lib/audio/audio';
-	import { getDockRegistry } from '$lib/keyboard/dockContext.svelte';
 	import ChordExample from '$lib/components/ChordExample.svelte';
 	import ChordGlyph from '$lib/components/ChordGlyph.svelte';
 	import NoteLabel from '$lib/components/NoteLabel.svelte';
@@ -63,11 +62,9 @@
 	}
 
 	/**
-	 * Theory's new docked keyboard (KBD-01, Scope Decision 2): unlike every
-	 * other page in this phase, Theory previously had no playable keyboard
-	 * at all - this is a pure addition, not a relocation. Plain always-
-	 * inspectable tap-to-hear board (`notes={[]}`), not bound to any lesson
-	 * chord; every existing section/control below is unchanged.
+	 * Theory's playable keyboard (Scope Decision 2): a plain always-inspectable
+	 * tap-to-hear board (`notes={[]}`), not bound to any lesson chord, rendered
+	 * inline in the page's own scrolling flow.
 	 */
 	let inspectPayload = $state<InspectPayload | null>(null);
 
@@ -75,30 +72,10 @@
 		inspectPayload = payload;
 	}
 
-	const dockToken = Symbol('theory-dock');
-	const dockRegistry = getDockRegistry();
-
-	onMount(() => {
-		dockRegistry?.register({
-			token: dockToken,
-			keyboard: dockedKeyboard,
-			register: dockedRegister
-		});
-	});
-
 	onDestroy(() => {
 		clearTimeout(resolutionTimer);
-		dockRegistry?.clear(dockToken);
 	});
 </script>
-
-{#snippet dockedKeyboard()}
-	<PianoKeyboard notes={[]} inspectable onInspect={handleInspect} />
-{/snippet}
-
-{#snippet dockedRegister()}
-	<InspectRegister payload={inspectPayload} idleText="Tap a key to hear it." />
-{/snippet}
 
 {#snippet hook(suffix: string)}
 	{@const line = mnemonicFor(suffix)}
@@ -121,6 +98,15 @@
 				it.
 			</p>
 		</header>
+
+		<section
+			class="border-ink bg-paper-bright flex flex-col gap-4 border-2 px-4 py-6"
+			data-testid="section-keyboard"
+		>
+			<p class="text-label font-mono uppercase" style="letter-spacing: 0.08em;">Try the keys</p>
+			<PianoKeyboard notes={[]} inspectable onInspect={handleInspect} />
+			<InspectRegister payload={inspectPayload} idleText="Tap a key to hear it." />
+		</section>
 
 		<section
 			class="border-ink bg-paper-bright flex flex-col gap-4 border-2 px-4 py-6"
