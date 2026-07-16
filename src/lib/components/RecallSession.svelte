@@ -222,6 +222,14 @@
 	 */
 	$effect(() => {
 		if (pageState !== 'reviewing' || currentItem?.mode === 'formula-build') return;
+		// A formula-mode card only shows a meaningful keyboard when its fact is
+		// a chord: the reveal spells the chord's notes on the board. An
+		// interval-size or scale-degree formula card has no keyboard
+		// relationship, so its dockedKeyboard would fall through to an empty
+		// <PianoKeyboard notes={[]} inspectable /> with nothing to inspect -
+		// skip registration entirely rather than dock an unrelated blank board
+		// (IN-01).
+		if (currentItem?.mode === 'formula' && currentFact?.factKind !== 'chord-formula') return;
 		// inputRequired for Mode A (see-play): the docked keyboard is the sole
 		// answer-input surface (tap the chord, then Check), so the dock must
 		// never hide it even if collapse was persisted on a passive page

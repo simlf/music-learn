@@ -1061,7 +1061,7 @@ describe('RecallSession docked keyboard (KBD-01/KBD-03, Phase 15 Plan 06)', () =
 		expect(registry.current?.keyboard).toBeTypeOf('function');
 	});
 
-	it("advancing past a Mode C card (BuildSession's onComplete) clears back to the next card's docked keyboard, with no stale registration in between", async () => {
+	it("advancing past a Mode C card (BuildSession's onComplete) clears the Mode C registration; a non-chord formula card docks nothing (IN-01)", async () => {
 		const cardA = makeCard('chord-formula:Cm7', 'chord-formula', 'formula-build');
 		const cardB = makeCard('interval-size:m3', 'interval-size', 'formula');
 		introduceNewCardsMock.mockResolvedValue(0);
@@ -1082,11 +1082,14 @@ describe('RecallSession docked keyboard (KBD-01/KBD-03, Phase 15 Plan 06)', () =
 		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
 		await waitFor(() => expect(screen.getByText("What's the interval?")).toBeInTheDocument());
-		// The next card (formula mode) is now docked - registry.current
-		// switched back to RecallSession's own dockedKeyboard registration,
-		// never left null.
-		expect(registry.current).not.toBeNull();
-		expect(registry.current?.keyboard).toBeTypeOf('function');
+		// The next card is a formula-mode interval-size fact, which has no
+		// keyboard relationship: RecallSession deliberately declines to register
+		// a dockedKeyboard for it (IN-01) rather than dock an unrelated empty
+		// board. registry.current going null here also proves BuildSession's
+		// Mode C registration was cleared, not left stale - a lingering Mode C
+		// registration would surface as a non-null current holding the build
+		// keyboard.
+		expect(registry.current).toBeNull();
 	});
 
 	it('Mode A (see-play): the docked keyboard is interactive - tapping sounds via mocked playNote and toggles selection', async () => {
