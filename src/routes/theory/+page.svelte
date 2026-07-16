@@ -79,7 +79,7 @@
 	const dockRegistry = getDockRegistry();
 
 	onMount(() => {
-		dockRegistry.register({
+		dockRegistry?.register({
 			token: dockToken,
 			keyboard: dockedKeyboard,
 			register: dockedRegister
@@ -88,7 +88,7 @@
 
 	onDestroy(() => {
 		clearTimeout(resolutionTimer);
-		dockRegistry.clear(dockToken);
+		dockRegistry?.clear(dockToken);
 	});
 </script>
 

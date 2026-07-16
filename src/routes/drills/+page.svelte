@@ -349,12 +349,12 @@
 	const dockInputRequired = $derived(question.direction === 'construction');
 	$effect(() => {
 		if (isShortLandscape) return;
-		dockRegistry.register({
+		dockRegistry?.register({
 			token: dockToken,
 			keyboard: dockedKeyboard,
 			inputRequired: dockInputRequired
 		});
-		return () => dockRegistry.clear(dockToken);
+		return () => dockRegistry?.clear(dockToken);
 	});
 
 	// Server-derived stats (D-02): need-weighting, the review bucket, and the

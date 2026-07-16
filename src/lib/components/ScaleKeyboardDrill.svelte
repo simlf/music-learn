@@ -139,11 +139,11 @@
 	const drillDone = $derived(drill.done);
 	$effect(() => {
 		if (drillDone) {
-			dockRegistry.clear(dockToken);
+			dockRegistry?.clear(dockToken);
 		} else {
 			// inputRequired: tapping the key-strip IS the drill - the dock must
 			// never hide it, even if collapse was persisted on a passive page (WR-01).
-			dockRegistry.register({ token: dockToken, keyboard: keyStrip, inputRequired: true });
+			dockRegistry?.register({ token: dockToken, keyboard: keyStrip, inputRequired: true });
 		}
 	});
 
@@ -154,7 +154,7 @@
 	// Practice mode unmounts (T-15-03).
 	onDestroy(() => {
 		clearTimeout(wrongTimer);
-		dockRegistry.clear(dockToken);
+		dockRegistry?.clear(dockToken);
 	});
 
 	function scrollTonicIntoView() {

@@ -235,12 +235,12 @@
 		// never hide it even if collapse was persisted on a passive page
 		// (WR-01). Mode B (hear-name) and formula reveals are inspect-only and
 		// keep the normal collapse handle.
-		dockRegistry.register({
+		dockRegistry?.register({
 			token: dockToken,
 			keyboard: dockedKeyboard,
 			inputRequired: currentItem?.mode === 'see-play'
 		});
-		return () => dockRegistry.clear(dockToken);
+		return () => dockRegistry?.clear(dockToken);
 	});
 
 	/** The live day-interval tag for one of the four grade buttons (D-04). */

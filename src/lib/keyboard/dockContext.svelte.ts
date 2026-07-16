@@ -74,7 +74,19 @@ export function setDockRegistry(registry: DockRegistry): void {
 	setContext(DOCK_CONTEXT_KEY, registry);
 }
 
-/** Reads the shared dock registry from context (called by every page). */
-export function getDockRegistry(): DockRegistry {
-	return getContext<DockRegistry>(DOCK_CONTEXT_KEY);
+/**
+ * Reads the shared dock registry from context (called by every page).
+ *
+ * Returns `undefined` when no provider set the key - which happens for real:
+ * BuildSession renders standalone (`/build`) with no layout-provided registry
+ * and deliberately degrades to inline rendering when this is falsy (see its
+ * `Boolean(dockRegistry)` guard). The return type reflects that reality
+ * (`DockRegistry | undefined`) rather than asserting non-null, so every caller
+ * is forced to acknowledge the standalone-render case instead of blindly
+ * dereferencing and throwing at an arbitrary call site (IN-03). Callers that
+ * only ever run under the layout still use optional access (`?.`), a runtime
+ * no-op there but honest about the seam.
+ */
+export function getDockRegistry(): DockRegistry | undefined {
+	return getContext<DockRegistry | undefined>(DOCK_CONTEXT_KEY);
 }

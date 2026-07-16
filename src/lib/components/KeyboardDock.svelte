@@ -25,8 +25,11 @@
 	 * audio engine.
 	 */
 
+	// Lives in the layout, which always provides the registry - but the seam is
+	// typed as possibly-undefined (IN-03), so read `current` optionally: a
+	// runtime no-op here, honest about the type.
 	const registry = getDockRegistry();
-	const config = $derived(registry.current);
+	const config = $derived(registry?.current ?? null);
 
 	let collapsed = $state(readDockedKeyboardCollapsed());
 	let dockEl: HTMLDivElement | undefined = $state();

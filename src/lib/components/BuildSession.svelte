@@ -480,16 +480,16 @@
 			// inputRequired: while building, the docked keyboard is the sole
 			// construction-input surface (Mode C) - never hide it, even if
 			// collapse was persisted on a passive page (WR-01).
-			dockRegistry.register({ token: buildDockToken, keyboard: buildKeyboard, inputRequired: true });
+			dockRegistry?.register({ token: buildDockToken, keyboard: buildKeyboard, inputRequired: true });
 		} else {
-			dockRegistry.clear(buildDockToken);
+			dockRegistry?.clear(buildDockToken);
 		}
 	});
 
 	onDestroy(() => {
 		clearTimeout(flashTimer);
 		clearTimeout(feedbackTimer);
-		if (shouldDock) dockRegistry.clear(buildDockToken);
+		if (shouldDock) dockRegistry?.clear(buildDockToken);
 	});
 
 	// Embedding seam (13-05): runs once at component init, after every function

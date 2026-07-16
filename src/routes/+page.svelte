@@ -148,7 +148,7 @@
 	}
 
 	onMount(() => {
-		dockRegistry.register({
+		dockRegistry?.register({
 			token: dockToken,
 			keyboard: dockedKeyboard,
 			register: dockedRegister
@@ -156,7 +156,7 @@
 	});
 
 	onDestroy(() => {
-		dockRegistry.clear(dockToken);
+		dockRegistry?.clear(dockToken);
 	});
 </script>
 
