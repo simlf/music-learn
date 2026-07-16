@@ -81,6 +81,7 @@ import {
 	soundEnabled,
 	studyModeEnabled
 } from './audio';
+import { toAscendingPitches } from './voicing';
 
 /** Lets every queued ensureReady -> play chain settle. */
 function flush(): Promise<void> {
@@ -302,6 +303,55 @@ describe('playArpeggio', () => {
 			playArpeggio([], { staggerMs: 260 });
 			await vi.advanceTimersByTimeAsync(1000);
 			expect(mockTone.synths).toHaveLength(0);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('rolls a scale ascending, matching the block-strike voicing', async () => {
+		vi.useFakeTimers();
+		try {
+			const notes = ['G', 'A', 'B', 'C', 'D', 'E', 'F#', 'G'];
+			playArpeggio(notes, { staggerMs: 260 });
+
+			await vi.advanceTimersByTimeAsync(0);
+			for (let i = 1; i < notes.length; i++) {
+				await vi.advanceTimersByTimeAsync(260);
+			}
+
+			const played = synth().triggerAttackRelease.mock.calls.map((call) => call[0]);
+			expect(played).toEqual(['G4', 'A4', 'B4', 'C5', 'D5', 'E5', 'F#5', 'G5']);
+			expect(played).toEqual(toAscendingPitches(notes));
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('startDelayMs offsets every attack so nothing sounds at t=0', async () => {
+		vi.useFakeTimers();
+		try {
+			playArpeggio(['C', 'E', 'G'], { staggerMs: 260, startDelayMs: 260 });
+
+			await vi.advanceTimersByTimeAsync(0);
+			expect(mockTone.synths).toHaveLength(0);
+
+			await vi.advanceTimersByTimeAsync(260);
+			expect(synth().triggerAttackRelease).toHaveBeenNthCalledWith(
+				1,
+				'C4',
+				'8n',
+				undefined,
+				0.75
+			);
+
+			await vi.advanceTimersByTimeAsync(260);
+			expect(synth().triggerAttackRelease).toHaveBeenNthCalledWith(
+				2,
+				'E4',
+				'8n',
+				undefined,
+				0.75
+			);
 		} finally {
 			vi.useRealTimers();
 		}
