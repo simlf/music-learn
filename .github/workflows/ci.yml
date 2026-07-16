@@ -5,6 +5,13 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -15,15 +22,18 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
 
       - name: Install root deps
         run: npm ci
 
-      - name: Sync SvelteKit
-        run: npm run check
-
       - name: Root unit tests
         run: npm run test
+
+      - name: Type-check (svelte-check)
+        run: npm run check
 
       - name: Install server deps
         working-directory: server
