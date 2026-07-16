@@ -129,8 +129,16 @@
 	 * so a finished drill's dock shows no stray keys; `reset()` flips
 	 * `drill.done` back to false, which re-registers on the next effect run.
 	 */
+	// Track only the `done` boolean, not the whole `drill` object: `drill` is
+	// reassigned (`drill = result.state`) on every correct tap, so an effect
+	// reading `drill.done` directly would re-run - and re-register a fresh dock
+	// config object - on each tap, needlessly re-triggering KeyboardDock's
+	// --dock-height effect. A $derived boolean only notifies the effect when its
+	// value actually flips, so registration fires once per done<->not-done edge
+	// (IN-02).
+	const drillDone = $derived(drill.done);
 	$effect(() => {
-		if (drill.done) {
+		if (drillDone) {
 			dockRegistry.clear(dockToken);
 		} else {
 			// inputRequired: tapping the key-strip IS the drill - the dock must
