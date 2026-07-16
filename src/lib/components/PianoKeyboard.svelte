@@ -535,7 +535,14 @@
 	 * `flashWrongClass`'s own letter+octave equality check), since pending
 	 * only ever dims an already-role-lit key, never an unlit one, and a
 	 * same-letter duplicate key at a different octave stays unaffected
-	 * unless its own { letter, octave } is listed.
+	 * unless its own { letter, octave } is listed. The caller must pass the
+	 * ASSIGNED note's own correctly-spelled letter (`key.note?.letter`), not
+	 * the physical key's generic label (`key.letter`/`key.sharpLetter`) -
+	 * `pendingKeys` is built from `earnedNotes`' own spelling (e.g. "B♭"),
+	 * which for a black key never equals its generic `sharpLetter` ("A♯"),
+	 * and for an enharmonic-wrapped note (e.g. E♯ landing on the F key,
+	 * keyboardLayout's chroma fallback) never equals the white key's own
+	 * base letter either.
 	 */
 	function pendingClass(letter: string, octave: number, role: IntervalRole | undefined): string {
 		return role && pendingKeys?.some((k) => k.letter === letter && k.octave === octave)
@@ -565,7 +572,11 @@
 			)} {flashWrongClass(key.letter, octaveForWhiteIndex(key.index))} {pulseClass(
 				key.letter,
 				key.note?.role
-			)} {pendingClass(key.letter, octaveForWhiteIndex(key.index), key.note?.role)}"
+			)} {pendingClass(
+				key.note?.letter ?? key.letter,
+				octaveForWhiteIndex(key.index),
+				key.note?.role
+			)}"
 			style="left: {key.leftPct}%; width: {whiteKeyWidthPct}%;"
 			role={keysActive ? 'button' : undefined}
 			tabindex={keysActive ? 0 : undefined}
@@ -614,7 +625,7 @@
 				key.sharpLetter,
 				octaveForBlackAfterWhiteIndex(key.position - 1)
 			)} {pulseClass(key.sharpLetter, key.note?.role)} {pendingClass(
-				key.sharpLetter,
+				key.note?.letter ?? key.sharpLetter,
 				octaveForBlackAfterWhiteIndex(key.position - 1),
 				key.note?.role
 			)}"
