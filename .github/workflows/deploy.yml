@@ -1,0 +1,99 @@
+name: deploy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-infrabox667
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_API: ghcr.io/simlf/music-learn-api
+  IMAGE_WEB: ghcr.io/simlf/music-learn-web
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+      - run: npm ci
+      - run: npm run test
+      - run: npm run check
+      - working-directory: server
+        run: npm ci
+      - working-directory: server
+        run: npm run test
+
+  build-push:
+    needs: gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./server
+          push: true
+          tags: |
+            ${{ env.IMAGE_API }}:latest
+            ${{ env.IMAGE_API }}:${{ github.sha }}
+
+      - name: Build and push web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          build-args: |
+            VITE_API_BASE_URL=/api
+          push: true
+          tags: |
+            ${{ env.IMAGE_WEB }}:latest
+            ${{ env.IMAGE_WEB }}:${{ github.sha }}
+
+  deploy:
+    needs: build-push
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Deploy on infrabox667 over SSH
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_KEY }}
+          envs: IMAGE_TAG
+          script_stop: true
+          script: |
+            set -e
+            cd ~/music-learn
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d
+            docker image prune -f
+        env:
+          IMAGE_TAG: ${{ github.sha }}
