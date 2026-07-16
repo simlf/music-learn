@@ -1,0 +1,34 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install root deps
+        run: npm ci
+
+      - name: Sync SvelteKit
+        run: npm run check
+
+      - name: Root unit tests
+        run: npm run test
+
+      - name: Install server deps
+        working-directory: server
+        run: npm ci
+
+      - name: Server unit tests
+        working-directory: server
+        run: npm run test
