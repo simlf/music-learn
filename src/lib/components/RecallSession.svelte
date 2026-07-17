@@ -35,6 +35,7 @@
 	import Button from './Button.svelte';
 	import RevealInsight from './RevealInsight.svelte';
 	import BuildSession from './BuildSession.svelte';
+	import HintLadder from './HintLadder.svelte';
 
 	/**
 	 * Mode-signal chip label (UI-SPEC "Mode Surfaces" / Scope Decision 8):
@@ -153,6 +154,19 @@
 	/** Compound (factId, mode) key, matching deck.ts's own [factId+mode] convention. */
 	function cardKey(factId: string, mode: string): string {
 		return `${factId}|${mode}`;
+	}
+
+	/**
+	 * Single source of per-mode HintLadder layer selection (HINT-01), reused by
+	 * Plan 04 for hear-name. `see-play` and `hear-name` get the full 4-item
+	 * ladder; `formula-build` skips the formula-chip layer (D-03) since the
+	 * formula is already on-screen there, leaving the 3-item ladder.
+	 */
+	function hintLayersFor(mode: Mode): ('family' | 'formula' | 'keyboard' | 'spelling')[] {
+		if (mode === 'formula-build') {
+			return ['family', 'keyboard', 'spelling'];
+		}
+		return ['family', 'formula', 'keyboard', 'spelling'];
 	}
 
 	async function load(): Promise<void> {
@@ -715,6 +729,12 @@
 			</div>
 
 			{#if !modeAAnswered}
+				{#key cardKey(currentItem.factId, currentItem.mode)}
+					<div class="mt-6">
+						<HintLadder symbol={currentFact.symbol} layers={hintLayersFor('see-play')} />
+					</div>
+				{/key}
+
 				<div class="mode-a-controls mt-4">
 					<div class="mode-a-controls__primary">
 						<Button
