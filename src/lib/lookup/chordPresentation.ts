@@ -1,4 +1,4 @@
-import { intervalBetween, toAsciiAccidentals } from '$lib/theory/interval';
+import { intervalBetween, intervalFromShort, toAsciiAccidentals } from '$lib/theory/interval';
 import type { ChordResult, IntervalRole } from '$lib/theory/types';
 
 /**
@@ -55,4 +55,22 @@ export function aliasLine(chord: ChordResult): string {
 		: chord.symbol;
 	const forms = [glyphSymbol, ...chord.aliases.map((alias) => chord.root + alias)];
 	return [...new Set(forms)].join(' = ');
+}
+
+/**
+ * Layer 2's generated (never hardcoded) plain-English formula sentence:
+ * "From the root, stack a minor 3rd, then a diminished 5th." Built from
+ * formulaFor's entries beyond the root, each rendered through the shared
+ * intervalFromShort(...).long vocabulary (the same diction BuildSession's
+ * construction steps use, BUILD-03), joined by one general template so a
+ * triad (2 tones) and a seventh chord (3 tones) both fall out of the same
+ * join with no per-count branching or per-chord literals. Total: an
+ * unrecognized chord (empty notes) yields "", never throws.
+ */
+export function formulaSentence(chord: ChordResult): string {
+	const longs = formulaFor(chord)
+		.filter((entry) => entry.role !== 'root')
+		.map((entry) => intervalFromShort(entry.label).long);
+	if (longs.length === 0) return '';
+	return `From the root, stack a ${longs.join(', then a ')}.`;
 }
