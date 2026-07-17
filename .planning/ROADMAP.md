@@ -463,6 +463,23 @@ Plans:
 
 **Design reference**: `.planning/sketches/010-chord-explainer/` (winner Variant A: hint ladder; C dossier folded into the deepest layer)
 **UI hint**: yes
+**Plans**: 4 plans
+
+**Wave 1**
+
+- [ ] 17-01-PLAN.md — Copy/derivation helpers: familyLineFor (3 triads) + formulaSentence (generated Layer 2 copy) [HINT-03]
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 17-02-PLAN.md — HintLadder.svelte: cumulative escalating hint-ladder component, adaptive 4/3-layer [HINT-01, HINT-03]
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 17-03-PLAN.md — Wire ladder into RecallSession: see-play (pre-answer) + formula-build + hintLayersFor helper [HINT-01, HINT-02]
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 17-04-PLAN.md — Wire ladder into hear-name (post-answer, timer cancel + Continue) + end-of-phase visual verify [HINT-01, HINT-02]
 
 ### Phase 18: Your Songs' Chords
 
