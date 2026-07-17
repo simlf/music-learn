@@ -1,8 +1,6 @@
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import BuildSession from './BuildSession.svelte';
-import KeyboardDock from './KeyboardDock.svelte';
-import { createDockRegistry, DOCK_CONTEXT_KEY, type DockRegistry } from '$lib/keyboard/dockContext.svelte';
 import { Rating } from '$lib/srs/scheduler';
 import * as deckModule from '$lib/srs/deck';
 
@@ -798,40 +796,30 @@ describe('BuildSession embedding seam (13-05, Task 1)', () => {
 });
 
 /**
- * Component test for BuildSession (Task 1, 15-07): the constructable input
- * keyboard docks with the shared keyboard dock only when embedded
- * (`embedFact` set AND a dock provider is present in context), and stays
- * inline exactly as before in every other case (standalone /build, or an
- * embedded render with no dock provider - the degrade-to-inline guard).
+ * Component test for BuildSession's constructable input keyboard: it renders
+ * inline in the build-active flow, both standalone (`/build`) and embedded
+ * (Mode C, `embedFact` set).
  */
-describe('BuildSession docked constructable keyboard (Task 1, 15-07, KBD-01/KBD-03)', () => {
-	function renderEmbeddedWithDock(): { registry: DockRegistry } {
-		const registry = createDockRegistry();
-		const context = new Map([[DOCK_CONTEXT_KEY, registry]]);
-		render(BuildSession, {
-			props: { embedFact: { kind: 'chord', symbol: 'Cm7' } },
-			context
+describe('BuildSession inline constructable keyboard (KBD-01/KBD-03)', () => {
+	function renderEmbedded() {
+		return render(BuildSession, {
+			props: { embedFact: { kind: 'chord', symbol: 'Cm7' } }
 		});
-		render(KeyboardDock, { context });
-		return { registry };
 	}
 
-	it('embedded with a dock provider present: the constructable keyboard registers with the dock and does not render in BuildSession\'s own flow', async () => {
-		const { registry } = renderEmbeddedWithDock();
+	it('embedded: the constructable keyboard renders inline and a tap routes through handleConstructTap', async () => {
+		renderEmbedded();
 
-		expect(registry.current).not.toBeNull();
-		expect(registry.current?.keyboard).toBeTypeOf('function');
-		// The keyboard exists exactly once in the document (rendered by
-		// KeyboardDock, not duplicated inside BuildSession's own flow).
+		// The keyboard exists exactly once in BuildSession's own flow.
 		expect(screen.getAllByRole('img', { name: /piano keyboard/i })).toHaveLength(1);
-		// A docked construct tap still routes through handleConstructTap: the
-		// build advances (feedback shows) exactly as the inline case does.
+		// A construct tap routes through handleConstructTap: the build advances
+		// (feedback shows).
 		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
 		expect(screen.getByTestId('build-feedback')).toBeInTheDocument();
 	});
 
-	it('reaching the embedded complete state clears the dock registration', async () => {
-		const { registry } = renderEmbeddedWithDock();
+	it('reaching the embedded complete state replaces the constructable keyboard with the completion view', async () => {
+		renderEmbedded();
 
 		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
 		await new Promise((resolve) => setTimeout(resolve, 700));
@@ -841,25 +829,9 @@ describe('BuildSession docked constructable keyboard (Task 1, 15-07, KBD-01/KBD-
 		await new Promise((resolve) => setTimeout(resolve, 700));
 
 		expect(screen.getByTestId('build-complete')).toBeInTheDocument();
-		expect(registry.current).toBeNull();
 	});
 
-	it('unmounting an embedded, docked instance clears the dock registration', () => {
-		const registry = createDockRegistry();
-		const context = new Map([[DOCK_CONTEXT_KEY, registry]]);
-		const { unmount } = render(BuildSession, {
-			props: { embedFact: { kind: 'chord', symbol: 'Cm7' } },
-			context
-		});
-
-		expect(registry.current).not.toBeNull();
-
-		unmount();
-
-		expect(registry.current).toBeNull();
-	});
-
-	it('embedded with NO dock provider in context (getDockRegistry returns undefined) degrades to inline rendering without throwing', () => {
+	it('embedded renders the build flow without throwing and shows the first step', () => {
 		expect(() =>
 			render(BuildSession, { props: { embedFact: { kind: 'chord', symbol: 'Cm7' } } })
 		).not.toThrow();
@@ -868,54 +840,24 @@ describe('BuildSession docked constructable keyboard (Task 1, 15-07, KBD-01/KBD-
 		expect(screen.getAllByRole('img', { name: /piano keyboard/i })).toHaveLength(1);
 	});
 
-	it('standalone (no embedFact, no provider): the constructable keyboard renders inline and register is never called', async () => {
-		const registerSpy = vi.fn();
-		const registry = createDockRegistry();
-		const spiedRegistry: DockRegistry = {
-			get current() {
-				return registry.current;
-			},
-			register: (config) => {
-				registerSpy(config);
-				registry.register(config);
-			},
-			clear: (token) => registry.clear(token)
-		};
-		const context = new Map([[DOCK_CONTEXT_KEY, spiedRegistry]]);
-
-		render(BuildSession, { context });
+	it('standalone (no embedFact): the constructable keyboard renders inline', async () => {
+		render(BuildSession);
 		await fireEvent.click(screen.getByRole('button', { name: 'C' }));
 		await fireEvent.click(screen.getByRole('button', { name: 'minor 7th' }));
 
 		expect(screen.getAllByRole('img', { name: /piano keyboard/i })).toHaveLength(1);
-		expect(registerSpy).not.toHaveBeenCalled();
 	});
 
-	// WR-03 regression guard: the review flagged a possible scroll-before-mount
-	// race - when embedded (Mode C), buildKeyboard is rendered by KeyboardDock
-	// reactively (not inline), so scrollRootIntoView's one-shot
-	// `tick().then(...)` might fire before `bind:this={containerEl}` is set.
-	// This test reproduces the real-app ordering (dock already mounted, then a
-	// keyed embedded BuildSession registers) and confirms the root key IS
-	// scrolled into view: Svelte flushes the cross-component dock re-render
-	// within the same cycle before tick() resolves, so containerEl is populated
-	// when the continuation runs. Kept as a guard against a future regression.
-	it('embedded Mode C (dock already mounted) scrolls the root key into view once the docked keyboard mounts', async () => {
+	// WR-03 regression guard: scrollRootIntoView's one-shot `tick().then(...)`
+	// must find `bind:this={containerEl}` populated. Confirms the root key IS
+	// scrolled into view once the embedded (Mode C) keyboard mounts inline.
+	it('embedded Mode C scrolls the root key into view once the keyboard mounts', async () => {
 		const scrollSpy = vi.fn();
 		const original = Element.prototype.scrollIntoView;
 		Element.prototype.scrollIntoView = scrollSpy;
 		try {
-			// Faithful to the real app: KeyboardDock lives in the layout and is
-			// ALREADY mounted (empty registry -> renders nothing) before a
-			// RecallSession Mode C card mounts a keyed embedded BuildSession that
-			// registers its constructable keyboard. containerEl is then set by
-			// KeyboardDock's reactive re-render, not by a synchronous inline render.
-			const registry = createDockRegistry();
-			const context = new Map([[DOCK_CONTEXT_KEY, registry]]);
-			render(KeyboardDock, { context });
 			render(BuildSession, {
-				props: { embedFact: { kind: 'chord', symbol: 'Cm7' } },
-				context
+				props: { embedFact: { kind: 'chord', symbol: 'Cm7' } }
 			});
 			await waitFor(() => {
 				const rootKey = document.querySelector('.piano-keyboard__key--root');

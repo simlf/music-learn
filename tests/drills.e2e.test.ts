@@ -3,24 +3,14 @@ import { createRawSnippet } from 'svelte';
 import { readable } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DrillsPage from '../src/routes/drills/+page.svelte';
-import KeyboardDock from '../src/lib/components/KeyboardDock.svelte';
-import { createDockRegistry, DOCK_CONTEXT_KEY } from '../src/lib/keyboard/dockContext.svelte';
 
 /**
- * Drills' keyboard now lives in the shared dock (Phase 15 Plan 05) rather
- * than rendering inline. This helper supplies a real dock registry via the
- * `context` option (the same seam `+layout.svelte`'s `setDockRegistry` uses)
- * and renders `KeyboardDock` alongside the page so the docked keyboard
- * content is present in the same `document.body` that `screen` queries -
- * mirrors `drillsDock.test.ts`'s own harness (established by
- * lookup.e2e.test.ts/theory.e2e.test.ts in Plan 03).
+ * Drills' keyboard renders inline in the page's own content flow
+ * (`.drill-layout__keyboard`), so a plain page render puts the keyboard
+ * content in the same `document.body` that `screen` queries.
  */
 function renderDrillsPage() {
-	const registry = createDockRegistry();
-	const context = new Map([[DOCK_CONTEXT_KEY, registry]]);
-	const page = render(DrillsPage, { context });
-	render(KeyboardDock, { context });
-	return page;
+	return render(DrillsPage);
 }
 
 // +layout.svelte reads the `$page` store from $app/stores to mark the active
