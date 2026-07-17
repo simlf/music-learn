@@ -145,14 +145,18 @@
 		 */
 		pulseToken?: number;
 		/**
-		 * Letters whose already-role-lit key should sit dimmed (`--pending`,
-		 * opacity 0.28) during the study-mode arpeggio roll (Phase 16, HEAR-02)
-		 * — each chord tone stays pending until its own tick sounds. Only ever
-		 * dims a key that already carries an interval-role fill; a letter with
-		 * no role in `notes` is unaffected even if listed here. Omitting it
-		 * leaves rendering byte-identical.
+		 * { letter, octave } keys whose already-role-lit key should sit dimmed
+		 * (`--pending`, opacity 0.28) during the study-mode arpeggio roll
+		 * (Phase 16, HEAR-02) — each chord/scale tone stays pending until its
+		 * own tick sounds. Octave-specific (mirrors `flashWrongKey`'s own
+		 * letter+octave keying), so a same-letter duplicate key at a different
+		 * octave (e.g. a scale's octave-up tonic) is unaffected unless its OWN
+		 * { letter, octave } is listed — it un-dims one octave at a time, never
+		 * both together. Only ever dims a key that already carries an
+		 * interval-role fill; a letter with no role in `notes` is unaffected
+		 * even if listed here. Omitting it leaves rendering byte-identical.
 		 */
-		pendingLetters?: Set<string>;
+		pendingKeys?: { letter: string; octave: number }[];
 	}
 
 	let {
@@ -170,7 +174,7 @@
 		onConstructTap,
 		flashWrongKey,
 		pulseToken,
-		pendingLetters
+		pendingKeys
 	}: Props = $props();
 
 	/** Interval-from-root short label for a highlighted note (sketch 003). "R" for the root. */
@@ -526,12 +530,24 @@
 	/**
 	 * Study-mode arpeggio "not yet sounded" dim state (Phase 16, HEAR-02):
 	 * mirrors `selectedClass`'s `!role` guard shape but INVERTED - applies
-	 * only WHEN there IS a role AND the key's letter is in `pendingLetters`,
-	 * since pending only ever dims an already-role-lit key, never an unlit
-	 * one.
+	 * only WHEN there IS a role AND `pendingKeys` contains an entry whose
+	 * letter AND octave both match this exact physical key (mirroring
+	 * `flashWrongClass`'s own letter+octave equality check), since pending
+	 * only ever dims an already-role-lit key, never an unlit one, and a
+	 * same-letter duplicate key at a different octave stays unaffected
+	 * unless its own { letter, octave } is listed. The caller must pass the
+	 * ASSIGNED note's own correctly-spelled letter (`key.note?.letter`), not
+	 * the physical key's generic label (`key.letter`/`key.sharpLetter`) -
+	 * `pendingKeys` is built from `earnedNotes`' own spelling (e.g. "B♭"),
+	 * which for a black key never equals its generic `sharpLetter` ("A♯"),
+	 * and for an enharmonic-wrapped note (e.g. E♯ landing on the F key,
+	 * keyboardLayout's chroma fallback) never equals the white key's own
+	 * base letter either.
 	 */
-	function pendingClass(letter: string, role: IntervalRole | undefined): string {
-		return role && pendingLetters?.has(letter) ? 'piano-keyboard__key--pending' : '';
+	function pendingClass(letter: string, octave: number, role: IntervalRole | undefined): string {
+		return role && pendingKeys?.some((k) => k.letter === letter && k.octave === octave)
+			? 'piano-keyboard__key--pending'
+			: '';
 	}
 </script>
 
@@ -556,7 +572,11 @@
 			)} {flashWrongClass(key.letter, octaveForWhiteIndex(key.index))} {pulseClass(
 				key.letter,
 				key.note?.role
-			)} {pendingClass(key.letter, key.note?.role)}"
+			)} {pendingClass(
+				key.note?.letter ?? key.letter,
+				octaveForWhiteIndex(key.index),
+				key.note?.role
+			)}"
 			style="left: {key.leftPct}%; width: {whiteKeyWidthPct}%;"
 			role={keysActive ? 'button' : undefined}
 			tabindex={keysActive ? 0 : undefined}
@@ -605,7 +625,8 @@
 				key.sharpLetter,
 				octaveForBlackAfterWhiteIndex(key.position - 1)
 			)} {pulseClass(key.sharpLetter, key.note?.role)} {pendingClass(
-				key.sharpLetter,
+				key.note?.letter ?? key.sharpLetter,
+				octaveForBlackAfterWhiteIndex(key.position - 1),
 				key.note?.role
 			)}"
 			style="left: {key.leftPct}%; width: {blackKeyWidthPct}%;"

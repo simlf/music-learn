@@ -1052,7 +1052,13 @@ describe('BuildSession study-mode roll, HEAR-02', () => {
 			await completeCm7();
 
 			expect(playArpeggioMock).toHaveBeenCalledTimes(1);
-			expect(playArpeggioMock).toHaveBeenCalledWith(['C', 'E♭', 'G', 'B♭'], { staggerMs: 260 });
+			// The initial reveal's startDelayMs equals the 260ms visual un-pend
+			// delay, so each note's audio attack and its key's un-dim land on the
+			// same tick (WR-01 sync proof).
+			expect(playArpeggioMock).toHaveBeenCalledWith(['C', 'E♭', 'G', 'B♭'], {
+				staggerMs: 260,
+				startDelayMs: 260
+			});
 			// Study mode REPLACES the plain block auto-play: no immediate block strike.
 			expect(playChordMock).not.toHaveBeenCalled();
 			// Every earned key starts dimmed (pending), awaiting its own turn to sound.
@@ -1102,6 +1108,12 @@ describe('BuildSession study-mode roll, HEAR-02', () => {
 			await fireEvent.click(screen.getByRole('button', { name: 'Hear again' }));
 
 			expect(playArpeggioMock).toHaveBeenCalledTimes(1);
+			// Hear-again has no stamp-in to wait out, so its startDelayMs is 0 -
+			// audio and visuals both start at t=0, still in sync (WR-01).
+			expect(playArpeggioMock).toHaveBeenCalledWith(
+				['C', 'E♭', 'G', 'B♭'],
+				expect.objectContaining({ startDelayMs: 0 })
+			);
 			expect(playChordMock).not.toHaveBeenCalled();
 
 			await new Promise((resolve) => setTimeout(resolve, 1100));
@@ -1143,6 +1155,64 @@ describe('BuildSession study-mode roll, HEAR-02', () => {
 			await new Promise((resolve) => setTimeout(resolve, 1400));
 
 			expect(playChordMock).not.toHaveBeenCalled();
+		},
+		10000
+	);
+
+	it(
+		'an F major scale roll keeps the octave-up tonic pending independently of the low tonic (gap 3 / WR-03): the low F un-dims on the first tick while the octave-up F stays pending until its own tick',
+		async () => {
+			// F major (not G major) deliberately: G major's F♯ 7th degree
+			// physically wraps the keyboard's assignNotesToKeys cursor onto the
+			// SAME white key index as the low tonic (a pre-existing, unrelated
+			// keyboardLayout.ts defect - see deferred-items.md), so G major
+			// never renders two distinct role-lit tonic keys to begin with. F
+			// major's degrees don't collide, giving two genuinely distinct
+			// physical tonic keys to prove the octave-keyed pending model against.
+			studyModeEnabledMock.mockReturnValue(true);
+			render(BuildSession);
+			await fireEvent.click(screen.getByRole('button', { name: 'Scales' }));
+			await fireEvent.click(screen.getByRole('button', { name: 'F major' }));
+
+			await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			await fireEvent.click(screen.getAllByRole('button', { name: 'A key' })[0]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[1]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			await fireEvent.click(screen.getAllByRole('button', { name: 'D key' })[1]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			await fireEvent.click(screen.getAllByRole('button', { name: 'E key' })[1]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			await fireEvent.click(screen.getAllByRole('button', { name: 'F key' })[1]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+
+			// All 8 earned keys (root...seventh + the octave-up tonic) start
+			// dimmed - both physical F keys included, keyed independently by
+			// { letter, octave }.
+			expect(playArpeggioMock).toHaveBeenCalledTimes(1);
+			expect(document.querySelectorAll('.piano-keyboard__key--pending').length).toBe(8);
+
+			// Both tonic F's render with role 'root' (the octave-up close forces
+			// role back to 'root'); DOM order follows ascending physical key
+			// position, so the first match is the LOW tonic (octave 4) and the
+			// second is the octave-up tonic (octave 5).
+			const rootKeys = document.querySelectorAll('.piano-keyboard__key--root');
+			expect(rootKeys.length).toBe(2);
+			const [lowTonicKey, octaveTonicKey] = rootKeys;
+
+			// Advance exactly ONE stagger step past the initial 260ms reveal
+			// delay: only the LOW tonic's own tick (index 0) has landed.
+			await new Promise((resolve) => setTimeout(resolve, 520));
+
+			expect(lowTonicKey.className).not.toContain('piano-keyboard__key--pending');
+			expect(octaveTonicKey.className).toContain('piano-keyboard__key--pending');
+
+			// Let the roll finish so no stray timers leak into later tests.
+			await new Promise((resolve) => setTimeout(resolve, 2200));
+			expect(document.querySelectorAll('.piano-keyboard__key--pending').length).toBe(0);
 		},
 		10000
 	);
