@@ -5,8 +5,8 @@ milestone_name: Playability & Comprehension
 current_phase: 16
 current_phase_name: hear-the-chord
 status: verified
-stopped_at: Phase 17 context gathered
-last_updated: "2026-07-17T18:23:12.917Z"
+stopped_at: Phase 17 UI-SPEC approved
+last_updated: "2026-07-17T18:44:28.772Z"
 last_activity: 2026-07-16
 last_activity_desc: Phase 16 gap-closure executed + verified (16-07, 16-08)
 progress:
@@ -260,7 +260,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-17T18:23:12.905Z
-Stopped at: Phase 17 context gathered
+Last session: 2026-07-17T18:44:28.758Z
+Stopped at: Phase 17 UI-SPEC approved
 Resume file: 
-.planning/phases/17-chord-explainer/17-CONTEXT.md
+.planning/phases/17-chord-explainer/17-UI-SPEC.md
