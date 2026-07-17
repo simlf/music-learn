@@ -675,6 +675,100 @@ describe('RecallSession Mode C (formula-build: embeds BuildSession directly, REC
 });
 
 /**
+ * HintLadder wiring (17-03, HINT-01/HINT-02): the escalating "Need a hint?"
+ * ladder mounted on see-play (pre-answer only) and formula-build (whole
+ * card, chord targets only). Uses the REAL HintLadder component (not
+ * mocked) against real catalog factIds, matching this file's established
+ * convention of exercising real derivation logic against a mocked
+ * deck/audio seam only.
+ */
+describe('RecallSession hint ladder wiring (17-03: see-play + formula-build)', () => {
+	it('see-play: shows "Need a hint?" pre-answer alongside Check, reveals the family layer on tap, Check remains clickable, a correct Check still records Rating.Good, and the ladder is gone once answered', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'see-play');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		expect(screen.getByTestId('hint-cta')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Check' })).toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Need a hint?' }));
+
+		const familyLayer = screen.getByTestId('hint-layer');
+		expect(familyLayer).toHaveAttribute('data-layer', 'family');
+		expect(screen.getByRole('button', { name: 'Check' })).toBeInTheDocument();
+
+		// Cm7's exact chroma set: C (root), D♯/E♭ (third), G (fifth), A♯/B♭ (seventh).
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(recordGradeMock).toHaveBeenCalledWith(card, Rating.Good, expect.any(Date));
+		expect(screen.queryByTestId('hint-cta')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('hint-layer')).not.toBeInTheDocument();
+	});
+
+	it('formula-build: a chord-formula card renders HintLadder above the embedded BuildSession, which still mounts in its building state', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'formula-build');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-mode-chip'));
+
+		expect(screen.getByTestId('hint-cta')).toBeInTheDocument();
+		expect(screen.getByTestId('build-session')).toBeInTheDocument();
+		expect(screen.getByTestId('build-register')).toHaveTextContent('STEP 1 OF 3');
+	});
+
+	it('formula-build: a scale-formula card renders NO hint ladder but still mounts BuildSession', async () => {
+		const card = makeCard('scale-formula:G', 'scale-formula', 'formula-build');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-mode-chip'));
+
+		expect(screen.queryByTestId('hint-cta')).not.toBeInTheDocument();
+		expect(screen.getByTestId('build-session')).toBeInTheDocument();
+	});
+
+	it('per-card reset: after a wrong Check re-enqueues the card (hints were opened), its next presentation shows a fresh "Need a hint?" at depth 0', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'see-play');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Need a hint?' }));
+		expect(screen.getByTestId('hint-layer')).toBeInTheDocument();
+
+		// Miss the seventh, so the Check is wrong and Rating.Again re-enqueues the card.
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(recordGradeMock).toHaveBeenCalledWith(card, Rating.Again, expect.any(Date));
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+		await waitFor(() => expect(screen.getByText('Play it on the keyboard.')).toBeInTheDocument());
+		expect(screen.getByRole('button', { name: 'Need a hint?' })).toBeInTheDocument();
+		expect(screen.queryByTestId('hint-layer')).not.toBeInTheDocument();
+	});
+});
+
+/**
  * Unrenderable-fallback coverage (WR-01): a selected queue item whose
  * (mode, fact) combination resolves to no renderable branch must never
  * leave the card blank/control-less and permanently stalled. Every one of

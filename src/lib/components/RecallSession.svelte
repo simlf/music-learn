@@ -618,6 +618,11 @@
 		{@const embedTarget = embedTargetFor(currentItem.factId)}
 		{#if embedTarget}
 			{#key `${currentItem.factId}|${currentItem.mode}`}
+				{#if embedTarget.kind === 'chord'}
+					<div class="mt-4">
+						<HintLadder symbol={embedTarget.symbol} layers={hintLayersFor('formula-build')} />
+					</div>
+				{/if}
 				<div class="mt-4">
 					<BuildSession embedFact={embedTarget} onComplete={handleModeCNext} />
 				</div>
