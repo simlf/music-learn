@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { spellChord } from '$lib/theory/chord';
-import { formulaFor, aliasLine } from './chordPresentation';
+import { formulaFor, aliasLine, formulaSentence } from './chordPresentation';
 
 describe('formulaFor', () => {
 	it('returns R, m3, P5, m7 labels in order for Cm7 with correct letters and solfege', () => {
@@ -55,5 +55,42 @@ describe('aliasLine', () => {
 		const line = aliasLine({ ...chord, aliases: [] });
 		expect(line).toBe(chord.symbol);
 		expect(line.endsWith(' = ')).toBe(false);
+	});
+});
+
+describe('formulaSentence', () => {
+	it('generates the canonical dim worked example (two stacked minor thirds)', () => {
+		expect(formulaSentence(spellChord('Cdim'))).toBe(
+			'From the root, stack a minor 3rd, then a diminished 5th.'
+		);
+	});
+
+	it('generates the m7b5 worked example (three tones beyond root)', () => {
+		expect(formulaSentence(spellChord('Cm7b5'))).toBe(
+			'From the root, stack a minor 3rd, then a diminished 5th, then a minor 7th.'
+		);
+	});
+
+	it('generates the maj7 worked example', () => {
+		expect(formulaSentence(spellChord('Cmaj7'))).toBe(
+			'From the root, stack a major 3rd, then a perfect 5th, then a major 7th.'
+		);
+	});
+
+	it('generates from formulaFor entries, not a per-chord hardcoded string: triad yields 2 stacked tones, seventh yields 3', () => {
+		const triadSentence = formulaSentence(spellChord('Cm'));
+		const seventhSentence = formulaSentence(spellChord('Cm7'));
+		expect(triadSentence.split(', then a ')).toHaveLength(2);
+		expect(seventhSentence.split(', then a ')).toHaveLength(3);
+	});
+
+	it('is total: returns an empty string for an unrecognized chord, never throws', () => {
+		expect(formulaSentence(spellChord('nonsense'))).toBe('');
+	});
+
+	it('contains no em dashes in any generated sentence', () => {
+		for (const symbol of ['Cdim', 'Cm7b5', 'Cmaj7', 'Cm', 'C', 'C7']) {
+			expect(formulaSentence(spellChord(symbol))).not.toMatch(/—|–/);
+		}
 	});
 });
