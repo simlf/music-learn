@@ -5,15 +5,15 @@ milestone_name: Playability & Comprehension
 current_phase: 16
 current_phase_name: hear-the-chord
 status: verified
-stopped_at: Completed 16-08-PLAN.md — phase 16 verified
-last_updated: "2026-07-16T22:52:19.262Z"
+stopped_at: Phase 17 context gathered
+last_updated: "2026-07-17T18:23:12.917Z"
 last_activity: 2026-07-16
 last_activity_desc: Phase 16 gap-closure executed + verified (16-07, 16-08)
 progress:
   total_phases: 19
   completed_phases: 11
-  total_plans: 57
-  completed_plans: 57
+  total_plans: 56
+  completed_plans: 56
   percent: 58
 ---
 
@@ -260,7 +260,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-16T20:42:44.397Z
-Stopped at: Completed 16-01-PLAN.md
+Last session: 2026-07-17T18:23:12.905Z
+Stopped at: Phase 17 context gathered
 Resume file: 
-None
+.planning/phases/17-chord-explainer/17-CONTEXT.md
