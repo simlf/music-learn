@@ -586,6 +586,104 @@ describe('RecallSession Mode B (hear-name: hear the chord, pick its name, never 
 });
 
 /**
+ * Mode B post-answer hint-ladder wiring (Plan 04, HINT-01/HINT-02): the
+ * ladder must never mount before an answer is committed (D-03), and opening
+ * it must cancel the 650ms auto-advance and surface an explicit Continue
+ * button that advances with the SAME rating the timer would have used
+ * (D-04: hint depth never changes the recorded grade).
+ */
+describe('RecallSession Mode B post-answer hints (HINT-01/HINT-02: ladder gated on answer, timer cancel + Continue)', () => {
+	function getChoiceButtons(): HTMLElement[] {
+		return screen.getAllByRole('button', { name: /^Answer: / });
+	}
+
+	it('mounts no hint-cta before an answer is committed (never spoils the ear test)', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'hear-name');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		expect(screen.queryByTestId('hint-cta')).not.toBeInTheDocument();
+	});
+
+	it('mounts hint-cta once an answer is committed', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'hear-name');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Answer: Cm7' }));
+
+		expect(screen.getByTestId('hint-cta')).toBeInTheDocument();
+	});
+
+	it('opening a hint post-answer cancels the auto-advance and shows Continue; Continue then advances with the committed rating (correct choice completes the session)', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'hear-name');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Answer: Cm7' }));
+		expect(recordGradeMock).toHaveBeenCalledTimes(1);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Need a hint?' }));
+		expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument();
+
+		// Wait well past the 650ms auto-advance window: the card must NOT have
+		// advanced (the choice grid's feedback is still on screen, still the
+		// same card), proving the timer was actually cancelled.
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		expect(screen.getByTestId('recall-hear-name-feedback')).toBeInTheDocument();
+		expect(screen.queryByTestId('recall-complete')).not.toBeInTheDocument();
+
+		// Opening the hint never fired a second grade write (D-04).
+		expect(recordGradeMock).toHaveBeenCalledTimes(1);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+		await waitFor(() => screen.getByTestId('recall-complete'));
+		expect(screen.getByTestId('recall-reviewed-count')).toHaveTextContent('1 REVIEWED TODAY');
+		// Continue never re-grades (D-04): still exactly the one choice-time write.
+		expect(recordGradeMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('opening a hint on a wrong choice, then Continue, re-enqueues the card (never gates) with the same Again rating the timer would have used', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'hear-name');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		const wrongChoice = getChoiceButtons().find(
+			(button) => button.textContent?.trim() !== 'Cm7'
+		);
+		await fireEvent.click(wrongChoice!);
+		expect(recordGradeMock).toHaveBeenCalledWith(card, Rating.Again, expect.any(Date));
+		expect(recordGradeMock).toHaveBeenCalledTimes(1);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Need a hint?' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+		await waitFor(() => expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument());
+		expect(screen.getByTestId('recall-register')).toHaveTextContent('1 LEFT TODAY');
+		expect(screen.queryByTestId('recall-complete')).not.toBeInTheDocument();
+		// Re-enqueue never re-grades (D-04): still exactly the one choice-time write.
+		expect(recordGradeMock).toHaveBeenCalledTimes(1);
+	});
+});
+
+/**
  * Mode C ('formula-build') component tests (13-05): the queue-embedded
  * BuildSession surface (RECALL-01). Proves embedTargetFor's inverse factId
  * parse for both a chord-formula and a SCALE-formula factId (Phase 12's
