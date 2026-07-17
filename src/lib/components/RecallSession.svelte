@@ -150,6 +150,16 @@
 	let hearNameAdvanceTimer: ReturnType<typeof setTimeout> | undefined;
 	/** Reuses BuildSession's exact feedbackTimer pacing value (Scope Decision 6) - not a new number invented for this plan. */
 	const HEAR_NAME_ADVANCE_MS = 650;
+	/**
+	 * Post-answer hint-ladder wiring (Plan 04, HINT-01/HINT-02): the ladder
+	 * mounts only after `hearNameAnswered`, so it can never spoil the ear test
+	 * (D-03). Opening it cancels `hearNameAdvanceTimer` and surfaces an
+	 * explicit Continue button that reuses `hearNameCommittedRating` - the
+	 * SAME rating the timer would have used - so hint depth never touches the
+	 * already-committed grade (D-04).
+	 */
+	let hearNameHintOpen = $state(false);
+	let hearNameCommittedRating = $state<Rating | undefined>();
 
 	/** Compound (factId, mode) key, matching deck.ts's own [factId+mode] convention. */
 	function cardKey(factId: string, mode: string): string {
@@ -240,6 +250,8 @@
 		hearNameGiven = '';
 		hearNameChoices = [];
 		hearNamePlayCount = 0;
+		hearNameHintOpen = false;
+		hearNameCommittedRating = undefined;
 		clearTimeout(hearNameAdvanceTimer);
 	}
 
@@ -360,6 +372,25 @@
 	}
 
 	/**
+	 * The single hear-name advance path (Plan 04): both the existing
+	 * auto-advance timer and the new Continue button call this, so there is
+	 * exactly one place that advances the queue, resets per-card state, and
+	 * bumps reviewedCount/completion for Mode B.
+	 */
+	function advanceHearName(rating: Rating): void {
+		queue = advanceQueue(queue, rating);
+		resetPerCardState();
+		reviewedCount += 1;
+		if (isSessionComplete(queue)) pageState = 'complete';
+	}
+
+	/** Cancels the auto-advance the instant a hint is opened post-answer (HINT-02); idempotent since clearTimeout on an already-fired/cleared timer is a no-op. */
+	function onHearNameHintOpen(): void {
+		clearTimeout(hearNameAdvanceTimer);
+		hearNameHintOpen = true;
+	}
+
+	/**
 	 * Tapping a choice IS the complete answer (D-05): grades immediately,
 	 * writes the FSRS rating fire-and-forget (never blocks the advance), and
 	 * always auto-advances after HEAR_NAME_ADVANCE_MS regardless of
@@ -373,6 +404,7 @@
 		hearNameGiven = choice;
 
 		const rating = choice === currentFact.symbol ? Rating.Good : Rating.Again;
+		hearNameCommittedRating = rating;
 
 		if (rating === Rating.Good) {
 			const [text, index] = pickVariant(CORRECT_VARIANTS, confirmationIndex);
@@ -399,10 +431,7 @@
 
 		clearTimeout(hearNameAdvanceTimer);
 		hearNameAdvanceTimer = setTimeout(() => {
-			queue = advanceQueue(queue, rating);
-			resetPerCardState();
-			reviewedCount += 1;
-			if (isSessionComplete(queue)) pageState = 'complete';
+			advanceHearName(rating);
 		}, HEAR_NAME_ADVANCE_MS);
 	}
 
@@ -838,6 +867,28 @@
 						<RevealInsight correctSymbol={currentFact.symbol} givenSymbol={hearNameGiven} />
 					{/if}
 				</div>
+
+				{#key cardKey(currentItem.factId, currentItem.mode)}
+					<div class="mt-6">
+						<HintLadder
+							symbol={currentFact.symbol}
+							layers={hintLayersFor('hear-name')}
+							onOpen={onHearNameHintOpen}
+						/>
+					</div>
+				{/key}
+
+				{#if hearNameHintOpen}
+					<div class="mt-4">
+						<Button
+							type="button"
+							variant="ghost"
+							onclick={() => advanceHearName(hearNameCommittedRating ?? Rating.Again)}
+						>
+							Continue
+						</Button>
+					</div>
+				{/if}
 			{/if}
 		</div>
 	{:else}
