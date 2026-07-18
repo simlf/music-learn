@@ -6,14 +6,14 @@ current_phase: 19
 current_phase_name: Interactive Theory
 status: executing
 stopped_at: Phase 19 UI-SPEC approved
-last_updated: "2026-07-18T13:36:38.029Z"
+last_updated: "2026-07-18T13:43:53.174Z"
 last_activity: 2026-07-18
-last_activity_desc: Phase 18 complete, transitioned to Phase 19
+last_activity_desc: Phase 19 execution started
 progress:
   total_phases: 19
   completed_phases: 11
-  total_plans: 60
-  completed_plans: 58
+  total_plans: 64
+  completed_plans: 59
   percent: 58
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-14)
 
 **Core value:** See a jazz chord symbol and know instantly what to play with the left hand.
-**Current focus:** Phase 18 — Your Songs' Chords
+**Current focus:** Phase 19 — Interactive Theory
 
 ## Current Position
 
-Phase: 19 — Interactive Theory
-Plan: Not started
+Phase: 19 (Interactive Theory) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-07-18 — Phase 18 complete, transitioned to Phase 19
+Last activity: 2026-07-18 — Phase 19 execution started
 
 **v2.0 Learning Upgrade (Phases 10-13): COMPLETE (shipped 2026-07-15).**
 
@@ -131,6 +131,7 @@ Last activity: 2026-07-18 — Phase 18 complete, transitioned to Phase 19
 | Phase 18 P02 | 30min | 2 tasks | 4 files |
 | Phase 18 P03 | 15min | 3 tasks | 4 files |
 | Phase 18 P04 | 12min | 1 tasks | 2 files |
+| Phase 19 P01 | 10min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -246,6 +247,8 @@ Recent decisions affecting current work:
 - [Phase 18-02]: The Drills SONG-02 restriction lives in freshPoolQuestion, never in poolContext(): poolContext().songSymbols keeps feeding the existing always-on 60% song-bucket weighting for the filter-OFF case — Preserves the existing weighting seam per the plan's explicit prohibition
 - [Phase ?]: [Phase 18-03]: applySongFilter() is a dedicated named helper inside RecallSession's load(), mirroring 18-02's drawFromSymbols/drawFromPool call-site branching pattern
 - [Phase 18]: [Phase 18-04]: Lookup SongMark test harness dropped the removed Phase 15 keyboard dock context, rendering the page plainly (like drillsSongFilter.test.ts) since +page.svelte now renders PianoKeyboard inline after quick task 260718-iyj
+- [Phase 19-01]: Body copy stores literal **phrase** markdown-style emphasis markers verbatim from the UI-SPEC; component (19-03) owns parsing them into verdigris-colored spans — Keeps the pure module free of Svelte/DOM concerns while locking the exact copy contract
+- [Phase 19-01]: LessonStep shape kept deliberately generic (title/body/targetChroma/role/letter/hearable/correctLine/wrongHint) for future lessons — Future lessons (triads, sevenths) can ship as additional LessonStep arrays without changing grading or component logic
 
 ### Pending Todos
 
@@ -277,7 +280,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-18T13:18:39.950Z
+Last session: 2026-07-18T13:43:53.168Z
 Stopped at: Phase 19 UI-SPEC approved
 Resume file: 
-.planning/phases/19-interactive-theory/19-UI-SPEC.md
+None
