@@ -22,15 +22,38 @@
 		children: Snippet;
 	}
 
-	let { variant = 'primary', href, onclick, children, ...rest }: Props = $props();
+	let { variant = 'primary', href, onclick, children, disabled, ...rest }: Props = $props();
+
+	/**
+	 * `disabled` is a valid `<button>` attribute but not a valid `<a>`
+	 * attribute (a browser will happily render an invalid `disabled=""`
+	 * attribute on an anchor without any of the actual disabling behavior -
+	 * the link stays clickable and navigable). When `href` is set, fall back
+	 * to `aria-disabled` plus blocking the click here instead, so a future
+	 * `href` caller that passes `disabled` degrades sanely rather than
+	 * rendering a link that looks disabled but still works.
+	 */
+	function handleAnchorClick(event: MouseEvent): void {
+		if (disabled) {
+			event.preventDefault();
+			return;
+		}
+		onclick?.(event);
+	}
 </script>
 
 {#if href}
-	<a {href} class="ps-button ps-button--{variant}" {onclick}>
+	<a
+		{href}
+		class="ps-button ps-button--{variant}"
+		onclick={handleAnchorClick}
+		aria-disabled={disabled ? 'true' : undefined}
+		{...rest as Record<string, unknown>}
+	>
 		{@render children()}
 	</a>
 {:else}
-	<button class="ps-button ps-button--{variant}" {onclick} {...rest}>
+	<button class="ps-button ps-button--{variant}" {disabled} {onclick} {...rest}>
 		{@render children()}
 	</button>
 {/if}
