@@ -5,15 +5,15 @@ milestone_name: Playability & Comprehension
 current_phase: 18
 current_phase_name: Your Songs' Chords
 status: executing
-stopped_at: Phase 18 UI-SPEC approved
-last_updated: "2026-07-18T11:33:02.725Z"
+stopped_at: Completed 18-01-PLAN.md
+last_updated: "2026-07-18T11:43:04.799Z"
 last_activity: 2026-07-18
 last_activity_desc: Phase 18 execution started
 progress:
   total_phases: 19
   completed_phases: 10
   total_plans: 60
-  completed_plans: 54
+  completed_plans: 55
   percent: 53
 ---
 
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 ## Current Position
 
 Phase: 18 (Your Songs' Chords) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 18
+Plan: 2 of 4
+Status: Ready to execute
 Last activity: 2026-07-18 — Phase 18 execution started
 
 **v2.0 Learning Upgrade (Phases 10-13): COMPLETE (shipped 2026-07-15).**
@@ -126,6 +126,7 @@ Last activity: 2026-07-18 — Phase 18 execution started
 | Phase 16 P03 | 12min | 1 tasks | 2 files |
 | Phase 16 P04 | 8min | 1 tasks | 2 files |
 | Phase 16 P5 | 12 | 2 tasks | 2 files |
+| Phase 18 P01 | 15min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -236,6 +237,7 @@ Recent decisions affecting current work:
 - [Phase 16]: ChordGlyph pulseToken retrigger reuses PianoKeyboard's exact off/on setTimeout(0)/setTimeout(200) idiom (Plan 16-02) rather than a key-block remount, for consistency across both components sharing the same app.css keyframes
 - [Phase ?]: [Phase 16-04]: STUDY MODE toggle is a byte-for-byte structural sibling of the existing SOUND toggle (same ghost Button, same mono label, same mt-6 spacing) per D-04
 - [Phase ?]: [Phase 16-05]: triggerReveal()/hearAgain() gate only the playChord call on soundEnabled(), always bumping revealPulseToken - no extra stamp-settle delay needed in BuildSession since the shared app.css combined-animation selector already sequences the glyph's stamp-in and pulse, and the complete-block PianoKeyboard never receives wrongLetters so its keys never carry --stamped
+- [Phase ?]: [Phase 18-01]: songProvenance's normalizeSymbolForMatch keys on root pitch-class (tonal Note.get chroma) + spellChord quality name, not spellChord's echoed symbol field - Chord.get(...).symbol merely echoes the input alias spelling (Cm7 stays Cm7, C-7 stays C-7) so it does not collapse aliases on its own
 
 ### Pending Todos
 
@@ -260,7 +262,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-18T11:07:46.670Z
-Stopped at: Phase 18 UI-SPEC approved
+Last session: 2026-07-18T11:43:04.792Z
+Stopped at: Completed 18-01-PLAN.md
 Resume file: 
-.planning/phases/18-your-songs-chords/18-UI-SPEC.md
+None

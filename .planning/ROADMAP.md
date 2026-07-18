@@ -477,11 +477,11 @@ Plans:
 
 **Design reference**: `.planning/sketches/011-your-songs-chords/` (winner Variant A: provenance mark + filter)
 **UI hint**: yes
-**Plans**: 4 plans
+**Plans**: 1/4 plans executed
 
 **Wave 1**
 
-- [ ] 18-01-PLAN.md — Shared primitives: songProvenance module + SongMark tag + SongFilterToggle bar (SONG-01/02/03)
+- [x] 18-01-PLAN.md — Shared primitives: songProvenance module + SongMark tag + SongFilterToggle bar (SONG-01/02/03)
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -543,6 +543,6 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 | 15. Playable Keyboard Everywhere | 7/7 | Complete    | 2026-07-15 |
 | 16. Hear the Chord | 5/6 | In Progress|  |
 | 17. Chord Explainer | 0/TBD | Pending | - |
-| 18. Your Songs' Chords | 0/TBD | Pending | - |
+| 18. Your Songs' Chords | 1/4 | In Progress|  |
 | 19. Interactive Theory | 0/TBD | Pending | - |
 | 20. French Translation | 0/TBD | Pending | - |

@@ -109,9 +109,9 @@ Grounded in Session 4 sketches 008–013 (`.planning/sketches/MANIFEST.md`). Loc
 
 ### Your Songs' Chords
 
-- [ ] **SONG-01**: Any chord in one of the user's added songs carries a consistent provenance mark wherever it appears (Drills prompt, Recall card, Chord Lookup result)
-- [ ] **SONG-02**: Drills and Recall expose a "From my songs" filter restricting the practiced set to song chords; with it off the full library shows but song chords keep their mark
-- [ ] **SONG-03**: Provenance is derived from the songs stored on the /songs profile surface (single source of truth)
+- [x] **SONG-01**: Any chord in one of the user's added songs carries a consistent provenance mark wherever it appears (Drills prompt, Recall card, Chord Lookup result)
+- [x] **SONG-02**: Drills and Recall expose a "From my songs" filter restricting the practiced set to song chords; with it off the full library shows but song chords keep their mark
+- [x] **SONG-03**: Provenance is derived from the songs stored on the /songs profile surface (single source of truth)
 
 ### Interactive Theory
 
