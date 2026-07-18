@@ -5,15 +5,15 @@ milestone_name: Playability & Comprehension
 current_phase: 18
 current_phase_name: Your Songs' Chords
 status: executing
-stopped_at: Completed 18-01-PLAN.md
-last_updated: "2026-07-18T11:43:04.799Z"
+stopped_at: Completed 18-02-PLAN.md
+last_updated: "2026-07-18T12:07:18.614Z"
 last_activity: 2026-07-18
 last_activity_desc: Phase 18 execution started
 progress:
   total_phases: 19
   completed_phases: 10
   total_plans: 60
-  completed_plans: 55
+  completed_plans: 56
   percent: 53
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 ## Current Position
 
 Phase: 18 (Your Songs' Chords) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-07-18 — Phase 18 execution started
 
@@ -127,6 +127,7 @@ Last activity: 2026-07-18 — Phase 18 execution started
 | Phase 16 P04 | 8min | 1 tasks | 2 files |
 | Phase 16 P5 | 12 | 2 tasks | 2 files |
 | Phase 18 P01 | 15min | 3 tasks | 6 files |
+| Phase 18 P02 | 30min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -238,6 +239,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 16-04]: STUDY MODE toggle is a byte-for-byte structural sibling of the existing SOUND toggle (same ghost Button, same mono label, same mt-6 spacing) per D-04
 - [Phase ?]: [Phase 16-05]: triggerReveal()/hearAgain() gate only the playChord call on soundEnabled(), always bumping revealPulseToken - no extra stamp-settle delay needed in BuildSession since the shared app.css combined-animation selector already sequences the glyph's stamp-in and pulse, and the complete-block PianoKeyboard never receives wrongLetters so its keys never carry --stamped
 - [Phase ?]: [Phase 18-01]: songProvenance's normalizeSymbolForMatch keys on root pitch-class (tonal Note.get chroma) + spellChord quality name, not spellChord's echoed symbol field - Chord.get(...).symbol merely echoes the input alias spelling (Cm7 stays Cm7, C-7 stays C-7) so it does not collapse aliases on its own
+- [Phase 18-02]: drawFromSymbols is additive (new export beside drawFromPool), not a parameter bolted onto it, so the proven 0/60/25/15 bucket-weighting tests need zero changes — Keeps restricted and weighted draw paths provably independent
+- [Phase 18-02]: The Drills SONG-02 restriction lives in freshPoolQuestion, never in poolContext(): poolContext().songSymbols keeps feeding the existing always-on 60% song-bucket weighting for the filter-OFF case — Preserves the existing weighting seam per the plan's explicit prohibition
 
 ### Pending Todos
 
@@ -251,6 +254,13 @@ None yet.
 - ⚠️ [Phase 8, for Phase 9] CORS_ORIGIN must match the deployed frontend origin exactly; UAT hit a block when the app ran on a non-allowed port (npm run preview, 4173). Deploy config must set CORS_ORIGIN.
 - ⚠️ [Phase 8] Progress page shows the generic "server's not answering" copy for a 401 (wrong access key). Misleading during setup; consider a distinct wrong-key message (minor UX).
 - ⚠️ [Phase 8] 08-REVIEW.md CR-02: on a fresh Linux host, the ./data bind mount may shadow the image chown and crash the non-root app user (SQLITE_CANTOPEN). Worked locally; re-check on the Oracle server in Phase 9.
+- A concurrent, unrelated task reverted the Phase 15 keyboard-dock feature (KeyboardDock.svelte, dockContext.svelte.ts deleted) on this same working tree during Phase 18 Plan 02 execution, leaving buildSession.test.ts/recallSession.test.ts/scaleKeyboardDrill.test.ts and the full-suite type-check red for reasons unrelated to Phase 18. Confirm that task's status before Plan 03/04 (Recall/Lookup also touch pages that may be affected).
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260718-iyj | Remove collapsible keyboard dock, restore inline keyboards | 2026-07-18 | 9108219 | [260718-iyj-remove-collapsible-keyboard-dock-restore](./quick/260718-iyj-remove-collapsible-keyboard-dock-restore/) |
 
 ## Deferred Items
 
@@ -262,7 +272,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-18T11:43:04.792Z
-Stopped at: Completed 18-01-PLAN.md
+Last session: 2026-07-18T12:07:18.605Z
+Stopped at: Completed 18-02-PLAN.md
 Resume file: 
 None
