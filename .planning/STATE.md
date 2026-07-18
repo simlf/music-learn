@@ -5,8 +5,8 @@ milestone_name: Playability & Comprehension
 current_phase: 20
 current_phase_name: French Translation
 status: executing
-stopped_at: Completed 20-02-PLAN.md
-last_updated: "2026-07-18T18:20:38.954Z"
+stopped_at: Completed 20-05-PLAN.md
+last_updated: "2026-07-18T18:34:55.835Z"
 last_activity: 2026-07-18
 last_activity_desc: Phase 20 execution started
 progress:
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 ## Current Position
 
 Phase: 20 (French Translation) — EXECUTING
-Plan: 5 of 10
+Plan: 6 of 10
 Status: Ready to execute
 Last activity: 2026-07-18 — Phase 20 execution started
 
@@ -140,6 +140,7 @@ Last activity: 2026-07-18 — Phase 20 execution started
 | Phase 20 P02 | 8min | 3 tasks | 5 files |
 | Phase 20-french-translation P03 | 25min | 2 tasks | 4 files |
 | Phase 20 P04 | 20min | 3 tasks | 7 files |
+| Phase 20-french-translation P05 | 6m | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -268,6 +269,7 @@ Recent decisions affecting current work:
 - [Phase ?]: Chord interval terminology (Build surface) reads IntervalInfo.longFr directly; new whole/half-tone French vocabulary for scale steps lives in build.ts, since interval.ts has no French seed for that scale-step phrasing.
 - [Phase ?]: intervalWordFor() now pre-bakes its plural form for both locales (EN unchanged; FR pluralizes word-by-word since the fixed FR vocabulary is regular +s plural).
 - [Phase ?]: Drills' interval long-name (IntervalInfo.longFr) stays always-French regardless of the EN|FR toggle, per its pre-existing bilingual pedagogy convention predating Phase 20
+- [Phase ?]: SongMark's {N} count reads a t()-keyed template with a literal {N} placeholder, substituted client-side (t() has no interpolation)
 
 ### Pending Todos
 
@@ -299,7 +301,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-18T18:19:46.462Z
-Stopped at: Completed 20-02-PLAN.md
+Last session: 2026-07-18T18:34:55.827Z
+Stopped at: Completed 20-05-PLAN.md
 Resume file: 
 None
