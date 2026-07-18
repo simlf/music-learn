@@ -6,14 +6,14 @@ current_phase: 20
 current_phase_name: French Translation
 status: executing
 stopped_at: Completed 20-02-PLAN.md
-last_updated: "2026-07-18T17:59:14.038Z"
+last_updated: "2026-07-18T18:20:38.954Z"
 last_activity: 2026-07-18
 last_activity_desc: Phase 20 execution started
 progress:
   total_phases: 19
   completed_phases: 12
   total_plans: 74
-  completed_plans: 65
+  completed_plans: 66
   percent: 63
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 ## Current Position
 
 Phase: 20 (French Translation) — EXECUTING
-Plan: 4 of 10
+Plan: 5 of 10
 Status: Ready to execute
 Last activity: 2026-07-18 — Phase 20 execution started
 
@@ -139,6 +139,7 @@ Last activity: 2026-07-18 — Phase 20 execution started
 | Phase 20 P01 | 20min | 3 tasks | 16 files |
 | Phase 20 P02 | 8min | 3 tasks | 5 files |
 | Phase 20-french-translation P03 | 25min | 2 tasks | 4 files |
+| Phase 20 P04 | 20min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -266,6 +267,7 @@ Recent decisions affecting current work:
 - [Phase ?]: RecallSession/RecallMap module-level const arrays that depend on t() are converted to $derived.by(() => [...]) so a live locale flip re-renders them
 - [Phase ?]: Chord interval terminology (Build surface) reads IntervalInfo.longFr directly; new whole/half-tone French vocabulary for scale steps lives in build.ts, since interval.ts has no French seed for that scale-step phrasing.
 - [Phase ?]: intervalWordFor() now pre-bakes its plural form for both locales (EN unchanged; FR pluralizes word-by-word since the fixed FR vocabulary is regular +s plural).
+- [Phase ?]: Drills' interval long-name (IntervalInfo.longFr) stays always-French regardless of the EN|FR toggle, per its pre-existing bilingual pedagogy convention predating Phase 20
 
 ### Pending Todos
 
@@ -297,7 +299,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-18T17:57:53.405Z
+Last session: 2026-07-18T18:19:46.462Z
 Stopped at: Completed 20-02-PLAN.md
 Resume file: 
 None
