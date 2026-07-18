@@ -150,7 +150,17 @@
 	/** True only when the filter is ON but no song chords are derivable (locked fallback edge case). */
 	let songFallbackActive = $state(false);
 
-	/** Flips the filter, persists it, and re-draws the next question so the restriction takes effect immediately. */
+	/**
+	 * Flips the filter, persists it, and re-draws the next question so the
+	 * restriction takes effect immediately. Mirrors setMode's exact guard and
+	 * resets: a fresh pool draw only replaces an unanswered POOL-sourced
+	 * question. An in-flight warmup/retry/seeded item is left untouched (it
+	 * was already popped from the session's own queue, so silently swapping
+	 * it out would corrupt session bookkeeping), and hintTaken/questionShownAt
+	 * are reset alongside the swap so a stale taken hint can never
+	 * auto-reveal the new chord's formula or corrupt the assisted/duration_ms
+	 * telemetry (HI-01).
+	 */
 	function toggleSongFilter() {
 		songFilterOn = !songFilterOn;
 		try {
@@ -158,15 +168,16 @@
 		} catch {
 			// Swallow quota/disabled-storage errors (matches songs.ts pattern).
 		}
-		if (!answered) {
-			question = freshPoolQuestion();
-			selected = new Set();
-			feedback = null;
-			playedLetters = [];
-			givenSymbol = undefined;
-			tappedLetter = null;
-			drillInspect = null;
-		}
+		if (answered || questionSource !== 'pool') return;
+		hintTaken = false;
+		questionShownAt = Date.now();
+		question = freshPoolQuestion();
+		selected = new Set();
+		feedback = null;
+		playedLetters = [];
+		givenSymbol = undefined;
+		tappedLetter = null;
+		drillInspect = null;
 	}
 
 	function poolContext(): PoolContext {

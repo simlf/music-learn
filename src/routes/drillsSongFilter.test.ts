@@ -36,10 +36,14 @@ const drawFromSymbolsMock = vi.fn((symbols: string[], ..._rest: unknown[]): stri
 	symbols.length > 0 ? symbols[0] : null
 );
 const scaffoldStageForSymbolMock = vi.fn((..._args: unknown[]): string | null => null);
+/** Identity pass-through: these tests exercise no scaffolding, so nothing is ever throttled. */
+const limitScaffoldingQualitiesMock = vi.fn((symbols: string[], ..._rest: unknown[]): string[] => symbols);
 vi.mock('$lib/practice/pool', () => ({
 	drawFromPool: (...args: unknown[]) => drawFromPoolMock(...args),
 	drawFromSymbols: (...args: [string[], ...unknown[]]) => drawFromSymbolsMock(...args),
-	scaffoldStageForSymbol: (...args: unknown[]) => scaffoldStageForSymbolMock(...args)
+	scaffoldStageForSymbol: (...args: unknown[]) => scaffoldStageForSymbolMock(...args),
+	limitScaffoldingQualities: (...args: [string[], ...unknown[]]) =>
+		limitScaffoldingQualitiesMock(...args)
 }));
 
 vi.mock('$lib/practice/practiceLog', () => ({
@@ -72,8 +76,9 @@ vi.mock('$lib/practice/scaffold', () => ({
 	recordScaffoldAnswer: (state: unknown) => state
 }));
 
+const consumeDrillSeedsMock = vi.fn((): string[] => []);
 vi.mock('$lib/practice/drillSeeds', () => ({
-	consumeDrillSeeds: (): string[] => []
+	consumeDrillSeeds: (...args: unknown[]) => consumeDrillSeedsMock(...args)
 }));
 
 vi.mock('$lib/drills/rotateHint', () => ({
@@ -127,6 +132,11 @@ beforeEach(() => {
 	localStorage.clear();
 	drawFromPoolMock.mockClear();
 	drawFromSymbolsMock.mockClear();
+	scaffoldStageForSymbolMock.mockReset();
+	scaffoldStageForSymbolMock.mockImplementation((..._args: unknown[]): string | null => null);
+	limitScaffoldingQualitiesMock.mockClear();
+	consumeDrillSeedsMock.mockReset();
+	consumeDrillSeedsMock.mockImplementation((): string[] => []);
 	fetchStatsMock.mockClear();
 	flushQueueMock.mockClear();
 });
@@ -217,5 +227,44 @@ describe('PRACTICE POOL filter toggle (SONG-02)', () => {
 		expect(screen.getByTestId('song-filter-note')).toHaveTextContent(
 			'No active songs yet, so showing the full library instead.'
 		);
+	});
+});
+
+describe('toggleSongFilter mirrors setMode guards (HI-01 regression)', () => {
+	it('does not swap out an in-flight non-pool (seeded) question, and does not corrupt its assisted/hint state', async () => {
+		// Session-sourced question: consumeDrillSeeds populates the seed queue,
+		// so drawNextQuestion() pulls from session.seedQueue (source 'seeded')
+		// rather than drawing from the pool at all.
+		consumeDrillSeedsMock.mockImplementation((): string[] => ['Cmaj7']);
+		scaffoldStageForSymbolMock.mockReturnValueOnce('hinted');
+		forceConstruction();
+
+		renderPage();
+
+		expect(screen.getByTestId('question-source-tag')).toHaveTextContent('FROM YOUR WEAK LIST');
+
+		// Take the hint on the CURRENT (seeded) question.
+		await fireEvent.click(screen.getByRole('button', { name: 'Show formula' }));
+		expect(screen.getByTestId('hint-formula')).toBeInTheDocument();
+
+		drawFromPoolMock.mockClear();
+		drawFromSymbolsMock.mockClear();
+
+		const toggle = screen.getByRole('button', { name: /From my songs/i });
+		await fireEvent.click(toggle);
+
+		// The filter flag itself still flips and persists...
+		expect(localStorage.getItem(FILTER_KEY)).toBe('true');
+		expect(toggle).toHaveAttribute('aria-pressed', 'true');
+		// ...but per setMode's own guard (questionSource !== 'pool'), the
+		// in-flight seeded question is left completely untouched: no fresh
+		// draw happens (drawFromPool/drawFromSymbols are never called), the
+		// source tag is unchanged, and the hint that was already taken for
+		// THIS chord is still shown for THIS chord - never silently reset or
+		// re-revealed for a different, freshly-drawn one.
+		expect(drawFromPoolMock).not.toHaveBeenCalled();
+		expect(drawFromSymbolsMock).not.toHaveBeenCalled();
+		expect(screen.getByTestId('question-source-tag')).toHaveTextContent('FROM YOUR WEAK LIST');
+		expect(screen.getByTestId('hint-formula')).toBeInTheDocument();
 	});
 });
