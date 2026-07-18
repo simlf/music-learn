@@ -8,6 +8,8 @@
 	 * `<button aria-pressed>` with a dedicated checkbox-style box rather than
 	 * the app's segmented Review/Map-style toggle.
 	 */
+	import { t } from '$lib/i18n/locale.svelte';
+
 	interface Props {
 		/** Mono label describing what pool/queue this filter restricts, e.g. "PRACTICE POOL". */
 		poolLabel: string;
@@ -38,7 +40,7 @@
 		<p class="text-label font-mono uppercase">{poolLabel}</p>
 		<button class="song-filter-toggle" type="button" aria-pressed={on} onclick={onToggle}>
 			<span class="song-filter-toggle__box"></span>
-			From my songs
+			{t('songs.filter.button')}
 		</button>
 	</div>
 	{#if displayNote}

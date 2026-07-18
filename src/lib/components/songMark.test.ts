@@ -1,6 +1,11 @@
 import { render, screen } from '@testing-library/svelte';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { setLocale } from '$lib/i18n/locale.svelte';
 import SongMark from './SongMark.svelte';
+
+afterEach(() => {
+	setLocale('en');
+});
 
 describe('SongMark', () => {
 	it('renders nothing for an empty songs array', () => {
@@ -32,5 +37,24 @@ describe('SongMark', () => {
 		const mark = screen.getByTestId('song-mark');
 		expect(mark.querySelector('b')).not.toBeInTheDocument();
 		expect(mark).toHaveTextContent('♪ <b>x</b>');
+	});
+});
+
+describe('SongMark renders in French (I18N-02, Phase 20 Plan 05)', () => {
+	it('renders {N} MORCEAUX for a 3-song array under fr', () => {
+		setLocale('fr');
+		render(SongMark, { songs: ['Autumn Leaves', 'Blue Bossa', 'All of Me'] });
+
+		expect(screen.getByTestId('song-mark')).toHaveTextContent('3 MORCEAUX');
+	});
+
+	it('renders the single-song name verbatim in both locales (user data immunity)', () => {
+		render(SongMark, { songs: ['Autumn Leaves'] });
+		expect(screen.getByTestId('song-mark')).toHaveTextContent('♪ Autumn Leaves');
+
+		setLocale('fr');
+		render(SongMark, { songs: ['Autumn Leaves'] });
+		const marks = screen.getAllByTestId('song-mark');
+		expect(marks[marks.length - 1]).toHaveTextContent('♪ Autumn Leaves');
 	});
 });

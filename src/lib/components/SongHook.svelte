@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { songHookFor } from '$lib/theory/songHooks';
+	import { t } from '$lib/i18n/locale.svelte';
 
 	/**
 	 * Sketch 006 (winner A: inline tap-to-reveal), the famous-tune interval
@@ -32,7 +33,7 @@
 			aria-pressed={revealed}
 			onclick={toggle}
 		>
-			{revealed ? 'Hide tune' : 'Sounds like…'}
+			{revealed ? t('songs.hook.hideTune') : t('songs.hook.soundsLike')}
 		</button>
 		{#if revealed}
 			<p class="song-hook__tune text-label font-mono" data-testid="song-hook-tune">

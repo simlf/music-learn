@@ -1,6 +1,11 @@
 import { render, screen, fireEvent } from '@testing-library/svelte';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { setLocale } from '$lib/i18n/locale.svelte';
 import SongFilterToggle from './SongFilterToggle.svelte';
+
+afterEach(() => {
+	setLocale('en');
+});
 
 describe('SongFilterToggle', () => {
 	it('reports aria-pressed=false when off, and calls onToggle exactly once on click', async () => {
@@ -86,5 +91,15 @@ describe('SongFilterToggle', () => {
 		expect(screen.getByTestId('song-filter-note')).toHaveTextContent(
 			'No active songs yet, so showing the full library instead.'
 		);
+	});
+});
+
+describe('SongFilterToggle renders in French (I18N-02, Phase 20 Plan 05)', () => {
+	it('renders the French button copy while the caller-supplied poolLabel stays as passed', () => {
+		setLocale('fr');
+		render(SongFilterToggle, { poolLabel: 'REVIEW POOL', on: false, onToggle: () => {} });
+
+		expect(screen.getByText('REVIEW POOL')).toBeInTheDocument();
+		expect(screen.getByRole('button')).toHaveTextContent('Depuis mes morceaux');
 	});
 });

@@ -9,12 +9,17 @@
 	 * conditional-render discipline: an empty songs array means this chord
 	 * has no provenance, so no tag (not an empty tag) should appear.
 	 */
+	import { t } from '$lib/i18n/locale.svelte';
+
 	interface Props {
 		/** Song name(s) this chord belongs to, first-seen order. Empty = render nothing. */
 		songs: string[];
 	}
 
 	let { songs }: Props = $props();
+
+	/** `t()` has no interpolation, so the {N} placeholder is substituted here. */
+	const countLabel = $derived(t('songs.mark.count').replace('{N}', String(songs.length)));
 </script>
 
 {#if songs.length > 0}
@@ -26,7 +31,7 @@
 		{#if songs.length === 1}
 			♪ {songs[0]}
 		{:else}
-			{songs.length} SONGS
+			{countLabel}
 		{/if}
 	</span>
 {/if}
