@@ -6,14 +6,14 @@ current_phase: 20
 current_phase_name: French Translation
 status: executing
 stopped_at: Completed 20-02-PLAN.md
-last_updated: "2026-07-18T17:38:55.842Z"
+last_updated: "2026-07-18T17:59:14.038Z"
 last_activity: 2026-07-18
 last_activity_desc: Phase 20 execution started
 progress:
   total_phases: 19
   completed_phases: 12
   total_plans: 74
-  completed_plans: 64
+  completed_plans: 65
   percent: 63
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 ## Current Position
 
 Phase: 20 (French Translation) — EXECUTING
-Plan: 3 of 10
+Plan: 4 of 10
 Status: Ready to execute
 Last activity: 2026-07-18 — Phase 20 execution started
 
@@ -138,6 +138,7 @@ Last activity: 2026-07-18 — Phase 20 execution started
 | Phase 19 P04 | 10min | 2 tasks | 2 files |
 | Phase 20 P01 | 20min | 3 tasks | 16 files |
 | Phase 20 P02 | 8min | 3 tasks | 5 files |
+| Phase 20-french-translation P03 | 25min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -263,6 +264,8 @@ Recent decisions affecting current work:
 - [Phase 20]: locale.svelte.ts uses the .svelte.ts extension so t() stays reactive across component templates; LocaleDict is defined once in messages/index.ts and imported type-only by domain files to avoid a runtime circular dependency
 - [Phase ?]: recall.ts: split-sentence keys for interpolated strings (prefix/infix/suffix keyed separately around an untranslated dynamic value) established as the second domain-file i18n pattern
 - [Phase ?]: RecallSession/RecallMap module-level const arrays that depend on t() are converted to $derived.by(() => [...]) so a live locale flip re-renders them
+- [Phase ?]: Chord interval terminology (Build surface) reads IntervalInfo.longFr directly; new whole/half-tone French vocabulary for scale steps lives in build.ts, since interval.ts has no French seed for that scale-step phrasing.
+- [Phase ?]: intervalWordFor() now pre-bakes its plural form for both locales (EN unchanged; FR pluralizes word-by-word since the fixed FR vocabulary is regular +s plural).
 
 ### Pending Todos
 
@@ -294,7 +297,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-18T17:38:55.835Z
+Last session: 2026-07-18T17:57:53.405Z
 Stopped at: Completed 20-02-PLAN.md
 Resume file: 
 None
