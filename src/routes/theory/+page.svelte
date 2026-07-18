@@ -7,6 +7,7 @@
 	import NoteLabel from '$lib/components/NoteLabel.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import InteractiveLesson from '$lib/components/InteractiveLesson.svelte';
+	import { t } from '$lib/i18n/locale.svelte';
 
 	/**
 	 * /theory (Track D): six short shape-first lessons decoding jazz chord
@@ -19,22 +20,22 @@
 
 	/** The five seventh shapes on C, with their triad + 7th construction captions. */
 	const SEVENTH_SHAPES = [
-		{ symbol: 'Cmaj7', suffix: 'maj7', caption: 'Major triad + 7. At rest.' },
-		{ symbol: 'C7', suffix: '7', caption: 'Major triad + ♭7. Pushes.' },
-		{ symbol: 'Cm7', suffix: 'm7', caption: 'Minor triad + ♭7. Travels.' },
-		{ symbol: 'Cm7b5', suffix: 'm7b5', caption: 'Diminished triad + ♭7.' },
-		{ symbol: 'Cdim7', suffix: 'dim7', caption: 'Diminished triad + ♭♭7.' }
+		{ symbol: 'Cmaj7', suffix: 'maj7', captionKey: 'theory.sevenths.caption.maj7' },
+		{ symbol: 'C7', suffix: '7', captionKey: 'theory.sevenths.caption.dom7' },
+		{ symbol: 'Cm7', suffix: 'm7', captionKey: 'theory.sevenths.caption.m7' },
+		{ symbol: 'Cm7b5', suffix: 'm7b5', captionKey: 'theory.sevenths.caption.m7b5' },
+		{ symbol: 'Cdim7', suffix: 'dim7', captionKey: 'theory.sevenths.caption.dim7' }
 	];
 
 	/** The diatonic sevenths of C major: all white keys, four qualities, their day jobs. */
 	const ANCHOR_CHORDS = [
-		{ symbol: 'Cmaj7', caption: 'The I chord. Home.' },
-		{ symbol: 'Dm7', caption: 'The ii. On its way.' },
-		{ symbol: 'Em7', caption: 'The iii. Home in disguise.' },
-		{ symbol: 'Fmaj7', caption: 'The IV. A step out the door.' },
-		{ symbol: 'G7', caption: 'The V7. Pulls home.' },
-		{ symbol: 'Am7', caption: 'The vi. The relative minor.' },
-		{ symbol: 'Bm7b5', caption: 'The viiø7. The restless one.' }
+		{ symbol: 'Cmaj7', captionKey: 'theory.anchor.caption.i' },
+		{ symbol: 'Dm7', captionKey: 'theory.anchor.caption.ii' },
+		{ symbol: 'Em7', captionKey: 'theory.anchor.caption.iii' },
+		{ symbol: 'Fmaj7', captionKey: 'theory.anchor.caption.iv' },
+		{ symbol: 'G7', captionKey: 'theory.anchor.caption.v7' },
+		{ symbol: 'Am7', captionKey: 'theory.anchor.caption.vi' },
+		{ symbol: 'Bm7b5', captionKey: 'theory.anchor.caption.vii' }
 	];
 
 	/** The full letter-to-solfege map for the French reader. */
@@ -69,7 +70,9 @@
 	{@const line = mnemonicFor(suffix)}
 	{#if line !== null}
 		<aside class="border-ink mt-2 border-l-4 pl-4" data-testid="mnemonic-aside">
-			<p class="text-label font-mono uppercase" style="letter-spacing: 0.08em;">The hook</p>
+			<p class="text-label font-mono uppercase" style="letter-spacing: 0.08em;">
+				{t('theory.hook.label')}
+			</p>
 			<p class="text-body mt-1">{line}</p>
 		</aside>
 	{/if}
@@ -80,10 +83,9 @@
 	     --spacing-2xl: 48px, so a named max-w-2xl utility resolves to 48px. -->
 	<div class="mx-auto flex max-w-[42rem] flex-col gap-8">
 		<header>
-			<h1 class="text-heading mt-2 font-bold">Theory</h1>
+			<h1 class="text-heading mt-2 font-bold">{t('theory.page.title')}</h1>
 			<p class="text-body text-muted mt-2">
-				The shop's field guide to chord symbols. Six short lessons, every one with real keys under
-				it.
+				{t('theory.page.subtitle')}
 			</p>
 		</header>
 
@@ -99,18 +101,16 @@
 			data-testid="section-symbol"
 		>
 			<p class="text-label font-mono uppercase" style="letter-spacing: 0.08em;">
-				Reading a chord symbol
+				{t('theory.symbol.label')}
 			</p>
-			<h2 class="text-heading font-bold">Root, then quality</h2>
+			<h2 class="text-heading font-bold">{t('theory.symbol.heading')}</h2>
 			<div class="flex items-start gap-4">
 				<ChordGlyph root="C" quality="m7" />
 			</div>
 			<p class="text-body">
-				A chord symbol is two instructions. The letter is the root: where the left hand starts.
-				Everything after it is the quality: the shape you stack on top. Cm7 says start on C, stack
-				the minor-seventh shape.
+				{t('theory.symbol.body')}
 			</p>
-			<ChordExample symbol="Cm7" caption="Start on C (Do), stack the m7 shape." />
+			<ChordExample symbol="Cm7" caption={t('theory.symbol.exampleCaption')} />
 		</section>
 
 		<section
@@ -118,12 +118,11 @@
 			data-testid="section-sevenths"
 		>
 			<p class="text-label font-mono uppercase" style="letter-spacing: 0.08em;">
-				The seventh shapes
+				{t('theory.sevenths.label')}
 			</p>
-			<h2 class="text-heading font-bold">One triad, one seventh</h2>
+			<h2 class="text-heading font-bold">{t('theory.sevenths.heading')}</h2>
 			<p class="text-body">
-				Every seventh chord is a triad plus one more third. Two choices name them all: which triad
-				(major, minor, diminished) and which 7th (7, ♭7, or ♭♭7). Tap through the five on C.
+				{t('theory.sevenths.body')}
 			</p>
 			<div class="flex flex-wrap gap-2">
 				{#each SEVENTH_SHAPES as shape (shape.symbol)}
@@ -137,7 +136,7 @@
 				{/each}
 			</div>
 			{#key seventhPick.symbol}
-				<ChordExample symbol={seventhPick.symbol} caption={seventhPick.caption} />
+				<ChordExample symbol={seventhPick.symbol} caption={t(seventhPick.captionKey)} />
 			{/key}
 			{@render hook(seventhPick.suffix)}
 		</section>
@@ -147,13 +146,11 @@
 			data-testid="section-anchor"
 		>
 			<p class="text-label font-mono uppercase" style="letter-spacing: 0.08em;">
-				The white-key anchor
+				{t('theory.anchor.label')}
 			</p>
-			<h2 class="text-heading font-bold">One scale, four qualities</h2>
+			<h2 class="text-heading font-bold">{t('theory.anchor.heading')}</h2>
 			<p class="text-body">
-				Stack a seventh on each note of the C major scale and every chord lands on white keys
-				only: Cmaj7, Dm7, Em7, Fmaj7, G7, Am7, Bm7b5. One hand position teaches four qualities and
-				their day jobs. Tap each one.
+				{t('theory.anchor.body')}
 			</p>
 			<div class="flex flex-wrap gap-2">
 				{#each ANCHOR_CHORDS as chord (chord.symbol)}
@@ -167,7 +164,7 @@
 				{/each}
 			</div>
 			{#key anchorPick.symbol}
-				<ChordExample symbol={anchorPick.symbol} caption={anchorPick.caption} />
+				<ChordExample symbol={anchorPick.symbol} caption={t(anchorPick.captionKey)} />
 			{/key}
 		</section>
 
@@ -176,17 +173,17 @@
 			data-testid="section-dominant"
 		>
 			<p class="text-label font-mono uppercase" style="letter-spacing: 0.08em;">
-				The dominant engine
+				{t('theory.dominant.label')}
 			</p>
-			<h2 class="text-heading font-bold">Why 7 pulls home</h2>
+			<h2 class="text-heading font-bold">{t('theory.dominant.heading')}</h2>
 			<p class="text-body">
-				Inside G7, the 3 and the ♭7 (B and F) sit a tritone apart: the restless interval. B leans
-				up to C, F leans down to E, and the whole chord tips into C major. That pull is what makes
-				a V7 a V7.
+				{t('theory.dominant.body')}
 			</p>
-			<ChordExample symbol="G7" caption="The tritone lives between B and F." />
+			<ChordExample symbol="G7" caption={t('theory.dominant.exampleCaption')} />
 			<div>
-				<Button type="button" variant="ghost" onclick={hearResolution}>Hear G7 resolve</Button>
+				<Button type="button" variant="ghost" onclick={hearResolution}
+					>{t('theory.dominant.hearButton')}</Button
+				>
 			</div>
 			{@render hook('7')}
 		</section>
@@ -196,17 +193,15 @@
 			data-testid="section-diminished"
 		>
 			<p class="text-label font-mono uppercase" style="letter-spacing: 0.08em;">
-				Half versus full
+				{t('theory.diminished.label')}
 			</p>
-			<h2 class="text-heading font-bold">ø7 and °7 untangled</h2>
+			<h2 class="text-heading font-bold">{t('theory.diminished.heading')}</h2>
 			<p class="text-body">
-				Both grow from the diminished triad. Half diminished, written ø or m7b5, keeps a plain ♭7.
-				Fully diminished, written °7, flattens the 7th again to ♭♭7. The half in the name is about
-				the 7th, nothing else.
+				{t('theory.diminished.body')}
 			</p>
-			<ChordExample symbol="Bm7b5" caption="Bø7 = Bm7b5. Same chord, two spellings." />
+			<ChordExample symbol="Bm7b5" caption={t('theory.diminished.halfCaption')} />
 			{@render hook('m7b5')}
-			<ChordExample symbol="Bdim7" caption="B°7. The 7th flattened twice." />
+			<ChordExample symbol="Bdim7" caption={t('theory.diminished.fullCaption')} />
 			{@render hook('dim7')}
 		</section>
 
@@ -214,11 +209,12 @@
 			class="border-ink bg-paper-bright flex flex-col gap-4 border-2 px-4 py-6"
 			data-testid="section-solfege"
 		>
-			<p class="text-label font-mono uppercase" style="letter-spacing: 0.08em;">Do, ré, mi</p>
-			<h2 class="text-heading font-bold">Both languages</h2>
+			<p class="text-label font-mono uppercase" style="letter-spacing: 0.08em;">
+				{t('theory.solfege.label')}
+			</p>
+			<h2 class="text-heading font-bold">{t('theory.solfege.heading')}</h2>
 			<p class="text-body">
-				Letters and solfège name the same keys. The syllable follows the letter, not the
-				accidental: C♯ is still Do, B♭ is still Si. Et voilà.
+				{t('theory.solfege.body')}
 			</p>
 			<div class="flex flex-wrap gap-4">
 				{#each SOLFEGE_MAP as entry (entry.letter)}
@@ -228,7 +224,7 @@
 		</section>
 
 		<div class="flex justify-center pb-8">
-			<Button href="/drills">Take it to the drills</Button>
+			<Button href="/drills">{t('theory.footer.drillsButton')}</Button>
 		</div>
 	</div>
 </main>

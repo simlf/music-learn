@@ -1,7 +1,8 @@
-import { render, screen, fireEvent, within } from '@testing-library/svelte';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { render, screen, fireEvent, within, cleanup } from '@testing-library/svelte';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import InteractiveLesson from './InteractiveLesson.svelte';
 import { LESSON_SEEDS_KEY } from '$lib/practice/drillSeeds';
+import { setLocale } from '$lib/i18n/locale.svelte';
 
 /**
  * Component test for InteractiveLesson (Phase 19, Task 2): the guided
@@ -154,5 +155,53 @@ describe('InteractiveLesson (LEARN-01/02/03)', () => {
 		await fireEvent.click(link);
 
 		expect(JSON.parse(localStorage.getItem(LESSON_SEEDS_KEY) ?? '[]')).toEqual(['C', 'Cm']);
+	});
+});
+
+describe('InteractiveLesson French locale (I18N-02)', () => {
+	afterEach(() => {
+		cleanup();
+		setLocale('en');
+	});
+
+	it('renders step 1 title and the Écouter/Continuer controls in French', () => {
+		setLocale('fr');
+		render(InteractiveLesson);
+
+		expect(screen.getByText('La note du bas')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Écouter' })).toBeInTheDocument();
+	});
+
+	it('renders the step 3 body with the **emphasis** span intact in French', async () => {
+		setLocale('fr');
+		render(InteractiveLesson);
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'E key' }));
+
+		expect(screen.getByText('tierce majeure')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Continuer' })).toBeInTheDocument();
+	});
+
+	it('a lesson chord symbol (C · Cm) renders identically across locales', async () => {
+		setLocale('en');
+		const { unmount } = render(InteractiveLesson);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'E key' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'D♯ key' }));
+		const enSymbol = screen.getByText('C · Cm').textContent;
+		unmount();
+
+		setLocale('fr');
+		render(InteractiveLesson);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'E key' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Continuer' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'D♯ key' }));
+		const frSymbol = screen.getByText('C · Cm').textContent;
+
+		expect(frSymbol).toBe(enSymbol);
+		expect(frSymbol).toBe('C · Cm');
 	});
 });

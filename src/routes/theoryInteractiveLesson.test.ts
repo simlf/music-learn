@@ -1,5 +1,6 @@
 import { render, screen, cleanup } from '@testing-library/svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { setLocale } from '$lib/i18n/locale.svelte';
 
 /**
  * LEARN-01 placement/coexistence test (Phase 19, Plan 04): proves
@@ -25,6 +26,7 @@ function renderPage() {
 
 afterEach(() => {
 	cleanup();
+	setLocale('en');
 });
 
 describe('/theory: interactive lesson placement and coexistence', () => {
@@ -58,5 +60,13 @@ describe('/theory: interactive lesson placement and coexistence', () => {
 		renderPage();
 
 		expect(screen.getByText('The bottom note')).toBeInTheDocument();
+	});
+
+	it('renders the theory page heading and interactive lesson step 1 in French (I18N-02)', () => {
+		setLocale('fr');
+		renderPage();
+
+		expect(screen.getByText('Théorie')).toBeInTheDocument();
+		expect(screen.getByText('La note du bas')).toBeInTheDocument();
 	});
 });

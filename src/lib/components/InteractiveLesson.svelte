@@ -11,6 +11,7 @@
 	import type { SpelledNote } from '$lib/theory/types';
 	import { ensureAudioReady, playChord, playNote } from '$lib/audio/audio';
 	import { toPitch } from '$lib/audio/voicing';
+	import { t, currentLocale } from '$lib/i18n/locale.svelte';
 	import Button from './Button.svelte';
 	import PianoKeyboard from './PianoKeyboard.svelte';
 
@@ -125,7 +126,7 @@
 		if (!step || step.targetChroma === null) return;
 
 		if (gradeLessonTap(step, letter)) {
-			feedbackLine = step.correctLine;
+			feedbackLine = step.correctLine ? step.correctLine[currentLocale()] : null;
 			if (step.role !== null && step.letter !== null) {
 				const earned: SpelledNote = {
 					letter: step.letter,
@@ -150,7 +151,8 @@
 			activeIndex += 1;
 		} else {
 			wrongFlash = { letter, octave };
-			feedbackLine = step.wrongHint !== null ? wrongHintFor(step.wrongHint, letter) : null;
+			feedbackLine =
+				step.wrongHint !== null ? wrongHintFor(step.wrongHint[currentLocale()], letter) : null;
 			// Wrong taps never call playNote/playChord - the caller (this
 			// component) owns feedback, mirroring BuildSession's contract.
 			clearTimeout(flashTimer);
@@ -192,9 +194,9 @@
 
 <div class="flex flex-col gap-8" data-testid="interactive-lesson">
 	<div>
-		<h2 class="text-heading font-serif font-bold">Play it, don't just read it</h2>
+		<h2 class="text-heading font-serif font-bold">{t('theory.lesson.heading')}</h2>
 		<p class="text-body mt-2">
-			Four small steps. Tap what each one asks, hear what you built, and it sticks.
+			{t('theory.lesson.subtitle')}
 		</p>
 	</div>
 
@@ -221,10 +223,10 @@
 					>
 						{i + 1}
 					</span>
-					<h3 class="text-body font-serif font-bold">{step.title}</h3>
+					<h3 class="text-body font-serif font-bold">{step.title[currentLocale()]}</h3>
 				</div>
 
-				{@render bodyCopy(step.body)}
+				{@render bodyCopy(step.body[currentLocale()])}
 
 				{#if state === 'active'}
 					<div class="mt-4" style="max-width: 100%;">
@@ -250,23 +252,26 @@
 
 					<div class="mt-4 flex flex-wrap gap-2">
 						{#if step.hearable}
-							<Button type="button" variant="ghost" onclick={hearCurrent}>Hear it</Button>
+							<Button type="button" variant="ghost" onclick={hearCurrent}>{t('theory.hearIt')}</Button
+							>
 						{/if}
 						{#if step.targetChroma === null}
-							<Button type="button" variant="primary" onclick={continueStep}>Continue</Button>
+							<Button type="button" variant="primary" onclick={continueStep}
+								>{t('theory.lesson.continue')}</Button
+							>
 						{/if}
 					</div>
 				{:else if state === 'done'}
 					{#if step.correctLine}
 						<p class="text-label mt-2 font-mono uppercase" data-testid="lesson-feedback">
-							{step.correctLine}
+							{step.correctLine[currentLocale()]}
 						</p>
 					{/if}
 					<span
 						class="done-chip text-label mt-2 inline-block font-mono uppercase"
 						style="color: var(--color-verdigris);"
 					>
-						Done
+						{t('theory.lesson.done')}
 					</span>
 				{/if}
 			</div>
@@ -276,17 +281,15 @@
 	{#if activeIndex >= steps.length}
 		<div class="bg-ink text-paper-bright px-4 py-6" data-testid="lesson-handoff">
 			<p class="text-label font-mono uppercase" style="color: var(--color-mustard);">
-				You just learned this
+				{t('theory.lesson.handoff.tag')}
 			</p>
-			<h3 class="text-heading mt-2 font-serif font-bold">Now make it stick</h3>
+			<h3 class="text-heading mt-2 font-serif font-bold">{t('theory.lesson.handoff.heading')}</h3>
 			<p class="text-body mt-2" style="color: var(--color-paper); opacity: 0.85;">
-				The beginner course on /drills will show you chords like these and ask for the notes. The
-				third you just found is the middle note of every triad: major third, happy triad; minor
-				third, sad triad.
+				{t('theory.lesson.handoff.body')}
 			</p>
 			<p class="text-heading mt-4 font-serif">C · Cm</p>
 			<div class="handoff-cta mt-4">
-				<Button href="/drills">Try this in a drill →</Button>
+				<Button href="/drills">{t('theory.lesson.handoff.cta')}</Button>
 			</div>
 		</div>
 	{/if}

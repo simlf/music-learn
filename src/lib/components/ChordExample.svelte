@@ -5,6 +5,7 @@
 	import PianoKeyboard from './PianoKeyboard.svelte';
 	import IntervalChip from './IntervalChip.svelte';
 	import Button from './Button.svelte';
+	import { t } from '$lib/i18n/locale.svelte';
 
 	/**
 	 * Shape-first lesson example for the /theory route (Track D): one chord
@@ -44,7 +45,7 @@
 	<div class="chord-example flex flex-col gap-4" data-testid="chord-example">
 		<div class="flex items-center justify-between gap-4">
 			<span class="text-heading font-serif font-bold">{displayName}</span>
-			<Button type="button" variant="ghost" onclick={hearIt}>Hear it</Button>
+			<Button type="button" variant="ghost" onclick={hearIt}>{t('theory.hearIt')}</Button>
 		</div>
 
 		<!-- Lesson keys play on tap (inspectable, no register) so each note is audible. -->
