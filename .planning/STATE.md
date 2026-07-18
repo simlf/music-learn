@@ -6,14 +6,14 @@ current_phase: 18
 current_phase_name: Your Songs' Chords
 status: executing
 stopped_at: Completed 18-02-PLAN.md
-last_updated: "2026-07-18T12:07:18.614Z"
+last_updated: "2026-07-18T12:24:30.497Z"
 last_activity: 2026-07-18
 last_activity_desc: Phase 18 execution started
 progress:
   total_phases: 19
   completed_phases: 10
   total_plans: 60
-  completed_plans: 56
+  completed_plans: 57
   percent: 53
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 ## Current Position
 
 Phase: 18 (Your Songs' Chords) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-07-18 — Phase 18 execution started
 
@@ -128,6 +128,7 @@ Last activity: 2026-07-18 — Phase 18 execution started
 | Phase 16 P5 | 12 | 2 tasks | 2 files |
 | Phase 18 P01 | 15min | 3 tasks | 6 files |
 | Phase 18 P02 | 30min | 2 tasks | 4 files |
+| Phase 18 P03 | 15min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -241,6 +242,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 18-01]: songProvenance's normalizeSymbolForMatch keys on root pitch-class (tonal Note.get chroma) + spellChord quality name, not spellChord's echoed symbol field - Chord.get(...).symbol merely echoes the input alias spelling (Cm7 stays Cm7, C-7 stays C-7) so it does not collapse aliases on its own
 - [Phase 18-02]: drawFromSymbols is additive (new export beside drawFromPool), not a parameter bolted onto it, so the proven 0/60/25/15 bucket-weighting tests need zero changes — Keeps restricted and weighted draw paths provably independent
 - [Phase 18-02]: The Drills SONG-02 restriction lives in freshPoolQuestion, never in poolContext(): poolContext().songSymbols keeps feeding the existing always-on 60% song-bucket weighting for the filter-OFF case — Preserves the existing weighting seam per the plan's explicit prohibition
+- [Phase ?]: [Phase 18-03]: applySongFilter() is a dedicated named helper inside RecallSession's load(), mirroring 18-02's drawFromSymbols/drawFromPool call-site branching pattern
 
 ### Pending Todos
 
@@ -272,7 +274,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-18T12:07:18.605Z
+Last session: 2026-07-18T12:22:30.648Z
 Stopped at: Completed 18-02-PLAN.md
 Resume file: 
 None
