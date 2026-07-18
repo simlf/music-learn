@@ -28,6 +28,7 @@
 	import { pickDistractors } from '$lib/drills/generateQuestion';
 	import { ensureAudioReady, playChord, playNote } from '$lib/audio/audio';
 	import { toPitch } from '$lib/audio/voicing';
+	import { symbolHasProvenance, songsForSymbol } from '$lib/practice/songProvenance';
 	import ChordGlyph from './ChordGlyph.svelte';
 	import IntervalChip from './IntervalChip.svelte';
 	import NoteLabel from './NoteLabel.svelte';
@@ -35,6 +36,7 @@
 	import Button from './Button.svelte';
 	import RevealInsight from './RevealInsight.svelte';
 	import BuildSession from './BuildSession.svelte';
+	import SongMark from './SongMark.svelte';
 
 	/**
 	 * Mode-signal chip label (UI-SPEC "Mode Surfaces" / Scope Decision 8):
@@ -105,9 +107,13 @@
 
 	interface Props {
 		onViewMap?: () => void;
+		/** SONG-02: "From my songs" restriction on the review queue. Default off (byte-identical to no filter). */
+		songFilterOn?: boolean;
+		/** Pre-built symbol -> song-names index (18-01's buildProvenanceIndex); the page builds it once and passes it down. */
+		provenanceIndex?: Map<string, string[]>;
 	}
 
-	let { onViewMap }: Props = $props();
+	let { onViewMap, songFilterOn = false, provenanceIndex }: Props = $props();
 
 	type PageState =
 		| 'loading'
@@ -155,11 +161,32 @@
 		return `${factId}|${mode}`;
 	}
 
+	/**
+	 * SONG-02's queue restriction: when the filter is ON and a non-empty
+	 * provenance index is available, keep only chord-formula cards whose
+	 * symbol belongs to an active song (dropping non-song chords AND
+	 * non-chord facts like interval-size/scale-degree). When the filter is ON
+	 * but the index is empty (no derivable song chords), leave `due`
+	 * unchanged so the session never dead-ends - the page already surfaces
+	 * the fallback note in that case.
+	 */
+	function applySongFilter(due: CardRecord[]): CardRecord[] {
+		if (!songFilterOn || !provenanceIndex || provenanceIndex.size === 0) return due;
+		return due.filter((card) => {
+			const fact = factById(card.factId);
+			return (
+				fact !== undefined &&
+				fact.factKind === 'chord-formula' &&
+				symbolHasProvenance(fact.symbol, provenanceIndex)
+			);
+		});
+	}
+
 	async function load(): Promise<void> {
 		pageState = 'loading';
 		try {
 			await introduceNewCards();
-			const due = await getDueCards();
+			const due = applySongFilter(await getDueCards());
 			if (due.length === 0) {
 				const all = await getAllCards();
 				pageState = all.length === 0 ? 'empty-no-deck' : 'empty-none-due';

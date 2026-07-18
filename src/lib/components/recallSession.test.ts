@@ -6,6 +6,7 @@ import { formatDayInterval } from '$lib/srs/session';
 import type { CardRecord } from '$lib/srs/deck';
 import { majorScaleNotes } from '$lib/theory/scale';
 import { transposeFrom } from '$lib/theory/interval';
+import { normalizeSymbolForMatch } from '$lib/practice/songProvenance';
 
 /**
  * Component test for RecallSession (11-05): mocks the deck persistence seam
@@ -20,7 +21,13 @@ import { transposeFrom } from '$lib/theory/interval';
  * ('formula-build') embeds BuildSession, whose keyboard also renders in flow.
  */
 
-function renderRecallSession(props: { onViewMap?: () => void } = {}): {
+function renderRecallSession(
+	props: {
+		onViewMap?: () => void;
+		songFilterOn?: boolean;
+		provenanceIndex?: Map<string, string[]>;
+	} = {}
+): {
 	unmount: () => void;
 } {
 	const page = render(RecallSession, { props });
@@ -1040,5 +1047,50 @@ describe('RecallSession inline keyboards', () => {
 		expect(afterKeyboards[0].querySelectorAll('.piano-keyboard__key--root').length).toBeGreaterThan(
 			0
 		);
+	});
+});
+
+/**
+ * SONG-02 queue-restriction coverage (Phase 18, Plan 03): when the filter is
+ * ON, load() restricts getDueCards()'s raw output to chord-formula cards
+ * whose symbol has provenance in the passed index, dropping both non-song
+ * chords and non-chord facts (interval-size/scale-degree). When the index is
+ * empty (no derivable song chords), the queue stays unfiltered so the session
+ * never dead-ends.
+ */
+describe('RecallSession song-filter queue restriction (SONG-02, 18-03)', () => {
+	it('with the filter ON and a non-empty provenance index, keeps only the song chord-formula card', async () => {
+		const songChordCard = makeCard('chord-formula:Cm7', 'chord-formula', 'formula');
+		const nonSongChordCard = makeCard('chord-formula:Gm7', 'chord-formula', 'formula');
+		const nonChordCard = makeCard('interval-size:m3', 'interval-size', 'formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([songChordCard, nonSongChordCard, nonChordCard]);
+		getAllCardsMock.mockResolvedValue([songChordCard, nonSongChordCard, nonChordCard]);
+
+		const provenanceIndex = new Map([[normalizeSymbolForMatch('Cm7'), ['Autumn Leaves']]]);
+		renderRecallSession({ songFilterOn: true, provenanceIndex });
+
+		await waitFor(() => screen.getByTestId('recall-register'));
+		expect(screen.getByTestId('recall-register')).toHaveTextContent('1 LEFT TODAY');
+		expect(screen.getByText("What's the formula?")).toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
+		await fireEvent.click(screen.getByTestId('recall-grade-good'));
+
+		await waitFor(() => screen.getByTestId('recall-complete'));
+		expect(screen.getByTestId('recall-reviewed-count')).toHaveTextContent('1 REVIEWED TODAY');
+	});
+
+	it('with the filter ON and an EMPTY provenance index, leaves the full queue unfiltered (fallback, no dead-end)', async () => {
+		const songChordCard = makeCard('chord-formula:Cm7', 'chord-formula', 'formula');
+		const nonChordCard = makeCard('interval-size:m3', 'interval-size', 'formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([songChordCard, nonChordCard]);
+		getAllCardsMock.mockResolvedValue([songChordCard, nonChordCard]);
+
+		renderRecallSession({ songFilterOn: true, provenanceIndex: new Map() });
+
+		await waitFor(() => screen.getByTestId('recall-register'));
+		expect(screen.getByTestId('recall-register')).toHaveTextContent('2 LEFT TODAY');
 	});
 });
