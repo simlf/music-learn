@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { Note } from 'tonal';
-	import { getDockRegistry } from '$lib/keyboard/dockContext.svelte';
 	import { spellChord } from '$lib/theory/chord';
 	import { intervalFromShort, toAsciiAccidentals } from '$lib/theory/interval';
 	import { formulaFor } from '$lib/lookup/chordPresentation';
@@ -33,7 +32,7 @@
 		readPracticeLog,
 		recentMisses
 	} from '$lib/practice/practiceLog';
-	import { drawFromPool, scaffoldStageForSymbol, type PoolContext } from '$lib/practice/pool';
+	import { drawFromPool, drawFromSymbols, scaffoldStageForSymbol, type PoolContext } from '$lib/practice/pool';
 	import {
 		readScaffolds,
 		recordScaffoldAnswer,
@@ -52,6 +51,11 @@
 		type SessionItem
 	} from '$lib/practice/session';
 	import { activeSongChordSymbols } from '$lib/practice/songs';
+	import {
+		buildProvenanceIndex,
+		drillableSongSymbols,
+		songsForSymbol
+	} from '$lib/practice/songProvenance';
 	import { splitSymbol, tierById, type TierId } from '$lib/practice/tiers';
 	import type { DrillMode, DrillQuestion } from '$lib/drills/generateQuestion';
 	import type { MatchResult } from '$lib/drills/matchChord';
@@ -61,26 +65,12 @@
 	import IntervalChip from '$lib/components/IntervalChip.svelte';
 	import RevealInsight from '$lib/components/RevealInsight.svelte';
 	import SongHook from '$lib/components/SongHook.svelte';
+	import SongMark from '$lib/components/SongMark.svelte';
+	import SongFilterToggle from '$lib/components/SongFilterToggle.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import LevelPicker from '$lib/components/LevelPicker.svelte';
 	import IntervalScaffold from '$lib/components/IntervalScaffold.svelte';
 	import { intervalScaffoldLevel } from '$lib/practice/scaffoldLevel';
-
-	/**
-	 * Shared keyboard dock registration (KBD-01/KBD-03): the four former inline
-	 * `<PianoKeyboard>` sites (construction input/reveal, identification,
-	 * interval identification, interval construction) plus the identification
-	 * reveal keyboard collapse into ONE mode-aware `dockedKeyboard` snippet
-	 * (below) registered with the shared dock. The registry reference is
-	 * captured once at component-init time and reused inside the register/
-	 * clear `$effect` further down - calling `getDockRegistry()` again during
-	 * teardown throws Svelte's `lifecycle_outside_component` (Plan 03's
-	 * established fix), so the effect's own returned cleanup (which fires on
-	 * both re-run and unmount) is what clears the registration, never a
-	 * separate `onDestroy`.
-	 */
-	const dockRegistry = getDockRegistry();
-	const dockToken = Symbol('drills-dock');
 
 	/**
 	 * Right-answer confirmation variants (D-08): the stamp beat is the reward,
@@ -139,6 +129,46 @@
 		})
 	);
 
+	/**
+	 * Song-provenance index (SONG-01): built once at init from active songs,
+	 * feeding SongMark on every rendered chord prompt regardless of filter
+	 * state (the mark is not gated by the filter).
+	 */
+	let provenanceIndex = $state(buildProvenanceIndex());
+
+	/** Reads the persisted "From my songs" filter flag, degrading to off on any storage failure (mirrors songs.ts). */
+	function readDrillsSongFilter(): boolean {
+		try {
+			return localStorage.getItem('music-learn:drills-song-filter') === 'true';
+		} catch {
+			return false;
+		}
+	}
+
+	/** SONG-02 filter state: restricts fresh chord draws to active-song chords when on. Persists per-surface, defaults off. */
+	let songFilterOn = $state(readDrillsSongFilter());
+	/** True only when the filter is ON but no song chords are derivable (locked fallback edge case). */
+	let songFallbackActive = $state(false);
+
+	/** Flips the filter, persists it, and re-draws the next question so the restriction takes effect immediately. */
+	function toggleSongFilter() {
+		songFilterOn = !songFilterOn;
+		try {
+			localStorage.setItem('music-learn:drills-song-filter', String(songFilterOn));
+		} catch {
+			// Swallow quota/disabled-storage errors (matches songs.ts pattern).
+		}
+		if (!answered) {
+			question = freshPoolQuestion();
+			selected = new Set();
+			feedback = null;
+			playedLetters = [];
+			givenSymbol = undefined;
+			tappedLetter = null;
+			drillInspect = null;
+		}
+	}
+
 	function poolContext(): PoolContext {
 		return {
 			songSymbols: activeSongChordSymbols(),
@@ -172,7 +202,23 @@
 			scaffoldStage = null;
 			return generateIntervalQuestion();
 		}
-		const symbol = drawFromPool(poolContext()).symbol;
+
+		// SONG-02: with the filter ON, restrict the draw to active-song chords
+		// (a genuine restriction, not just a weight). Falls back to the full
+		// library (and flags songFallbackActive) when filtered ON but nothing
+		// is derivable, per the locked no-active-songs edge case. This never
+		// touches poolContext().songSymbols, which stays the existing 60%
+		// song-bucket weighting seam for the filter-OFF case.
+		const restricted = songFilterOn ? drillableSongSymbols() : null;
+		let symbol: string;
+		if (restricted && restricted.length > 0) {
+			symbol = drawFromSymbols(restricted, poolContext()) ?? drawFromPool(poolContext()).symbol;
+			songFallbackActive = false;
+		} else {
+			songFallbackActive = songFilterOn;
+			symbol = drawFromPool(poolContext()).symbol;
+		}
+
 		scaffoldStage = scaffoldStageForSymbol(poolContext(), symbol);
 		lastQualities = [...lastQualities.slice(-1), splitSymbol(symbol)?.quality ?? ''];
 		return generateQuestion({
@@ -303,58 +349,6 @@
 	// Drain any answers queued from a previous offline session (PROG-01).
 	onMount(() => {
 		flushQueue();
-	});
-
-	/**
-	 * Short-landscape carve-out (Scope Decision 7): on a genuinely short
-	 * rotated-phone viewport, Drills keeps its existing two-pane layout
-	 * (Phase 09-03) instead of feeding the fixed dock chrome, which would
-	 * eat vertical space twice over an already height-cleared layout.
-	 * Feature-detected (matchMedia isn't implemented by jsdom, so this stays
-	 * `false` - dock-by-default - in tests and in any browser lacking it),
-	 * mirroring the existing rotate-hint orientation listener above.
-	 */
-	let isShortLandscape = $state(false);
-
-	onMount(() => {
-		if (typeof window.matchMedia !== 'function') return;
-		const mql = window.matchMedia('(max-height: 600px) and (orientation: landscape)');
-		isShortLandscape = mql.matches;
-		const handleShortLandscapeChange = (event: MediaQueryListEvent) => {
-			isShortLandscape = event.matches;
-		};
-		mql.addEventListener('change', handleShortLandscapeChange);
-		return () => mql.removeEventListener('change', handleShortLandscapeChange);
-	});
-
-	/**
-	 * Docked keyboard (KBD-01/KBD-03): registers the single mode-aware
-	 * `dockedKeyboard` snippet (defined in the template below) with the
-	 * shared dock whenever the viewport is NOT short-landscape, and clears
-	 * the registration (effect cleanup, which also fires on unmount)
-	 * whenever it flips to short-landscape - the same snippet then renders
-	 * inline in `.drill-layout__keyboard` instead (see template). No
-	 * `register` snippet - the in-flow feedback block already hosts
-	 * `InspectRegister` for `drillInspect`, so the dock never duplicates
-	 * that readout.
-	 */
-	// inputRequired only on construction questions: there the docked keyboard
-	// is the sole answer-input surface (Check stays disabled until keys are
-	// selected; interval construction grades the first tap), so the dock must
-	// never hide it, even if collapse was persisted elsewhere (WR-01).
-	// Identification questions answer via in-flow choice buttons, so their
-	// ear-support keyboard keeps the normal collapse handle. The flag stays
-	// true across the answered reveal of a construction question so the
-	// in-place reveal keyboard never vanishes mid-question.
-	const dockInputRequired = $derived(question.direction === 'construction');
-	$effect(() => {
-		if (isShortLandscape) return;
-		dockRegistry?.register({
-			token: dockToken,
-			keyboard: dockedKeyboard,
-			inputRequired: dockInputRequired
-		});
-		return () => dockRegistry?.clear(dockToken);
 	});
 
 	// Server-derived stats (D-02): need-weighting, the review bucket, and the
@@ -678,12 +672,12 @@
 </script>
 
 <!--
-	The ONE mode-aware docked keyboard (KBD-01/KBD-03): closes over the page's
-	existing reactive state, so it reproduces exactly the props each of the
-	four former inline sites rendered - never two input surfaces for the same
-	fact (interactive/inspectable are mutually exclusive per question branch).
+	The ONE mode-aware inline keyboard: closes over the page's existing
+	reactive state, so it renders exactly the props each question branch
+	needs - never two input surfaces for the same fact (interactive/
+	inspectable are mutually exclusive per question branch).
 -->
-{#snippet dockedKeyboard()}
+{#snippet inlineKeyboard()}
 	{#if question.kind === 'chord' && question.direction === 'construction'}
 		<PianoKeyboard
 			notes={showConstructionReveal ? target.notes : []}
@@ -700,9 +694,8 @@
 		<!--
 			Identification: keys always play on tap (inspectable). Before
 			answering, no onInspect/badges are wired (ear support only, no
-			give-away); once answered, the SAME docked element becomes the
-			reveal - onInspect + showIntervalBadges wire up, matching the prior
-			separate feedback-block keyboard exactly (no second element).
+			give-away); once answered, the SAME element becomes the reveal -
+			onInspect + showIntervalBadges wire up (no second element).
 		-->
 		<PianoKeyboard
 			notes={target.notes}
@@ -828,8 +821,16 @@
 			</div>
 		</div>
 	{:else}
+	<div class="mt-8">
+		<SongFilterToggle
+			poolLabel="PRACTICE POOL"
+			on={songFilterOn}
+			onToggle={toggleSongFilter}
+			note={songFallbackActive ? 'No active songs yet, so showing the full library instead.' : undefined}
+		/>
+	</div>
 	<div
-		class="drill-layout border-ink bg-paper-bright mt-8 border-2 px-2 py-6 sm:px-6"
+		class="drill-layout border-ink bg-paper-bright mt-4 border-2 px-2 py-6 sm:px-6"
 		data-testid="drill-card"
 	>
 		{#if !hintDismissed}
@@ -850,6 +851,9 @@
 				{/if}
 				<div class="flex items-start gap-4">
 					<ChordGlyph root={target.root} quality={target.symbol.slice(target.root.length)} />
+				</div>
+				<div class="mt-2">
+					<SongMark songs={songsForSymbol(question.symbol, provenanceIndex)} />
 				</div>
 				<p class="text-body mt-4">Click the notes for {question.symbol}.</p>
 
@@ -900,9 +904,7 @@
 			</div>
 
 			<div class="drill-layout__keyboard">
-				{#if isShortLandscape}
-					{@render dockedKeyboard()}
-				{/if}
+				{@render inlineKeyboard()}
 			</div>
 
 			<div class="drill-layout__controls drill-controls">
@@ -928,12 +930,13 @@
 					</p>
 				{/if}
 				<p class="text-body">Name this chord.</p>
+				<div class="mt-2">
+					<SongMark songs={songsForSymbol(question.symbol, provenanceIndex)} />
+				</div>
 			</div>
 
 			<div class="drill-layout__keyboard">
-				{#if isShortLandscape}
-					{@render dockedKeyboard()}
-				{/if}
+				{@render inlineKeyboard()}
 			</div>
 
 			<div class="drill-layout__controls">
@@ -962,9 +965,7 @@
 			</div>
 
 			<div class="drill-layout__keyboard">
-				{#if isShortLandscape}
-					{@render dockedKeyboard()}
-				{/if}
+				{@render inlineKeyboard()}
 			</div>
 
 			<div class="drill-layout__controls">
@@ -1000,9 +1001,7 @@
 			</div>
 
 			<div class="drill-layout__keyboard">
-				{#if isShortLandscape}
-					{@render dockedKeyboard()}
-				{/if}
+				{@render inlineKeyboard()}
 			</div>
 		{/if}
 
