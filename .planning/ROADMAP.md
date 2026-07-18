@@ -477,6 +477,17 @@ Plans:
 
 **Design reference**: `.planning/sketches/011-your-songs-chords/` (winner Variant A: provenance mark + filter)
 **UI hint**: yes
+**Plans**: 4 plans
+
+**Wave 1**
+
+- [ ] 18-01-PLAN.md — Shared primitives: songProvenance module + SongMark tag + SongFilterToggle bar (SONG-01/02/03)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 18-02-PLAN.md — Drills surface: SongMark in prompt + From my songs filter restricting the chord pool (SONG-01, SONG-02)
+- [ ] 18-03-PLAN.md — Recall surface: SongMark across modes (hear-name spoiler-safe) + filter restricting the review queue (SONG-01, SONG-02)
+- [ ] 18-04-PLAN.md — Chord Lookup: SongMark in the result header (SONG-01)
 
 ### Phase 19: Interactive Theory
 
