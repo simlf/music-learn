@@ -18,8 +18,8 @@ export const chrome: LocaleDict = {
 		'nav.progress': 'Progress',
 		brand: 'MUSIC LEARN',
 		'locale.aria.group': 'Language',
-		'locale.aria.en': 'Language: English',
-		'locale.aria.fr': 'Language: Français'
+		'locale.aria.en': 'EN, English',
+		'locale.aria.fr': 'FR, Français'
 	},
 	fr: {
 		'nav.lookup': 'Rechercher',
@@ -32,7 +32,7 @@ export const chrome: LocaleDict = {
 		'nav.progress': 'Progrès',
 		brand: 'MUSIC LEARN',
 		'locale.aria.group': 'Langue',
-		'locale.aria.en': 'Langue : anglais',
-		'locale.aria.fr': 'Langue : français'
+		'locale.aria.en': 'EN, anglais',
+		'locale.aria.fr': 'FR, français'
 	}
 };
