@@ -1,7 +1,8 @@
-import { render, screen, fireEvent, within } from '@testing-library/svelte';
+import { render, screen, fireEvent, within, cleanup } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import LevelPicker from './LevelPicker.svelte';
 import { LEVEL_KEY } from '$lib/practice/levelState';
+import { setLocale } from '$lib/i18n/locale.svelte';
 
 // LevelPicker reads/writes the real levelState via localStorage (jsdom
 // provides it). Each test seeds the level explicitly.
@@ -15,6 +16,8 @@ beforeEach(() => {
 
 afterEach(() => {
 	localStorage.clear();
+	cleanup();
+	setLocale('en');
 });
 
 describe('LevelPicker course stepper (sketch 007)', () => {
@@ -69,5 +72,18 @@ describe('LevelPicker course stepper (sketch 007)', () => {
 		expect(screen.getByTestId('level-picker')).toHaveTextContent('All-key triads');
 		// Persisted through levelState (setCurrentTier rewrites unlockedTiers to 1..2).
 		expect(JSON.parse(localStorage.getItem(LEVEL_KEY)!).currentTier).toBe(2);
+	});
+});
+
+describe('LevelPicker renders in French (I18N-02, Phase 20 Plan 04)', () => {
+	it('shows the French course caption, tier tag, and Change level control under fr', () => {
+		setLocale('fr');
+		render(LevelPicker);
+
+		const picker = screen.getByTestId('level-picker');
+		expect(within(picker).getByText('Ton parcours')).toBeInTheDocument();
+		expect(within(picker).getByTestId('current-tier-tag')).toHaveTextContent('Niveau 1');
+		expect(within(picker).getByTestId('next-up')).toHaveTextContent('Niveau 2:');
+		expect(within(picker).getByTestId('next-up')).toHaveTextContent('Pas encore');
 	});
 });
