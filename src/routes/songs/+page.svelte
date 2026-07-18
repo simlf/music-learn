@@ -4,6 +4,7 @@
 	import { spellChord } from '$lib/theory/chord';
 	import { didYouMean } from '$lib/theory/didYouMean';
 	import Button from '$lib/components/Button.svelte';
+	import { t } from '$lib/i18n/locale.svelte';
 
 	/**
 	 * The song list. Initialized synchronously like the lookup page's recents:
@@ -37,8 +38,11 @@
 	/** Mono register line under each song name, status-register voice. */
 	function registerLine(song: Song): string {
 		const count = song.chordSymbols.length;
-		const noun = count === 1 ? 'CHORD' : 'CHORDS';
-		return `${count} ${noun} · ${song.source.toUpperCase()}`;
+		const noun =
+			count === 1 ? t('songs.page.register.chordSingular') : t('songs.page.register.chordPlural');
+		const sourceLabel =
+			song.source === 'preset' ? t('songs.page.source.preset') : t('songs.page.source.custom');
+		return `${count} ${noun} · ${sourceLabel}`;
 	}
 
 	function resetEntry() {
@@ -97,7 +101,7 @@
 			return true;
 		}
 
-		entryError = 'Not a chord symbol we recognize.';
+		entryError = t('songs.page.error.unrecognized');
 		suggestion = didYouMean(token);
 		return false;
 	}
@@ -136,8 +140,11 @@
 		if (failures.length === 0) {
 			entryError = '';
 		} else {
-			const noun = failures.length === 1 ? 'symbol' : 'symbols';
-			entryError = `${failures.length} ${noun} not recognized: ${failures.join(', ')}.`;
+			const notRecognized =
+				failures.length === 1
+					? t('songs.page.error.notRecognizedOne')
+					: t('songs.page.error.notRecognizedMany');
+			entryError = `${failures.length} ${notRecognized} ${failures.join(', ')}.`;
 		}
 	}
 
@@ -201,18 +208,16 @@
 
 <main class="bg-paper text-ink min-h-screen p-8 font-sans">
 	{#if draft === null}
-		<h1 class="text-heading mt-2 font-bold">Songs</h1>
+		<h1 class="text-heading mt-2 font-bold">{t('songs.page.title')}</h1>
 		<p class="text-muted mt-2">
-			The charts on your piano, chord by chord. Active songs steer the drills toward what you
-			actually play.
+			{t('songs.page.subtitle')}
 		</p>
 
 		{#if songs.length === 0}
 			<div class="mt-8" data-testid="empty-state">
-				<p class="text-heading font-bold">No songs yet</p>
+				<p class="text-heading font-bold">{t('songs.page.empty.title')}</p>
 				<p class="text-muted mt-2">
-					Type one in from your sheet music, or stamp a preset below. Once a song is active, the
-					drills favor its chords: you rehearse the exact symbols waiting on the stand.
+					{t('songs.page.empty.body')}
 				</p>
 			</div>
 		{:else}
@@ -239,15 +244,15 @@
 							role="switch"
 							class="song-toggle cursor-pointer"
 							aria-checked={song.active}
-							aria-label={`Practice ${song.name}`}
+							aria-label={`${t('songs.page.aria.practicePrefix')} ${song.name}`}
 							data-testid="song-toggle"
 							onclick={() => toggleActive(song)}
 						>
 							<span class="song-toggle__box" class:song-toggle__box--on={song.active}>
-								{song.active ? 'ON' : ''}
+								{song.active ? t('songs.page.toggle.on') : ''}
 							</span>
 							<span class="text-label text-muted font-mono uppercase">
-								{song.active ? 'In rotation' : 'Resting'}
+								{song.active ? t('songs.page.toggle.inRotation') : t('songs.page.toggle.resting')}
 							</span>
 						</button>
 					</li>
@@ -256,13 +261,12 @@
 		{/if}
 
 		<div class="mt-6">
-			<Button type="button" onclick={startCreate}>New song</Button>
+			<Button type="button" onclick={startCreate}>{t('songs.page.button.newSong')}</Button>
 		</div>
 
-		<h2 class="text-heading mt-12 font-bold">The preset shelf</h2>
+		<h2 class="text-heading mt-12 font-bold">{t('songs.page.presets.heading')}</h2>
 		<p class="text-muted mt-2">
-			One tap sets a standard in your list, already in rotation. Yours to edit after: charts
-			disagree, your arrangement wins.
+			{t('songs.page.presets.subtitle')}
 		</p>
 		<ul class="mt-4 flex list-none flex-col gap-3 p-0">
 			{#each SONG_PRESETS as preset (preset.presetId)}
@@ -276,35 +280,37 @@
 						<span class="block font-bold">{preset.name}</span>
 						<span class="text-muted mt-1 block">{preset.note}</span>
 						<span class="text-label text-muted mt-2 block font-mono uppercase">
-							{preset.chordSymbols.length} CHORDS · TAP TO ADD
+							{preset.chordSymbols.length} {t('songs.page.presets.chordsSuffix')}
 						</span>
 					</button>
 				</li>
 			{/each}
 		</ul>
 	{:else}
-		<h1 class="text-heading mt-2 font-bold">{draft.id === null ? 'New song' : 'Edit song'}</h1>
+		<h1 class="text-heading mt-2 font-bold">
+			{draft.id === null ? t('songs.page.button.newSong') : t('songs.page.editSong.title')}
+		</h1>
 
 		<label class="mt-8 block">
-			<span class="text-label block font-mono uppercase">Name</span>
+			<span class="text-label block font-mono uppercase">{t('songs.page.form.nameLabel')}</span>
 			<input
 				type="text"
 				class="border-ink bg-paper-bright mt-2 w-full border-2 p-2"
-				placeholder="Autumn Leaves, my arrangement..."
+				placeholder={t('songs.page.form.namePlaceholder')}
 				data-testid="name-input"
 				bind:value={draft.name}
 			/>
 		</label>
 
 		<div class="mt-6">
-			<span class="text-label block font-mono uppercase">Chords, in playing order</span>
+			<span class="text-label block font-mono uppercase">{t('songs.page.form.chordsLabel')}</span>
 			{#if draft.chips.length > 0}
 				<div class="mt-2 flex flex-wrap gap-2" data-testid="chip-row">
 					{#each draft.chips as chip, index (index)}
 						<button
 							type="button"
 							class="chip border-ink cursor-pointer border-2 font-mono"
-							aria-label={`Remove ${chip}`}
+							aria-label={`${t('songs.page.aria.removePrefix')} ${chip}`}
 							onclick={() => removeChip(index)}
 						>
 							{chip}<span class="text-muted ml-2" aria-hidden="true">✕</span>
@@ -316,16 +322,18 @@
 				<input
 					type="text"
 					class="border-ink bg-paper-bright min-w-0 flex-1 border-2 p-2"
-					placeholder="Type a symbol, then Enter: Cm7"
+					placeholder={t('songs.page.form.entryPlaceholder')}
 					data-testid="chord-entry"
 					bind:value={entry}
 					onkeydown={handleEntryKeydown}
 					onpaste={handlePaste}
 				/>
-				<Button type="button" variant="ghost" onclick={() => commitToken(entry)}>Add</Button>
+				<Button type="button" variant="ghost" onclick={() => commitToken(entry)}
+					>{t('songs.page.button.add')}</Button
+				>
 			</div>
 			<p class="text-label text-muted mt-2 font-mono uppercase">
-				Paste a whole line from a chart: symbols split on spaces, commas, and barlines.
+				{t('songs.page.form.pasteHint')}
 			</p>
 			{#if entryError}
 				<p
@@ -334,12 +342,12 @@
 				>
 					{entryError}
 					{#if suggestion}
-						Did you mean <button
+						{t('songs.page.suggestion.prefix')} <button
 							type="button"
 							class="suggestion-tap cursor-pointer underline"
 							data-testid="entry-suggestion"
 							onclick={acceptSuggestion}
-						>{suggestion}</button>?
+						>{suggestion}</button>{t('songs.page.suggestion.suffix')}
 					{/if}
 				</p>
 			{/if}
@@ -347,10 +355,10 @@
 
 		<div class="mt-8 flex gap-2">
 			<Button type="button" data-testid="save-song" disabled={saveDisabled} onclick={saveDraft}>
-				Save song
+				{t('songs.page.button.save')}
 			</Button>
 			<Button type="button" variant="ghost" data-testid="cancel-edit" onclick={closeEdit}>
-				Back
+				{t('songs.page.button.back')}
 			</Button>
 		</div>
 
@@ -363,13 +371,13 @@
 						data-testid="delete-song"
 						onclick={() => (confirmingDelete = true)}
 					>
-						Delete this song
+						{t('songs.page.button.deleteLink')}
 					</button>
 				{:else}
-					<p class="font-bold">Delete this song? Its practice history stays.</p>
+					<p class="font-bold">{t('songs.page.confirm.deleteText')}</p>
 					<div class="mt-4 flex gap-2">
 						<Button type="button" data-testid="confirm-delete" onclick={confirmDelete}>
-							Delete it
+							{t('songs.page.button.deleteConfirm')}
 						</Button>
 						<Button
 							type="button"
@@ -377,7 +385,7 @@
 							data-testid="keep-song"
 							onclick={() => (confirmingDelete = false)}
 						>
-							Keep it
+							{t('songs.page.button.keep')}
 						</Button>
 					</div>
 				{/if}
