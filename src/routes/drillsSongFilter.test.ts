@@ -76,7 +76,7 @@ vi.mock('$lib/practice/scaffold', () => ({
 	recordScaffoldAnswer: (state: unknown) => state
 }));
 
-const consumeDrillSeedsMock = vi.fn((): string[] => []);
+const consumeDrillSeedsMock = vi.fn((..._args: unknown[]): string[] => []);
 vi.mock('$lib/practice/drillSeeds', () => ({
 	consumeDrillSeeds: (...args: unknown[]) => consumeDrillSeedsMock(...args)
 }));

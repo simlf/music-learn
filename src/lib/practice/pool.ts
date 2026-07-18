@@ -183,11 +183,26 @@ function applyInterleaving<T>(
 	};
 }
 
-function songCandidates(ctx: PoolContext, config: PoolConfig): string[] {
+/**
+ * R3's "at most maxScaffoldingQualities unfamiliar qualities in scaffolding at
+ * once" pacing gate, shared by songCandidates() (drawFromPool's own 60% song
+ * bucket) and drawFromSymbols' restricted "From my songs" draw (MD-01) - both
+ * candidate sources must respect the same simultaneous-new-quality cap, or a
+ * restricted draw could bypass the invariant the unrestricted path enforces.
+ * A normal item (no active scaffold stage), an already-unlocked quality, or a
+ * quality already counted among the in-flight ones always passes through
+ * unfiltered; only a BRAND NEW unfamiliar quality is throttled once the cap
+ * is reached.
+ */
+export function limitScaffoldingQualities(
+	symbols: string[],
+	ctx: PoolContext,
+	config: PoolConfig = DEFAULT_POOL_CONFIG
+): string[] {
 	const unlocked = availableUnlocked(ctx);
 	const unlockedQualities = new Set(unlocked.flatMap((id) => tierById(id).qualities));
 	const inFlight = activeScaffoldQualities(ctx.scaffolds);
-	return ctx.songSymbols.filter((symbol) => {
+	return symbols.filter((symbol) => {
 		if (scaffoldStageForSymbol(ctx, symbol) === null) return true; // normal item
 		const quality = splitSymbol(symbol)?.quality;
 		if (quality === undefined) return true; // unclassifiable root: let it through
@@ -195,6 +210,10 @@ function songCandidates(ctx: PoolContext, config: PoolConfig): string[] {
 		if (inFlight.includes(quality)) return true; // already one of the in-flight qualities
 		return inFlight.length < config.maxScaffoldingQualities;
 	});
+}
+
+function songCandidates(ctx: PoolContext, config: PoolConfig): string[] {
+	return limitScaffoldingQualities(ctx.songSymbols, ctx, config);
 }
 
 function reviewCandidates(

@@ -32,7 +32,13 @@
 		readPracticeLog,
 		recentMisses
 	} from '$lib/practice/practiceLog';
-	import { drawFromPool, drawFromSymbols, scaffoldStageForSymbol, type PoolContext } from '$lib/practice/pool';
+	import {
+		drawFromPool,
+		drawFromSymbols,
+		limitScaffoldingQualities,
+		scaffoldStageForSymbol,
+		type PoolContext
+	} from '$lib/practice/pool';
 	import {
 		readScaffolds,
 		recordScaffoldAnswer,
@@ -220,7 +226,15 @@
 		// is derivable, per the locked no-active-songs edge case. This never
 		// touches poolContext().songSymbols, which stays the existing 60%
 		// song-bucket weighting seam for the filter-OFF case.
-		const restricted = songFilterOn ? drillableSongSymbols() : null;
+		//
+		// MD-01: the restricted candidate set is run through the same
+		// "max maxScaffoldingQualities unfamiliar qualities in scaffolding at
+		// once" pacing gate songCandidates() applies to the unrestricted song
+		// bucket, so the From-my-songs filter cannot exceed the simultaneous
+		// new-quality cap.
+		const restricted = songFilterOn
+			? limitScaffoldingQualities(drillableSongSymbols(), poolContext())
+			: null;
 		let symbol: string;
 		if (restricted && restricted.length > 0) {
 			symbol = drawFromSymbols(restricted, poolContext()) ?? drawFromPool(poolContext()).symbol;

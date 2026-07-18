@@ -4,6 +4,7 @@ import {
 	DEFAULT_POOL_CONFIG,
 	drawFromPool,
 	drawFromSymbols,
+	limitScaffoldingQualities,
 	scaffoldStageForSymbol,
 	type PoolContext
 } from './pool';
@@ -338,6 +339,51 @@ describe('drawFromSymbols (SONG-02 restricted draw)', () => {
 		const first = drawFromSymbols(symbols, ctx, DEFAULT_POOL_CONFIG, mulberry32(99));
 		const second = drawFromSymbols(symbols, ctx, DEFAULT_POOL_CONFIG, mulberry32(99));
 		expect(first).toBe(second);
+	});
+});
+
+describe('limitScaffoldingQualities (MD-01: shared restricted-draw pacing gate)', () => {
+	it('throttles a third unfamiliar quality out of an arbitrary candidate list once 2 are already in-flight, the same way songCandidates does', () => {
+		const scaffolds: Record<string, ScaffoldState> = {
+			Cmaj7: { symbol: 'Cmaj7', exposures: 2, coldCorrectConstructions: 0 },
+			Dm7: { symbol: 'Dm7', exposures: 1, coldCorrectConstructions: 0 }
+		};
+		const ctx = baseContext({
+			currentTier: 1,
+			unlockedTiers: [1],
+			scaffolds
+		});
+		// This is NOT ctx.songSymbols - it's an arbitrary restricted candidate
+		// set (mirrors the Drills page's drillableSongSymbols() call site for
+		// the "From my songs" filter). maj7 and m7 are already in-flight;
+		// quality '7' (G7) must be throttled out. C (tier 1, no scaffolding)
+		// always passes through.
+		const restricted = limitScaffoldingQualities(['Cmaj7', 'Dm7', 'G7', 'C'], ctx);
+		expect(restricted).not.toContain('G7');
+		expect(restricted).toContain('Cmaj7');
+		expect(restricted).toContain('Dm7');
+		expect(restricted).toContain('C');
+	});
+
+	it('lets a candidate through once its quality is already in-flight, or once it is a normal (non-scaffolding) item', () => {
+		const scaffolds: Record<string, ScaffoldState> = {
+			Cmaj7: { symbol: 'Cmaj7', exposures: 2, coldCorrectConstructions: 0 },
+			Dm7: { symbol: 'Dm7', exposures: 1, coldCorrectConstructions: 0 }
+		};
+		const ctx = baseContext({ currentTier: 1, unlockedTiers: [1], scaffolds });
+		// A second Cmaj7-quality symbol (same quality already in-flight) is
+		// never throttled by the 2-quality cap, since it doesn't add a THIRD
+		// distinct quality.
+		expect(limitScaffoldingQualities(['Gmaj7'], ctx)).toEqual(['Gmaj7']);
+	});
+
+	it('with no scaffolding at all, returns every candidate unfiltered', () => {
+		const ctx = baseContext({ currentTier: 3, unlockedTiers: [1, 2, 3] });
+		expect(limitScaffoldingQualities(['Cm7', 'F7', 'Bbmaj7'], ctx)).toEqual([
+			'Cm7',
+			'F7',
+			'Bbmaj7'
+		]);
 	});
 });
 
