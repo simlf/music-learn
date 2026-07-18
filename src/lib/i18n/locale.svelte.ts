@@ -35,6 +35,7 @@ export function currentLocale(): Locale {
 export function setLocale(value: Locale): void {
 	current = value;
 	if (!browser) return;
+	document.documentElement.lang = value;
 	try {
 		localStorage.setItem(STORAGE_KEY, value);
 	} catch {
@@ -53,7 +54,10 @@ export function initLocale(): void {
 	if (!browser) return;
 	try {
 		const stored = localStorage.getItem(STORAGE_KEY);
-		if (isLocale(stored)) current = stored;
+		if (isLocale(stored)) {
+			current = stored;
+			document.documentElement.lang = stored;
+		}
 	} catch {
 		// Storage disabled or unreadable: stay on the in-memory 'en' default.
 	}
