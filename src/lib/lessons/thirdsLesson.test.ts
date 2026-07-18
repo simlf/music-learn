@@ -24,6 +24,44 @@ describe('THIRDS_LESSON content invariants', () => {
 	});
 });
 
+describe('THIRDS_LESSON bilingual copy completeness (I18N-02)', () => {
+	it('every step has non-empty en and fr title and body', () => {
+		for (const step of THIRDS_LESSON) {
+			expect(step.title.en.length).toBeGreaterThan(0);
+			expect(step.title.fr.length).toBeGreaterThan(0);
+			expect(step.body.en.length).toBeGreaterThan(0);
+			expect(step.body.fr.length).toBeGreaterThan(0);
+		}
+	});
+
+	it('every non-null correctLine has non-empty en and fr', () => {
+		for (const step of THIRDS_LESSON) {
+			if (step.correctLine === null) continue;
+			expect(step.correctLine.en.length).toBeGreaterThan(0);
+			expect(step.correctLine.fr.length).toBeGreaterThan(0);
+		}
+	});
+
+	it('every non-null wrongHint has non-empty en and fr, preserving the {N} placeholder in both languages when present in en', () => {
+		for (const step of THIRDS_LESSON) {
+			if (step.wrongHint === null) continue;
+			expect(step.wrongHint.en.length).toBeGreaterThan(0);
+			expect(step.wrongHint.fr.length).toBeGreaterThan(0);
+			if (step.wrongHint.en.includes('{N}')) {
+				expect(step.wrongHint.fr).toContain('{N}');
+			}
+		}
+	});
+
+	it('every fr body containing emphasis in en also contains a **-delimited emphasis span in fr', () => {
+		for (const step of THIRDS_LESSON) {
+			const enHasEmphasis = /\*\*(.+?)\*\*/.test(step.body.en);
+			const frHasEmphasis = /\*\*(.+?)\*\*/.test(step.body.fr);
+			expect(frHasEmphasis).toBe(enHasEmphasis);
+		}
+	});
+});
+
 describe('gradeLessonTap (chroma-only, enharmonic-blind, total)', () => {
 	it('grades a correct tap true against a major-third step', () => {
 		expect(gradeLessonTap(THIRDS_LESSON[1], 'E')).toBe(true);
