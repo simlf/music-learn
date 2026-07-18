@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import BuildSession from './BuildSession.svelte';
+import { setLocale } from '$lib/i18n/locale.svelte';
 import { Rating } from '$lib/srs/scheduler';
 import * as deckModule from '$lib/srs/deck';
 
@@ -46,6 +47,10 @@ beforeEach(() => {
 	soundEnabledMock.mockReturnValue(true);
 	studyModeEnabledMock.mockReset();
 	studyModeEnabledMock.mockReturnValue(false);
+});
+
+afterEach(() => {
+	setLocale('en');
 });
 
 describe('BuildSession picker (BUILD-01/02, Task 1)', () => {
@@ -1057,4 +1062,54 @@ describe('BuildSession study-mode roll, HEAR-02', () => {
 		},
 		10000
 	);
+});
+
+/**
+ * I18N-02 French rendering check (20-03): the kind-toggle, the STEP
+ * register, and a step WHY line all flip to the locked FR strings under
+ * `setLocale('fr')`, while the rendered chord symbol (a pitch/letter-name
+ * artifact, never routed through `t()`) stays byte-identical to its English
+ * form - proving the chord-symbol/interval-shorthand immunity boundary
+ * holds on the Build surface.
+ */
+describe('BuildSession French rendering + chord-symbol immunity (I18N-02)', () => {
+	it('renders the French kind-toggle labels, STEP register, and WHY line for a Cm7 build, with the chord symbol unchanged', async () => {
+		setLocale('fr');
+		render(BuildSession);
+
+		expect(screen.getByRole('button', { name: 'Accords' })).toHaveAttribute('aria-pressed', 'true');
+		expect(screen.getByRole('button', { name: 'Gammes' })).toHaveAttribute('aria-pressed', 'false');
+		expect(screen.getByText('Fondamentale')).toBeInTheDocument();
+		expect(screen.getByText('Qualité')).toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'C' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'mineur 7' }));
+
+		expect(screen.getByTestId('build-register')).toHaveTextContent('ÉTAPE 1 SUR 3');
+		expect(screen.getByTestId('build-step-line')).toHaveTextContent(
+			'Empile une tierce mineure au-dessus de C.'
+		);
+		// The WHY line's chord symbol (Cm7) is a pitch/letter-name artifact and
+		// must render identically regardless of locale (I18N-02 immunity).
+		expect(screen.getByTestId('build-why-line')).toHaveTextContent("C'est la tierce de Cm7.");
+	});
+
+	it('renders the French scale picker (Tonique caption, "{root} majeur" tonic chips) and a French scale step/WHY line, with letter names unchanged', async () => {
+		setLocale('fr');
+		render(BuildSession);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Gammes' }));
+		expect(screen.getByText('Tonique')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'G majeur' })).toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'G majeur' }));
+
+		expect(screen.getByTestId('build-register')).toHaveTextContent('ÉTAPE 1 SUR 7');
+		expect(screen.getByTestId('build-step-line')).toHaveTextContent(
+			"Monte d'un ton entier depuis G."
+		);
+		expect(screen.getByTestId('build-why-line')).toHaveTextContent(
+			"C'est le degré 2 de G majeur."
+		);
+	});
 });

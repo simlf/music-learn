@@ -22,6 +22,7 @@
 	import { newCard, Rating } from '$lib/srs/scheduler';
 	import { scaleFormulaFactId } from '$lib/srs/facts';
 	import { ensureAudioReady, playArpeggio, playChord, soundEnabled, studyModeEnabled } from '$lib/audio/audio';
+	import { currentLocale, t } from '$lib/i18n/locale.svelte';
 	import Button from './Button.svelte';
 	import ChordGlyph from './ChordGlyph.svelte';
 	import IntervalChip from './IntervalChip.svelte';
@@ -110,11 +111,18 @@
 	/**
 	 * Right-answer confirmation variants (D-08): rotated with a
 	 * no-immediate-repeat picker, mirroring drills/+page.svelte's own
-	 * CORRECT_VARIANTS/pickVariant convention.
+	 * CORRECT_VARIANTS/pickVariant convention. `$derived.by` so a live locale
+	 * flip re-renders the FR variants (I18N-02, mirrors RecallSession's
+	 * CORRECT_VARIANTS/WRONG_VARIANTS pattern from 20-02).
 	 */
-	const CORRECT_VARIANTS = ['Nailed it.', 'Et voilà.', 'Bang on.', 'Spot on, mon ami.'];
+	const CORRECT_VARIANTS = $derived.by(() => [
+		t('build.confirm.0'),
+		t('build.confirm.1'),
+		t('build.confirm.2'),
+		t('build.confirm.3')
+	]);
 	/** Wrong-answer headline variants, reused verbatim from Drills. */
-	const WRONG_VARIANTS = ['Not quite.', 'Close, but no cigar.', 'Not this time.'];
+	const WRONG_VARIANTS = $derived.by(() => [t('build.wrong.0'), t('build.wrong.1'), t('build.wrong.2')]);
 
 	/** Picks a variant, avoiding an immediate repeat (loop-free, mirrors drills/+page.svelte's pickVariant). */
 	function pickVariant(variants: string[], lastIndex: number): [string, number] {
@@ -126,21 +134,27 @@
 		return [variants[index], index];
 	}
 
-	/** Friendly quality names, in QUALITY_SUFFIXES' exact order (fixed mapping, see 12-04-PLAN.md). */
-	const QUALITY_LABELS: Record<string, string> = {
-		'': 'major',
-		m: 'minor',
-		dim: 'diminished',
-		maj7: 'major 7th',
-		m7: 'minor 7th',
-		'7': 'dominant 7th',
-		m7b5: 'half-diminished',
-		dim7: 'diminished 7th'
-	};
+	/**
+	 * Friendly quality names, in QUALITY_SUFFIXES' exact order (fixed mapping,
+	 * see 12-04-PLAN.md). `$derived.by` so a live locale flip re-renders the
+	 * FR labels (I18N-02).
+	 */
+	const QUALITY_LABELS = $derived.by<Record<string, string>>(() => ({
+		'': t('build.word.major'),
+		m: t('build.quality.minor'),
+		dim: t('build.quality.diminished'),
+		maj7: t('build.quality.major7'),
+		m7: t('build.quality.minor7'),
+		'7': t('build.quality.dominant7'),
+		m7b5: t('build.quality.halfDiminished'),
+		dim7: t('build.quality.diminished7')
+	}));
 
-	/** Zips ROOTS (the ASCII value used to build the chord symbol) with MAJOR_SCALE_ROOTS (the glyph chip label) by index - both arrays share the same 12-root order. */
+	/** Zips ROOTS (the ASCII value used to build the chord symbol) with MAJOR_SCALE_ROOTS (the glyph chip label) by index - both arrays share the same 12-root order. Pitch/letter names never translate (I18N-02 immunity). */
 	const ROOT_CHIPS = ROOTS.map((ascii, i) => ({ ascii, label: MAJOR_SCALE_ROOTS[i] }));
-	const QUALITY_CHIPS = QUALITY_SUFFIXES.map((suffix) => ({ suffix, label: QUALITY_LABELS[suffix] }));
+	const QUALITY_CHIPS = $derived.by(() =>
+		QUALITY_SUFFIXES.map((suffix) => ({ suffix, label: QUALITY_LABELS[suffix] }))
+	);
 
 	/**
 	 * Clears feedback/flash/timer state and the count-up hint reveal; called
@@ -228,9 +242,9 @@
 	const lastLetter = $derived(construction?.earnedNotes.at(-1)?.letter ?? '');
 	/** The step the count-up hint reads from: always the LIVE construction state (never the paced promptState), per the plan's explicit contract. */
 	const countUpStep = $derived(construction ? expectedStep(construction) : undefined);
-	/** The chord's own glyph symbol, or "{tonic} major" for scales - both the WHY-line's/enharmonic-line's "symbol" fill-in. */
+	/** The chord's own glyph symbol, or "{tonic} major"/"{tonic} majeur" for scales - both the WHY-line's/enharmonic-line's "symbol" fill-in. */
 	const targetSymbol = $derived(
-		kind === 'chords' ? (construction?.label ?? '') : `${pickedTonic ?? ''} major`
+		kind === 'chords' ? (construction?.label ?? '') : `${pickedTonic ?? ''} ${t('build.word.major')}`
 	);
 	/** The root/tonic currently in play, for the enharmonic teaching line's intervalFromRoot lookup. */
 	const currentRootLabel = $derived(kind === 'chords' ? (pickedRoot ?? '') : (pickedTonic ?? ''));
@@ -262,29 +276,81 @@
 		return transposeFrom(root, picked.short) || pair.sharpLetter;
 	}
 
-	/** "minor third", "major second"... the just-earned CONSECUTIVE interval's own quality + degree word (never the chord-tone role), for the enharmonic teaching line's "{intervalWord}s" pluralization. */
+	/**
+	 * "minor third", "major second"... the just-earned CONSECUTIVE interval's
+	 * own quality + degree word (never the chord-tone role), pre-pluralized
+	 * for the enharmonic teaching line ("...a clean stack of {intervalWord}.").
+	 * FR reads `IntervalInfo.longFr` directly (the existing French interval
+	 * seed - never re-derived) and pluralizes it word-by-word (every FR
+	 * degree noun/quality adjective in this app's vocabulary is a regular
+	 * `+s` plural: tierce/tierces, mineure/mineures, etc).
+	 */
 	function intervalWordFor(step: ConstructionStep): string {
+		if (currentLocale() === 'fr') {
+			return step.interval.longFr
+				.split(' ')
+				.map((word) => `${word}s`)
+				.join(' ');
+		}
 		const qualityWord = step.interval.long.split(' ')[0];
-		return `${qualityWord} ${step.interval.role}`;
+		return `${qualityWord} ${step.interval.role}s`;
 	}
 
-	/** "stack a minor 3rd" (chords) / "take a whole step" (scales), per D-03/phraseStep. */
+	/**
+	 * "stack a minor 3rd" (chords) / "take a whole step" (scales), per
+	 * D-03/phraseStep - EN only (untouched interval.ts machinery).
+	 */
 	function phraseFor(step: ConstructionStep): string {
 		return kind === 'chords'
 			? phraseStep(step.interval.short)
 			: phraseStep(step.interval.short, { asScaleStep: true });
 	}
 
+	/**
+	 * Locale-aware interval phrase for the step/WHY/restatement lines: EN
+	 * delegates to `phraseFor`/interval.ts unchanged; FR reads
+	 * `IntervalInfo.longFr` for chords (the existing French interval seed)
+	 * and the two Build-owned whole/half-tone strings for scale steps (scale
+	 * construction steps are always consecutive seconds, so this is the only
+	 * FR vocabulary a scale step ever needs - interval.ts has no seed for
+	 * this scale-step-specific "whole/half" phrasing, so it lives in
+	 * build.ts rather than being re-derived in interval.ts).
+	 */
+	function localizedPhraseFor(step: ConstructionStep): string {
+		if (currentLocale() === 'fr') {
+			if (kind === 'scales') {
+				return step.interval.quality === 'M'
+					? t('build.interval.wholeStep')
+					: t('build.interval.halfStep');
+			}
+			return step.interval.longFr;
+		}
+		return phraseFor(step);
+	}
+
 	function stepLineFor(step: ConstructionStep): string {
-		return kind === 'chords'
-			? `Stack a ${phraseFor(step)} up from ${lastLetter}.`
-			: `Take a ${phraseFor(step)} up from ${lastLetter}.`;
+		const phrase = localizedPhraseFor(step);
+		const prefix = kind === 'chords' ? t('build.step.chordsPrefix') : t('build.step.scalesPrefix');
+		const infix = kind === 'chords' ? t('build.step.chordsInfix') : t('build.step.scalesInfix');
+		return `${prefix} ${phrase} ${infix} ${lastLetter}.`;
+	}
+
+	/** "You need a {phrase} up from {letter}." restatement after a wrong-pitch-class tap, in the current locale. */
+	function restatementLineFor(step: ConstructionStep): string {
+		const phrase = localizedPhraseFor(step);
+		const prefix =
+			kind === 'chords'
+				? t('build.restatement.needChordsPrefix')
+				: t('build.restatement.needScalesPrefix');
+		const infix = kind === 'chords' ? t('build.step.chordsInfix') : t('build.step.scalesInfix');
+		return `${prefix} ${phrase} ${infix} ${lastLetter}.`;
 	}
 
 	function whyLineFor(step: ConstructionStep): string {
-		return kind === 'chords'
-			? `That's the ${step.role} of ${construction?.label}.`
-			: `That's degree ${step.degree} of ${pickedTonic} major.`;
+		if (kind === 'chords') {
+			return `${t('build.why.chordsPrefix')} ${t(`build.role.${step.role}`)} ${t('build.why.chordsInfix')} ${construction?.label}.`;
+		}
+		return `${t('build.why.scalesPrefix')} ${step.degree} ${t('build.why.scalesInfix')} ${pickedTonic} ${t('build.word.major')}.`;
 	}
 
 	/** Interval-chip label for an earned note at `index`: 'R' for the pre-placed root, else the step it was earned on. */
@@ -293,10 +359,12 @@
 		return construction?.steps[index - 1]?.interval.short ?? '';
 	}
 
-	/** Completion-summary heading: "Voila. You built {symbol}." (chords) / "Voila. {tonic} major, built from scratch." (scales). */
+	/** Completion-summary heading: "Voila. You built {symbol}." (chords) / "Voila. {tonic} major, built from scratch." (scales), in the current locale. */
 	function headingFor(): string {
-		if (kind === 'chords') return `Voila. You built ${construction?.label ?? ''}.`;
-		return `Voila. ${pickedTonic ?? ''} major, built from scratch.`;
+		if (kind === 'chords') {
+			return `${t('build.complete.headingChordsPrefix')} ${construction?.label ?? ''}.`;
+		}
+		return `${t('build.complete.headingScalesPrefix')} ${pickedTonic ?? ''} ${t('build.word.major')}, ${t('build.complete.headingScalesSuffix')}`;
 	}
 
 	/**
@@ -304,19 +372,26 @@
 	 * `construction.steps` (already fully advanced/done): "{root}, then
 	 * {interval1Long}, then ..." for chords (comma-joined with 'then'), or
 	 * "{tonic} major: {whole/half list}" for scales (comma-joined, no 'then').
+	 * FR reads `IntervalInfo.longFr` directly for chords (the existing
+	 * French interval seed, never re-derived).
 	 */
 	function ruleStatementFor(): string {
 		if (!construction) return '';
 		if (kind === 'chords') {
 			const root = construction.earnedNotes[0]?.letter ?? '';
-			const parts = construction.steps.map((step) => phraseStep(step.interval.short));
-			return `${root}, then ${parts.join(', then ')}.`;
+			const parts = construction.steps.map((step) =>
+				currentLocale() === 'fr' ? step.interval.longFr : phraseStep(step.interval.short)
+			);
+			const then = t('build.rule.then');
+			return `${root}, ${then} ${parts.join(`, ${then} `)}.`;
 		}
 		// Bare "whole"/"half" words (not phraseStep's "whole step"/"half step" -
 		// the list format already implies steps, per the UI-SPEC's literal
 		// "C major: whole, whole, half, ..." example).
-		const parts = construction.steps.map((step) => (step.interval.quality === 'M' ? 'whole' : 'half'));
-		return `${pickedTonic ?? ''} major: ${parts.join(', ')}.`;
+		const parts = construction.steps.map((step) =>
+			step.interval.quality === 'M' ? t('build.unit.wholeBare') : t('build.unit.halfBare')
+		);
+		return `${pickedTonic ?? ''} ${t('build.word.major')}: ${parts.join(', ')}.`;
 	}
 
 	/** Maps a completed session's wrongTapCount to an FSRS rating (BUILD-04): 0 -> Easy, 1-2 -> Good, 3+ -> Hard. Again is never returned - there is no give-up/reset path in this design. */
@@ -538,7 +613,7 @@
 			promptState = result.state;
 			feedback = {
 				kind: 'wrong-octave',
-				headline: 'Right note, wrong octave.',
+				headline: t('build.feedback.wrongOctave'),
 				direction: result.direction
 			};
 		}
@@ -623,14 +698,14 @@
 
 <div class="build-session" data-testid="build-session">
 	{#if !embedFact}
-		<div class="flex gap-2" data-testid="kind-toggle" role="group" aria-label="Build kind">
+		<div class="flex gap-2" data-testid="kind-toggle" role="group" aria-label={t('build.aria.kindGroup')}>
 			<Button
 				type="button"
 				variant={kind === 'chords' ? 'primary' : 'ghost'}
 				aria-pressed={kind === 'chords'}
 				onclick={() => setKind('chords')}
 			>
-				Chords
+				{t('build.kind.chords')}
 			</Button>
 			<Button
 				type="button"
@@ -638,7 +713,7 @@
 				aria-pressed={kind === 'scales'}
 				onclick={() => setKind('scales')}
 			>
-				Scales
+				{t('build.kind.scales')}
 			</Button>
 		</div>
 	{/if}
@@ -646,7 +721,7 @@
 	{#if sessionState === 'picking'}
 		<div class="mt-8" data-testid="picker">
 			{#if kind === 'chords'}
-				<p class="text-label font-mono uppercase">Root</p>
+				<p class="text-label font-mono uppercase">{t('build.caption.root')}</p>
 				<div class="mt-2 flex flex-wrap gap-2" data-testid="root-row">
 					{#each ROOT_CHIPS as chip (chip.ascii)}
 						<Button
@@ -660,7 +735,7 @@
 					{/each}
 				</div>
 
-				<p class="text-label mt-4 font-mono uppercase">Quality</p>
+				<p class="text-label mt-4 font-mono uppercase">{t('build.caption.quality')}</p>
 				<div class="mt-2 flex flex-wrap gap-2" data-testid="quality-row">
 					{#each QUALITY_CHIPS as chip (chip.suffix)}
 						<Button
@@ -674,7 +749,7 @@
 					{/each}
 				</div>
 			{:else}
-				<p class="text-label font-mono uppercase">Tonic</p>
+				<p class="text-label font-mono uppercase">{t('build.caption.tonic')}</p>
 				<div class="mt-2 flex flex-wrap gap-2" data-testid="tonic-row">
 					{#each MAJOR_SCALE_ROOTS as root (root)}
 						<Button
@@ -683,7 +758,7 @@
 							aria-pressed={pickedTonic === root}
 							onclick={() => pickTonic(root)}
 						>
-							{root} major
+							{root} {t('build.word.major')}
 						</Button>
 					{/each}
 				</div>
@@ -696,7 +771,9 @@
 					<ChordGlyph root={chordRootGlyph} quality={pickedQuality ?? ''} />
 				</div>
 			{:else}
-				<p class="text-heading font-bold" data-testid="build-target">{pickedTonic} major</p>
+				<p class="text-heading font-bold" data-testid="build-target">
+					{pickedTonic} {t('build.word.major')}
+				</p>
 			{/if}
 
 			{#if promptStep}
@@ -705,7 +782,8 @@
 					aria-live="polite"
 					data-testid="build-register"
 				>
-					STEP {promptState.position + 1} OF {promptState.steps.length}
+					{t('build.step.step')} {promptState.position + 1} {t('build.step.of')} {promptState.steps
+						.length}
 				</p>
 			{/if}
 
@@ -729,14 +807,16 @@
 									data-testid="count-up-toggle"
 									onclick={() => (countUpRevealed = true)}
 								>
-									Show the count-up hint
+									{t('build.button.showCountUp')}
 								</Button>
 							</div>
 						{:else if countUpStep}
 							<p class="text-body mt-2" data-testid="build-count-up-hint">
-								{countUpStep.interval.semitones} half step{countUpStep.interval.semitones === 1
-									? ''
-									: 's'} up from {lastLetter}. Count it out.
+								{countUpStep.interval.semitones}
+								{countUpStep.interval.semitones === 1
+									? t('build.unit.halfStep')
+									: t('build.unit.halfSteps')}
+								{t('build.step.chordsInfix')} {lastLetter}. {t('build.countUp.suffix')}
 							</p>
 						{/if}
 					{/if}
@@ -747,25 +827,29 @@
 						<p class="text-body font-bold">{feedback.headline}</p>
 						{#if feedback.kind === 'correct' && feedback.notable}
 							<p class="text-body mt-2" data-testid="build-enharmonic-line">
-								This key's usually called {feedback.commonName}, but {targetSymbol} spells it {feedback.actualName}
-								so the {kind === 'chords' ? 'chord' : 'scale'} reads as a clean stack of {feedback.intervalWord}s.
+								{t('build.enharmonic.a')} {feedback.commonName}, {t('build.enharmonic.b')}
+								{targetSymbol} {t('build.enharmonic.c')} {feedback.actualName}
+								{kind === 'chords'
+									? t('build.enharmonic.dChords')
+									: t('build.enharmonic.dScales')} {t('build.enharmonic.e')} {feedback.intervalWord}.
 							</p>
 						{:else if feedback.kind === 'wrong-pitch-class'}
 							<p class="text-body mt-2" data-testid="build-diagnostic">
-								{feedback.semitones} half step{feedback.semitones === 1 ? '' : 's'} too {feedback.direction}.
+								{feedback.semitones}
+								{feedback.semitones === 1 ? t('build.unit.halfStep') : t('build.unit.halfSteps')}
+								{t('build.diagnostic.too')} {t(`build.direction.${feedback.direction}`)}.
 							</p>
 							{#if promptStep}
 								<p class="text-body mt-2" data-testid="build-restatement">
-									You need a {phraseFor(promptStep)} up from {lastLetter}.
+									{restatementLineFor(promptStep)}
 								</p>
 							{/if}
 						{:else if feedback.kind === 'wrong-octave'}
 							<p class="text-body mt-2" data-testid="build-restatement">
-								{#if feedback.direction === 'high'}
-									You're stacking upward: try the next {lastTappedLetter} down.
-								{:else}
-									You're stacking upward: try the next {lastTappedLetter} up.
-								{/if}
+								{t('build.restatement.stackingPrefix')} {lastTappedLetter}
+								{feedback.direction === 'high'
+									? t('build.restatement.down')
+									: t('build.restatement.up')}.
 							</p>
 						{/if}
 					</div>
@@ -827,17 +911,19 @@
 
 			{#if fsrsSaved && !onComplete}
 				<p class="text-label mt-4 font-mono uppercase" data-testid="build-fsrs-status">
-					SAVED TO RECALL · FORMULA-BUILD MODE
+					{t('build.status.saved')}
 				</p>
 			{/if}
 
 			<div class="mt-6 flex flex-wrap gap-2">
-				<Button type="button" variant="ghost" onclick={hearAgain}>Hear again</Button>
+				<Button type="button" variant="ghost" onclick={hearAgain}>{t('build.button.hearAgain')}</Button>
 				{#if onComplete}
-					<Button type="button" variant="primary" onclick={onComplete}>Next</Button>
+					<Button type="button" variant="primary" onclick={onComplete}>{t('build.button.next')}</Button>
 				{:else}
-					<Button type="button" variant="primary" onclick={resetPicker}>Build Another</Button>
-					<Button variant="ghost" href="/recall">Recall It Now</Button>
+					<Button type="button" variant="primary" onclick={resetPicker}
+						>{t('build.button.buildAnother')}</Button
+					>
+					<Button variant="ghost" href="/recall">{t('build.button.recallNow')}</Button>
 				{/if}
 			</div>
 		</div>
