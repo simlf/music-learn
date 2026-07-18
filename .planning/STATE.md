@@ -4,17 +4,17 @@ milestone: v2.1
 milestone_name: Playability & Comprehension
 current_phase: 20
 current_phase_name: French Translation
-status: executing
+status: verifying
 stopped_at: Completed 20-08-PLAN.md
-last_updated: "2026-07-18T19:36:13.295Z"
+last_updated: "2026-07-18T19:55:52.578Z"
 last_activity: 2026-07-18
 last_activity_desc: Phase 20 execution started
 progress:
   total_phases: 19
-  completed_phases: 12
+  completed_phases: 13
   total_plans: 74
-  completed_plans: 71
-  percent: 63
+  completed_plans: 72
+  percent: 68
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 
 Phase: 20 (French Translation) — EXECUTING
 Plan: 10 of 10
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-18 — Phase 20 execution started
 
 **v2.0 Learning Upgrade (Phases 10-13): COMPLETE (shipped 2026-07-15).**
@@ -145,6 +145,7 @@ Last activity: 2026-07-18 — Phase 20 execution started
 | Phase 20-french-translation P07 | 10min | 2 tasks | 6 files |
 | Phase 20 P08 | 25min | 3 tasks | 9 files |
 | Phase 20-french-translation P09 | 25min | 3 tasks | 13 files |
+| Phase 20 P10 | 20min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -283,6 +284,8 @@ Recent decisions affecting current work:
 - [Phase 20-09]: InspectRegister long-name now switches info.long/info.longFr by locale instead of always rendering longFr; fixed downstream tests across drills/scales/components suites accordingly.
 - [Phase 20-09]: recent-lookups group heading implemented as an accessible aria-label (no visible new heading markup).
 - [Phase 20-09]: RevealInsight needed no code changes; its French behavior is inherited from mnemonicFor()'s locale-reactivity.
+- [Phase ?]: Combined Task 1 (FR-wiring/immunity/no-key-leak) and Task 2 (I18N-03 fit-rule assertions) into one commit since both build the same coverage.test.ts file as one coherent gate
+- [Phase ?]: tiers.ts and presets.ts English residuals left untranslated (out of Phase 20 files_modified scope per 20-UI-SPEC.md); flagged for a future decision rather than silently expanded
 
 ### Pending Todos
 
@@ -314,7 +317,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-18T19:35:32.279Z
+Last session: 2026-07-18T19:55:16.679Z
 Stopped at: Completed 20-08-PLAN.md
 Resume file: 
 None

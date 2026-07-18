@@ -41,7 +41,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 17: Chord Explainer** - Escalating in-place hints for unknown chords in Recall (sketch 010-A) (planned 2026-07-15)
 - [x] **Phase 18: Your Songs' Chords** - Song-provenance marks + a From-my-songs filter across the app (sketch 011-A) (planned 2026-07-15) (completed 2026-07-18)
 - [x] **Phase 19: Interactive Theory** - Guided-step beginner lessons that hand off into the first drill (sketch 012-A) (planned 2026-07-15) (completed 2026-07-18)
-- [ ] **Phase 20: French Translation** - Header EN|FR toggle and a full French i18n layer (sketch 013-A) (planned 2026-07-15)
+- [x] **Phase 20: French Translation** - Header EN|FR toggle and a full French i18n layer (sketch 013-A) (planned 2026-07-15) (completed 2026-07-18)
 
 ## Phase Details
 
@@ -530,7 +530,7 @@ Plans:
 
 **Design reference**: `.planning/sketches/013-french-fit-test/` (winner Variant A: header toggle; C stress-panel is the overflow audit)
 **UI hint**: yes
-**Plans**: 9/10 plans executed
+**Plans**: 10/10 plans complete
 
 **Wave 1**
 
@@ -549,7 +549,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 20-10-PLAN.md — French fit audit + cross-surface immunity/completeness gate + visual sign-off (I18N-01/02/03)
+- [x] 20-10-PLAN.md — French fit audit + cross-surface immunity/completeness gate + visual sign-off (I18N-01/02/03)
 
 ## Progress
 
@@ -579,4 +579,4 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 | 17. Chord Explainer | 0/TBD | Pending | - |
 | 18. Your Songs' Chords | 4/4 | Complete    | 2026-07-18 |
 | 19. Interactive Theory | 4/4 | Complete    | 2026-07-18 |
-| 20. French Translation | 9/10 | In Progress|  |
+| 20. French Translation | 10/10 | Complete   | 2026-07-18 |
