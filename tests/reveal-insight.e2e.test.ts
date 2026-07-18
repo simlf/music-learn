@@ -74,7 +74,8 @@ vi.mock('$lib/practice/scaffold', () => ({
 }));
 
 vi.mock('$lib/practice/drillSeeds', () => ({
-	consumeDrillSeeds: (): string[] => []
+	consumeDrillSeeds: (): string[] => [],
+	consumeLessonSeeds: (): string[] => []
 }));
 
 vi.mock('$lib/audio/audio', () => ({

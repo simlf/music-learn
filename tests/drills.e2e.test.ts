@@ -99,7 +99,8 @@ vi.mock('$lib/practice/scaffold', () => ({
 }));
 
 vi.mock('$lib/practice/drillSeeds', () => ({
-	consumeDrillSeeds: (): string[] => []
+	consumeDrillSeeds: (): string[] => [],
+	consumeLessonSeeds: (): string[] => []
 }));
 
 // The drills page now plays sound through the Track A audio engine: a

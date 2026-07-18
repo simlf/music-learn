@@ -93,7 +93,8 @@ vi.mock('$lib/practice/scaffold', () => ({
 
 const consumeDrillSeedsMock = vi.fn((..._args: unknown[]): string[] => []);
 vi.mock('$lib/practice/drillSeeds', () => ({
-	consumeDrillSeeds: (...args: unknown[]) => consumeDrillSeedsMock(...args)
+	consumeDrillSeeds: (...args: unknown[]) => consumeDrillSeedsMock(...args),
+	consumeLessonSeeds: (): string[] => []
 }));
 
 vi.mock('$lib/drills/rotateHint', () => ({
