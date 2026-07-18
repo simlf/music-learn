@@ -1,7 +1,12 @@
 import { render, screen, within } from '@testing-library/svelte';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import PracticeItemRow from './PracticeItemRow.svelte';
 import AccuracyTable from './AccuracyTable.svelte';
+import { setLocale } from '$lib/i18n/locale.svelte';
+
+afterEach(() => {
+	setLocale('en');
+});
 
 describe('PracticeItemRow', () => {
 	it('renders the symbol, kind tag, attempts, accuracy%, and the weak accent class when attempts >= 3 and accuracy < 0.7', () => {
@@ -56,5 +61,29 @@ describe('AccuracyTable', () => {
 
 		const rows = within(table).getAllByTestId('practice-item-row');
 		expect(rows).toHaveLength(2);
+	});
+});
+
+describe('French locale (I18N-02)', () => {
+	it('AccuracyTable renders French column headers under fr', () => {
+		setLocale('fr');
+		render(AccuracyTable, {
+			items: [{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4 }]
+		});
+
+		const table = screen.getByTestId('accuracy-table');
+		expect(within(table).getByText('SYMBOLE')).toBeInTheDocument();
+		expect(within(table).getByText('ESSAIS')).toBeInTheDocument();
+		expect(within(table).getByText('PRÉCISION')).toBeInTheDocument();
+	});
+
+	it('PracticeItemRow renders the French KIND category word but keeps the chord symbol and accuracy% verbatim', () => {
+		setLocale('fr');
+		render(PracticeItemRow, { item: { item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4 } });
+
+		const row = screen.getByTestId('practice-item-row');
+		expect(within(row).getByText('Cm7')).toBeInTheDocument();
+		expect(within(row).getByText('ACCORD')).toBeInTheDocument();
+		expect(within(row).getByText('40%')).toBeInTheDocument();
 	});
 });
