@@ -601,6 +601,11 @@
 		{#if embedTarget}
 			{#key `${currentItem.factId}|${currentItem.mode}`}
 				<div class="mt-4">
+					<SongMark
+						songs={currentFact?.factKind === 'chord-formula'
+							? songsForSymbol(currentFact.symbol, provenanceIndex)
+							: []}
+					/>
 					<BuildSession embedFact={embedTarget} onComplete={handleModeCNext} />
 				</div>
 			{/key}
@@ -620,6 +625,7 @@
 					{@const chord = spellChord(currentFact.symbol)}
 					<div class="flex items-start gap-4">
 						<ChordGlyph root={chord.root} quality={chord.symbol.slice(chord.root.length)} />
+						<SongMark songs={songsForSymbol(currentFact.symbol, provenanceIndex)} />
 					</div>
 					<p class="text-body mt-4">What's the formula?</p>
 				{:else if currentFact.factKind === 'interval-size'}
@@ -700,6 +706,7 @@
 			<div class="mt-4" data-testid="recall-prompt">
 				<div class="flex items-start gap-4">
 					<ChordGlyph root={target.root} quality={target.symbol.slice(target.root.length)} />
+					<SongMark songs={songsForSymbol(currentFact.symbol, provenanceIndex)} />
 				</div>
 				<p class="text-body mt-4">Play it on the keyboard.</p>
 			</div>
@@ -809,6 +816,9 @@
 						</div>
 						<RevealInsight correctSymbol={currentFact.symbol} givenSymbol={hearNameGiven} />
 					{/if}
+					<div class="mt-4">
+						<SongMark songs={songsForSymbol(currentFact.symbol, provenanceIndex)} />
+					</div>
 				</div>
 			{/if}
 		</div>

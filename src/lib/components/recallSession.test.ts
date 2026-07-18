@@ -1094,3 +1094,78 @@ describe('RecallSession song-filter queue restriction (SONG-02, 18-03)', () => {
 		expect(screen.getByTestId('recall-register')).toHaveTextContent('2 LEFT TODAY');
 	});
 });
+
+/**
+ * SongMark rendering coverage (SONG-01, Phase 18, Plan 03): a song chord's
+ * mark shows immediately in formula/see-play/formula-build (the symbol is
+ * already visible or the task is building from a known symbol - not a
+ * spoiler), but in hear-name the mark must render ONLY after the user
+ * answers, since the choice buttons ARE the candidate answers.
+ */
+describe('RecallSession SongMark rendering (SONG-01, 18-03)', () => {
+	const provenanceIndex = new Map([[normalizeSymbolForMatch('Cm7'), ['Autumn Leaves']]]);
+
+	it('formula mode: shows the SongMark immediately for a song chord', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession({ provenanceIndex });
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		expect(screen.getByTestId('song-mark')).toHaveTextContent('Autumn Leaves');
+	});
+
+	it('see-play mode: shows the SongMark immediately for a song chord', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'see-play');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession({ provenanceIndex });
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		expect(screen.getByTestId('song-mark')).toHaveTextContent('Autumn Leaves');
+	});
+
+	it('formula-build mode: shows the SongMark immediately for a song chord', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'formula-build');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession({ provenanceIndex });
+		await waitFor(() => screen.getByTestId('recall-mode-chip'));
+
+		expect(screen.getByTestId('song-mark')).toHaveTextContent('Autumn Leaves');
+	});
+
+	it('a non-song chord shows no SongMark in any mode', async () => {
+		const card = makeCard('chord-formula:Gm7', 'chord-formula', 'formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession({ provenanceIndex });
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		expect(screen.queryByTestId('song-mark')).not.toBeInTheDocument();
+	});
+
+	it('hear-name mode: the SongMark is absent before answering and present only after a choice is selected (spoiler safety)', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'hear-name');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession({ provenanceIndex });
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		expect(screen.queryByTestId('song-mark')).not.toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Answer: Cm7' }));
+
+		expect(screen.getByTestId('song-mark')).toHaveTextContent('Autumn Leaves');
+	});
+});
