@@ -298,3 +298,29 @@ export function drawFromPool(
 
 	return { symbol, bucket: chosen, scaffoldStage: scaffoldStageForSymbol(ctx, symbol) };
 }
+
+/**
+ * SONG-02 restricted draw: draws ONLY from `symbols` (the caller's candidate
+ * set, e.g. the active-song chords when the "From my songs" filter is ON),
+ * reusing the pool's own need-weighting, per-item cap, and interleaving
+ * machinery so a restricted draw still favors weak chords and still respects
+ * the max-same-quality-run constraint. Returns `null` for an empty candidate
+ * set so the caller can fall back to the full library (drawFromPool).
+ *
+ * Additive-only: does not modify drawFromPool or any existing export, so the
+ * proven 0/60/25/15 bucket weighting is unaffected.
+ */
+export function drawFromSymbols(
+	symbols: string[],
+	ctx: PoolContext,
+	config: PoolConfig = DEFAULT_POOL_CONFIG,
+	rng: Rng = Math.random
+): string | null {
+	if (symbols.length === 0) return null;
+
+	const qualityOf = (symbol: string) => splitSymbol(symbol)?.quality ?? null;
+	const needs = symbols.map((candidate) => needFor(candidate, ctx.stats));
+	const shares = cappedShares(needs, config.maxItemShare);
+	const filtered = applyInterleaving(symbols, shares, qualityOf, ctx, config);
+	return weightedDraw(filtered.candidates, filtered.weights, rng);
+}
