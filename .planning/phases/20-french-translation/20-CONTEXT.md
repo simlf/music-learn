@@ -36,6 +36,9 @@ Out of scope: languages beyond French, a settings-only toggle (variant B), and t
 ### Translation Coverage
 - Translate the stable app surfaces: nav + masthead, Lookup/home, Drills, Build, Recall (grade labels, mode labels), Scales, Songs, Theory, Progress/Settings, plus the copy modules (`src/lib/copy/hints.ts`, `mnemonics.ts`, `streak.ts`) and the interval/register labels.
 - Phase 15-19 surfaces are in scope (their copy is now stable). Phase 17 (Chord Explainer) is unbuilt; its strings do not exist yet and are excluded — flagged for a follow-up when 17 lands.
+- NEW copy just landed in Phases 18 and 19 (completed 2026-07-18) and MUST be covered: Phase 18 `SongMark.svelte` ("N SONGS" count tag), `SongFilterToggle.svelte` ("FROM MY SONGS" label + the "Filter on/off" pool notes) on Drills/Recall, and the Lookup mark; Phase 19 `InteractiveLesson.svelte` (the four thirds-lesson step titles/bodies, "Hear it", "Continue", the "Try this in a drill" handoff card) plus the new "FROM YOUR LESSON" drills source tag and the `src/lib/lessons/thirdsLesson.ts` lesson copy. Chord symbols inside these (Cm7, C, Cm) stay language-neutral.
+- The Phase 15 keyboard dock was removed (quick task 260718-iyj); do NOT author or translate any dock-related strings (`KeyboardDock`/`dockContext` are deleted). Keyboards are inline ([[keyboard-inline-not-docked]]).
+- Because coverage spans nearly every `.svelte` route/component, the i18n extraction is a broad sweep — the planner should treat "find every user-facing literal" as an explicit discovery task (grep-driven inventory) rather than assume a fixed file list.
 
 ### Claude's Discretion
 - The exact i18n module shape (store + dictionary layout, key namespacing), whether long nav items are abbreviated vs scrolled, and the precise short-FR register abbreviations are at implementation discretion, following the sketch-013 audit and Print Shop patterns.
