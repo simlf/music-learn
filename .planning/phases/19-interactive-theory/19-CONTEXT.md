@@ -60,7 +60,7 @@ Out of scope: a full curriculum map / lesson index (sketch variant B, noted as t
 ### Integration Points
 - `src/routes/theory/+page.svelte` — currently static shape lessons (SEVENTH_SHAPES, ANCHOR_CHORDS, SOLFEGE_MAP); the interactive lesson is added here.
 - `src/routes/drills/+page.svelte` + `src/lib/practice/session.ts` (`createSession()`, `nextQuestion()`) — the drill handoff target; seed the beginner course from the lesson.
-- Phase 15 shared/playable keyboard is the docked keyboard already present on keyboard-bearing pages.
+- Keyboards are rendered INLINE per page (the Phase 15 collapsible bottom dock was removed by quick task 260718-iyj on 2026-07-18; `KeyboardDock.svelte`/`dockContext.svelte.ts` are deleted). The lesson uses an inline mini `PianoKeyboard` in interactive mode directly on `/theory` — do NOT reintroduce or register with the removed dock. See [[keyboard-inline-not-docked]].
 </code_context>
 
 <specifics>
