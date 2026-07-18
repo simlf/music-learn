@@ -24,7 +24,7 @@ export const DEFAULT_SESSION_CONFIG: SessionConfig = {
 	retryMaxGap: 4
 };
 
-export type QuestionSource = 'seeded' | 'retry' | 'warmup' | 'pool';
+export type QuestionSource = 'seeded' | 'seeded_lesson' | 'retry' | 'warmup' | 'pool';
 
 export type QuestionFamily = 'chord' | 'interval';
 
@@ -36,6 +36,8 @@ export type QuestionFamily = 'chord' | 'interval';
 export interface SessionItem {
 	symbol: string;
 	family: QuestionFamily;
+	/** undefined = the existing weak/Progress default; 'lesson' marks a Phase 19 lesson handoff. */
+	origin?: 'weak' | 'lesson';
 }
 
 export interface SessionAnswer {
@@ -151,7 +153,11 @@ export function nextQuestion(session: Session): { plan: NextQuestionPlan; sessio
 	if (session.seedQueue.length > 0) {
 		const [seed, ...seedQueue] = session.seedQueue;
 		return {
-			plan: { symbol: seed.symbol, family: seed.family, source: 'seeded' },
+			plan: {
+				symbol: seed.symbol,
+				family: seed.family,
+				source: seed.origin === 'lesson' ? 'seeded_lesson' : 'seeded'
+			},
 			session: { ...session, seedQueue }
 		};
 	}
