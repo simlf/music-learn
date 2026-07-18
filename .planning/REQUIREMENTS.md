@@ -117,7 +117,7 @@ Grounded in Session 4 sketches 008–013 (`.planning/sketches/MANIFEST.md`). Loc
 
 - [x] **LEARN-01**: A lesson runs as a vertical sequence of small do-then-check steps pairing a plain-English sentence with a keyboard action; correct advances with confirmation, wrong gives a gentle retry
 - [ ] **LEARN-02**: Steps can play their interval/chord so the learner hears what they build
-- [ ] **LEARN-03**: Each lesson ends with an explicit "Try this in a drill" handoff into the beginner course on /drills
+- [x] **LEARN-03**: Each lesson ends with an explicit "Try this in a drill" handoff into the beginner course on /drills
 
 ### French Translation
 
