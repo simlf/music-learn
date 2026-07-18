@@ -6,14 +6,14 @@ current_phase: 20
 current_phase_name: French Translation
 status: executing
 stopped_at: Completed 20-06-PLAN.md
-last_updated: "2026-07-18T18:48:46.724Z"
+last_updated: "2026-07-18T19:01:23.093Z"
 last_activity: 2026-07-18
 last_activity_desc: Phase 20 execution started
 progress:
   total_phases: 19
   completed_phases: 12
   total_plans: 74
-  completed_plans: 68
+  completed_plans: 69
   percent: 63
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 ## Current Position
 
 Phase: 20 (French Translation) — EXECUTING
-Plan: 7 of 10
+Plan: 8 of 10
 Status: Ready to execute
 Last activity: 2026-07-18 — Phase 20 execution started
 
@@ -142,6 +142,7 @@ Last activity: 2026-07-18 — Phase 20 execution started
 | Phase 20 P04 | 20min | 3 tasks | 7 files |
 | Phase 20-french-translation P05 | 6m | 3 tasks | 5 files |
 | Phase 20 P06 | 35min | 3 tasks | 8 files |
+| Phase 20-french-translation P07 | 10min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -273,6 +274,8 @@ Recent decisions affecting current work:
 - [Phase ?]: SongMark's {N} count reads a t()-keyed template with a literal {N} placeholder, substituted client-side (t() has no interpolation)
 - [Phase ?]: InteractiveLesson feedbackLine resolves currentLocale() imperatively at tap time; done-state correctLine reads it live in the template
 - [Phase ?]: theory.hearIt is a single shared dictionary key reused by InteractiveLesson and ChordExample Hear it controls
+- [Phase 20-french-translation]: scale-title now reads a single locale-driven qualitySuffix key instead of a permanently bilingual literal
+- [Phase 20-french-translation]: ScaleKeyboardDrill per-key aria-label words (key/scale degree) and the drill group aria-label were translated beyond the plan's explicit must_haves since they are in-scope screen-reader prose
 
 ### Pending Todos
 
@@ -304,7 +307,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-18T18:48:46.717Z
+Last session: 2026-07-18T19:00:27.188Z
 Stopped at: Completed 20-06-PLAN.md
 Resume file: 
 None
