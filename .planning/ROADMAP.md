@@ -477,7 +477,7 @@ Plans:
 
 **Design reference**: `.planning/sketches/011-your-songs-chords/` (winner Variant A: provenance mark + filter)
 **UI hint**: yes
-**Plans**: 1/4 plans executed
+**Plans**: 2/4 plans executed
 
 **Wave 1**
 
@@ -485,7 +485,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 18-02-PLAN.md — Drills surface: SongMark in prompt + From my songs filter restricting the chord pool (SONG-01, SONG-02)
+- [x] 18-02-PLAN.md — Drills surface: SongMark in prompt + From my songs filter restricting the chord pool (SONG-01, SONG-02)
 - [ ] 18-03-PLAN.md — Recall surface: SongMark across modes (hear-name spoiler-safe) + filter restricting the review queue (SONG-01, SONG-02)
 - [ ] 18-04-PLAN.md — Chord Lookup: SongMark in the result header (SONG-01)
 
@@ -543,6 +543,6 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 | 15. Playable Keyboard Everywhere | 7/7 | Complete    | 2026-07-15 |
 | 16. Hear the Chord | 5/6 | In Progress|  |
 | 17. Chord Explainer | 0/TBD | Pending | - |
-| 18. Your Songs' Chords | 1/4 | In Progress|  |
+| 18. Your Songs' Chords | 2/4 | In Progress|  |
 | 19. Interactive Theory | 0/TBD | Pending | - |
 | 20. French Translation | 0/TBD | Pending | - |
