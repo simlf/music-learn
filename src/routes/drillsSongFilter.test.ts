@@ -202,7 +202,7 @@ describe('PRACTICE POOL filter toggle (SONG-02)', () => {
 		expect(toggle).toHaveAttribute('aria-pressed', 'true');
 	});
 
-	it('with a drillable song chord, turning the filter on restricts the draw to drawFromSymbols and clears the fallback note', async () => {
+	it('with a drillable song chord, turning the filter on restricts the draw to drawFromSymbols and shows the filter-on note (not the fallback)', async () => {
 		seedActiveSong(['Bbmaj7']);
 		forceConstruction();
 		renderPage();
@@ -213,7 +213,9 @@ describe('PRACTICE POOL filter toggle (SONG-02)', () => {
 		expect(drawFromSymbolsMock).toHaveBeenCalled();
 		const [restrictedSymbols] = drawFromSymbolsMock.mock.calls.at(-1) as [string[]];
 		expect(restrictedSymbols).toEqual(['Bbmaj7']);
-		expect(screen.queryByTestId('song-filter-note')).not.toBeInTheDocument();
+		expect(screen.getByTestId('song-filter-note')).toHaveTextContent(
+			'Filter on: practicing the 1 chords from your active songs only.'
+		);
 	});
 
 	it('with no drillable song chords, turning the filter on shows the fallback note and stays visually on', async () => {
@@ -226,6 +228,28 @@ describe('PRACTICE POOL filter toggle (SONG-02)', () => {
 		expect(toggle).toHaveAttribute('aria-pressed', 'true');
 		expect(screen.getByTestId('song-filter-note')).toHaveTextContent(
 			'No active songs yet, so showing the full library instead.'
+		);
+	});
+
+	it('defaults to the filter-off explanatory note when the filter has never been toggled on', () => {
+		forceConstruction();
+		renderPage();
+
+		expect(screen.getByTestId('song-filter-note')).toHaveTextContent(
+			'Filter off: full chord library. Chords from your songs still carry their mark.'
+		);
+	});
+
+	it('with drillable song chords, turning the filter on shows the filter-on note with the drillable chord count', async () => {
+		seedActiveSong(['Bbmaj7', 'F7']);
+		forceConstruction();
+		renderPage();
+
+		const toggle = screen.getByRole('button', { name: /From my songs/i });
+		await fireEvent.click(toggle);
+
+		expect(screen.getByTestId('song-filter-note')).toHaveTextContent(
+			'Filter on: practicing the 2 chords from your active songs only.'
 		);
 	});
 });

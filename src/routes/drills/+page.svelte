@@ -142,6 +142,15 @@
 	 */
 	let provenanceIndex = $state(buildProvenanceIndex());
 
+	/**
+	 * SONG-02: distinct active-song chord symbols the "From my songs" filter
+	 * restricts fresh draws to, for the explanatory pool-note's {N}
+	 * interpolation. Read once at mount (mirrors provenanceIndex's own
+	 * snapshot-at-init pattern above) since song data isn't tracked as
+	 * reactive state elsewhere on this page.
+	 */
+	const songChordCount = drillableSongSymbols().length;
+
 	/** Reads the persisted "From my songs" filter flag, degrading to off on any storage failure (mirrors songs.ts). */
 	function readDrillsSongFilter(): boolean {
 		try {
@@ -852,6 +861,8 @@
 			on={songFilterOn}
 			onToggle={toggleSongFilter}
 			note={songFallbackActive ? 'No active songs yet, so showing the full library instead.' : undefined}
+			noteOn={`Filter on: practicing the ${songChordCount} chords from your active songs only.`}
+			noteOff="Filter off: full chord library. Chords from your songs still carry their mark."
 		/>
 	</div>
 	<div

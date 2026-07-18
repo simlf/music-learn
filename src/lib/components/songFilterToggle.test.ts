@@ -40,9 +40,51 @@ describe('SongFilterToggle', () => {
 		);
 	});
 
-	it('renders no note element when note is omitted', () => {
+	it('renders no note element when note, noteOn, and noteOff are all omitted', () => {
 		render(SongFilterToggle, { poolLabel: 'PRACTICE POOL', on: false, onToggle: () => {} });
 
 		expect(screen.queryByTestId('song-filter-note')).not.toBeInTheDocument();
+	});
+
+	it('renders noteOn when on is true and the fallback note is not set', () => {
+		render(SongFilterToggle, {
+			poolLabel: 'PRACTICE POOL',
+			on: true,
+			onToggle: () => {},
+			noteOn: 'Filter on: practicing the 5 chords from your active songs only.',
+			noteOff: 'Filter off: full chord library. Chords from your songs still carry their mark.'
+		});
+
+		expect(screen.getByTestId('song-filter-note')).toHaveTextContent(
+			'Filter on: practicing the 5 chords from your active songs only.'
+		);
+	});
+
+	it('renders noteOff when on is false and the fallback note is not set', () => {
+		render(SongFilterToggle, {
+			poolLabel: 'PRACTICE POOL',
+			on: false,
+			onToggle: () => {},
+			noteOn: 'Filter on: practicing the 5 chords from your active songs only.',
+			noteOff: 'Filter off: full chord library. Chords from your songs still carry their mark.'
+		});
+
+		expect(screen.getByTestId('song-filter-note')).toHaveTextContent(
+			'Filter off: full chord library. Chords from your songs still carry their mark.'
+		);
+	});
+
+	it('prefers the fallback note over noteOn when both are set', () => {
+		render(SongFilterToggle, {
+			poolLabel: 'PRACTICE POOL',
+			on: true,
+			onToggle: () => {},
+			note: 'No active songs yet, so showing the full library instead.',
+			noteOn: 'Filter on: practicing the 5 chords from your active songs only.'
+		});
+
+		expect(screen.getByTestId('song-filter-note')).toHaveTextContent(
+			'No active songs yet, so showing the full library instead.'
+		);
 	});
 });

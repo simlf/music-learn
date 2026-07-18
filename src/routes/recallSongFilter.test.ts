@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, cleanup } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { saveSong } from '$lib/practice/songs';
 
 /**
  * SONG-02 wiring test for the Recall page (Phase 18, Plan 03): the REVIEW
@@ -45,6 +46,18 @@ const FILTER_KEY = 'music-learn:recall-song-filter';
 
 function renderPage() {
 	return render(RecallPage);
+}
+
+/** Seeds one active song containing exactly `symbols` (real songs.ts, real localStorage). */
+function seedActiveSong(symbols: string[]) {
+	saveSong({
+		id: 'song-1',
+		name: 'My Tune',
+		chordSymbols: symbols,
+		createdAt: '2026-07-18T00:00:00.000Z',
+		source: 'custom',
+		active: true
+	});
 }
 
 beforeEach(() => {
@@ -93,5 +106,37 @@ describe('Recall page REVIEW POOL filter toggle (SONG-02)', () => {
 
 		expect(screen.queryByText('REVIEW POOL')).not.toBeInTheDocument();
 		expect(screen.queryByRole('button', { name: /From my songs/i })).not.toBeInTheDocument();
+	});
+
+	it('defaults to the filter-off explanatory note when the filter has never been toggled on', () => {
+		renderPage();
+
+		expect(screen.getByTestId('song-filter-note')).toHaveTextContent(
+			'Filter off: full chord library. Chords from your songs still carry their mark.'
+		);
+	});
+
+	it('with no active songs, turning the filter on shows the fallback note rather than the filter-on note', async () => {
+		renderPage();
+
+		const toggle = screen.getByRole('button', { name: /From my songs/i });
+		await fireEvent.click(toggle);
+
+		expect(toggle).toHaveAttribute('aria-pressed', 'true');
+		expect(screen.getByTestId('song-filter-note')).toHaveTextContent(
+			'No active songs yet, so showing the full library instead.'
+		);
+	});
+
+	it('with active-song chords, turning the filter on shows the filter-on note with the song chord count', async () => {
+		seedActiveSong(['Bbmaj7', 'F7']);
+		renderPage();
+
+		const toggle = screen.getByRole('button', { name: /From my songs/i });
+		await fireEvent.click(toggle);
+
+		expect(screen.getByTestId('song-filter-note')).toHaveTextContent(
+			'Filter on: practicing the 2 chords from your active songs only.'
+		);
 	});
 });

@@ -17,9 +17,20 @@
 		onToggle: () => void;
 		/** Optional note rendered below the bar (e.g. filter-on/off explanation). Omitted renders nothing. */
 		note?: string;
+		/** Explanatory note shown when `on` is true and `note` (the fallback) is not set, e.g. "Filter on: practicing the {N} chords from your active songs only." */
+		noteOn?: string;
+		/** Explanatory note shown when `on` is false and `note` (the fallback) is not set, e.g. "Filter off: full chord library. Chords from your songs still carry their mark." */
+		noteOff?: string;
 	}
 
-	let { poolLabel, on, onToggle, note }: Props = $props();
+	let { poolLabel, on, onToggle, note, noteOn, noteOff }: Props = $props();
+
+	/**
+	 * The fallback `note` (no-active-songs edge case) always wins when set;
+	 * otherwise fall back to the on/off explanatory copy for the current
+	 * state. Undefined renders nothing, same as before this prop existed.
+	 */
+	const displayNote = $derived(note ?? (on ? noteOn : noteOff));
 </script>
 
 <div class="song-filter-toggle-bar">
@@ -30,8 +41,8 @@
 			From my songs
 		</button>
 	</div>
-	{#if note}
-		<p class="text-label font-mono" data-testid="song-filter-note">{note}</p>
+	{#if displayNote}
+		<p class="text-label font-mono" data-testid="song-filter-note">{displayNote}</p>
 	{/if}
 </div>
 

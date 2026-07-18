@@ -35,6 +35,8 @@
 	const provenanceIndex = buildProvenanceIndex();
 	let songFilterOn = $state(readRecallSongFilter());
 	const songFallbackActive = $derived(songFilterOn && provenanceIndex.size === 0);
+	/** SONG-02: distinct active-song chords available to the Review pool, for the explanatory pool-note's {N} interpolation. */
+	const songChordCount = provenanceIndex.size;
 
 	function toggleSongFilter(): void {
 		songFilterOn = !songFilterOn;
@@ -80,6 +82,8 @@
 				note={songFallbackActive
 					? 'No active songs yet, so showing the full library instead.'
 					: undefined}
+				noteOn={`Filter on: practicing the ${songChordCount} chords from your active songs only.`}
+				noteOff="Filter off: full chord library. Chords from your songs still carry their mark."
 			/>
 		</div>
 	{/if}
