@@ -543,6 +543,6 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 | 15. Playable Keyboard Everywhere | 7/7 | Complete    | 2026-07-15 |
 | 16. Hear the Chord | 5/6 | In Progress|  |
 | 17. Chord Explainer | 0/TBD | Pending | - |
-| 18. Your Songs' Chords | 4/4 | Complete   | 2026-07-18 |
+| 18. Your Songs' Chords | 4/4 | Complete    | 2026-07-18 |
 | 19. Interactive Theory | 0/TBD | Pending | - |
 | 20. French Translation | 0/TBD | Pending | - |
