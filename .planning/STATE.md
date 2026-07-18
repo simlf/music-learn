@@ -5,15 +5,15 @@ milestone_name: Playability & Comprehension
 current_phase: 20
 current_phase_name: French Translation
 status: executing
-stopped_at: Completed 20-05-PLAN.md
-last_updated: "2026-07-18T18:34:55.835Z"
+stopped_at: Completed 20-06-PLAN.md
+last_updated: "2026-07-18T18:48:46.724Z"
 last_activity: 2026-07-18
 last_activity_desc: Phase 20 execution started
 progress:
   total_phases: 19
   completed_phases: 12
   total_plans: 74
-  completed_plans: 66
+  completed_plans: 68
   percent: 63
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 ## Current Position
 
 Phase: 20 (French Translation) — EXECUTING
-Plan: 6 of 10
+Plan: 7 of 10
 Status: Ready to execute
 Last activity: 2026-07-18 — Phase 20 execution started
 
@@ -141,6 +141,7 @@ Last activity: 2026-07-18 — Phase 20 execution started
 | Phase 20-french-translation P03 | 25min | 2 tasks | 4 files |
 | Phase 20 P04 | 20min | 3 tasks | 7 files |
 | Phase 20-french-translation P05 | 6m | 3 tasks | 5 files |
+| Phase 20 P06 | 35min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -270,6 +271,8 @@ Recent decisions affecting current work:
 - [Phase ?]: intervalWordFor() now pre-bakes its plural form for both locales (EN unchanged; FR pluralizes word-by-word since the fixed FR vocabulary is regular +s plural).
 - [Phase ?]: Drills' interval long-name (IntervalInfo.longFr) stays always-French regardless of the EN|FR toggle, per its pre-existing bilingual pedagogy convention predating Phase 20
 - [Phase ?]: SongMark's {N} count reads a t()-keyed template with a literal {N} placeholder, substituted client-side (t() has no interpolation)
+- [Phase ?]: InteractiveLesson feedbackLine resolves currentLocale() imperatively at tap time; done-state correctLine reads it live in the template
+- [Phase ?]: theory.hearIt is a single shared dictionary key reused by InteractiveLesson and ChordExample Hear it controls
 
 ### Pending Todos
 
@@ -301,7 +304,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-18T18:34:55.827Z
-Stopped at: Completed 20-05-PLAN.md
+Last session: 2026-07-18T18:48:46.717Z
+Stopped at: Completed 20-06-PLAN.md
 Resume file: 
 None
