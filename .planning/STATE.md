@@ -6,14 +6,14 @@ current_phase: 20
 current_phase_name: French Translation
 status: executing
 stopped_at: Completed 20-08-PLAN.md
-last_updated: "2026-07-18T19:16:24.594Z"
+last_updated: "2026-07-18T19:36:13.295Z"
 last_activity: 2026-07-18
 last_activity_desc: Phase 20 execution started
 progress:
   total_phases: 19
   completed_phases: 12
   total_plans: 74
-  completed_plans: 70
+  completed_plans: 71
   percent: 63
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 ## Current Position
 
 Phase: 20 (French Translation) — EXECUTING
-Plan: 9 of 10
+Plan: 10 of 10
 Status: Ready to execute
 Last activity: 2026-07-18 — Phase 20 execution started
 
@@ -144,6 +144,7 @@ Last activity: 2026-07-18 — Phase 20 execution started
 | Phase 20 P06 | 35min | 3 tasks | 8 files |
 | Phase 20-french-translation P07 | 10min | 2 tasks | 6 files |
 | Phase 20 P08 | 25min | 3 tasks | 9 files |
+| Phase 20-french-translation P09 | 25min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -279,6 +280,9 @@ Recent decisions affecting current work:
 - [Phase 20-french-translation]: ScaleKeyboardDrill per-key aria-label words (key/scale degree) and the drill group aria-label were translated beyond the plan's explicit must_haves since they are in-scope screen-reader prose
 - [Phase 20-08]: Tier names/blurbs (tiers.ts data) stay untranslated/English per 20-04 precedent; only the surrounding TIER/NIVEAU chrome words are keyed
 - [Phase 20-08]: PracticeItemRow's CHORD/SCALE/INTERVAL kind tag is translated (category word, not a symbol), mirroring 20-02's recall.map.kind.* precedent
+- [Phase 20-09]: InspectRegister long-name now switches info.long/info.longFr by locale instead of always rendering longFr; fixed downstream tests across drills/scales/components suites accordingly.
+- [Phase 20-09]: recent-lookups group heading implemented as an accessible aria-label (no visible new heading markup).
+- [Phase 20-09]: RevealInsight needed no code changes; its French behavior is inherited from mnemonicFor()'s locale-reactivity.
 
 ### Pending Todos
 
@@ -310,7 +314,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-18T19:16:24.587Z
+Last session: 2026-07-18T19:35:32.279Z
 Stopped at: Completed 20-08-PLAN.md
 Resume file: 
 None
