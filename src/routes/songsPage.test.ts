@@ -59,4 +59,21 @@ describe('Songs page renders in French (I18N-02, Phase 20 Plan 05)', () => {
 		expect(screen.getByText('Autumn Leaves')).toBeInTheDocument();
 		expect(screen.getByText('1 ACCORD · PERSONNALISÉ')).toBeInTheDocument();
 	});
+
+	it('translates preset note lines while keeping preset titles immune (Phase 20 addendum)', () => {
+		renderPage();
+		expect(
+			screen.getByText('C minor, 16 bars, nothing simplified. A fine first song, mon ami.')
+		).toBeInTheDocument();
+
+		setLocale('fr');
+		cleanup();
+		renderPage();
+
+		// Title is a proper noun and stays untranslated.
+		expect(screen.getByText('Blue Bossa')).toBeInTheDocument();
+		expect(
+			screen.getByText('Do mineur, 16 mesures, rien de simplifié. Un bon premier morceau, mon ami.')
+		).toBeInTheDocument();
+	});
 });

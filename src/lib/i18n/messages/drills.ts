@@ -16,7 +16,9 @@ import type { LocaleDict } from './index';
  * always-on French interval long-name secondary label this surface already
  * showed before this phase, independent of the EN|FR toggle) stay untouched
  * and are never routed through t(). Tier names/blurbs (tiers.ts data) are
- * also left untouched - that file is shared and out of this plan's scope.
+ * rendered through `progress.tier.{id}.name`/`.blurb` (owned by
+ * progress.ts, added as a Phase 20 addendum) rather than a drills.ts key -
+ * LevelPicker.svelte imports `t()` and looks those keys up directly.
  */
 export const drills: LocaleDict = {
 	en: {

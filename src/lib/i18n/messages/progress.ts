@@ -10,15 +10,21 @@ import type { LocaleDict } from './index';
  *
  * IMMUNITY (never keyed here): streak counts, accuracy percentages, attempt
  * counts, chord/scale symbols (e.g. `Cm7`), and interval shorthand stay raw
- * numbers/notation in both locales. Tier names/blurbs (`tiers.ts` data) and
- * the tier unlock aria-labels' numeric id stay untouched/English - `tiers.ts`
- * is a shared data file outside every Phase 20 plan's file_modified scope
- * (established by 20-04); only the surrounding "TIER"/"TIERS 5 AND 6"
- * chrome words are keyed here. `progress.settings.tierPrefix` keeps the
+ * numbers/notation in both locales. The tier unlock aria-labels' numeric id
+ * stays untouched/language-neutral. `progress.settings.tierPrefix` keeps the
  * "NIVEAU" wording used by 20-04's drills.ts for the same concept.
  * `progress.table.kind.*` mirrors 20-02's recall.map.kind.* precedent of
  * translating the chord/scale/interval CATEGORY word (not the symbol
  * itself).
+ *
+ * `progress.tier.{1..6}.name`/`.blurb` (Phase 20 addendum): the 6-tier ladder
+ * data in `tiers.ts` stays an English-only pure data module (IDs, roots,
+ * qualities, `available` are engine facts, not copy - `tiers.test.ts` asserts
+ * the `name`/`blurb` string literals directly, so they must stay untouched
+ * there). These keys are the locale-aware presentation strings every
+ * consumer (LevelPicker.svelte on /drills, the Practice Settings card on
+ * /progress) renders through instead of the raw `tier.name`/`tier.blurb`
+ * fields, keyed by the tier's stable numeric id.
  */
 export const progress: LocaleDict = {
 	en: {
@@ -84,7 +90,26 @@ export const progress: LocaleDict = {
 		'progress.settings.studyMode.aria': 'Toggle study mode',
 
 		// StreakBadge compact chip (masthead + hero card context).
-		'progress.streakBadge.compactCount': '{N} DAY STREAK'
+		'progress.streakBadge.compactCount': '{N} DAY STREAK',
+
+		// Tier ladder name/blurb (Phase 20 addendum, rendered on /drills'
+		// LevelPicker and /progress' Practice Settings card). Mirrors the
+		// English literals in tiers.ts's TierDef.name/blurb exactly.
+		'progress.tier.1.name': 'White-key triads',
+		'progress.tier.1.blurb':
+			'Just the white-key major and minor chords: C D E F G A B. No sharps or flats yet. Start here.',
+		'progress.tier.2.name': 'All-key triads',
+		'progress.tier.2.blurb': 'All twelve roots now: major, minor, and diminished triads.',
+		'progress.tier.3.name': 'The big three sevenths',
+		'progress.tier.3.blurb':
+			'The seventh chords that show up everywhere: maj7, m7, and dominant 7.',
+		'progress.tier.4.name': 'Minor ii-V colors',
+		'progress.tier.4.blurb':
+			'Half-diminished and diminished seventh chords, the color of a minor ii-V-i.',
+		'progress.tier.5.name': 'Sixths and sus',
+		'progress.tier.5.blurb': 'Sixth chords and sus chords. Coming later.',
+		'progress.tier.6.name': 'Extensions and alterations',
+		'progress.tier.6.blurb': '9ths, altered dominants, and more color tones. Coming later.'
 	},
 	fr: {
 		'progress.page.title': 'Progrès',
@@ -139,6 +164,24 @@ export const progress: LocaleDict = {
 		'progress.settings.studyMode.off': 'MODE ÉTUDE DÉSACTIVÉ',
 		'progress.settings.studyMode.aria': "Activer ou désactiver le mode étude",
 
-		'progress.streakBadge.compactCount': '{N} JOURS DE SUITE'
+		'progress.streakBadge.compactCount': '{N} JOURS DE SUITE',
+
+		'progress.tier.1.name': 'Triades aux touches blanches',
+		'progress.tier.1.blurb':
+			'Seulement les accords majeurs et mineurs des touches blanches : C D E F G A B. Pas encore de dièses ni de bémols. Commence ici.',
+		'progress.tier.2.name': 'Triades sur toutes les touches',
+		'progress.tier.2.blurb':
+			'Les douze fondamentales maintenant : accords majeurs, mineurs et diminués.',
+		'progress.tier.3.name': 'Les trois grandes septièmes',
+		'progress.tier.3.blurb':
+			"Les accords de septième qu'on croise partout : maj7, m7 et la septième de dominante.",
+		'progress.tier.4.name': 'Les couleurs du ii-V mineur',
+		'progress.tier.4.blurb':
+			"Les accords demi-diminués et diminués de septième, la couleur d'un ii-V-i mineur.",
+		'progress.tier.5.name': 'Sixtes et sus',
+		'progress.tier.5.blurb': 'Les accords de sixte et les accords sus. Bientôt disponible.',
+		'progress.tier.6.name': 'Extensions et altérations',
+		'progress.tier.6.blurb':
+			"Neuvièmes, dominantes altérées et d'autres couleurs harmoniques. Bientôt disponible."
 	}
 };

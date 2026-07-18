@@ -54,10 +54,10 @@
 		>
 			{t('drills.level.tier')} {current.id}
 		</span>
-		<span class="text-heading font-serif font-bold">{current.name}</span>
+		<span class="text-heading font-serif font-bold">{t(`progress.tier.${current.id}.name`)}</span>
 	</div>
 
-	<p class="text-body mt-2">{current.blurb}</p>
+	<p class="text-body mt-2">{t(`progress.tier.${current.id}.blurb`)}</p>
 
 	{#if reachedTiers.length > 1}
 		<div class="mt-4">
@@ -80,7 +80,7 @@
 							aria-pressed={tier.id === level.currentTier}
 							onclick={() => pick(tier.id)}
 						>
-							{t('drills.level.tier')} {tier.id}: {tier.name}
+							{t('drills.level.tier')} {tier.id}: {t(`progress.tier.${tier.id}.name`)}
 						</Button>
 					{/each}
 				</div>
@@ -95,7 +95,9 @@
 			</p>
 			<div class="mt-1 flex flex-wrap items-baseline justify-between gap-2">
 				<span class="text-body font-serif font-bold"
-					>{t('drills.level.tier')} {nextTier.id}: {nextTier.name}</span
+					>{t('drills.level.tier')} {nextTier.id}: {t(
+						`progress.tier.${nextTier.id}.name`
+					)}</span
 				>
 				<span class="text-label text-muted border-ink/40 border px-2 py-1 font-mono uppercase">
 					{t('drills.common.notYet')}

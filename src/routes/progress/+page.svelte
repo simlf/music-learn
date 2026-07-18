@@ -13,7 +13,7 @@
 	import { t } from '$lib/i18n/locale.svelte';
 	import { setDrillSeeds } from '$lib/practice/drillSeeds';
 	import { getLevelState, setCurrentTier } from '$lib/practice/levelState';
-	import { TIERS, tierById, type TierId } from '$lib/practice/tiers';
+	import { TIERS, type TierId } from '$lib/practice/tiers';
 	import PracticeItemRow from '$lib/components/PracticeItemRow.svelte';
 	import AccuracyTable from '$lib/components/AccuracyTable.svelte';
 	import StreakBadge from '$lib/components/StreakBadge.svelte';
@@ -194,9 +194,9 @@
 		<h2 class="text-heading font-bold">{t('progress.settings.heading')}</h2>
 
 		<p class="text-label mt-4 font-mono uppercase" data-testid="current-tier-line">
-			{t('progress.settings.tierPrefix')} {levelState.currentTier}: {tierById(
-				levelState.currentTier
-			).name.toUpperCase()}
+			{t('progress.settings.tierPrefix')} {levelState.currentTier}: {t(
+				`progress.tier.${levelState.currentTier}.name`
+			).toUpperCase()}
 		</p>
 		<p class="text-body mt-2">
 			{t('progress.settings.tierBlurb')}

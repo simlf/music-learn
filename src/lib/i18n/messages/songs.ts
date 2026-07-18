@@ -14,6 +14,14 @@ import type { LocaleDict } from './index';
  * keeps the literal `{N}` placeholder token, substituted by the component at
  * render time (t() itself has no interpolation - this mirrors the existing
  * prefix/suffix composition pattern used across drills.ts/build.ts).
+ *
+ * `songs.preset.<presetId>.note` (Phase 20 addendum): the preset shelf's
+ * card sub-line, one key per `SONG_PRESETS` entry in `presets.ts`, keyed by
+ * the preset's stable `presetId` slug. Preset TITLES (`preset.name`, e.g.
+ * "Autumn Leaves (G minor)") are proper nouns and stay immune/untranslated;
+ * only the `note` description (key simplifications, chart context) is
+ * locale-aware. `presets.ts` itself stays an English-only data module (its
+ * own `presets.test.ts` asserts the raw `note` string literals directly).
  */
 export const songs: LocaleDict = {
 	en: {
@@ -74,7 +82,23 @@ export const songs: LocaleDict = {
 		'songs.page.button.deleteLink': 'Delete this song',
 		'songs.page.confirm.deleteText': 'Delete this song? Its practice history stays.',
 		'songs.page.button.deleteConfirm': 'Delete it',
-		'songs.page.button.keep': 'Keep it'
+		'songs.page.button.keep': 'Keep it',
+
+		// Preset shelf note lines (Phase 20 addendum), keyed by presetId.
+		// Mirrors the English literals in presets.ts's SongPreset.note exactly.
+		'songs.preset.autumn-leaves-gm.note':
+			'Real Book key. Tonic saved as Gm, D7b9 as D7. Edit to match your chart.',
+		'songs.preset.autumn-leaves-em.note':
+			'Common combo key, a minor third up. Tonic saved as Em, B7b9 as B7.',
+		'songs.preset.blue-bossa-cm.note': 'C minor, 16 bars, nothing simplified. A fine first song, mon ami.',
+		'songs.preset.take-the-a-train-c.note':
+			'C major, AABA. Simplified: C6 saved as C, D7#11 as D7.',
+		'songs.preset.summertime-am.note':
+			'A minor, 16 bars. Simplified: E7b13 saved as E7, A7b9 as A7.',
+		'songs.preset.all-of-me-c.note':
+			'C major, ABAC. Simplified: F6 saved as F, Fm6 as Fm, C6 as C.',
+		'songs.preset.fly-me-to-the-moon-c.note':
+			'In C, orbiting A minor. Extensions like G9 and E7b9 saved as G7 and E7.'
 	},
 	fr: {
 		'songs.mark.count': '{N} MORCEAUX',
@@ -129,6 +153,21 @@ export const songs: LocaleDict = {
 		'songs.page.button.deleteLink': 'Supprimer ce morceau',
 		'songs.page.confirm.deleteText': 'Supprimer ce morceau ? Son historique de pratique est conservé.',
 		'songs.page.button.deleteConfirm': 'Supprimer',
-		'songs.page.button.keep': 'Garder'
+		'songs.page.button.keep': 'Garder',
+
+		'songs.preset.autumn-leaves-gm.note':
+			'Tonalité du Real Book. Tonique enregistrée en Gm, D7b9 simplifié en D7. Modifie pour correspondre à ta partition.',
+		'songs.preset.autumn-leaves-em.note':
+			'Tonalité courante en groupe, une tierce mineure plus haut. Tonique enregistrée en Em, B7b9 simplifié en B7.',
+		'songs.preset.blue-bossa-cm.note':
+			'Do mineur, 16 mesures, rien de simplifié. Un bon premier morceau, mon ami.',
+		'songs.preset.take-the-a-train-c.note':
+			'Do majeur, forme AABA. Simplifié : C6 enregistré en C, D7#11 en D7.',
+		'songs.preset.summertime-am.note':
+			'La mineur, 16 mesures. Simplifié : E7b13 enregistré en E7, A7b9 en A7.',
+		'songs.preset.all-of-me-c.note':
+			'Do majeur, forme ABAC. Simplifié : F6 enregistré en F, Fm6 en Fm, C6 en C.',
+		'songs.preset.fly-me-to-the-moon-c.note':
+			'En do, en orbite autour de la mineur. Les extensions comme G9 et E7b9 sont enregistrées en G7 et E7.'
 	}
 };

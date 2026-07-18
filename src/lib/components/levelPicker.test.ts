@@ -86,4 +86,32 @@ describe('LevelPicker renders in French (I18N-02, Phase 20 Plan 04)', () => {
 		expect(within(picker).getByTestId('next-up')).toHaveTextContent('Niveau 2:');
 		expect(within(picker).getByTestId('next-up')).toHaveTextContent('Pas encore');
 	});
+
+	it('translates the tier name and blurb (Phase 20 addendum: tiers.ts residual)', () => {
+		setLocale('fr');
+		render(LevelPicker);
+
+		const picker = screen.getByTestId('level-picker');
+		expect(within(picker).getByText('Triades aux touches blanches')).toBeInTheDocument();
+		expect(
+			within(picker).getByText(/Seulement les accords majeurs et mineurs des touches blanches/)
+		).toBeInTheDocument();
+		expect(within(picker).getByTestId('next-up')).toHaveTextContent(
+			'Niveau 2: Triades sur toutes les touches'
+		);
+	});
+
+	it('offers reached tiers with translated names under fr', async () => {
+		seedLevel(3, [1, 2, 3]);
+		setLocale('fr');
+		render(LevelPicker);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Changer de niveau' }));
+
+		const reached = screen.getByTestId('reached-tiers');
+		expect(within(reached).getByText('Niveau 1: Triades aux touches blanches')).toBeInTheDocument();
+		expect(
+			within(reached).getByText('Niveau 3: Les trois grandes septièmes')
+		).toBeInTheDocument();
+	});
 });

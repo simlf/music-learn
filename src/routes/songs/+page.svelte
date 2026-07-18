@@ -278,7 +278,7 @@
 						onclick={() => addPreset(preset)}
 					>
 						<span class="block font-bold">{preset.name}</span>
-						<span class="text-muted mt-1 block">{preset.note}</span>
+						<span class="text-muted mt-1 block">{t(`songs.preset.${preset.presetId}.note`)}</span>
 						<span class="text-label text-muted mt-2 block font-mono uppercase">
 							{preset.chordSymbols.length} {t('songs.page.presets.chordsSuffix')}
 						</span>
