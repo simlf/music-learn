@@ -12,11 +12,21 @@
 	import IntervalChip from '$lib/components/IntervalChip.svelte';
 	import InspectRegister from '$lib/components/InspectRegister.svelte';
 	import SongHook from '$lib/components/SongHook.svelte';
+	import SongMark from '$lib/components/SongMark.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import RecentChipRow from '$lib/components/RecentChipRow.svelte';
+	import { buildProvenanceIndex, songsForSymbol } from '$lib/practice/songProvenance';
 
 	/** Starter chords for the empty state (D-09): zero-friction first success. */
 	const STARTER_CHORDS = ['Cm7', 'Fmaj7', 'G7'];
+
+	/**
+	 * Built once at component init (SONG-01): the shared provenance index
+	 * driving the SongMark beside the resolved chord's name. Lookup carries
+	 * no filter control (SONG-02 is Drills/Recall only) - this index is
+	 * read-only here.
+	 */
+	const provenanceIndex = buildProvenanceIndex();
 
 	let symbol = $state('');
 	let result = $state<ChordResult | null>(null);
@@ -209,6 +219,7 @@
 		<div class="stamp mt-8" data-testid="chord-result">
 			<div class="flex items-start gap-4">
 				<ChordGlyph root={result.root} quality={result.symbol.slice(result.root.length)} />
+				<SongMark songs={songsForSymbol(result.symbol, provenanceIndex)} />
 				<Button type="button" variant="ghost" onclick={hearIt}>Hear it</Button>
 			</div>
 
