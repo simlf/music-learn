@@ -8,6 +8,7 @@
 	import { intervalFromRoot } from '$lib/theory/interval';
 	import type { SpelledNote } from '$lib/theory/types';
 	import type { InspectPayload } from './PianoKeyboard.svelte';
+	import { t } from '$lib/i18n/locale.svelte';
 
 	/**
 	 * Tonic-anchored scale strip (Sketch 002 winner B). Renders a major scale
@@ -56,13 +57,18 @@
 	}
 </script>
 
-<div class="degree-strip" data-testid="degree-strip" role="group" aria-label="Scale degrees">
+<div
+	class="degree-strip"
+	data-testid="degree-strip"
+	role="group"
+	aria-label={t('scales.degreeStrip.groupLabel')}
+>
 	{#each notes as note, index (note.letter)}
 		{@const info = intervalFromRoot(tonic, note.letter)}
 		<button
 			type="button"
 			class="cell cell--{note.role}"
-			aria-label={`${note.letter} degree ${index + 1}`}
+			aria-label={`${note.letter} ${t('scales.degreeStrip.degreeLabel')} ${index + 1}`}
 			onclick={() => tap(note, index)}
 		>
 			<span class="deg">{index + 1}</span>

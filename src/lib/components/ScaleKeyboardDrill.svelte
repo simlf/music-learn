@@ -16,6 +16,7 @@
 	} from '$lib/practice/scaleKeyboardDrill';
 	import { whiteLettersForOctaves, blackKeysForOctaves } from '$lib/components/keyboardLayout';
 	import type { SpelledNote } from '$lib/theory/types';
+	import { t } from '$lib/i18n/locale.svelte';
 
 	/**
 	 * Tonic-anchored 2-octave scale keyboard drill (SCALE-04). Replaces the
@@ -90,7 +91,11 @@
 	const register = $derived.by(() => {
 		const target: ScaleTarget | null = expectedTarget(drill);
 		if (!target) return '';
-		return `DEGREE ${target.degree} OF 8 · ${target.direction.toUpperCase()}`;
+		const directionKey =
+			target.direction === 'ascending' ? 'scales.drill.ascending' : 'scales.drill.descending';
+		return t('scales.drill.register')
+			.replace('{N}', String(target.degree))
+			.replace('{DIR}', t(directionKey).toUpperCase());
 	});
 
 	// A new tonic/scale (or "Run it again") starts the drill over.
@@ -182,9 +187,8 @@
 	 */
 	function ariaLabelFor(kind: KeyKind, keyIndex: number, letter: string, octave: number): string {
 		const canonical = placementByKey.get(`${kind}:${keyIndex}`);
-		return canonical
-			? `${letter}${octave} key, scale degree ${canonical.degree}`
-			: `${letter}${octave} key`;
+		const base = `${letter}${octave} ${t('scales.drill.keyLabel')}`;
+		return canonical ? `${base}, ${t('scales.drill.scaleDegreeLabel')} ${canonical.degree}` : base;
 	}
 
 	/** Whether this key is the canonical key for the currently-expected degree. */
@@ -244,11 +248,11 @@
 			class="border-ink bg-paper-bright complete mt-2 border-2 px-4 py-6"
 			data-testid="scale-keyboard-complete"
 		>
-			<p class="msg">Voila. {tonic} major, up and down, clean.</p>
-			<Button type="button" onclick={reset}>Run it again</Button>
+			<p class="msg">{t('scales.drill.complete').replace('{TONIC}', tonic)}</p>
+			<Button type="button" onclick={reset}>{t('scales.drill.runAgain')}</Button>
 		</div>
 	{:else}
-		<p class="text-body">Play {tonic} major ascending, then descending.</p>
+		<p class="text-body">{t('scales.drill.prompt').replace('{TONIC}', tonic)}</p>
 		<p
 			class="register text-label mt-2 font-mono uppercase"
 			data-testid="scale-keyboard-register"
@@ -267,7 +271,7 @@
 		class="scroll-wrap"
 		bind:this={containerEl}
 		role="group"
-		aria-label={`Scale keyboard, ${tonic} major, two octaves`}
+		aria-label={t('scales.drill.groupLabel').replace('{TONIC}', tonic)}
 	>
 		<div
 			class="keys"

@@ -42,6 +42,9 @@ export const scales: LocaleDict = {
 
 		// Practice keyboard drill (ScaleKeyboardDrill.svelte). {TONIC} is
 		// substituted at the call site (t() has no interpolation).
+		'scales.drill.groupLabel': 'Scale keyboard, {TONIC} major, two octaves',
+		'scales.drill.keyLabel': 'key',
+		'scales.drill.scaleDegreeLabel': 'scale degree',
 		'scales.drill.prompt': 'Play {TONIC} major ascending, then descending.',
 		'scales.drill.register': 'DEGREE {N} OF 8 · {DIR}',
 		'scales.drill.ascending': 'ascending',
@@ -67,6 +70,9 @@ export const scales: LocaleDict = {
 		'scales.degreeStrip.groupLabel': 'Degrés de la gamme',
 		'scales.degreeStrip.degreeLabel': 'degré',
 
+		'scales.drill.groupLabel': 'Clavier de gamme, {TONIC} majeur, deux octaves',
+		'scales.drill.keyLabel': 'touche',
+		'scales.drill.scaleDegreeLabel': 'degré de la gamme',
 		'scales.drill.prompt': 'Joue la gamme de {TONIC} majeur en montant, puis en descendant.',
 		'scales.drill.register': 'DEGRÉ {N} SUR 8 · {DIR}',
 		'scales.drill.ascending': 'montant',

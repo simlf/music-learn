@@ -4,6 +4,7 @@
 	import InspectRegister from '$lib/components/InspectRegister.svelte';
 	import ScaleKeyboardDrill from '$lib/components/ScaleKeyboardDrill.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import { t } from '$lib/i18n/locale.svelte';
 
 	/**
 	 * Light major-scale explorer (Track C): pick a tonic, see its seven
@@ -39,9 +40,9 @@
 </script>
 
 <main class="bg-paper text-ink min-h-screen px-2 py-8 font-sans sm:px-8">
-	<h1 class="text-heading mt-2 font-bold">Scales</h1>
+	<h1 class="text-heading mt-2 font-bold">{t('scales.page.title')}</h1>
 	<p class="text-muted mt-2">
-		Pick a tonic, mon ami. Tap any degree to hear it and read its interval from the root.
+		{t('scales.page.subtitle')}
 	</p>
 
 	<div class="mt-6 flex flex-wrap gap-2" data-testid="tonic-row">
@@ -49,7 +50,7 @@
 			<Button
 				type="button"
 				variant={root === tonic ? 'primary' : 'ghost'}
-				aria-label={`${root} major`}
+				aria-label={`${root} ${t('scales.tonic.qualitySuffix')}`}
 				aria-pressed={root === tonic}
 				onclick={() => pickTonic(root)}
 			>
@@ -60,17 +61,22 @@
 
 	<div class="border-ink bg-paper-bright mt-8 border-2 px-2 py-6 sm:px-6">
 		<p class="text-label font-mono uppercase" data-testid="scale-title">
-			{tonic} major · gamme majeure
+			{tonic} {t('scales.tonic.qualitySuffix')}
 		</p>
 
-		<div class="mt-4 flex gap-2" data-testid="mode-toggle" role="group" aria-label="Scale mode">
+		<div
+			class="mt-4 flex gap-2"
+			data-testid="mode-toggle"
+			role="group"
+			aria-label={t('scales.mode.groupLabel')}
+		>
 			<Button
 				type="button"
 				variant={mode === 'explore' ? 'primary' : 'ghost'}
 				aria-pressed={mode === 'explore'}
 				onclick={() => (mode = 'explore')}
 			>
-				Explore
+				{t('scales.mode.explore')}
 			</Button>
 			<Button
 				type="button"
@@ -78,7 +84,7 @@
 				aria-pressed={mode === 'practice'}
 				onclick={() => (mode = 'practice')}
 			>
-				Practice
+				{t('scales.mode.practice')}
 			</Button>
 		</div>
 
@@ -87,7 +93,7 @@
 				<ScaleDegreeStrip {notes} {tonic} onInspect={handleInspect} />
 			</div>
 
-			<InspectRegister payload={inspectPayload} />
+			<InspectRegister payload={inspectPayload} idleText={t('scales.inspect.idle')} />
 		{:else}
 			<div class="mt-4">
 				<ScaleKeyboardDrill {notes} {tonic} />
