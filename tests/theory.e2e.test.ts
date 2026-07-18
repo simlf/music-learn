@@ -3,21 +3,10 @@ import { createRawSnippet } from 'svelte';
 import { readable } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import TheoryPage from '../src/routes/theory/+page.svelte';
-import KeyboardDock from '../src/lib/components/KeyboardDock.svelte';
-import { createDockRegistry, DOCK_CONTEXT_KEY } from '../src/lib/keyboard/dockContext.svelte';
 
-/**
- * Theory now registers a new docked keyboard on mount (Phase 15 Plan 03,
- * Scope Decision 2), so every render needs a real dock registry supplied via
- * the `context` option (the same seam `+layout.svelte`'s `setDockRegistry`
- * uses) - mirrors `lookupDock.test.ts`'s harness. Tests that need to
- * interact with the docked keyboard also render `KeyboardDock` so its
- * content lands in the same `document.body` that `screen` queries.
- */
+/** Theory has no playable keyboard; its lessons render display keyboards inline. */
 function renderPage() {
-	const registry = createDockRegistry();
-	const context = new Map([[DOCK_CONTEXT_KEY, registry]]);
-	return { page: render(TheoryPage, { context }), context };
+	return { page: render(TheoryPage) };
 }
 
 // Masthead active-link check reads $page from $app/stores (see

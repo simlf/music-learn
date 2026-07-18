@@ -1,24 +1,10 @@
 import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import LookupPage from '../src/routes/+page.svelte';
-import KeyboardDock from '../src/lib/components/KeyboardDock.svelte';
-import { createDockRegistry, DOCK_CONTEXT_KEY } from '../src/lib/keyboard/dockContext.svelte';
 
-/**
- * Lookup's keyboard/register now live in the shared dock (Phase 15 Plan 03)
- * rather than rendering inline. Every test below still exercises real
- * behavior end to end: this helper supplies a real dock registry via the
- * `context` option (the same seam `+layout.svelte`'s `setDockRegistry` uses)
- * and renders `KeyboardDock` alongside the page so the docked keyboard/
- * register content is present in the same `document.body` that `screen`
- * queries - mirrors `lookupDock.test.ts`'s own harness.
- */
+/** The keyboard and register render inline inside the page's own result block. */
 function renderPage() {
-	const registry = createDockRegistry();
-	const context = new Map([[DOCK_CONTEXT_KEY, registry]]);
-	const page = render(LookupPage, { context });
-	render(KeyboardDock, { context });
-	return page;
+	return render(LookupPage);
 }
 
 // The lookup page's Hear it action goes through the Track A audio engine,
@@ -330,7 +316,7 @@ describe('lookup page interval register (Track C)', () => {
 		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'Cm7' } });
 		await fireEvent.click(screen.getByRole('button', { name: /stamp/i }));
 
-		expect(screen.getByTestId('inspect-register')).toHaveTextContent('Tap a key to hear it.');
+		expect(screen.getByTestId('inspect-register')).toHaveTextContent('Tap a key to inspect it.');
 	});
 
 	it('tapping a highlighted key plays it and fills the register with its full naming', async () => {
@@ -373,7 +359,7 @@ describe('lookup page interval register (Track C)', () => {
 		await fireEvent.input(input, { target: { value: 'Fmaj7' } });
 		await fireEvent.click(stamp);
 
-		expect(screen.getByTestId('inspect-register')).toHaveTextContent('Tap a key to hear it.');
+		expect(screen.getByTestId('inspect-register')).toHaveTextContent('Tap a key to inspect it.');
 	});
 
 	it('interval chips carry the French long name as tooltip and aria-label', async () => {

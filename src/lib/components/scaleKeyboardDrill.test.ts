@@ -1,22 +1,10 @@
 import { render, screen, fireEvent, cleanup } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ScaleKeyboardDrill from './ScaleKeyboardDrill.svelte';
-import KeyboardDock from './KeyboardDock.svelte';
-import { createDockRegistry, DOCK_CONTEXT_KEY, type DockRegistry } from '$lib/keyboard/dockContext.svelte';
 import { majorScaleNotes } from '$lib/theory/scale';
 import { placeAscendingScaleKeys, type ScaleKeyPlacement } from '$lib/practice/scaleKeyboardDrill';
 import { whiteLettersForOctaves, blackKeysForOctaves } from '$lib/components/keyboardLayout';
 import type { SpelledNote } from '$lib/theory/types';
-
-/**
- * Phase 15 Plan 04: only the tappable key-strip docks with the shared
- * keyboard dock (Scope Decision 6) - the register/prompt/complete markup
- * stays in the component's own inline output. Every render supplies a real
- * `createDockRegistry()` via the `render()` `context` option (the same seam
- * keyboardDock.test.ts/lookupDock.test.ts established), and `KeyboardDock`
- * doubles as the harness that renders the registered `keyboard` snippet for
- * the tap assertions - mirroring those tests' own pattern exactly.
- */
 
 const playNoteMock = vi.fn();
 vi.mock('$lib/audio/audio', () => ({
@@ -26,12 +14,9 @@ vi.mock('$lib/audio/audio', () => ({
 const whiteLetters = whiteLettersForOctaves(2);
 const blackKeyPatterns = blackKeysForOctaves(2);
 
-function renderDrillWithDock(props: { notes: SpelledNote[]; tonic: string }) {
-	const registry: DockRegistry = createDockRegistry();
-	const context = new Map([[DOCK_CONTEXT_KEY, registry]]);
-	const drill = render(ScaleKeyboardDrill, { props, context });
-	const dock = render(KeyboardDock, { context });
-	return { registry, drill, dock, context };
+function renderDrill(props: { notes: SpelledNote[]; tonic: string }) {
+	const drill = render(ScaleKeyboardDrill, { props });
+	return { drill };
 }
 
 /** Board-geometry aria-label for a placement's key: always the raw board letter
@@ -50,8 +35,8 @@ function ariaLabelFor(kind: 'white' | 'black', keyIndex: number): string {
 // Every placement passed to tapButtonFor is one of the 8 canonical ascending
 // placements, so its accessible name always carries the WR-04 scale-degree
 // suffix (a static, fill-independent label - see the component's
-// placementByKey/ariaLabelFor). The button itself now lives inside the
-// rendered KeyboardDock (the strip docks), not the drill's own DOM.
+// placementByKey/ariaLabelFor). The key-strip renders inline in the drill's
+// own DOM while a drill is active.
 function tapButtonFor(placement: ScaleKeyPlacement): HTMLElement {
 	return screen.getByRole('button', {
 		name: `${ariaLabelFor(placement.kind, placement.keyIndex)}, scale degree ${placement.degree}`
@@ -82,44 +67,24 @@ afterEach(() => {
 
 describe('ScaleKeyboardDrill (tonic-anchored 2-octave keyboard, SCALE-04)', () => {
 	it('renders with no key filled and the correct instruction/register on mount (C major)', () => {
-		renderDrillWithDock({ notes: majorScaleNotes('C'), tonic: 'C' });
+		renderDrill({ notes: majorScaleNotes('C'), tonic: 'C' });
 
 		expect(screen.getByText('Play C major ascending, then descending.')).toBeInTheDocument();
 		expect(screen.getByTestId('scale-keyboard-register')).toHaveTextContent('DEGREE 1 OF 8 · ASCENDING');
 	});
 
-	it('registers a dock config on mount whose keyboard snippet renders the key-strip, and carries no register snippet (Scope Decision 6)', () => {
-		const { registry } = renderDrillWithDock({ notes: majorScaleNotes('C'), tonic: 'C' });
+	it('renders the tappable key-strip inline in the component\'s own output while a drill is active', () => {
+		const { drill } = renderDrill({ notes: majorScaleNotes('C'), tonic: 'C' });
 
-		expect(registry.current).not.toBeNull();
-		expect(registry.current?.keyboard).toBeTypeOf('function');
-		expect(registry.current?.register).toBeUndefined();
-	});
-
-	it('the degree register and ascending/descending prompt render in the component\'s own output, not inside the dock', () => {
-		const { drill, dock } = renderDrillWithDock({ notes: majorScaleNotes('C'), tonic: 'C' });
-
-		// dock/drill are two separate render() calls both appended to
-		// document.body, so scope queries to each render's own `container`
-		// (not the shared `screen`/`baseElement`) to actually distinguish them.
 		expect(drill.container.querySelector('[data-testid="scale-keyboard-register"]')).not.toBeNull();
 		expect(drill.container.textContent).toContain('Play C major ascending, then descending.');
-		expect(dock.container.querySelector('[data-testid="scale-keyboard-register"]')).toBeNull();
-	});
-
-	it('clears its dock registration on unmount', () => {
-		const { registry, drill } = renderDrillWithDock({ notes: majorScaleNotes('C'), tonic: 'C' });
-
-		expect(registry.current).not.toBeNull();
-		drill.unmount();
-
-		expect(registry.current).toBeNull();
+		expect(drill.container.querySelectorAll('[role="button"]').length).toBeGreaterThan(0);
 	});
 
 	it('tapping the tonic first fills the leftmost key and plays it; no key left of it is filled', async () => {
 		const notes = majorScaleNotes('C');
 		const placements = placeAscendingScaleKeys(notes);
-		renderDrillWithDock({ notes, tonic: 'C' });
+		renderDrill({ notes, tonic: 'C' });
 
 		await fireEvent.click(tapButtonFor(placements[0]));
 
@@ -131,7 +96,7 @@ describe('ScaleKeyboardDrill (tonic-anchored 2-octave keyboard, SCALE-04)', () =
 	it('fills all 8 ascending degrees with role colors and ends on a key distinct from the tonic', async () => {
 		const notes = majorScaleNotes('C');
 		const placements = placeAscendingScaleKeys(notes);
-		renderDrillWithDock({ notes, tonic: 'C' });
+		renderDrill({ notes, tonic: 'C' });
 
 		await tapAscending(placements);
 
@@ -158,7 +123,7 @@ describe('ScaleKeyboardDrill (tonic-anchored 2-octave keyboard, SCALE-04)', () =
 	it('advances the register through the ascending leg then flips to descending 7 down to 1', async () => {
 		const notes = majorScaleNotes('C');
 		const placements = placeAscendingScaleKeys(notes);
-		renderDrillWithDock({ notes, tonic: 'C' });
+		renderDrill({ notes, tonic: 'C' });
 
 		for (let degree = 1; degree <= 8; degree += 1) {
 			await fireEvent.click(tapButtonFor(placements[degree - 1]));
@@ -177,7 +142,7 @@ describe('ScaleKeyboardDrill (tonic-anchored 2-octave keyboard, SCALE-04)', () =
 	it('a wrong pitch-class tap flashes gray, does not advance or play, and clears after ~320ms', async () => {
 		const notes = majorScaleNotes('C');
 		const placements = placeAscendingScaleKeys(notes);
-		renderDrillWithDock({ notes, tonic: 'C' });
+		renderDrill({ notes, tonic: 'C' });
 
 		// Degree 1 (tonic) is expected first; tap degree 3's key instead.
 		const wrongButton = tapButtonFor(placements[2]);
@@ -192,10 +157,10 @@ describe('ScaleKeyboardDrill (tonic-anchored 2-octave keyboard, SCALE-04)', () =
 		expect(wrongButton).not.toHaveClass('key--wrong');
 	});
 
-	it('completing all 15 taps shows the completion card, clears the dock registration, and Run it again re-registers and resets to degree 1 ascending', async () => {
+	it('completing all 15 taps shows the completion card, and Run it again resets to degree 1 ascending', async () => {
 		const notes = majorScaleNotes('C');
 		const placements = placeAscendingScaleKeys(notes);
-		const { registry } = renderDrillWithDock({ notes, tonic: 'C' });
+		renderDrill({ notes, tonic: 'C' });
 
 		await tapAscending(placements);
 		await tapDescending(placements);
@@ -203,22 +168,18 @@ describe('ScaleKeyboardDrill (tonic-anchored 2-octave keyboard, SCALE-04)', () =
 		expect(screen.getByTestId('scale-keyboard-complete')).toBeInTheDocument();
 		expect(screen.getByText('Voila. C major, up and down, clean.')).toBeInTheDocument();
 		expect(playNoteMock).toHaveBeenCalledTimes(15);
-		// A finished drill leaves no stray keys docked (T-15-03).
-		expect(registry.current).toBeNull();
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Run it again' }));
 
 		expect(screen.queryByTestId('scale-keyboard-complete')).not.toBeInTheDocument();
 		expect(screen.getByTestId('scale-keyboard-register')).toHaveTextContent('DEGREE 1 OF 8 · ASCENDING');
-		// Reset re-registers the key-strip with the dock.
-		expect(registry.current).not.toBeNull();
 		expect(tapButtonFor(placements[0])).not.toHaveClass('key--root');
 	});
 
 	it('resets to degree 1 ascending and updates the instruction when the tonic/notes change', async () => {
 		const cNotes = majorScaleNotes('C');
 		const cPlacements = placeAscendingScaleKeys(cNotes);
-		const { drill } = renderDrillWithDock({ notes: cNotes, tonic: 'C' });
+		const { drill } = renderDrill({ notes: cNotes, tonic: 'C' });
 
 		await fireEvent.click(tapButtonFor(cPlacements[0]));
 		expect(tapButtonFor(cPlacements[0])).toHaveClass('key--root');
@@ -235,7 +196,7 @@ describe('ScaleKeyboardDrill (tonic-anchored 2-octave keyboard, SCALE-04)', () =
 	it('CR-01: tapping a non-canonical duplicate key (same pitch class, different physical key) fills the tapped key, not the canonical one', async () => {
 		const notes = majorScaleNotes('C');
 		const placements = placeAscendingScaleKeys(notes);
-		renderDrillWithDock({ notes, tonic: 'C' });
+		renderDrill({ notes, tonic: 'C' });
 
 		// Degree 1 (tonic C) is expected first. Its canonical placement is the
 		// leftmost white C (keyIndex 0), but the fixed 2-octave board also has
@@ -260,7 +221,7 @@ describe('ScaleKeyboardDrill (tonic-anchored 2-octave keyboard, SCALE-04)', () =
 	it('WR-04: per-key aria-labels carry scale-degree semantics, and the currently-expected key is aria-current', () => {
 		const notes = majorScaleNotes('C');
 		const placements = placeAscendingScaleKeys(notes);
-		renderDrillWithDock({ notes, tonic: 'C' });
+		renderDrill({ notes, tonic: 'C' });
 
 		// A canonical placement key's accessible name includes its degree...
 		const tonicKey = tapButtonFor(placements[0]);
@@ -282,7 +243,7 @@ describe('ScaleKeyboardDrill (tonic-anchored 2-octave keyboard, SCALE-04)', () =
 	it('accepts F♯ major degree 7 (E♯) on the white F key and labels it E♯ (enharmonic acceptance by chroma)', async () => {
 		const notes = majorScaleNotes('F♯');
 		const placements = placeAscendingScaleKeys(notes);
-		renderDrillWithDock({ notes, tonic: 'F♯' });
+		renderDrill({ notes, tonic: 'F♯' });
 
 		// Degree 7 (E♯, chroma 5) is placed on the white F key per 10-01's
 		// placeAscendingScaleKeys (proven under test there); confirm the fixture

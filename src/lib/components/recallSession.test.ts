@@ -1,8 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import RecallSession from './RecallSession.svelte';
-import KeyboardDock from './KeyboardDock.svelte';
-import { createDockRegistry, DOCK_CONTEXT_KEY, type DockRegistry } from '$lib/keyboard/dockContext.svelte';
 import { gradeCard, newCard, previewGrades, Rating, State } from '$lib/srs/scheduler';
 import { formatDayInterval } from '$lib/srs/session';
 import type { CardRecord } from '$lib/srs/deck';
@@ -17,41 +15,16 @@ import { transposeFrom } from '$lib/theory/interval';
  * real FSRS fixed-interval math (New card: Again=1d, Hard=2d, Good=3d,
  * Easy=8d, per 11-01's scheduler tests).
  *
- * Mode A ('see-play'), Mode B ('hear-name'), and the `formula`-mode reveal
- * keyboards now live in the shared dock (Phase 15 Plan 06) rather than
- * rendering inline. `renderRecallSession()` supplies a real dock registry via
- * the `context` option (the same seam `+layout.svelte`'s `setDockRegistry`
- * uses) and renders `KeyboardDock` alongside the component so the docked
- * keyboard content is present in the same `document.body` that `screen`
- * queries - mirrors lookupDock.test.ts/theoryDock.test.ts/drillsDock.test.ts's
- * own context-injection harness. Mode C ('formula-build') is unaffected: its
- * embedded BuildSession keyboard still renders in flow, untouched.
+ * Mode A ('see-play') and the `formula`-mode reveal keyboard render inline in
+ * the component's own DOM; Mode B ('hear-name') has no keyboard. Mode C
+ * ('formula-build') embeds BuildSession, whose keyboard also renders in flow.
  */
 
 function renderRecallSession(props: { onViewMap?: () => void } = {}): {
-	registry: DockRegistry;
-} {
-	const registry = createDockRegistry();
-	const context = new Map([[DOCK_CONTEXT_KEY, registry]]);
-	render(RecallSession, { props, context });
-	render(KeyboardDock, { context });
-	return { registry };
-}
-
-/**
- * Page-only variant (no `KeyboardDock` mounted alongside): used by the dock
- * registration/clear coverage below, which asserts against the registry
- * object itself (and the page's OWN document flow) rather than against
- * rendered docked-keyboard content.
- */
-function renderRecallSessionPageOnly(props: { onViewMap?: () => void } = {}): {
-	registry: DockRegistry;
 	unmount: () => void;
 } {
-	const registry = createDockRegistry();
-	const context = new Map([[DOCK_CONTEXT_KEY, registry]]);
-	const page = render(RecallSession, { props, context });
-	return { registry, unmount: () => page.unmount() };
+	const page = render(RecallSession, { props });
+	return { unmount: () => page.unmount() };
 }
 
 const introduceNewCardsMock = vi.fn();
@@ -986,119 +959,12 @@ describe('RecallSession queue composition via selectReviewCards (RECALL-03 rotat
 });
 
 /**
- * Docked keyboard coverage (Phase 15 Plan 06, KBD-01/KBD-03): Mode A
- * ('see-play'), Mode B ('hear-name'), and the `formula`-mode reveal keyboard
- * collapse into ONE mode-aware `dockedKeyboard` snippet registered with the
- * shared dock. Mode C ('formula-build') is explicitly out of scope here (its
- * embedded BuildSession keyboard stays in flow, untouched by this plan).
+ * Inline keyboard coverage: Mode A ('see-play') renders an interactive
+ * keyboard inline; the `formula`-mode reveal shows a display keyboard only
+ * after Show Answer; Mode B ('hear-name') has no keyboard at all.
  */
-describe('RecallSession docked keyboard (KBD-01/KBD-03, Phase 15 Plan 06)', () => {
-	it('registers a dock config on mount whose keyboard is a snippet function once a formula card is reviewing', async () => {
-		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'formula');
-		introduceNewCardsMock.mockResolvedValue(0);
-		getDueCardsMock.mockResolvedValue([card]);
-		getAllCardsMock.mockResolvedValue([card]);
-
-		const { registry } = renderRecallSessionPageOnly();
-		await waitFor(() => screen.getByTestId('recall-prompt'));
-
-		expect(registry.current).not.toBeNull();
-		expect(registry.current?.keyboard).toBeTypeOf('function');
-		expect(registry.current?.register).toBeUndefined();
-	});
-
-	it("renders no PianoKeyboard in the page's own document flow itself (it lives only in the dock snippet)", async () => {
-		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'formula');
-		introduceNewCardsMock.mockResolvedValue(0);
-		getDueCardsMock.mockResolvedValue([card]);
-		getAllCardsMock.mockResolvedValue([card]);
-
-		renderRecallSessionPageOnly();
-		await waitFor(() => screen.getByTestId('recall-prompt'));
-
-		expect(screen.queryByRole('img', { name: /piano keyboard/i })).not.toBeInTheDocument();
-	});
-
-	it('clears its registration on unmount', async () => {
-		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'formula');
-		introduceNewCardsMock.mockResolvedValue(0);
-		getDueCardsMock.mockResolvedValue([card]);
-		getAllCardsMock.mockResolvedValue([card]);
-
-		const { registry, unmount } = renderRecallSessionPageOnly();
-		await waitFor(() => screen.getByTestId('recall-prompt'));
-		expect(registry.current).not.toBeNull();
-
-		unmount();
-
-		expect(registry.current).toBeNull();
-	});
-
-	it('clears its registration once the session completes (no stale keyboard outside the reviewing state, T-15-03)', async () => {
-		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'formula');
-		introduceNewCardsMock.mockResolvedValue(0);
-		getDueCardsMock.mockResolvedValue([card]);
-		getAllCardsMock.mockResolvedValue([card]);
-
-		const { registry } = renderRecallSessionPageOnly();
-		await waitFor(() => screen.getByTestId('recall-prompt'));
-		expect(registry.current).not.toBeNull();
-
-		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
-		await fireEvent.click(screen.getByTestId('recall-grade-good'));
-
-		await waitFor(() => screen.getByTestId('recall-complete'));
-		expect(registry.current).toBeNull();
-	});
-
-	it("on a formula-build (Mode C) card, the embedded BuildSession's own constructable keyboard is the docked element (Plan 07) - RecallSession contributes no competing registration", async () => {
-		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'formula-build');
-		introduceNewCardsMock.mockResolvedValue(0);
-		getDueCardsMock.mockResolvedValue([card]);
-		getAllCardsMock.mockResolvedValue([card]);
-
-		const { registry } = renderRecallSessionPageOnly();
-		await waitFor(() => screen.getByTestId('build-session'));
-
-		// The dock holds exactly one registration - BuildSession's own,
-		// carrying its constructable keyboard, not RecallSession's own
-		// no-op-for-Mode-C dockedKeyboard snippet.
-		expect(registry.current).not.toBeNull();
-		expect(registry.current?.keyboard).toBeTypeOf('function');
-	});
-
-	it("advancing past a Mode C card (BuildSession's onComplete) clears the Mode C registration; a non-chord formula card docks nothing (IN-01)", async () => {
-		const cardA = makeCard('chord-formula:Cm7', 'chord-formula', 'formula-build');
-		const cardB = makeCard('interval-size:m3', 'interval-size', 'formula');
-		introduceNewCardsMock.mockResolvedValue(0);
-		getDueCardsMock.mockResolvedValue([cardA, cardB]);
-		getAllCardsMock.mockResolvedValue([cardA, cardB]);
-
-		const { registry } = renderRecallSession();
-		await waitFor(() => screen.getByTestId('build-session'));
-		expect(registry.current).not.toBeNull();
-
-		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
-		await new Promise((resolve) => setTimeout(resolve, 700));
-		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
-		await new Promise((resolve) => setTimeout(resolve, 700));
-		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
-		await new Promise((resolve) => setTimeout(resolve, 700));
-
-		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
-
-		await waitFor(() => expect(screen.getByText("What's the interval?")).toBeInTheDocument());
-		// The next card is a formula-mode interval-size fact, which has no
-		// keyboard relationship: RecallSession deliberately declines to register
-		// a dockedKeyboard for it (IN-01) rather than dock an unrelated empty
-		// board. registry.current going null here also proves BuildSession's
-		// Mode C registration was cleared, not left stale - a lingering Mode C
-		// registration would surface as a non-null current holding the build
-		// keyboard.
-		expect(registry.current).toBeNull();
-	});
-
-	it('Mode A (see-play): the docked keyboard is interactive - tapping sounds via mocked playNote and toggles selection', async () => {
+describe('RecallSession inline keyboards', () => {
+	it('Mode A (see-play): the inline keyboard is interactive - tapping sounds via mocked playNote and toggles selection', async () => {
 		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'see-play');
 		introduceNewCardsMock.mockResolvedValue(0);
 		getDueCardsMock.mockResolvedValue([card]);
@@ -1115,7 +981,7 @@ describe('RecallSession docked keyboard (KBD-01/KBD-03, Phase 15 Plan 06)', () =
 		expect(cKey).toHaveAttribute('aria-pressed', 'true');
 	});
 
-	it('Mode A (see-play): a wrong Check transforms the SAME docked keyboard (one keyboard, target notes + wrongLetters)', async () => {
+	it('Mode A (see-play): a wrong Check transforms the SAME inline keyboard (one keyboard, target notes + wrongLetters)', async () => {
 		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'see-play');
 		introduceNewCardsMock.mockResolvedValue(0);
 		getDueCardsMock.mockResolvedValue([card]);
@@ -1143,7 +1009,7 @@ describe('RecallSession docked keyboard (KBD-01/KBD-03, Phase 15 Plan 06)', () =
 		expect(highlighted).toHaveLength(4);
 	});
 
-	it('Mode B (hear-name): the docked keyboard is a plain inspectable tap-to-hear board', async () => {
+	it('Mode B (hear-name): renders no keyboard - the choice grid is the whole answering surface', async () => {
 		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'hear-name');
 		introduceNewCardsMock.mockResolvedValue(0);
 		getDueCardsMock.mockResolvedValue([card]);
@@ -1152,18 +1018,11 @@ describe('RecallSession docked keyboard (KBD-01/KBD-03, Phase 15 Plan 06)', () =
 		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-prompt'));
 
-		const keyboards = screen.getAllByRole('img', { name: /piano keyboard/i });
-		expect(keyboards).toHaveLength(1);
-		const key = screen.getAllByRole('button', { name: 'C key' })[0];
-		await fireEvent.click(key);
-		expect(playNoteMock).toHaveBeenCalled();
-
-		// Never a graded/selection surface - the multiple-choice grid stays in
-		// flow, unaffected by tapping the docked board.
+		expect(screen.queryByRole('img', { name: /piano keyboard/i })).not.toBeInTheDocument();
 		expect(screen.getAllByRole('button', { name: /^Answer: / })).toHaveLength(4);
 	});
 
-	it('formula mode: the docked keyboard is inspectable and present before AND after Show Answer (empty pre-reveal, chord notes post-reveal)', async () => {
+	it('formula mode: no keyboard before Show Answer, a display keyboard with the chord notes after', async () => {
 		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'formula');
 		introduceNewCardsMock.mockResolvedValue(0);
 		getDueCardsMock.mockResolvedValue([card]);
@@ -1172,9 +1031,7 @@ describe('RecallSession docked keyboard (KBD-01/KBD-03, Phase 15 Plan 06)', () =
 		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-prompt'));
 
-		const beforeKeyboards = screen.getAllByRole('img', { name: /piano keyboard/i });
-		expect(beforeKeyboards).toHaveLength(1);
-		expect(beforeKeyboards[0].querySelectorAll('.piano-keyboard__key--root')).toHaveLength(0);
+		expect(screen.queryByRole('img', { name: /piano keyboard/i })).not.toBeInTheDocument();
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
 

@@ -2,8 +2,6 @@ import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import { readable } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DrillsPage from '../src/routes/drills/+page.svelte';
-import KeyboardDock from '../src/lib/components/KeyboardDock.svelte';
-import { createDockRegistry, DOCK_CONTEXT_KEY } from '../src/lib/keyboard/dockContext.svelte';
 
 // Practice-flow page tests (Track B): micro-session counter, end card,
 // unlock suggestion at the round boundary, warm-up tags, and scaffolding.
@@ -82,7 +80,8 @@ vi.mock('$lib/practice/levelState', () => ({
 }));
 
 vi.mock('$lib/practice/songs', () => ({
-	activeSongChordSymbols: (): string[] => []
+	activeSongChordSymbols: (): string[] => [],
+	listSongs: (): unknown[] => []
 }));
 
 const writeScaffoldMock = vi.fn();
@@ -131,14 +130,7 @@ afterEach(() => {
  * by the click: they never re-deal and never consumed a family draw.
  */
 async function renderChordsDeck() {
-	// Drills' keyboard now lives in the shared dock (Phase 15 Plan 05) rather
-	// than rendering inline - supply a real dock registry via context and
-	// render KeyboardDock alongside the page (mirrors drillsDock.test.ts's
-	// own harness) so screen queries still find the docked keyboard/keys.
-	const registry = createDockRegistry();
-	const context = new Map([[DOCK_CONTEXT_KEY, registry]]);
-	render(DrillsPage, { context });
-	render(KeyboardDock, { context });
+	render(DrillsPage);
 	await fireEvent.click(screen.getByRole('button', { name: 'Chords' }));
 }
 
