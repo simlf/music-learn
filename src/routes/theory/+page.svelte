@@ -6,6 +6,7 @@
 	import ChordGlyph from '$lib/components/ChordGlyph.svelte';
 	import NoteLabel from '$lib/components/NoteLabel.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import InteractiveLesson from '$lib/components/InteractiveLesson.svelte';
 
 	/**
 	 * /theory (Track D): six short shape-first lessons decoding jazz chord
@@ -85,6 +86,13 @@
 				it.
 			</p>
 		</header>
+
+		<section
+			class="border-ink bg-paper-bright flex flex-col gap-4 border-2 px-4 py-6"
+			data-testid="section-interactive-lesson"
+		>
+			<InteractiveLesson />
+		</section>
 
 		<section
 			class="border-ink bg-paper-bright flex flex-col gap-4 border-2 px-4 py-6"
