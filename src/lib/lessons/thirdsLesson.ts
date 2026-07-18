@@ -12,7 +12,9 @@
  * exercised by a second lesson.
  */
 
+import { Note } from 'tonal';
 import type { IntervalRole } from '$lib/theory/types';
+import { toAsciiAccidentals } from '$lib/theory/interval';
 
 /** One step in a guided interactive lesson. */
 export interface LessonStep {
@@ -103,3 +105,29 @@ export const THIRDS_LESSON: LessonStep[] = [
  * via the existing `setDrillSeeds`/`consumeDrillSeeds` one-shot mechanism.
  */
 export const THIRDS_LESSON_DRILL_SEEDS: string[] = ['C', 'Cm'];
+
+/**
+ * Returns the pitch class of `tappedLetter` measured up from C (C=0),
+ * 0-11. Drives the "That's {N} keys up" wrong-tap count-hint copy.
+ * Total: returns -1 for an unparseable letter rather than throwing, so
+ * callers can treat it as no meaningful distance.
+ */
+export function semitonesFromC(tappedLetter: string): number {
+	const chroma = Note.chroma(toAsciiAccidentals(tappedLetter));
+	if (chroma === undefined) return -1;
+	return (chroma + 12) % 12;
+}
+
+/**
+ * Grades a lesson step tap by chroma comparison only, never letter-string
+ * equality (locked v2 constraint). Enharmonic-blind: a D♯ tap grades
+ * identically to an E♭ tap against `targetChroma: 3`. A step with
+ * `targetChroma: null` has no tap to grade and always returns false. Total:
+ * an unparseable `tappedLetter` returns false rather than throwing.
+ */
+export function gradeLessonTap(step: LessonStep, tappedLetter: string): boolean {
+	if (step.targetChroma === null) return false;
+	const tappedChroma = Note.chroma(toAsciiAccidentals(tappedLetter));
+	if (tappedChroma === undefined) return false;
+	return tappedChroma === step.targetChroma;
+}
