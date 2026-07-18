@@ -9,6 +9,7 @@
 		type Mode
 	} from '$lib/srs/deck';
 	import { spellChord } from '$lib/theory/chord';
+	import { t } from '$lib/i18n/locale.svelte';
 	import Button from './Button.svelte';
 
 	/**
@@ -27,12 +28,14 @@
 	 * map (13-02): interval-size/scale-degree rows render the "not
 	 * applicable" texture for these three columns instead.
 	 */
-	const MODE_COLUMNS = [
-		{ mode: 'formula', label: 'Formula' },
-		{ mode: 'formula-build', label: 'Build' },
-		{ mode: 'see-play', label: 'Play' },
-		{ mode: 'hear-name', label: 'Name' }
-	] as const satisfies readonly { mode: Mode; label: string }[];
+	const MODE_COLUMNS = $derived.by(
+		(): readonly { mode: Mode; label: string }[] => [
+			{ mode: 'formula', label: t('recall.map.col.formula') },
+			{ mode: 'formula-build', label: t('recall.map.col.build') },
+			{ mode: 'see-play', label: t('recall.map.col.play') },
+			{ mode: 'hear-name', label: t('recall.map.col.name') }
+		]
+	);
 
 	type KindFilter = 'all' | Fact['factKind'];
 
@@ -80,26 +83,30 @@
 		return column.mode === 'formula' || fact.factKind === 'chord-formula';
 	}
 
-	const KIND_TABS: { value: KindFilter; label: string }[] = [
-		{ value: 'all', label: 'All' },
-		{ value: 'chord-formula', label: 'Chords' },
-		{ value: 'interval-size', label: 'Intervals' },
-		{ value: 'scale-degree', label: 'Scales' }
-	];
+	const KIND_TABS = $derived.by(
+		(): { value: KindFilter; label: string }[] => [
+			{ value: 'all', label: t('recall.map.kind.all') },
+			{ value: 'chord-formula', label: t('recall.map.kind.chords') },
+			{ value: 'interval-size', label: t('recall.map.kind.intervals') },
+			{ value: 'scale-degree', label: t('recall.map.kind.scales') }
+		]
+	);
 
-	const LEGEND: { state: CellState; label: string }[] = [
-		{ state: 'not-yet-seen', label: 'Not yet seen' },
-		{ state: 'due', label: 'Due' },
-		{ state: 'weak', label: 'Weak' },
-		{ state: 'mastered', label: 'Mastered' }
-	];
+	const LEGEND = $derived.by(
+		(): { state: CellState; label: string }[] => [
+			{ state: 'not-yet-seen', label: t('recall.map.legend.not-yet-seen') },
+			{ state: 'due', label: t('recall.map.legend.due') },
+			{ state: 'weak', label: t('recall.map.legend.weak') },
+			{ state: 'mastered', label: t('recall.map.legend.mastered') }
+		]
+	);
 </script>
 
 <div
 	class="mt-2 flex flex-wrap gap-2"
 	data-testid="recall-map-kind-tabs"
 	role="group"
-	aria-label="Fact kind filter"
+	aria-label={t('recall.map.aria.kind-filter')}
 >
 	{#each KIND_TABS as tab (tab.value)}
 		<Button

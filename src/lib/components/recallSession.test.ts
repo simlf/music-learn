@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import RecallSession from './RecallSession.svelte';
 import { gradeCard, newCard, previewGrades, Rating, State } from '$lib/srs/scheduler';
 import { formatDayInterval } from '$lib/srs/session';
@@ -7,6 +7,7 @@ import type { CardRecord } from '$lib/srs/deck';
 import { majorScaleNotes } from '$lib/theory/scale';
 import { transposeFrom } from '$lib/theory/interval';
 import { normalizeSymbolForMatch } from '$lib/practice/songProvenance';
+import { setLocale } from '$lib/i18n/locale.svelte';
 
 /**
  * Component test for RecallSession (11-05): mocks the deck persistence seam
@@ -98,6 +99,10 @@ beforeEach(() => {
 	playNoteMock.mockReset();
 	ensureAudioReadyMock.mockReset();
 	ensureAudioReadyMock.mockResolvedValue(undefined);
+});
+
+afterEach(() => {
+	setLocale('en');
 });
 
 describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () => {
@@ -1205,5 +1210,37 @@ describe('RecallSession SongMark rendering (SONG-01, 18-03)', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Answer: Cm7' }));
 
 		expect(screen.getByTestId('song-mark')).toHaveTextContent('Autumn Leaves');
+	});
+});
+
+/**
+ * I18N-03 tight-surface fit check (20-02): the grade row's
+ * `grid-cols-2 sm:grid-cols-4` breakpoint is width-driven, not
+ * language-driven (20-UI-SPEC "Grading buttons"), so switching to French
+ * must render the locked FR grade labels without altering that
+ * responsive class - proving the surface fits French copy at every
+ * viewport with no FR-only layout override.
+ */
+describe('RecallSession French grade-button fit (I18N-03)', () => {
+	it('renders the FR grade labels with the sm:grid-cols-4 breakpoint unchanged', async () => {
+		setLocale('fr');
+		const card = makeCard('chord-formula:Cm7', 'chord-formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Voir la réponse' }));
+
+		const grid = screen.getByTestId('recall-grade-grid');
+		expect(grid.className).toContain('grid-cols-2');
+		expect(grid.className).toContain('sm:grid-cols-4');
+
+		expect(screen.getByText('À revoir')).toBeInTheDocument();
+		expect(screen.getByText('Difficile')).toBeInTheDocument();
+		expect(screen.getByText('Correct')).toBeInTheDocument();
+		expect(screen.getByText('Facile')).toBeInTheDocument();
 	});
 });
