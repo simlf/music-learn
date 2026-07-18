@@ -76,13 +76,13 @@
 
 	/**
 	 * The wrong-tap retry copy, with the `{N}` token filled from
-	 * `semitonesFromC`. Total: an unparseable tap (semitonesFromC returns -1)
-	 * falls back to the hint with the "That's {N} keys up. " lead-in dropped,
-	 * rather than rendering a nonsensical negative count.
+	 * `semitonesFromC`. `tappedLetter` always originates from
+	 * `PianoKeyboard.onConstructTap`, which only ever supplies a real key
+	 * letter, so `semitonesFromC` always resolves here - no unparseable-tap
+	 * fallback branch to maintain.
 	 */
 	function wrongHintFor(hint: string, tappedLetter: string): string {
 		const n = semitonesFromC(tappedLetter);
-		if (n < 0) return hint.replace(/That's \{N\} keys up\.\s*/, '');
 		return hint.replace('{N}', String(n));
 	}
 
