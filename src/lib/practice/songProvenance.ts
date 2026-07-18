@@ -31,6 +31,14 @@ export function normalizeSymbolForMatch(symbol: string): string {
 
 	const asciiRoot = spelled.root.replace(/♯/g, '#').replace(/♭/g, 'b');
 	const rootChroma = Note.get(asciiRoot).chroma;
+	// LO-01: a recognized chord with an empty/unparseable root (spellChord's
+	// own `chord.tonic ?? ''` fallback, reachable via a rootless quality-only
+	// symbol like "m7" - tonal's Chord.get resolves that to `tonic: ''`)
+	// makes `Note.get('').chroma` come back NaN, not undefined. Without this
+	// guard every such chord would collapse into the same colliding
+	// "NaN:<quality>" bucket. Degrade the same way the unrecognized branch
+	// above does: match only itself, never collide with an unrelated chord.
+	if (Number.isNaN(rootChroma)) return symbol;
 	return `${rootChroma}:${spelled.quality}`;
 }
 

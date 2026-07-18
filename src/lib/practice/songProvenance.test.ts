@@ -41,6 +41,22 @@ describe('songProvenance', () => {
 			expect(() => normalizeSymbolForMatch('NotAChord')).not.toThrow();
 			expect(normalizeSymbolForMatch('NotAChord')).toBe('NotAChord');
 		});
+
+		/**
+		 * LO-01 regression: a rootless quality-only symbol (e.g. a hand-entered
+		 * "m7" with no letter) is a REAL reachable case, not just a
+		 * hypothetical one - tonal's Chord.get resolves it to `recognized: true,
+		 * root: ''`, and Note.get('').chroma is NaN (not undefined). Without
+		 * the guard, every such rootless symbol would collapse into one
+		 * colliding "NaN:<quality>" bucket instead of matching only itself.
+		 */
+		it('degrades a recognized-but-rootless symbol (e.g. "m7" alone) to raw-input self-identity, never colliding with an unrelated rootless quality', () => {
+			expect(() => normalizeSymbolForMatch('m7')).not.toThrow();
+			expect(normalizeSymbolForMatch('m7')).toBe('m7');
+			// A different rootless quality must not collide with 'm7's key.
+			expect(normalizeSymbolForMatch('7')).toBe('7');
+			expect(normalizeSymbolForMatch('7')).not.toBe(normalizeSymbolForMatch('m7'));
+		});
 	});
 
 	describe('buildProvenanceIndex', () => {
