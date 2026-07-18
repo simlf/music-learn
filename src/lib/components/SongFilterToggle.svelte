@@ -54,7 +54,7 @@
 
 	.song-filter-toggle {
 		font: 700 var(--text-label) / 1.4 var(--font-mono);
-		letter-spacing: 0.08em;
+		letter-spacing: 0.14em;
 		text-transform: uppercase;
 		border: 2px solid var(--color-ink);
 		background: var(--color-paper);
