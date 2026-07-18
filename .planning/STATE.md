@@ -5,15 +5,15 @@ milestone_name: Playability & Comprehension
 current_phase: 20
 current_phase_name: French Translation
 status: executing
-stopped_at: Completed 20-01-PLAN.md
-last_updated: "2026-07-18T17:22:12.558Z"
+stopped_at: Completed 20-02-PLAN.md
+last_updated: "2026-07-18T17:38:55.842Z"
 last_activity: 2026-07-18
 last_activity_desc: Phase 20 execution started
 progress:
   total_phases: 19
   completed_phases: 12
   total_plans: 74
-  completed_plans: 63
+  completed_plans: 64
   percent: 63
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 ## Current Position
 
 Phase: 20 (French Translation) — EXECUTING
-Plan: 2 of 10
+Plan: 3 of 10
 Status: Ready to execute
 Last activity: 2026-07-18 — Phase 20 execution started
 
@@ -137,6 +137,7 @@ Last activity: 2026-07-18 — Phase 20 execution started
 | Phase 19-interactive-theory P03 | 25min | 2 tasks | 3 files |
 | Phase 19 P04 | 10min | 2 tasks | 2 files |
 | Phase 20 P01 | 20min | 3 tasks | 16 files |
+| Phase 20 P02 | 8min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -260,6 +261,8 @@ Recent decisions affecting current work:
 - [Phase ?]: InteractiveLesson's Hear-it control previews the active step's own target letter (not earnedNotes) for the two graded third steps, since an immediate advance-on-correct means a role='third' step is never simultaneously active and already earned.
 - [Phase ?]: [Phase 19-04]: InteractiveLesson's outer /theory section wrapper carries only shared card chrome, no duplicate heading, since the component renders its own heading/lead internally
 - [Phase 20]: locale.svelte.ts uses the .svelte.ts extension so t() stays reactive across component templates; LocaleDict is defined once in messages/index.ts and imported type-only by domain files to avoid a runtime circular dependency
+- [Phase ?]: recall.ts: split-sentence keys for interpolated strings (prefix/infix/suffix keyed separately around an untranslated dynamic value) established as the second domain-file i18n pattern
+- [Phase ?]: RecallSession/RecallMap module-level const arrays that depend on t() are converted to $derived.by(() => [...]) so a live locale flip re-renders them
 
 ### Pending Todos
 
@@ -291,7 +294,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-18T17:22:12.552Z
-Stopped at: Completed 20-01-PLAN.md
+Last session: 2026-07-18T17:38:55.835Z
+Stopped at: Completed 20-02-PLAN.md
 Resume file: 
 None

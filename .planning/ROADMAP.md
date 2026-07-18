@@ -530,7 +530,7 @@ Plans:
 
 **Design reference**: `.planning/sketches/013-french-fit-test/` (winner Variant A: header toggle; C stress-panel is the overflow audit)
 **UI hint**: yes
-**Plans**: 1/10 plans executed
+**Plans**: 2/10 plans executed
 
 **Wave 1**
 
@@ -538,7 +538,7 @@ Plans:
 
 **Wave 2** *(parallel: file-disjoint per-surface conversions, blocked on Wave 1)*
 
-- [ ] 20-02-PLAN.md — Recall surface: grades/modes/map + tight-surface fit (I18N-02/03)
+- [x] 20-02-PLAN.md — Recall surface: grades/modes/map + tight-surface fit (I18N-02/03)
 - [ ] 20-03-PLAN.md — Build surface: captions/steps/WHY, interval longFr seed (I18N-02)
 - [ ] 20-04-PLAN.md — Drills surface: prompts/feedback/CTAs + FROM YOUR LESSON tag (I18N-02)
 - [ ] 20-05-PLAN.md — Songs + Phase 18 shared song components (I18N-02)
@@ -579,4 +579,4 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 | 17. Chord Explainer | 0/TBD | Pending | - |
 | 18. Your Songs' Chords | 4/4 | Complete    | 2026-07-18 |
 | 19. Interactive Theory | 4/4 | Complete    | 2026-07-18 |
-| 20. French Translation | 1/10 | In Progress|  |
+| 20. French Translation | 2/10 | In Progress|  |

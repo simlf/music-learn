@@ -123,7 +123,7 @@ Grounded in Session 4 sketches 008–013 (`.planning/sketches/MANIFEST.md`). Loc
 
 - [x] **I18N-01**: A header EN|FR toggle switches all UI copy to correct French and persists the choice; chord symbols and the serif glyph never translate
 - [x] **I18N-02**: An i18n layer holds every user-facing string as a keyed EN/FR translation, replacing loose inline strings
-- [ ] **I18N-03**: The tight Print Shop surfaces audited in sketch 013 (mono register labels, grading buttons, nav) render French without overflow
+- [x] **I18N-03**: The tight Print Shop surfaces audited in sketch 013 (mono register labels, grading buttons, nav) render French without overflow
 
 ## Future Requirements
 
