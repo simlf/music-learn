@@ -579,4 +579,4 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 | 17. Chord Explainer | 0/TBD | Pending | - |
 | 18. Your Songs' Chords | 4/4 | Complete    | 2026-07-18 |
 | 19. Interactive Theory | 4/4 | Complete    | 2026-07-18 |
-| 20. French Translation | 10/10 | Complete   | 2026-07-18 |
+| 20. French Translation | 10/10 | Complete    | 2026-07-18 |
