@@ -138,7 +138,7 @@ Visual spec (all values are existing tokens, zero new CSS variables):
 .song-mark {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--spacing-xs);
   font: 700 var(--text-label) / 1.4 var(--font-mono);
   letter-spacing: 0.1em;
   text-transform: uppercase;
