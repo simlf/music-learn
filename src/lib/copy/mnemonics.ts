@@ -57,3 +57,28 @@ export function mnemonicFor(qualitySuffix: string): string | null {
 	const canonical = ALIASES[qualitySuffix] ?? qualitySuffix;
 	return MNEMONICS[canonical] ?? null;
 }
+
+/**
+ * Beginner-plain family line for the 3 triad qualities with no structural
+ * mnemonic (D-05): plain major, minor, and diminished triads. Keyed strictly
+ * by the canonical v1 triad suffixes (never routed through ALIASES) since
+ * the hint ladder's Layer-1 resolver always passes the canonical suffix
+ * sliced straight from the drill's own QUALITY_SUFFIXES. Every other suffix
+ * (including every seventh quality that already has a mnemonicFor hook, and
+ * any unsupported suffix) returns null: better none than cheesy.
+ */
+const FAMILY_LINES: Record<string, string> = {
+	'': 'A bright major triad: root, major 3rd, perfect 5th.',
+	m: 'A minor triad: root, minor 3rd, perfect 5th. Same shape as major, just a darker 3rd.',
+	// Reused verbatim from sketch 010's own copy (the canonical worked example), not rewritten.
+	dim: "Diminished means tense and unstable. It's a chord that sounds like it wants to move somewhere. Built from two stacked minor thirds."
+};
+
+/**
+ * Layer 1's fallback for the 3 triad qualities `mnemonicFor` has no hook for.
+ * Resolution order: `mnemonicFor(q) ?? familyLineFor(q)` is non-null across
+ * all 8 v1 QUALITY_SUFFIXES. Total function: unknown input never throws.
+ */
+export function familyLineFor(qualitySuffix: string): string | null {
+	return FAMILY_LINES[qualitySuffix] ?? null;
+}

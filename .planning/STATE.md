@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Playability & Comprehension
-current_phase: 16
-current_phase_name: hear-the-chord
+current_phase: 17
+current_phase_name: chord-explainer
 status: verified
-stopped_at: Completed 16-08-PLAN.md — phase 16 verified
-last_updated: "2026-07-16T22:52:19.262Z"
-last_activity: 2026-07-16
-last_activity_desc: Phase 16 gap-closure executed + verified (16-07, 16-08)
+stopped_at: Phase 17 executed + verified
+last_updated: "2026-07-17T19:41:50.904Z"
+last_activity: 2026-07-17
+last_activity_desc: Phase 17 Chord Explainer executed + verified (HINT-01..03)
 progress:
   total_phases: 19
-  completed_phases: 11
-  total_plans: 57
-  completed_plans: 57
-  percent: 58
+  completed_phases: 12
+  total_plans: 61
+  completed_plans: 61
+  percent: 63
 ---
 
 # Project State
@@ -24,22 +24,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-14)
 
 **Core value:** See a jazz chord symbol and know instantly what to play with the left hand.
-**Current focus:** Phase 16 — hear-the-chord
+**Current focus:** Phase 17 — chord-explainer
 
 ## Current Position
 
-Phase: 16 (hear-the-chord) — COMPLETE (verified)
-Plan: 8 of 8 (6 original + 2 gap-closure)
-Status: Verified — HEAR-01, HEAR-02 delivered; ready to ship
-Last activity: 2026-07-16 — Phase 16 gap-closure executed + verified (16-07, 16-08)
+Phase: 17 (chord-explainer) — COMPLETE (verified)
+Plan: 4 of 4
+Status: Verified — HINT-01, HINT-02, HINT-03 delivered; ready to ship
+Last activity: 2026-07-17 — Phase 17 Chord Explainer executed + verified (hint ladder in Recall)
 
 **v2.0 Learning Upgrade (Phases 10-13): COMPLETE (shipped 2026-07-15).**
 
 **v2.1 Playability & Comprehension (Phases 15-20) — active batch; design winners = Session 4 sketches 008-013:**
 
-- Phase 15: Playable Keyboard Everywhere (KBD-01..03) — COMPLETE. Shared docked keyboard on every keyboard-bearing page.
+- Phase 15: Playable Keyboard Everywhere (KBD-01..03) — COMPLETE, but the shared fixed-bottom keyboard dock was later REMOVED (rejected as too intrusive); keyboards now render inline per page. See [[keyboard-inline-not-docked]].
 - Phase 16: Hear the Chord (HEAR-01, HEAR-02) — COMPLETE (verified). Auto-play + synced pulse on the BUILD reveal, plus gap-closure of the study-mode roll (ascending voicing, tick-synced audio/visual, octave-keyed pending).
-- Phase 17: Chord Explainer — escalating in-place hints for unknown chords in Recall.
+- Phase 17: Chord Explainer (HINT-01..03) — COMPLETE (verified). Escalating in-place hint ladder for unknown chords in Recall (family → formula chips → mini keyboard → full spelling + song hook).
 - Phase 18: Your Songs' Chords — song-provenance marks + a From-my-songs filter.
 - Phase 19: Interactive Theory — guided-step beginner lessons handing off into the first drill.
 - Phase 20: French Translation — header EN|FR toggle + full French i18n layer.
@@ -260,7 +260,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-16T20:42:44.397Z
-Stopped at: Completed 16-01-PLAN.md
+Last session: 2026-07-17T18:44:28.758Z
+Stopped at: Phase 17 UI-SPEC approved
 Resume file: 
-None
+.planning/phases/17-chord-explainer/17-UI-SPEC.md

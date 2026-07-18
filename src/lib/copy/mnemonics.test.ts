@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mnemonicFor } from './mnemonics';
+import { mnemonicFor, familyLineFor } from './mnemonics';
 import { QUALITY_SUFFIXES } from '$lib/theory/randomChord';
 
 /**
@@ -89,6 +89,61 @@ describe('mnemonicFor: copy quality bar', () => {
 	it('uses display accidental glyphs, never ASCII b/# accidentals mid-copy', () => {
 		for (const line of shipped) {
 			// "♭7" and "♭3" style only; a bare " b7" would be an ASCII accidental slip.
+			expect(line).not.toMatch(/\sb\d/);
+			expect(line).not.toMatch(/\s#\d/);
+		}
+	});
+});
+
+/**
+ * Pins the 3 triad family-line values (Layer 1's fallback for qualities with
+ * no structural mnemonic). Deliberate snapshot, per the UI-SPEC Layer 1 table.
+ */
+const EXPECTED_FAMILY_LINES: Record<string, string> = {
+	'': 'A bright major triad: root, major 3rd, perfect 5th.',
+	m: 'A minor triad: root, minor 3rd, perfect 5th. Same shape as major, just a darker 3rd.',
+	dim: "Diminished means tense and unstable. It's a chord that sounds like it wants to move somewhere. Built from two stacked minor thirds."
+};
+
+describe('familyLineFor: the 3 triad qualities (deliberate snapshot)', () => {
+	for (const suffix of ['', 'm', 'dim'] as const) {
+		it(`returns the pinned value for "${suffix || '(major triad)'}"`, () => {
+			expect(familyLineFor(suffix)).toBe(EXPECTED_FAMILY_LINES[suffix]);
+		});
+	}
+
+	it('returns null for every seventh quality that already has a mnemonic', () => {
+		for (const suffix of ['maj7', 'm7', '7', 'm7b5', 'dim7']) {
+			expect(familyLineFor(suffix)).toBeNull();
+		}
+	});
+
+	it('returns null for unsupported suffixes', () => {
+		for (const suffix of ['aug', 'sus4', 'nonsense']) {
+			expect(familyLineFor(suffix)).toBeNull();
+		}
+	});
+});
+
+describe('Layer 1 resolution order: mnemonicFor(q) ?? familyLineFor(q) is total', () => {
+	for (const suffix of QUALITY_SUFFIXES) {
+		it(`resolves non-null for "${suffix || '(major triad)'}"`, () => {
+			expect(mnemonicFor(suffix) ?? familyLineFor(suffix)).not.toBeNull();
+		});
+	}
+});
+
+describe('familyLineFor: copy quality bar', () => {
+	const shippedLines = Object.values(EXPECTED_FAMILY_LINES);
+
+	it('contains no em dashes in any shipped line (D-05)', () => {
+		for (const line of shippedLines) {
+			expect(line).not.toMatch(/—|–/);
+		}
+	});
+
+	it('uses display accidental glyphs, never ASCII b/# accidentals mid-copy', () => {
+		for (const line of shippedLines) {
 			expect(line).not.toMatch(/\sb\d/);
 			expect(line).not.toMatch(/\s#\d/);
 		}
