@@ -3,7 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import LookupPage from '../src/routes/+page.svelte';
 import { setLocale } from '../src/lib/i18n/locale.svelte';
 
-/** The keyboard and register render inline inside the page's own result block. */
+/**
+ * Lookup's keyboard/register render inline in the page's own content flow
+ * (in the recognized-chord result block), so a plain page render puts the
+ * keyboard/register content in the same `document.body` that `screen`
+ * queries.
+ */
 function renderPage() {
 	return render(LookupPage);
 }

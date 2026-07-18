@@ -7,6 +7,13 @@ import { whiteLettersForOctaves, blackKeysForOctaves } from '$lib/components/key
 import type { SpelledNote } from '$lib/theory/types';
 import { setLocale } from '$lib/i18n/locale.svelte';
 
+/**
+ * The tappable key-strip, the degree register, the ascending/descending
+ * prompt, and the completion card all render inline in the component's own
+ * scrolling flow, so a plain component render puts everything in the
+ * document that `screen` queries.
+ */
+
 const playNoteMock = vi.fn();
 vi.mock('$lib/audio/audio', () => ({
 	playNote: (...args: unknown[]) => playNoteMock(...args)
@@ -74,12 +81,18 @@ describe('ScaleKeyboardDrill (tonic-anchored 2-octave keyboard, SCALE-04)', () =
 		expect(screen.getByTestId('scale-keyboard-register')).toHaveTextContent('DEGREE 1 OF 8 · ASCENDING');
 	});
 
-	it('renders the tappable key-strip inline in the component\'s own output while a drill is active', () => {
+	it('renders the tappable key-strip, the degree register, and the prompt inline in its own DOM', () => {
 		const { drill } = renderDrill({ notes: majorScaleNotes('C'), tonic: 'C' });
+		const { container } = drill;
 
-		expect(drill.container.querySelector('[data-testid="scale-keyboard-register"]')).not.toBeNull();
-		expect(drill.container.textContent).toContain('Play C major ascending, then descending.');
-		expect(drill.container.querySelectorAll('[role="button"]').length).toBeGreaterThan(0);
+		// Register + prompt live in the component's own inline output...
+		expect(container.querySelector('[data-testid="scale-keyboard-register"]')).not.toBeNull();
+		expect(container.textContent).toContain('Play C major ascending, then descending.');
+		// ...as does the tappable key-strip (the scroll-wrap group with the keys).
+		expect(
+			container.querySelector('[role="group"][aria-label="Scale keyboard, C major, two octaves"]')
+		).not.toBeNull();
+		expect(container.querySelectorAll('[role="button"]').length).toBeGreaterThan(0);
 	});
 
 	it('tapping the tonic first fills the leftmost key and plays it; no key left of it is filled', async () => {
@@ -169,11 +182,14 @@ describe('ScaleKeyboardDrill (tonic-anchored 2-octave keyboard, SCALE-04)', () =
 		expect(screen.getByTestId('scale-keyboard-complete')).toBeInTheDocument();
 		expect(screen.getByText('Voila. C major, up and down, clean.')).toBeInTheDocument();
 		expect(playNoteMock).toHaveBeenCalledTimes(15);
+		// A finished drill replaces the key-strip with the completion card.
+		expect(screen.queryByTestId('scale-keyboard-register')).not.toBeInTheDocument();
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Run it again' }));
 
 		expect(screen.queryByTestId('scale-keyboard-complete')).not.toBeInTheDocument();
 		expect(screen.getByTestId('scale-keyboard-register')).toHaveTextContent('DEGREE 1 OF 8 · ASCENDING');
+		// Reset re-renders the key-strip inline.
 		expect(tapButtonFor(placements[0])).not.toHaveClass('key--root');
 	});
 

@@ -32,6 +32,10 @@
 	 * returning octave onto the tonic key when the 7th degree is a black key
 	 * (see 10-02-PLAN.md's recorded design decision) and its wrongLetters prop
 	 * paints a permanent-per-reveal cross mark, not a momentary flash.
+	 *
+	 * The tappable key-strip, the degree register, the ascending/descending
+	 * prompt, and the completion card all render inline in this component's
+	 * own scrolling flow.
 	 */
 	type KeyKind = 'white' | 'black';
 
@@ -260,15 +264,14 @@
 		>
 			{register}
 		</p>
-		<div class="mt-2">
-			{@render keyStrip()}
-		</div>
+
+		{@render keyStrip()}
 	{/if}
 </div>
 
 {#snippet keyStrip()}
 	<div
-		class="scroll-wrap"
+		class="scroll-wrap mt-2"
 		bind:this={containerEl}
 		role="group"
 		aria-label={t('scales.drill.groupLabel').replace('{TONIC}', tonic)}

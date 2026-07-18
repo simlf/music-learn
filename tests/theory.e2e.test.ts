@@ -4,7 +4,11 @@ import { readable } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import TheoryPage from '../src/routes/theory/+page.svelte';
 
-/** Theory has no playable keyboard; its lessons render display keyboards inline. */
+/**
+ * Theory's lessons render display keyboards inline in the page's own scrolling
+ * flow (the InteractiveLesson plus each chord lesson), so a plain page render
+ * puts the keyboard content in the same `document.body` that `screen` queries.
+ */
 function renderPage() {
 	return { page: render(TheoryPage) };
 }

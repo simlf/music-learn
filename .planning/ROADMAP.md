@@ -37,8 +37,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 *(Phase 14 is the standalone `14-mastery-criterion` improvement; this v2.1 batch continues at 15. Design winners are Session 4 sketches 008–013.)*
 
 - [x] **Phase 15: Playable Keyboard Everywhere** - A docked, always-playable keyboard on every keyboard-bearing page (sketch 008-A) (planned 2026-07-15) (completed 2026-07-15)
-- [ ] **Phase 16: Hear the Chord** - Auto-play + synced pulse on the BUILD reveal for audio memory (sketch 009-A) (planned 2026-07-15)
-- [ ] **Phase 17: Chord Explainer** - Escalating in-place hints for unknown chords in Recall (sketch 010-A) (planned 2026-07-15)
+- [x] **Phase 16: Hear the Chord** - Auto-play + synced pulse on the BUILD reveal for audio memory (sketch 009-A) (completed 2026-07-16)
+- [x] **Phase 17: Chord Explainer** - Escalating in-place hints for unknown chords in Recall (sketch 010-A) (completed 2026-07-17)
 - [x] **Phase 18: Your Songs' Chords** - Song-provenance marks + a From-my-songs filter across the app (sketch 011-A) (planned 2026-07-15) (completed 2026-07-18)
 - [x] **Phase 19: Interactive Theory** - Guided-step beginner lessons that hand off into the first drill (sketch 012-A) (planned 2026-07-15) (completed 2026-07-18)
 - [x] **Phase 20: French Translation** - Header EN|FR toggle and a full French i18n layer (sketch 013-A) (planned 2026-07-15) (completed 2026-07-18)
@@ -443,12 +443,12 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [ ] 16-06-PLAN.md — BuildSession study-mode arpeggio roll (HEAR-02 study playback)
+- [x] 16-06-PLAN.md — BuildSession study-mode arpeggio roll (HEAR-02 study playback)
 
 **Gap Closure** *(closes 3 verification gaps in the study-mode roll — HEAR-02)*
 
-- [ ] 16-07-PLAN.md — Fix playArpeggio: ascending voicing (scale roll) + startDelayMs option (audio sync)
-- [ ] 16-08-PLAN.md — Sync roll audio to visual un-dim + pending keyed by {letter, octave} (duplicate tonic)
+- [x] 16-07-PLAN.md — Fix playArpeggio: ascending voicing (scale roll) + startDelayMs option (audio sync)
+- [x] 16-08-PLAN.md — Sync roll audio to visual un-dim + pending keyed by {letter, octave} (duplicate tonic)
 
 ### Phase 17: Chord Explainer
 
@@ -463,6 +463,23 @@ Plans:
 
 **Design reference**: `.planning/sketches/010-chord-explainer/` (winner Variant A: hint ladder; C dossier folded into the deepest layer)
 **UI hint**: yes
+**Plans**: 4 plans
+
+**Wave 1**
+
+- [x] 17-01-PLAN.md — Copy/derivation helpers: familyLineFor (3 triads) + formulaSentence (generated Layer 2 copy) [HINT-03]
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [x] 17-02-PLAN.md — HintLadder.svelte: cumulative escalating hint-ladder component, adaptive 4/3-layer [HINT-01, HINT-03]
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [x] 17-03-PLAN.md — Wire ladder into RecallSession: see-play (pre-answer) + formula-build + hintLayersFor helper [HINT-01, HINT-02]
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [x] 17-04-PLAN.md — Wire ladder into hear-name (post-answer, timer cancel + Continue) + end-of-phase visual verify [HINT-01, HINT-02]
 
 ### Phase 18: Your Songs' Chords
 

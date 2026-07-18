@@ -131,6 +131,8 @@ afterEach(() => {
  * by the click: they never re-deal and never consumed a family draw.
  */
 async function renderChordsDeck() {
+	// Drills' keyboard renders inline in the page's own content flow, so a
+	// plain page render puts the keyboard/keys in the document screen queries.
 	render(DrillsPage);
 	await fireEvent.click(screen.getByRole('button', { name: 'Chords' }));
 }

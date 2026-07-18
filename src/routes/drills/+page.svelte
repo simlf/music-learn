@@ -739,9 +739,10 @@
 
 <!--
 	The ONE mode-aware inline keyboard: closes over the page's existing
-	reactive state, so it renders exactly the props each question branch
+	reactive state, so it reproduces exactly the props each question branch
 	needs - never two input surfaces for the same fact (interactive/
-	inspectable are mutually exclusive per question branch).
+	inspectable are mutually exclusive per question branch). Rendered inline
+	in `.drill-layout__keyboard` for every branch.
 -->
 {#snippet inlineKeyboard()}
 	{#if question.kind === 'chord' && question.direction === 'construction'}

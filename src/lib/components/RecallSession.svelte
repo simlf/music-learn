@@ -38,6 +38,7 @@
 	import RevealInsight from './RevealInsight.svelte';
 	import BuildSession from './BuildSession.svelte';
 	import SongMark from './SongMark.svelte';
+	import HintLadder from './HintLadder.svelte';
 
 	/**
 	 * Mode-signal chip label (UI-SPEC "Mode Surfaces" / Scope Decision 8):
@@ -170,6 +171,16 @@
 	let hearNameAdvanceTimer: ReturnType<typeof setTimeout> | undefined;
 	/** Reuses BuildSession's exact feedbackTimer pacing value (Scope Decision 6) - not a new number invented for this plan. */
 	const HEAR_NAME_ADVANCE_MS = 650;
+	/**
+	 * Post-answer hint-ladder wiring (Plan 04, HINT-01/HINT-02): the ladder
+	 * mounts only after `hearNameAnswered`, so it can never spoil the ear test
+	 * (D-03). Opening it cancels `hearNameAdvanceTimer` and surfaces an
+	 * explicit Continue button that reuses `hearNameCommittedRating` - the
+	 * SAME rating the timer would have used - so hint depth never touches the
+	 * already-committed grade (D-04).
+	 */
+	let hearNameHintOpen = $state(false);
+	let hearNameCommittedRating = $state<Rating | undefined>();
 
 	/** Compound (factId, mode) key, matching deck.ts's own [factId+mode] convention. */
 	function cardKey(factId: string, mode: string): string {
@@ -195,6 +206,19 @@
 				symbolHasProvenance(fact.symbol, provenanceIndex)
 			);
 		});
+	}
+
+	/**
+	 * Single source of per-mode HintLadder layer selection (HINT-01), reused by
+	 * Plan 04 for hear-name. `see-play` and `hear-name` get the full 4-item
+	 * ladder; `formula-build` skips the formula-chip layer (D-03) since the
+	 * formula is already on-screen there, leaving the 3-item ladder.
+	 */
+	function hintLayersFor(mode: Mode): ('family' | 'formula' | 'keyboard' | 'spelling')[] {
+		if (mode === 'formula-build') {
+			return ['family', 'keyboard', 'spelling'];
+		}
+		return ['family', 'formula', 'keyboard', 'spelling'];
 	}
 
 	async function load(): Promise<void> {
@@ -279,6 +303,8 @@
 		hearNameGiven = '';
 		hearNameChoices = [];
 		hearNamePlayCount = 0;
+		hearNameHintOpen = false;
+		hearNameCommittedRating = undefined;
 		clearTimeout(hearNameAdvanceTimer);
 	}
 
@@ -399,6 +425,25 @@
 	}
 
 	/**
+	 * The single hear-name advance path (Plan 04): both the existing
+	 * auto-advance timer and the new Continue button call this, so there is
+	 * exactly one place that advances the queue, resets per-card state, and
+	 * bumps reviewedCount/completion for Mode B.
+	 */
+	function advanceHearName(rating: Rating): void {
+		queue = advanceQueue(queue, rating);
+		resetPerCardState();
+		reviewedCount += 1;
+		if (isSessionComplete(queue)) pageState = 'complete';
+	}
+
+	/** Cancels the auto-advance the instant a hint is opened post-answer (HINT-02); idempotent since clearTimeout on an already-fired/cleared timer is a no-op. */
+	function onHearNameHintOpen(): void {
+		clearTimeout(hearNameAdvanceTimer);
+		hearNameHintOpen = true;
+	}
+
+	/**
 	 * Tapping a choice IS the complete answer (D-05): grades immediately,
 	 * writes the FSRS rating fire-and-forget (never blocks the advance), and
 	 * always auto-advances after HEAR_NAME_ADVANCE_MS regardless of
@@ -412,6 +457,7 @@
 		hearNameGiven = choice;
 
 		const rating = choice === currentFact.symbol ? Rating.Good : Rating.Again;
+		hearNameCommittedRating = rating;
 
 		if (rating === Rating.Good) {
 			const [text, index] = pickVariant(CORRECT_VARIANTS, confirmationIndex);
@@ -438,10 +484,7 @@
 
 		clearTimeout(hearNameAdvanceTimer);
 		hearNameAdvanceTimer = setTimeout(() => {
-			queue = advanceQueue(queue, rating);
-			resetPerCardState();
-			reviewedCount += 1;
-			if (isSessionComplete(queue)) pageState = 'complete';
+			advanceHearName(rating);
 		}, HEAR_NAME_ADVANCE_MS);
 	}
 
@@ -568,6 +611,37 @@
 	}
 </script>
 
+<!--
+	The ONE mode-aware keyboard: closes over the page's existing reactive
+	state, so it reproduces exactly the props Mode A / formula-reveal / Mode B
+	each need - never two input surfaces for the same fact. Rendered inline in
+	each mode's block below. Mode C ('formula-build') renders nothing here;
+	the embedded BuildSession owns its own keyboard.
+-->
+{#snippet modeKeyboard()}
+	{#if currentItem?.mode === 'see-play' && currentFact?.factKind === 'chord-formula'}
+		{@const target = spellChord(currentFact.symbol)}
+		{@const modeAWrong = modeAAnswered && modeAResult !== undefined && !modeAResult.correct}
+		<PianoKeyboard
+			notes={modeAWrong ? target.notes : []}
+			interactive
+			selected={selected}
+			onToggle={toggleModeAKey}
+			onPress={pressModeAKey}
+			wrongLetters={modeAWrong ? extraLettersPlayed : undefined}
+		/>
+	{:else if currentItem?.mode === 'hear-name'}
+		<PianoKeyboard notes={[]} inspectable />
+	{:else if currentItem?.mode === 'formula'}
+		{#if revealed && currentFact?.factKind === 'chord-formula'}
+			{@const chord = spellChord(currentFact.symbol)}
+			<PianoKeyboard notes={chord.notes} inspectable />
+		{:else}
+			<PianoKeyboard notes={[]} inspectable />
+		{/if}
+	{/if}
+{/snippet}
+
 {#if pageState === 'loading'}
 	<p class="text-label font-mono uppercase" data-testid="recall-loading">
 		{t('recall.state.loading')}
@@ -639,6 +713,11 @@
 		{@const embedTarget = embedTargetFor(currentItem.factId)}
 		{#if embedTarget}
 			{#key `${currentItem.factId}|${currentItem.mode}`}
+				{#if embedTarget.kind === 'chord'}
+					<div class="mt-4">
+						<HintLadder symbol={embedTarget.symbol} layers={hintLayersFor('formula-build')} />
+					</div>
+				{/if}
 				<div class="mt-4">
 					<SongMark
 						songs={currentFact?.factKind === 'chord-formula'
@@ -684,6 +763,12 @@
 				{/if}
 			</div>
 
+			{#if currentFact.factKind === 'chord-formula'}
+				<div class="mt-4">
+					{@render modeKeyboard()}
+				</div>
+			{/if}
+
 			{#if !revealed}
 				<div class="mt-6">
 					<Button type="button" variant="primary" onclick={handleReveal}
@@ -703,9 +788,6 @@
 									<span class="text-label font-mono">{entry.solfege}</span>
 								</div>
 							{/each}
-						</div>
-						<div class="mt-4">
-							<PianoKeyboard notes={chord.notes} />
 						</div>
 					{:else if currentFact.factKind === 'interval-size'}
 						{@const info = intervalFromShort(currentFact.short)}
@@ -747,7 +829,6 @@
 		</div>
 	{:else if currentItem.mode === 'see-play' && currentFact.factKind === 'chord-formula'}
 		{@const target = spellChord(currentFact.symbol)}
-		{@const modeAWrong = modeAAnswered && modeAResult !== undefined && !modeAResult.correct}
 		<div aria-live="polite">
 			<div class="mt-4" data-testid="recall-prompt">
 				<div class="flex items-start gap-4">
@@ -758,17 +839,16 @@
 			</div>
 
 			<div class="mt-4">
-				<PianoKeyboard
-					notes={modeAWrong ? target.notes : []}
-					interactive
-					selected={selected}
-					onToggle={toggleModeAKey}
-					onPress={pressModeAKey}
-					wrongLetters={modeAWrong ? extraLettersPlayed : undefined}
-				/>
+				{@render modeKeyboard()}
 			</div>
 
 			{#if !modeAAnswered}
+				{#key cardKey(currentItem.factId, currentItem.mode)}
+					<div class="mt-6">
+						<HintLadder symbol={currentFact.symbol} layers={hintLayersFor('see-play')} />
+					</div>
+				{/key}
+
 				<div class="mode-a-controls mt-4">
 					<div class="mode-a-controls__primary">
 						<Button
@@ -840,6 +920,10 @@
 				</Button>
 			</div>
 
+			<div class="mt-4">
+				{@render modeKeyboard()}
+			</div>
+
 			<div class="mt-4 grid grid-cols-2 gap-2 xl:grid-cols-4" data-testid="hear-name-choice-grid">
 				{#each hearNameChoices as choice (choice)}
 					<Button
@@ -868,6 +952,28 @@
 						<SongMark songs={songsForSymbol(currentFact.symbol, provenanceIndex)} />
 					</div>
 				</div>
+
+				{#key cardKey(currentItem.factId, currentItem.mode)}
+					<div class="mt-6">
+						<HintLadder
+							symbol={currentFact.symbol}
+							layers={hintLayersFor('hear-name')}
+							onOpen={onHearNameHintOpen}
+						/>
+					</div>
+				{/key}
+
+				{#if hearNameHintOpen}
+					<div class="mt-4">
+						<Button
+							type="button"
+							variant="ghost"
+							onclick={() => advanceHearName(hearNameCommittedRating ?? Rating.Again)}
+						>
+							{t('recall.cta.continue')}
+						</Button>
+					</div>
+				{/if}
 			{/if}
 		</div>
 	{:else}

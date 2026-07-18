@@ -7,7 +7,7 @@ status: verifying
 stopped_at: Completed 20-08-PLAN.md
 last_updated: "2026-07-18T20:34:59.856Z"
 last_activity: 2026-07-18
-last_activity_desc: Phase 20 complete
+last_activity_desc: Phase 20 complete; merged origin/main (Phases 16/17)
 progress:
   total_phases: 19
   completed_phases: 13
@@ -24,22 +24,22 @@ current_phase_name: French Translation
 See: .planning/PROJECT.md (updated 2026-07-14)
 
 **Core value:** See a jazz chord symbol and know instantly what to play with the left hand.
-**Current focus:** Phase 20 — French Translation
+**Current focus:** Phase 20 — French Translation (merged with Phases 16/17 from origin/main)
 
 ## Current Position
 
 Phase: 20
 Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-07-18 — Phase 20 complete
+Status: Phase complete — ready for verification; Phases 16/17 merged in from origin/main
+Last activity: 2026-07-18 — Phase 20 complete; reconciled Phases 16/17 (Hear the Chord, Chord Explainer) via merge
 
 **v2.0 Learning Upgrade (Phases 10-13): COMPLETE (shipped 2026-07-15).**
 
 **v2.1 Playability & Comprehension (Phases 15-20) — active batch; design winners = Session 4 sketches 008-013:**
 
-- Phase 15: Playable Keyboard Everywhere (KBD-01..03) — COMPLETE. Shared docked keyboard on every keyboard-bearing page.
-- Phase 16: Hear the Chord (HEAR-01, HEAR-02) — NEXT. Auto-play + synced pulse on the BUILD reveal. Depends on Phases 12 and 15. No CONTEXT.md yet.
-- Phase 17: Chord Explainer — escalating in-place hints for unknown chords in Recall.
+- Phase 15: Playable Keyboard Everywhere (KBD-01..03) — COMPLETE, but the shared fixed-bottom keyboard dock was later REMOVED (rejected as too intrusive); keyboards now render inline per page. See [[keyboard-inline-not-docked]].
+- Phase 16: Hear the Chord (HEAR-01, HEAR-02) — COMPLETE (verified). Auto-play + synced pulse on the BUILD reveal, plus gap-closure of the study-mode roll (ascending voicing, tick-synced audio/visual, octave-keyed pending).
+- Phase 17: Chord Explainer (HINT-01..03) — COMPLETE (verified). Escalating in-place hint ladder for unknown chords in Recall (family → formula chips → mini keyboard → full spelling + song hook).
 - Phase 18: Your Songs' Chords — song-provenance marks + a From-my-songs filter.
 - Phase 19: Interactive Theory — guided-step beginner lessons handing off into the first drill.
 - Phase 20: French Translation — header EN|FR toggle + full French i18n layer.
@@ -319,6 +319,6 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-07-18T19:55:16.679Z
-Stopped at: Completed 20-08-PLAN.md
+Stopped at: Completed 20-08-PLAN.md; merged origin/main (Phases 16/17)
 Resume file: 
-None
+.planning/phases/17-chord-explainer/17-UI-SPEC.md

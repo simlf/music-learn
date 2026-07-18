@@ -4,7 +4,11 @@ import { readable } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DrillsPage from '../src/routes/drills/+page.svelte';
 
-/** The drills keyboard renders inline in the page's own question layout. */
+/**
+ * Drills' keyboard renders inline in the page's own content flow
+ * (`.drill-layout__keyboard`), so a plain page render puts the keyboard
+ * content in the same `document.body` that `screen` queries.
+ */
 function renderDrillsPage() {
 	return render(DrillsPage);
 }

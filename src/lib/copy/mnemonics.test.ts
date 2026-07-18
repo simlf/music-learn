@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { mnemonicFor } from './mnemonics';
+import { mnemonicFor, familyLineFor } from './mnemonics';
 import { QUALITY_SUFFIXES } from '$lib/theory/randomChord';
 import { setLocale } from '$lib/i18n/locale.svelte';
 
@@ -159,5 +159,85 @@ describe('mnemonicFor: FR locale (I18N-02)', () => {
 		expect(EXPECTED_FR['m7']).toContain('♭7');
 		expect(EXPECTED_FR['m7b5']).toContain('ø');
 		expect(EXPECTED_FR['7']).toContain('♭7');
+	});
+});
+
+/**
+ * Pins the 3 triad family-line values (Layer 1's fallback for qualities with
+ * no structural mnemonic). Deliberate snapshot, per the UI-SPEC Layer 1 table.
+ * Default locale is 'en', so these English values hold without a setLocale.
+ */
+const EXPECTED_FAMILY_LINES: Record<string, string> = {
+	'': 'A bright major triad: root, major 3rd, perfect 5th.',
+	m: 'A minor triad: root, minor 3rd, perfect 5th. Same shape as major, just a darker 3rd.',
+	dim: "Diminished means tense and unstable. It's a chord that sounds like it wants to move somewhere. Built from two stacked minor thirds."
+};
+
+/**
+ * Pins the FR family-line set (Phase 17 copy translated for I18N consistency):
+ * same 3 triad qualities, French prose, interval shorthand kept verbatim.
+ */
+const EXPECTED_FAMILY_LINES_FR: Record<string, string> = {
+	'': 'Une triade majeure lumineuse : fondamentale, tierce majeure, quinte juste.',
+	m: 'Une triade mineure : fondamentale, tierce mineure, quinte juste. Même forme que la majeure, juste une tierce plus sombre.',
+	dim: "Diminué veut dire tendu et instable. Un accord qui sonne comme s'il voulait aller ailleurs. Bâti sur deux tierces mineures empilées."
+};
+
+describe('familyLineFor: the 3 triad qualities (deliberate snapshot)', () => {
+	afterEach(() => {
+		setLocale('en');
+	});
+
+	for (const suffix of ['', 'm', 'dim'] as const) {
+		it(`returns the pinned value for "${suffix || '(major triad)'}"`, () => {
+			expect(familyLineFor(suffix)).toBe(EXPECTED_FAMILY_LINES[suffix]);
+		});
+	}
+
+	for (const suffix of ['', 'm', 'dim'] as const) {
+		it(`returns the pinned FR value for "${suffix || '(major triad)'}" under fr`, () => {
+			setLocale('fr');
+			expect(familyLineFor(suffix)).toBe(EXPECTED_FAMILY_LINES_FR[suffix]);
+		});
+	}
+
+	it('returns null for every seventh quality that already has a mnemonic', () => {
+		for (const suffix of ['maj7', 'm7', '7', 'm7b5', 'dim7']) {
+			expect(familyLineFor(suffix)).toBeNull();
+		}
+	});
+
+	it('returns null for unsupported suffixes', () => {
+		for (const suffix of ['aug', 'sus4', 'nonsense']) {
+			expect(familyLineFor(suffix)).toBeNull();
+		}
+	});
+});
+
+describe('Layer 1 resolution order: mnemonicFor(q) ?? familyLineFor(q) is total', () => {
+	for (const suffix of QUALITY_SUFFIXES) {
+		it(`resolves non-null for "${suffix || '(major triad)'}"`, () => {
+			expect(mnemonicFor(suffix) ?? familyLineFor(suffix)).not.toBeNull();
+		});
+	}
+});
+
+describe('familyLineFor: copy quality bar', () => {
+	const shippedLines = [
+		...Object.values(EXPECTED_FAMILY_LINES),
+		...Object.values(EXPECTED_FAMILY_LINES_FR)
+	];
+
+	it('contains no em dashes in any shipped line (D-05)', () => {
+		for (const line of shippedLines) {
+			expect(line).not.toMatch(/—|–/);
+		}
+	});
+
+	it('uses display accidental glyphs, never ASCII b/# accidentals mid-copy', () => {
+		for (const line of shippedLines) {
+			expect(line).not.toMatch(/\sb\d/);
+			expect(line).not.toMatch(/\s#\d/);
+		}
 	});
 });

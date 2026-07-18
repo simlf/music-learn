@@ -73,3 +73,41 @@ export function mnemonicFor(qualitySuffix: string): string | null {
 	const table = currentLocale() === 'fr' ? MNEMONICS_FR : MNEMONICS;
 	return table[canonical] ?? null;
 }
+
+/**
+ * Beginner-plain family line for the 3 triad qualities with no structural
+ * mnemonic (D-05): plain major, minor, and diminished triads. Keyed strictly
+ * by the canonical v1 triad suffixes (never routed through ALIASES) since
+ * the hint ladder's Layer-1 resolver always passes the canonical suffix
+ * sliced straight from the drill's own QUALITY_SUFFIXES. Every other suffix
+ * (including every seventh quality that already has a mnemonicFor hook, and
+ * any unsupported suffix) returns null: better none than cheesy.
+ */
+const FAMILY_LINES: Record<string, string> = {
+	'': 'A bright major triad: root, major 3rd, perfect 5th.',
+	m: 'A minor triad: root, minor 3rd, perfect 5th. Same shape as major, just a darker 3rd.',
+	// Reused verbatim from sketch 010's own copy (the canonical worked example), not rewritten.
+	dim: "Diminished means tense and unstable. It's a chord that sounds like it wants to move somewhere. Built from two stacked minor thirds."
+};
+
+/**
+ * French variant of the triad family lines (Phase 17 copy, translated for full
+ * i18n consistency): same 3 triad qualities, French prose, interval shorthand
+ * (tierce/quinte) spelled out in plain beginner French. No em dashes (D-05).
+ */
+const FAMILY_LINES_FR: Record<string, string> = {
+	'': 'Une triade majeure lumineuse : fondamentale, tierce majeure, quinte juste.',
+	m: 'Une triade mineure : fondamentale, tierce mineure, quinte juste. Même forme que la majeure, juste une tierce plus sombre.',
+	dim: "Diminué veut dire tendu et instable. Un accord qui sonne comme s'il voulait aller ailleurs. Bâti sur deux tierces mineures empilées."
+};
+
+/**
+ * Layer 1's fallback for the 3 triad qualities `mnemonicFor` has no hook for.
+ * Resolution order: `mnemonicFor(q) ?? familyLineFor(q)` is non-null across
+ * all 8 v1 QUALITY_SUFFIXES. Total function: unknown input never throws.
+ * Locale-aware, mirroring `mnemonicFor`.
+ */
+export function familyLineFor(qualitySuffix: string): string | null {
+	const table = currentLocale() === 'fr' ? FAMILY_LINES_FR : FAMILY_LINES;
+	return table[qualitySuffix] ?? null;
+}

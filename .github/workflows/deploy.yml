@@ -46,6 +46,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: docker/setup-qemu-action@v3
+
       - uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
@@ -59,6 +61,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./server
+          platforms: linux/arm64
           push: true
           tags: |
             ${{ env.IMAGE_API }}:latest
@@ -70,6 +73,7 @@ jobs:
           context: .
           build-args: |
             VITE_API_BASE_URL=/api
+          platforms: linux/arm64
           push: true
           tags: |
             ${{ env.IMAGE_WEB }}:latest
@@ -79,6 +83,8 @@ jobs:
     needs: build-push
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      packages: read
     steps:
       - name: Deploy on infrabox667 over SSH
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
@@ -87,13 +93,17 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           port: ${{ secrets.SSH_PORT }}
           key: ${{ secrets.SSH_KEY }}
-          envs: IMAGE_TAG
+          envs: IMAGE_TAG,GHCR_USER,GHCR_TOKEN
           script_stop: true
           script: |
             set -e
             cd ~/music-learn
-            docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d
-            docker image prune -f
+            echo "$GHCR_TOKEN" | sudo docker login ghcr.io -u "$GHCR_USER" --password-stdin
+            sudo docker compose -f docker-compose.prod.yml pull
+            sudo docker logout ghcr.io
+            sudo docker compose -f docker-compose.prod.yml up -d
+            sudo docker image prune -f
         env:
           IMAGE_TAG: ${{ github.sha }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}

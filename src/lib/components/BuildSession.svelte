@@ -23,6 +23,7 @@
 	import { scaleFormulaFactId } from '$lib/srs/facts';
 	import { ensureAudioReady, playArpeggio, playChord, soundEnabled, studyModeEnabled } from '$lib/audio/audio';
 	import { currentLocale, t, type MessageKey } from '$lib/i18n/locale.svelte';
+	import { toAscendingPitches } from '$lib/audio/voicing';
 	import Button from './Button.svelte';
 	import ChordGlyph from './ChordGlyph.svelte';
 	import IntervalChip from './IntervalChip.svelte';
@@ -92,8 +93,8 @@
 	let fsrsSaved = $state(false);
 	/** Bumped once per reveal (initial completion) and once per "Hear again" tap (HEAR-01/02): drives PianoKeyboard's and ChordGlyph's shared pulse-once retrigger. Starts at 0 (no pulse before any reveal has happened). */
 	let revealPulseToken = $state(0);
-	/** Study-mode arpeggio roll (HEAR-02): earned letters still "pending" (dimmed) awaiting their turn to sound. Empty outside a study-mode roll, so the complete-block PianoKeyboard renders byte-identical to a non-study reveal. */
-	let pendingLetters = $state<Set<string>>(new Set());
+	/** Study-mode arpeggio roll (HEAR-02): earned { letter, octave } keys still "pending" (dimmed) awaiting their turn to sound, mirroring flashWrongKey's octave-discriminating shape so a scale's duplicate-tonic octave un-dims independently. Empty outside a study-mode roll, so the complete-block PianoKeyboard renders byte-identical to a non-study reveal. */
+	let pendingKeys = $state<{ letter: string; octave: number }[]>([]);
 	let feedback = $state<Feedback | undefined>();
 	let flashKey = $state<{ letter: string; octave: number } | null>(null);
 	/** The letter last tapped (kept beyond the 320ms flash window so the wrong-octave restatement, shown for the full 650ms, can still name it). */
@@ -175,7 +176,7 @@
 		flashTimer = undefined;
 		feedbackTimer = undefined;
 		clearRollTimers();
-		pendingLetters = new Set();
+		pendingKeys = [];
 	}
 
 	function resetPicker() {
@@ -465,27 +466,36 @@
 
 	/**
 	 * Study-mode arpeggio roll (D-05/D-06, HEAR-02): seeds every earned
-	 * letter as "pending" (dimmed via PianoKeyboard's --pending modifier),
-	 * fires the audio stagger via playArpeggio (which owns ONLY the audio
-	 * timing), then schedules one visual timer per note - removing it from
-	 * pendingLetters as its own tick lands, so the key cross-fades from
-	 * pending to fully lit - and a final block-strike timer that clears any
-	 * remaining pending state, strikes the block chord, and bumps the
-	 * shared pulse on every lit key + the glyph together.
+	 * { letter, octave } key as "pending" (dimmed via PianoKeyboard's
+	 * --pending modifier), fires the audio stagger via playArpeggio passing
+	 * the SAME `startDelayMs` that offsets the visual un-pend timers (so
+	 * each note's audio attack and its key's un-dim land on the same tick -
+	 * closes WR-01), then schedules one visual timer per note - removing
+	 * that note's specific { letter, octave } from pendingKeys as its own
+	 * tick lands, so the key cross-fades from pending to fully lit - and a
+	 * final block-strike timer that clears any remaining pending state,
+	 * strikes the block chord, and bumps the shared pulse on every lit key +
+	 * the glyph together. Keying pending by { letter, octave } (mirroring
+	 * flashWrongKey) rather than by letter alone means a scale's duplicate
+	 * tonic (root re-earned an octave up) un-dims one octave at a time -
+	 * the low tonic un-dims on its own tick, the octave-up tonic stays
+	 * pending until ITS own tick, never both together (closes WR-03).
 	 * `firstNoteDelayMs` is 260ms on the initial reveal (the roll begins as
 	 * the stamp-in settles) and 0ms on "Hear again" replay (no entrance to
 	 * wait out), per the UI-SPEC's timing tables.
 	 */
 	function startArpeggioRoll(letters: string[], opts: { firstNoteDelayMs: number }): void {
 		clearRollTimers();
-		pendingLetters = new Set(letters);
-		playArpeggio(letters, { staggerMs: ARPEGGIO_STAGGER_MS });
-		letters.forEach((letter, index) => {
+		const pitches = toAscendingPitches(letters);
+		const keys = letters.map((letter, i) => ({ letter, octave: Note.octave(pitches[i]) ?? 4 }));
+		pendingKeys = keys.slice();
+		playArpeggio(letters, { staggerMs: ARPEGGIO_STAGGER_MS, startDelayMs: opts.firstNoteDelayMs });
+		keys.forEach((key, index) => {
 			const timer = setTimeout(
 				() => {
-					const next = new Set(pendingLetters);
-					next.delete(letter);
-					pendingLetters = next;
+					pendingKeys = pendingKeys.filter(
+						(k) => !(k.letter === key.letter && k.octave === key.octave)
+					);
 				},
 				opts.firstNoteDelayMs + index * ARPEGGIO_STAGGER_MS
 			);
@@ -493,7 +503,7 @@
 		});
 		const strikeTimer = setTimeout(
 			() => {
-				pendingLetters = new Set();
+				pendingKeys = [];
 				playChord(letters);
 				revealPulseToken += 1;
 			},
@@ -907,7 +917,7 @@
 					notes={construction.earnedNotes}
 					octaves={2}
 					pulseToken={revealPulseToken}
-					pendingLetters={pendingLetters}
+					pendingKeys={pendingKeys}
 				/>
 			</div>
 

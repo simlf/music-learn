@@ -1,5 +1,5 @@
 import type * as ToneNS from 'tone';
-import { toAsciiPitchClass, toAscendingPitches, toPitch } from './voicing';
+import { toAsciiPitchClass, toAscendingPitches } from './voicing';
 import { SALAMANDER_BASE_URL, SALAMANDER_URLS } from './samples';
 
 /**
@@ -264,23 +264,31 @@ export function playChord(notes: string[], opts: PlayOpts = {}): void {
 
 /**
  * Plays spelled-note letters as a staggered arpeggio roll (study mode), one
- * single-note attack per entry at `index * opts.staggerMs` ms, starting
- * synchronously at index 0. Notes are normalized and voiced at octave 4,
- * matching the reveal keyboard's voicing.
+ * single-note attack per entry at `(opts.startDelayMs ?? 0) + index *
+ * opts.staggerMs` ms. Notes are voiced via `toAscendingPitches` (ascending
+ * root position), identical to `playChord` and the on-screen keyboard, so
+ * every rolled pitch equals the pitch its key would strike. `startDelayMs`
+ * (default 0) offsets every attack by the same amount, so the roll can be
+ * aligned with a delayed visual roll; omitting it keeps note 0 attacking
+ * synchronously at t=0.
  *
  * This primitive owns ONLY the audio stagger; it does not drive pulse or
  * per-key lighting timing (that is a BuildSession-level concern).
  */
-export function playArpeggio(notes: string[], opts: { staggerMs: number }): void {
+export function playArpeggio(
+	notes: string[],
+	opts: { staggerMs: number; startDelayMs?: number }
+): void {
 	if (!soundEnabled()) return;
 	if (notes.length === 0) return;
-	notes.forEach((note, index) => {
-		const pitch = toPitch(note, 4);
+	const pitches = toAscendingPitches(notes);
+	const startDelayMs = opts.startDelayMs ?? 0;
+	pitches.forEach((pitch, index) => {
 		setTimeout(() => {
 			void withInstrument((instrument) => {
 				instrument.triggerAttackRelease(pitch, NOTE_DURATION, undefined, NOTE_VELOCITY);
 			});
-		}, index * opts.staggerMs);
+		}, startDelayMs + index * opts.staggerMs);
 	});
 }
 

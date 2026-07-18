@@ -17,9 +17,11 @@ import { setLocale } from '$lib/i18n/locale.svelte';
  * real FSRS fixed-interval math (New card: Again=1d, Hard=2d, Good=3d,
  * Easy=8d, per 11-01's scheduler tests).
  *
- * Mode A ('see-play') and the `formula`-mode reveal keyboard render inline in
- * the component's own DOM; Mode B ('hear-name') has no keyboard. Mode C
- * ('formula-build') embeds BuildSession, whose keyboard also renders in flow.
+ * Mode A ('see-play'), Mode B ('hear-name'), and the `formula`-mode reveal
+ * keyboards render inline in each mode's own block, so a plain component
+ * render puts the keyboard content in the same `document.body` that `screen`
+ * queries. Mode C ('formula-build') embeds a BuildSession whose constructable
+ * keyboard also renders in flow.
  */
 
 function renderRecallSession(
@@ -599,6 +601,104 @@ describe('RecallSession Mode B (hear-name: hear the chord, pick its name, never 
 });
 
 /**
+ * Mode B post-answer hint-ladder wiring (Plan 04, HINT-01/HINT-02): the
+ * ladder must never mount before an answer is committed (D-03), and opening
+ * it must cancel the 650ms auto-advance and surface an explicit Continue
+ * button that advances with the SAME rating the timer would have used
+ * (D-04: hint depth never changes the recorded grade).
+ */
+describe('RecallSession Mode B post-answer hints (HINT-01/HINT-02: ladder gated on answer, timer cancel + Continue)', () => {
+	function getChoiceButtons(): HTMLElement[] {
+		return screen.getAllByRole('button', { name: /^Answer: / });
+	}
+
+	it('mounts no hint-cta before an answer is committed (never spoils the ear test)', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'hear-name');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		expect(screen.queryByTestId('hint-cta')).not.toBeInTheDocument();
+	});
+
+	it('mounts hint-cta once an answer is committed', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'hear-name');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Answer: Cm7' }));
+
+		expect(screen.getByTestId('hint-cta')).toBeInTheDocument();
+	});
+
+	it('opening a hint post-answer cancels the auto-advance and shows Continue; Continue then advances with the committed rating (correct choice completes the session)', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'hear-name');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Answer: Cm7' }));
+		expect(recordGradeMock).toHaveBeenCalledTimes(1);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Need a hint?' }));
+		expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument();
+
+		// Wait well past the 650ms auto-advance window: the card must NOT have
+		// advanced (the choice grid's feedback is still on screen, still the
+		// same card), proving the timer was actually cancelled.
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		expect(screen.getByTestId('recall-hear-name-feedback')).toBeInTheDocument();
+		expect(screen.queryByTestId('recall-complete')).not.toBeInTheDocument();
+
+		// Opening the hint never fired a second grade write (D-04).
+		expect(recordGradeMock).toHaveBeenCalledTimes(1);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+		await waitFor(() => screen.getByTestId('recall-complete'));
+		expect(screen.getByTestId('recall-reviewed-count')).toHaveTextContent('1 REVIEWED TODAY');
+		// Continue never re-grades (D-04): still exactly the one choice-time write.
+		expect(recordGradeMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('opening a hint on a wrong choice, then Continue, re-enqueues the card (never gates) with the same Again rating the timer would have used', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'hear-name');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		const wrongChoice = getChoiceButtons().find(
+			(button) => button.textContent?.trim() !== 'Cm7'
+		);
+		await fireEvent.click(wrongChoice!);
+		expect(recordGradeMock).toHaveBeenCalledWith(card, Rating.Again, expect.any(Date));
+		expect(recordGradeMock).toHaveBeenCalledTimes(1);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Need a hint?' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+		await waitFor(() => expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument());
+		expect(screen.getByTestId('recall-register')).toHaveTextContent('1 LEFT TODAY');
+		expect(screen.queryByTestId('recall-complete')).not.toBeInTheDocument();
+		// Re-enqueue never re-grades (D-04): still exactly the one choice-time write.
+		expect(recordGradeMock).toHaveBeenCalledTimes(1);
+	});
+});
+
+/**
  * Mode C ('formula-build') component tests (13-05): the queue-embedded
  * BuildSession surface (RECALL-01). Proves embedTargetFor's inverse factId
  * parse for both a chord-formula and a SCALE-formula factId (Phase 12's
@@ -684,6 +784,100 @@ describe('RecallSession Mode C (formula-build: embeds BuildSession directly, REC
 
 		await waitFor(() => screen.getByTestId('recall-complete'));
 		expect(screen.getByTestId('recall-reviewed-count')).toHaveTextContent('1 REVIEWED TODAY');
+	});
+});
+
+/**
+ * HintLadder wiring (17-03, HINT-01/HINT-02): the escalating "Need a hint?"
+ * ladder mounted on see-play (pre-answer only) and formula-build (whole
+ * card, chord targets only). Uses the REAL HintLadder component (not
+ * mocked) against real catalog factIds, matching this file's established
+ * convention of exercising real derivation logic against a mocked
+ * deck/audio seam only.
+ */
+describe('RecallSession hint ladder wiring (17-03: see-play + formula-build)', () => {
+	it('see-play: shows "Need a hint?" pre-answer alongside Check, reveals the family layer on tap, Check remains clickable, a correct Check still records Rating.Good, and the ladder is gone once answered', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'see-play');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		expect(screen.getByTestId('hint-cta')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Check' })).toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Need a hint?' }));
+
+		const familyLayer = screen.getByTestId('hint-layer');
+		expect(familyLayer).toHaveAttribute('data-layer', 'family');
+		expect(screen.getByRole('button', { name: 'Check' })).toBeInTheDocument();
+
+		// Cm7's exact chroma set: C (root), D♯/E♭ (third), G (fifth), A♯/B♭ (seventh).
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(recordGradeMock).toHaveBeenCalledWith(card, Rating.Good, expect.any(Date));
+		expect(screen.queryByTestId('hint-cta')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('hint-layer')).not.toBeInTheDocument();
+	});
+
+	it('formula-build: a chord-formula card renders HintLadder above the embedded BuildSession, which still mounts in its building state', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'formula-build');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-mode-chip'));
+
+		expect(screen.getByTestId('hint-cta')).toBeInTheDocument();
+		expect(screen.getByTestId('build-session')).toBeInTheDocument();
+		expect(screen.getByTestId('build-register')).toHaveTextContent('STEP 1 OF 3');
+	});
+
+	it('formula-build: a scale-formula card renders NO hint ladder but still mounts BuildSession', async () => {
+		const card = makeCard('scale-formula:G', 'scale-formula', 'formula-build');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-mode-chip'));
+
+		expect(screen.queryByTestId('hint-cta')).not.toBeInTheDocument();
+		expect(screen.getByTestId('build-session')).toBeInTheDocument();
+	});
+
+	it('per-card reset: after a wrong Check re-enqueues the card (hints were opened), its next presentation shows a fresh "Need a hint?" at depth 0', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'see-play');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Need a hint?' }));
+		expect(screen.getByTestId('hint-layer')).toBeInTheDocument();
+
+		// Miss the seventh, so the Check is wrong and Rating.Again re-enqueues the card.
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(recordGradeMock).toHaveBeenCalledWith(card, Rating.Again, expect.any(Date));
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+		await waitFor(() => expect(screen.getByText('Play it on the keyboard.')).toBeInTheDocument());
+		expect(screen.getByRole('button', { name: 'Need a hint?' })).toBeInTheDocument();
+		expect(screen.queryByTestId('hint-layer')).not.toBeInTheDocument();
 	});
 });
 
@@ -971,11 +1165,80 @@ describe('RecallSession queue composition via selectReviewCards (RECALL-03 rotat
 });
 
 /**
- * Inline keyboard coverage: Mode A ('see-play') renders an interactive
- * keyboard inline; the `formula`-mode reveal shows a display keyboard only
- * after Show Answer; Mode B ('hear-name') has no keyboard at all.
+ * Inline keyboard coverage (KBD-01/KBD-03): Mode A ('see-play'), Mode B
+ * ('hear-name'), and the `formula`-mode reveal keyboard each render inline in
+ * their own mode block. Mode C ('formula-build') embeds a BuildSession whose
+ * own constructable keyboard renders in flow.
  */
-describe('RecallSession inline keyboards', () => {
+describe('RecallSession inline keyboard (KBD-01/KBD-03)', () => {
+	it('renders an inline PianoKeyboard once a chord-formula card is reviewing', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		expect(screen.getByRole('img', { name: /piano keyboard/i })).toBeInTheDocument();
+	});
+
+	it('no keyboard remains once the session completes (no stale keyboard outside the reviewing state, T-15-03)', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+		expect(screen.getByRole('img', { name: /piano keyboard/i })).toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
+		await fireEvent.click(screen.getByTestId('recall-grade-good'));
+
+		await waitFor(() => screen.getByTestId('recall-complete'));
+		expect(screen.queryByRole('img', { name: /piano keyboard/i })).not.toBeInTheDocument();
+	});
+
+	it("on a formula-build (Mode C) card, the embedded BuildSession's own constructable keyboard renders inline", async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'formula-build');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('build-session'));
+
+		expect(screen.getByRole('img', { name: /piano keyboard/i })).toBeInTheDocument();
+	});
+
+	it("advancing past a Mode C card (BuildSession's onComplete) shows the next card; a non-chord formula card renders no keyboard (IN-01)", async () => {
+		const cardA = makeCard('chord-formula:Cm7', 'chord-formula', 'formula-build');
+		const cardB = makeCard('interval-size:m3', 'interval-size', 'formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([cardA, cardB]);
+		getAllCardsMock.mockResolvedValue([cardA, cardB]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('build-session'));
+		expect(screen.getByRole('img', { name: /piano keyboard/i })).toBeInTheDocument();
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+		await waitFor(() => expect(screen.getByText("What's the interval?")).toBeInTheDocument());
+		// The next card is a formula-mode interval-size fact, which has no
+		// keyboard relationship: RecallSession deliberately renders no keyboard
+		// for it (IN-01) rather than show an unrelated empty board.
+		expect(screen.queryByRole('img', { name: /piano keyboard/i })).not.toBeInTheDocument();
+	});
+
 	it('Mode A (see-play): the inline keyboard is interactive - tapping sounds via mocked playNote and toggles selection', async () => {
 		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'see-play');
 		introduceNewCardsMock.mockResolvedValue(0);
@@ -1021,7 +1284,7 @@ describe('RecallSession inline keyboards', () => {
 		expect(highlighted).toHaveLength(4);
 	});
 
-	it('Mode B (hear-name): renders no keyboard - the choice grid is the whole answering surface', async () => {
+	it('Mode B (hear-name): the inline keyboard is a plain inspectable tap-to-hear board', async () => {
 		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'hear-name');
 		introduceNewCardsMock.mockResolvedValue(0);
 		getDueCardsMock.mockResolvedValue([card]);
@@ -1030,11 +1293,18 @@ describe('RecallSession inline keyboards', () => {
 		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-prompt'));
 
-		expect(screen.queryByRole('img', { name: /piano keyboard/i })).not.toBeInTheDocument();
+		const keyboards = screen.getAllByRole('img', { name: /piano keyboard/i });
+		expect(keyboards).toHaveLength(1);
+		const key = screen.getAllByRole('button', { name: 'C key' })[0];
+		await fireEvent.click(key);
+		expect(playNoteMock).toHaveBeenCalled();
+
+		// Never a graded/selection surface - the multiple-choice grid stays in
+		// flow, unaffected by tapping the inline board.
 		expect(screen.getAllByRole('button', { name: /^Answer: / })).toHaveLength(4);
 	});
 
-	it('formula mode: no keyboard before Show Answer, a display keyboard with the chord notes after', async () => {
+	it('formula mode: the inline keyboard is inspectable and present before AND after Show Answer (empty pre-reveal, chord notes post-reveal)', async () => {
 		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'formula');
 		introduceNewCardsMock.mockResolvedValue(0);
 		getDueCardsMock.mockResolvedValue([card]);
@@ -1043,7 +1313,9 @@ describe('RecallSession inline keyboards', () => {
 		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-prompt'));
 
-		expect(screen.queryByRole('img', { name: /piano keyboard/i })).not.toBeInTheDocument();
+		const beforeKeyboards = screen.getAllByRole('img', { name: /piano keyboard/i });
+		expect(beforeKeyboards).toHaveLength(1);
+		expect(beforeKeyboards[0].querySelectorAll('.piano-keyboard__key--root')).toHaveLength(0);
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
 

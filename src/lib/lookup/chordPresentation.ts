@@ -1,5 +1,6 @@
-import { intervalBetween, toAsciiAccidentals } from '$lib/theory/interval';
+import { intervalBetween, intervalFromShort, toAsciiAccidentals } from '$lib/theory/interval';
 import type { ChordResult, IntervalRole } from '$lib/theory/types';
+import { currentLocale } from '$lib/i18n/locale.svelte';
 
 /**
  * A single entry in a chord's interval-formula readout: the root is always
@@ -55,4 +56,35 @@ export function aliasLine(chord: ChordResult): string {
 		: chord.symbol;
 	const forms = [glyphSymbol, ...chord.aliases.map((alias) => chord.root + alias)];
 	return [...new Set(forms)].join(' = ');
+}
+
+/**
+ * Layer 2's generated (never hardcoded) plain-English formula sentence:
+ * "From the root, stack a minor 3rd, then a diminished 5th." Built from
+ * formulaFor's entries beyond the root, each rendered through the shared
+ * intervalFromShort(...).long vocabulary (the same diction BuildSession's
+ * construction steps use, BUILD-03), joined by one general template so a
+ * triad (2 tones) and a seventh chord (3 tones) both fall out of the same
+ * join with no per-count branching or per-chord literals. Total: an
+ * unrecognized chord (empty notes) yields "", never throws.
+ *
+ * Locale-aware (Phase 17 copy translated for full i18n consistency): the
+ * French variant uses each interval's `longFr` name and the feminine
+ * "une ... , puis une ..." template (tierce/quinte/septième are all feminine),
+ * mirroring the diction BuildSession's French construction steps use. Interval
+ * shorthand / chord symbols stay immune; only the connective prose changes.
+ */
+export function formulaSentence(chord: ChordResult): string {
+	const isFr = currentLocale() === 'fr';
+	const longs = formulaFor(chord)
+		.filter((entry) => entry.role !== 'root')
+		.map((entry) => {
+			const info = intervalFromShort(entry.label);
+			return isFr ? info.longFr : info.long;
+		});
+	if (longs.length === 0) return '';
+	if (isFr) {
+		return `À partir de la fondamentale, empile une ${longs.join(', puis une ')}.`;
+	}
+	return `From the root, stack a ${longs.join(', then a ')}.`;
 }

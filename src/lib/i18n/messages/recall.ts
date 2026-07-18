@@ -57,6 +57,22 @@ export const recall = {
 		'recall.cta.next': 'Next',
 		'recall.cta.play': 'Play',
 		'recall.cta.play-again': 'Play again',
+		'recall.cta.continue': 'Continue',
+
+		// Hint ladder (HINT-01, Phase 17): the "Need a hint?" control, the
+		// escalating show-labels, the per-tier titles, and the closing line.
+		// IMMUNITY: chord symbols, interval shorthand (R/m3/P5), and solfège
+		// inside a revealed layer are never keyed here.
+		'recall.hint.need-hint': 'Need a hint?',
+		'recall.hint.tier-prefix': 'Hint',
+		'recall.hint.tier.family': 'the family',
+		'recall.hint.tier.formula': 'the formula',
+		'recall.hint.tier.keyboard': 'on the keys',
+		'recall.hint.tier.spelling': 'full spelling',
+		'recall.hint.show.formula': 'Show the formula',
+		'recall.hint.show.keyboard': 'Show it on the keyboard',
+		'recall.hint.show.spelling': 'Show the full spelling',
+		'recall.hint.closing': "That's the whole chord.",
 
 		// Prompts (formula/interval/scale-degree/see-play/hear-name).
 		'recall.prompt.formula-question': "What's the formula?",
@@ -159,6 +175,18 @@ export const recall = {
 		'recall.cta.next': 'Suivant',
 		'recall.cta.play': 'Écouter',
 		'recall.cta.play-again': 'Réécouter',
+		'recall.cta.continue': 'Continuer',
+
+		'recall.hint.need-hint': "Besoin d'un indice ?",
+		'recall.hint.tier-prefix': 'Indice',
+		'recall.hint.tier.family': 'la famille',
+		'recall.hint.tier.formula': 'la formule',
+		'recall.hint.tier.keyboard': 'sur les touches',
+		'recall.hint.tier.spelling': 'toutes les notes',
+		'recall.hint.show.formula': 'Montrer la formule',
+		'recall.hint.show.keyboard': 'Montrer sur le clavier',
+		'recall.hint.show.spelling': 'Montrer toutes les notes',
+		'recall.hint.closing': "Voilà tout l'accord.",
 
 		'recall.prompt.formula-question': 'Quelle est la formule ?',
 		'recall.prompt.interval-question': "Quel est l'intervalle ?",
