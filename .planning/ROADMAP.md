@@ -502,7 +502,7 @@ Plans:
 
 **Design reference**: `.planning/sketches/012-interactive-theory/` (winner Variant A: guided steps; B lesson-map as the later container)
 **UI hint**: yes
-**Plans**: 2/4 plans executed
+**Plans**: 3/4 plans executed
 
 **Wave 1**
 
@@ -511,7 +511,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 19-03-PLAN.md — InteractiveLesson.svelte: guided steps, chroma-graded taps, per-step audio, handoff card (LEARN-01, LEARN-02, LEARN-03)
+- [x] 19-03-PLAN.md — InteractiveLesson.svelte: guided steps, chroma-graded taps, per-step audio, handoff card (LEARN-01, LEARN-02, LEARN-03)
 
 **Wave 3** *(blocked on Wave 2)*
 
@@ -558,5 +558,5 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 | 16. Hear the Chord | 5/6 | In Progress|  |
 | 17. Chord Explainer | 0/TBD | Pending | - |
 | 18. Your Songs' Chords | 4/4 | Complete    | 2026-07-18 |
-| 19. Interactive Theory | 2/4 | In Progress|  |
+| 19. Interactive Theory | 3/4 | In Progress|  |
 | 20. French Translation | 0/TBD | Pending | - |

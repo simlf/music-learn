@@ -5,15 +5,15 @@ milestone_name: Playability & Comprehension
 current_phase: 19
 current_phase_name: Interactive Theory
 status: executing
-stopped_at: Phase 19 UI-SPEC approved
-last_updated: "2026-07-18T13:58:30.002Z"
+stopped_at: Completed 19-03-PLAN.md
+last_updated: "2026-07-18T14:15:02.285Z"
 last_activity: 2026-07-18
 last_activity_desc: Phase 19 execution started
 progress:
   total_phases: 19
   completed_phases: 11
   total_plans: 64
-  completed_plans: 60
+  completed_plans: 61
   percent: 58
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 ## Current Position
 
 Phase: 19 (Interactive Theory) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-07-18 — Phase 19 execution started
 
@@ -133,6 +133,7 @@ Last activity: 2026-07-18 — Phase 19 execution started
 | Phase 18 P04 | 12min | 1 tasks | 2 files |
 | Phase 19 P01 | 10min | 2 tasks | 2 files |
 | Phase 19 P02 | 10min | 3 tasks | 8 files |
+| Phase 19-interactive-theory P03 | 25min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -252,6 +253,8 @@ Recent decisions affecting current work:
 - [Phase 19-01]: LessonStep shape kept deliberately generic (title/body/targetChroma/role/letter/hearable/correctLine/wrongHint) for future lessons — Future lessons (triads, sevenths) can ship as additional LessonStep arrays without changing grading or component logic
 - [Phase ?]: [Phase 19-02]: Lesson seeds take precedence over weak-list seeds when both channels are present at drills init; both are always consumed one-shot regardless of which wins
 - [Phase ?]: [Phase 19-02]: SessionItem.origin never participates in dedupeItems' family+symbol dedupe key - it is a UX label only, never a correctness signal
+- [Phase ?]: Button.svelte's onclick widened to a plain MouseEvent handler wired on both button and anchor branches, fixing a silent drop of the click handler when href was set (needed for the lesson handoff CTA).
+- [Phase ?]: InteractiveLesson's Hear-it control previews the active step's own target letter (not earnedNotes) for the two graded third steps, since an immediate advance-on-correct means a role='third' step is never simultaneously active and already earned.
 
 ### Pending Todos
 
@@ -283,7 +286,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-18T13:56:21.592Z
-Stopped at: Phase 19 UI-SPEC approved
+Last session: 2026-07-18T14:15:02.277Z
+Stopped at: Completed 19-03-PLAN.md
 Resume file: 
 None
