@@ -931,7 +931,7 @@ describe('interval construction drill (Track C)', () => {
 });
 
 describe('drills wrong-answer reveal is inspectable (Track C)', () => {
-	it('after a wrong construction answer, tapping a revealed key plays it and fills the register', async () => {
+	it('after a wrong construction answer, tapping a revealed key plays it and fills the register (en default)', async () => {
 		forceConstructionCm7();
 		renderDrillsPage();
 
@@ -947,7 +947,7 @@ describe('drills wrong-answer reveal is inspectable (Track C)', () => {
 		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
 
 		const register = screen.getByTestId('inspect-register');
-		expect(register).toHaveTextContent('B♭ · Si · m7 · septième mineure · 10 demi-tons');
+		expect(register).toHaveTextContent('B♭ · Si · m7 · minor 7th · 10 semitones');
 		expect(playNoteMock).toHaveBeenCalledWith('Bb4');
 	});
 
@@ -981,7 +981,7 @@ describe('drills wrong-answer reveal is inspectable (Track C)', () => {
 
 		// After answering: tapping plays AND prints the interval register.
 		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
-		expect(screen.getByTestId('inspect-register')).toHaveTextContent('C · Do · R · fondamentale');
+		expect(screen.getByTestId('inspect-register')).toHaveTextContent('C · Do · R · root');
 		expect(playNoteMock).toHaveBeenCalled();
 	});
 });

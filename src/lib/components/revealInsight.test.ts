@@ -1,6 +1,11 @@
 import { render, screen } from '@testing-library/svelte';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import RevealInsight from './RevealInsight.svelte';
+import { setLocale } from '$lib/i18n/locale.svelte';
+
+afterEach(() => {
+	setLocale('en');
+});
 
 describe('RevealInsight: wrong identification (contrast + mnemonic)', () => {
 	it('shows the contrast line between the correct and picked symbols', () => {
@@ -54,5 +59,15 @@ describe('RevealInsight: renders nothing when it has nothing worth saying', () =
 		const mnemonic = screen.getByTestId('mnemonic-line');
 		expect(mnemonic).toHaveTextContent('Major triad, then a 7th a half step under the octave.');
 		expect(mnemonic.className).not.toMatch(/\bhidden\b/);
+	});
+});
+
+describe('RevealInsight: French locale (I18N-02)', () => {
+	it('renders the French mnemonic when the UI locale is fr (mnemonicFor is locale-reactive)', () => {
+		setLocale('fr');
+		render(RevealInsight, { correctSymbol: 'F#m7b5' });
+
+		const mnemonic = screen.getByTestId('mnemonic-line');
+		expect(mnemonic).toHaveTextContent("Un m7 avec la 5 abaissée d'un demi-ton.");
 	});
 });

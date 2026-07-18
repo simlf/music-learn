@@ -88,13 +88,13 @@ describe('scales page inspect flow', () => {
 		expect(screen.getByTestId('inspect-register')).toHaveTextContent('Tap a key to inspect it.');
 	});
 
-	it('tapping a scale degree plays it and names its interval from the tonic', async () => {
+	it('tapping a scale degree plays it and names its interval from the tonic (en default)', async () => {
 		render(ScalesPage);
 
 		await fireEvent.click(screen.getByRole('button', { name: 'A degree 6' }));
 
 		const register = screen.getByTestId('inspect-register');
-		expect(register).toHaveTextContent('A · La · M6 · sixte majeure · 9 demi-tons');
+		expect(register).toHaveTextContent('A · La · M6 · major 6th · 9 semitones');
 		expect(playNoteMock).toHaveBeenCalledWith('A4');
 	});
 

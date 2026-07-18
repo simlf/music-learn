@@ -5,6 +5,7 @@ import IntervalChip from './IntervalChip.svelte';
 import InspectRegister from './InspectRegister.svelte';
 import RecentChipRow from './RecentChipRow.svelte';
 import { spellChord } from '$lib/theory/chord';
+import { setLocale } from '$lib/i18n/locale.svelte';
 
 describe('PianoKeyboard', () => {
 	it('highlights the four Cm7 spelled notes with their interval role colors and dual naming', () => {
@@ -525,13 +526,51 @@ describe('IntervalChip longName tooltip (Track C)', () => {
 });
 
 describe('InspectRegister', () => {
-	it('shows the idle invitation when no payload is set', () => {
+	afterEach(() => {
+		setLocale('en');
+	});
+
+	it('shows the idle invitation when no payload is set (en default)', () => {
 		render(InspectRegister, { payload: null });
 
 		expect(screen.getByTestId('inspect-register')).toHaveTextContent('Tap a key to inspect it.');
 	});
 
-	it('renders the one-line register: letter, solfege, short, French, semitone count', () => {
+	it('shows the French idle invitation under the fr locale (I18N-02)', () => {
+		setLocale('fr');
+		render(InspectRegister, { payload: null });
+
+		expect(screen.getByTestId('inspect-register')).toHaveTextContent(
+			"Touche une note pour l'inspecter."
+		);
+	});
+
+	it('renders the one-line register in English by default: letter, solfege, short, English long name, semitone count', () => {
+		render(InspectRegister, {
+			payload: {
+				letter: 'E♭',
+				solfege: 'Mi',
+				octave: 4,
+				inChord: true,
+				info: {
+					short: 'm3',
+					long: 'minor 3rd',
+					longFr: 'tierce mineure',
+					degree: 3,
+					quality: 'm',
+					semitones: 3,
+					role: 'third',
+					tonalName: '3m'
+				}
+			}
+		});
+
+		const register = screen.getByTestId('inspect-register');
+		expect(register).toHaveTextContent('E♭ · Mi · m3 · minor 3rd · 3 semitones');
+	});
+
+	it('switches to the French long name and semitone word under the fr locale (I18N-02)', () => {
+		setLocale('fr');
 		render(InspectRegister, {
 			payload: {
 				letter: 'E♭',
@@ -555,7 +594,32 @@ describe('InspectRegister', () => {
 		expect(register).toHaveTextContent('E♭ · Mi · m3 · tierce mineure · 3 demi-tons');
 	});
 
-	it('uses the singular demi-ton for one semitone', () => {
+	it('uses the singular semitone word for one semitone (en default)', () => {
+		render(InspectRegister, {
+			payload: {
+				letter: 'D♭',
+				solfege: 'Ré',
+				octave: 4,
+				inChord: false,
+				info: {
+					short: 'm2',
+					long: 'minor 2nd',
+					longFr: 'seconde mineure',
+					degree: 2,
+					quality: 'm',
+					semitones: 1,
+					role: 'second',
+					tonalName: '2m'
+				}
+			}
+		});
+
+		expect(screen.getByTestId('inspect-register')).toHaveTextContent('1 semitone');
+		expect(screen.getByTestId('inspect-register')).not.toHaveTextContent('1 semitones');
+	});
+
+	it('uses the singular demi-ton for one semitone under fr', () => {
+		setLocale('fr');
 		render(InspectRegister, {
 			payload: {
 				letter: 'D♭',

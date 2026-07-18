@@ -1,6 +1,7 @@
-import { render, screen, fireEvent, within } from '@testing-library/svelte';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { render, screen, fireEvent, within, cleanup } from '@testing-library/svelte';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import LookupPage from '../src/routes/+page.svelte';
+import { setLocale } from '../src/lib/i18n/locale.svelte';
 
 /** The keyboard and register render inline inside the page's own result block. */
 function renderPage() {
@@ -36,6 +37,11 @@ beforeEach(() => {
 	localStorage.clear();
 	playChordMock.mockClear();
 	ensureAudioReadyMock.mockClear();
+});
+
+afterEach(() => {
+	cleanup();
+	setLocale('en');
 });
 
 describe('lookup page Hear it (Track A audio engine)', () => {
@@ -319,7 +325,7 @@ describe('lookup page interval register (Track C)', () => {
 		expect(screen.getByTestId('inspect-register')).toHaveTextContent('Tap a key to inspect it.');
 	});
 
-	it('tapping a highlighted key plays it and fills the register with its full naming', async () => {
+	it('tapping a highlighted key plays it and fills the register with its full naming (en default)', async () => {
 		renderPage();
 
 		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'Cm7' } });
@@ -328,11 +334,11 @@ describe('lookup page interval register (Track C)', () => {
 		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
 
 		const register = screen.getByTestId('inspect-register');
-		expect(register).toHaveTextContent('E♭ · Mi · m3 · tierce mineure · 3 demi-tons');
+		expect(register).toHaveTextContent('E♭ · Mi · m3 · minor 3rd · 3 semitones');
 		expect(playNoteMock).toHaveBeenCalledWith('Eb4');
 	});
 
-	it('tapping a formula column does the same as tapping its key', async () => {
+	it('tapping a formula column does the same as tapping its key (en default)', async () => {
 		renderPage();
 
 		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'Cm7' } });
@@ -341,7 +347,7 @@ describe('lookup page interval register (Track C)', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Inspect B♭' }));
 
 		const register = screen.getByTestId('inspect-register');
-		expect(register).toHaveTextContent('B♭ · Si · m7 · septième mineure · 10 demi-tons');
+		expect(register).toHaveTextContent('B♭ · Si · m7 · minor 7th · 10 semitones');
 		expect(playNoteMock).toHaveBeenCalledWith('Bb4');
 	});
 
@@ -354,7 +360,7 @@ describe('lookup page interval register (Track C)', () => {
 		await fireEvent.input(input, { target: { value: 'Cm7' } });
 		await fireEvent.click(stamp);
 		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
-		expect(screen.getByTestId('inspect-register')).toHaveTextContent('tierce mineure');
+		expect(screen.getByTestId('inspect-register')).toHaveTextContent('minor 3rd');
 
 		await fireEvent.input(input, { target: { value: 'Fmaj7' } });
 		await fireEvent.click(stamp);
@@ -362,7 +368,7 @@ describe('lookup page interval register (Track C)', () => {
 		expect(screen.getByTestId('inspect-register')).toHaveTextContent('Tap a key to inspect it.');
 	});
 
-	it('interval chips carry the French long name as tooltip and aria-label', async () => {
+	it('interval chips carry the French long name as tooltip and aria-label (unaffected by the UI locale toggle)', async () => {
 		renderPage();
 
 		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'Cm7' } });
@@ -371,5 +377,53 @@ describe('lookup page interval register (Track C)', () => {
 		const formula = screen.getByTestId('interval-formula');
 		const chip = within(formula).getByText('m3');
 		expect(chip).toHaveAttribute('title', 'tierce mineure');
+	});
+});
+
+describe('lookup page French locale (I18N-02)', () => {
+	it('renders the input placeholder and inspect idle line in French under fr, with chord symbols immune', async () => {
+		setLocale('fr');
+		renderPage();
+
+		expect(screen.getByPlaceholderText('Tapez un accord : Cm7, F♯ø7, B♭maj7...')).toBeInTheDocument();
+
+		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'Cm7' } });
+		await fireEvent.click(screen.getByRole('button', { name: /tamponner/i }));
+
+		expect(screen.getByTestId('inspect-register')).toHaveTextContent(
+			"Touche une note pour l'inspecter."
+		);
+
+		// Chord symbol notation stays byte-identical regardless of locale.
+		const glyphShadow = screen.getAllByTestId('chord-glyph-shadow')[0];
+		expect(within(glyphShadow).getByText('C')).toBeInTheDocument();
+		expect(within(glyphShadow).getByText('m7')).toBeInTheDocument();
+	});
+
+	it('switches the inspect register long-name to longFr under fr while the interval shorthand stays identical', async () => {
+		setLocale('fr');
+		renderPage();
+
+		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'Cm7' } });
+		await fireEvent.click(screen.getByRole('button', { name: /tamponner/i }));
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+
+		const register = screen.getByTestId('inspect-register');
+		expect(register).toHaveTextContent('E♭ · Mi · m3 · tierce mineure · 3 demi-tons');
+	});
+
+	it('renders a STARTER_CHORD symbol identically in en and fr (notation immunity)', () => {
+		setLocale('en');
+		const { container: enContainer } = renderPage();
+		const enStarter = within(enContainer).getAllByTestId('starter-chord')[0].textContent?.trim();
+		cleanup();
+
+		setLocale('fr');
+		const { container: frContainer } = renderPage();
+		const frStarter = within(frContainer).getAllByTestId('starter-chord')[0].textContent?.trim();
+
+		expect(frStarter).toBe(enStarter);
+		expect(frStarter).toBe('Cm7');
 	});
 });
