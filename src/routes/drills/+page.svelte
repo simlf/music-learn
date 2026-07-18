@@ -17,7 +17,7 @@
 	import { ensureAudioReady, playChord, playNote } from '$lib/audio/audio';
 	import { toPitch } from '$lib/audio/voicing';
 	import { recordPracticeAnswer } from '$lib/practice/answerTelemetry';
-	import { consumeDrillSeeds } from '$lib/practice/drillSeeds';
+	import { consumeDrillSeeds, consumeLessonSeeds } from '$lib/practice/drillSeeds';
 	import {
 		checkUnlock,
 		getLevelState,
@@ -128,11 +128,28 @@
 	let questionShownAt = Date.now();
 
 	let session = $state<Session>(
-		createSession({
-			// Drill-these seeds are chord symbols (Progress filters to kind 'chord').
-			seeds: consumeDrillSeeds().map((symbol) => ({ symbol, family: 'chord' as const })),
-			warmupCandidates: recentMisses(5)
-		})
+		createSession(
+			(() => {
+				// Both one-shot channels are consumed regardless of which wins, so
+				// neither leaks into a later session; a lesson handoff takes
+				// precedence over a Progress weak-list handoff when both are
+				// somehow present.
+				const lessonSeeds = consumeLessonSeeds().map((symbol) => ({
+					symbol,
+					family: 'chord' as const,
+					origin: 'lesson' as const
+				}));
+				// Drill-these seeds are chord symbols (Progress filters to kind 'chord').
+				const weakSeeds = consumeDrillSeeds().map((symbol) => ({
+					symbol,
+					family: 'chord' as const
+				}));
+				return {
+					seeds: lessonSeeds.length > 0 ? lessonSeeds : weakSeeds,
+					warmupCandidates: recentMisses(5)
+				};
+			})()
+		)
 	);
 
 	/**
@@ -663,7 +680,8 @@
 	const SOURCE_TAGS: Partial<Record<QuestionSource, string>> = {
 		warmup: 'BACK FOR ANOTHER GO',
 		retry: 'ONE MORE TIME',
-		seeded: 'FROM YOUR WEAK LIST'
+		seeded: 'FROM YOUR WEAK LIST',
+		seeded_lesson: 'FROM YOUR LESSON'
 	};
 
 	/** Hinted scaffolding stage: taking the hint reveals the formula and marks the answer assisted. */

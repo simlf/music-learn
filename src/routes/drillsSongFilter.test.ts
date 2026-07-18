@@ -77,8 +77,10 @@ vi.mock('$lib/practice/scaffold', () => ({
 }));
 
 const consumeDrillSeedsMock = vi.fn((..._args: unknown[]): string[] => []);
+const consumeLessonSeedsMock = vi.fn((..._args: unknown[]): string[] => []);
 vi.mock('$lib/practice/drillSeeds', () => ({
-	consumeDrillSeeds: (...args: unknown[]) => consumeDrillSeedsMock(...args)
+	consumeDrillSeeds: (...args: unknown[]) => consumeDrillSeedsMock(...args),
+	consumeLessonSeeds: (...args: unknown[]) => consumeLessonSeedsMock(...args)
 }));
 
 vi.mock('$lib/drills/rotateHint', () => ({
@@ -137,6 +139,8 @@ beforeEach(() => {
 	limitScaffoldingQualitiesMock.mockClear();
 	consumeDrillSeedsMock.mockReset();
 	consumeDrillSeedsMock.mockImplementation((): string[] => []);
+	consumeLessonSeedsMock.mockReset();
+	consumeLessonSeedsMock.mockImplementation((): string[] => []);
 	fetchStatsMock.mockClear();
 	flushQueueMock.mockClear();
 });
@@ -290,5 +294,40 @@ describe('toggleSongFilter mirrors setMode guards (HI-01 regression)', () => {
 		expect(drawFromSymbolsMock).not.toHaveBeenCalled();
 		expect(screen.getByTestId('question-source-tag')).toHaveTextContent('FROM YOUR WEAK LIST');
 		expect(screen.getByTestId('hint-formula')).toBeInTheDocument();
+	});
+});
+
+describe('Lesson-seeds handoff to Drills (LEARN-03)', () => {
+	it('renders FROM YOUR LESSON for a lesson-seeded question, never FROM YOUR WEAK LIST', () => {
+		consumeLessonSeedsMock.mockImplementation((): string[] => ['C', 'Cm']);
+		forceConstruction();
+
+		renderPage();
+
+		const tag = screen.getByTestId('question-source-tag');
+		expect(tag).toHaveTextContent('FROM YOUR LESSON');
+		expect(tag).not.toHaveTextContent('FROM YOUR WEAK LIST');
+		// Both one-shot channels were consumed at init (one-shot clearing).
+		expect(consumeLessonSeedsMock).toHaveBeenCalled();
+		expect(consumeDrillSeedsMock).toHaveBeenCalled();
+	});
+
+	it('a plain weak-list seed (no lesson seeds present) still renders FROM YOUR WEAK LIST', () => {
+		consumeDrillSeedsMock.mockImplementation((): string[] => ['Cmaj7']);
+		forceConstruction();
+
+		renderPage();
+
+		expect(screen.getByTestId('question-source-tag')).toHaveTextContent('FROM YOUR WEAK LIST');
+	});
+
+	it('lesson seeds take precedence over weak-list seeds when both channels are present', () => {
+		consumeLessonSeedsMock.mockImplementation((): string[] => ['C']);
+		consumeDrillSeedsMock.mockImplementation((): string[] => ['Cmaj7']);
+		forceConstruction();
+
+		renderPage();
+
+		expect(screen.getByTestId('question-source-tag')).toHaveTextContent('FROM YOUR LESSON');
 	});
 });
