@@ -1,3 +1,5 @@
+import { currentLocale } from '$lib/i18n/locale.svelte';
+
 /**
  * Structural chord-quality mnemonics (Track D contract, R3-learning.md).
  *
@@ -29,6 +31,19 @@ const MNEMONICS: Record<string, string> = {
 };
 
 /**
+ * French variant record (I18N-02): same five KEEP-rated structural hooks,
+ * same chord-symbol/glyph tokens preserved verbatim (Am7, C, ♭7, ♭3, ø, °),
+ * French interval vocabulary for the descriptive prose.
+ */
+const MNEMONICS_FR: Record<string, string> = {
+	maj7: "Triade majeure, puis une septième un demi-ton sous l'octave. Un ton entier sous l'octave donne un simple 7.",
+	m7: "Triade mineure plus une ♭7. Raccourci : la triade majeure de la ♭3 sur la fondamentale. Am7 est une triade de C sur A.",
+	'7': "Triade majeure plus une ♭7, un ton entier sous l'octave. La 3 et la ♭7 forment un triton : cette tension est le moteur de l'accord.",
+	m7b5: "Un m7 avec la 5 abaissée d'un demi-ton. Le ø garde une simple ♭7 : seul le ° complet abaisse aussi la 7e.",
+	dim7: "Des tierces mineures empilées jusqu'en haut. Entièrement symétrique, les douze accords dim7 se réduisent à trois ensembles de notes."
+};
+
+/**
  * Common notation aliases mapped onto the canonical v1 suffixes, mirroring
  * the glyph handling in spellChord's normalizeSymbol (ø -> m7b5) plus the
  * jazz-alias spellings tonal treats as equivalent. Kept tiny on purpose:
@@ -55,5 +70,6 @@ const ALIASES: Record<string, string> = {
  */
 export function mnemonicFor(qualitySuffix: string): string | null {
 	const canonical = ALIASES[qualitySuffix] ?? qualitySuffix;
-	return MNEMONICS[canonical] ?? null;
+	const table = currentLocale() === 'fr' ? MNEMONICS_FR : MNEMONICS;
+	return table[canonical] ?? null;
 }
