@@ -9,23 +9,28 @@
 	 *
 	 * Pass `href` to render a real `<a>` (e.g. "Start a Drill" / "Practice
 	 * Now" navigating to /drills) instead of a `<button>`, keeping the exact
-	 * same visual treatment either way.
+	 * same visual treatment either way. `onclick` is typed as a plain
+	 * `MouseEvent` handler (rather than inherited from `HTMLButtonAttributes`)
+	 * so the SAME handler prop works whichever element actually renders (e.g.
+	 * Phase 19's lesson handoff CTA both writes to storage AND navigates via
+	 * the anchor's own `href`, in one Button instance).
 	 */
-	interface Props extends HTMLButtonAttributes {
+	interface Props extends Omit<HTMLButtonAttributes, 'onclick'> {
 		variant?: 'primary' | 'ghost';
 		href?: string;
+		onclick?: (event: MouseEvent) => void;
 		children: Snippet;
 	}
 
-	let { variant = 'primary', href, children, ...rest }: Props = $props();
+	let { variant = 'primary', href, onclick, children, ...rest }: Props = $props();
 </script>
 
 {#if href}
-	<a {href} class="ps-button ps-button--{variant}">
+	<a {href} class="ps-button ps-button--{variant}" {onclick}>
 		{@render children()}
 	</a>
 {:else}
-	<button class="ps-button ps-button--{variant}" {...rest}>
+	<button class="ps-button ps-button--{variant}" {onclick} {...rest}>
 		{@render children()}
 	</button>
 {/if}
