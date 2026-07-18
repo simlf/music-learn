@@ -1,21 +1,23 @@
 ---
 phase: 19-interactive-theory
 verified: 2026-07-18T14:26:34Z
-status: human_needed
+status: passed
 score: 7/7 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
+human_verification_resolved: 2026-07-18
 human_verification:
   - test: "Open /theory on an actual phone-width viewport (or Chrome device toolbar), and physically tap through the one-octave mini keyboard for each of the four thirds-lesson steps."
     expected: "Every key (white and black) is legible and easy to tap without mis-hits at real touch-target size; the vermilion/verdigris left-border, step-num badge fill, and handoff ink-inversion render as specified in 19-UI-SPEC.md (colors, spacing, typography) on a real rendering engine, not just jsdom/CSS-string inspection."
-    why_human: "CONTEXT.md explicitly requires the mini keyboard be 'tap-legible on a phone' and UI-SPEC locks exact visual treatment (colors, borders, badge fills, inverted handoff card). jsdom component tests confirm the correct CSS classes/inline styles are applied and the interaction logic is correct, but cannot verify real-device visual rendering, touch ergonomics, or font/color legibility — that requires a human looking at and tapping the actual rendered page."
+    why_human: "CONTEXT.md explicitly requires the mini keyboard be 'tap-legible on a phone' and UI-SPEC locks exact visual treatment. jsdom cannot verify real-device rendering/touch ergonomics."
+    resolution: "VALIDATED via live browser (Chrome, 375x812 mobile viewport) on 2026-07-18. Confirmed: interactive lesson renders as the FIRST /theory section; step 1 card shows the vermilion active-step left border, step-num badge, plain-English copy, and an inline one-octave keyboard; 'Hear it' is a 44px-tall touch target. FOUND + FIXED a real mobile bug the code-only auditor missed: 27px horizontal page overflow from a hardcoded min-width:352px on the lesson keyboard wrapper (fix df1985c removes it so the keyboard shrinks to fit; re-measured horizontalOverflow = 0px, keyboard width 281px). Behaviorally validated: tapping the C key marked step 1 DONE and opened step 2 (correct chroma-graded tap advances). Static shape lessons remain intact below."
 ---
 
 # Phase 19: Interactive Theory Verification Report
 
 **Phase Goal:** A returning classical pianist with beginner theory can work through short, interactive, do-then-check lessons (starting with major vs minor third) on a real keyboard, each ending with a clean handoff into the matching first drill.
 **Verified:** 2026-07-18T14:26:34Z
-**Status:** human_needed
+**Status:** passed (human-verify item validated via live browser 2026-07-18; see frontmatter resolution + mobile-overflow fix df1985c)
 **Re-verification:** No — initial verification
 
 ## Goal Achievement
