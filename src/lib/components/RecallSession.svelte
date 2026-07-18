@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import { Note } from 'tonal';
-	import { getDockRegistry } from '$lib/keyboard/dockContext.svelte';
 	import {
 		introduceNewCards,
 		getDueCards,
@@ -190,58 +189,6 @@
 	const currentFact = $derived(currentItem ? factById(currentItem.factId) : undefined);
 	const previews = $derived(currentCard ? previewGrades(currentCard, new Date()) : []);
 	const remaining = $derived(sessionRemaining(queue));
-
-	/**
-	 * Docked keyboard (KBD-01/KBD-03, 15-06/15-07): Mode A ('see-play'), Mode
-	 * B ('hear-name'), and the `formula`-mode reveal keyboard collapse into
-	 * ONE mode-aware `dockedKeyboard` snippet (defined in the template
-	 * below), registered with the shared dock whenever a reviewable card
-	 * OTHER than Mode C is showing. `getDockRegistry()` is captured once
-	 * here at component-init time (matching Plans 02-05's established
-	 * pattern) - calling it again inside a teardown callback throws
-	 * Svelte's lifecycle_outside_component.
-	 */
-	const dockRegistry = getDockRegistry();
-	const dockToken = Symbol('recall-dock');
-
-	/**
-	 * Registers `dockedKeyboard` whenever the page is actively reviewing a
-	 * non-Mode-C card, and clears it (effect cleanup, which also fires on
-	 * unmount) the instant that's no longer true - loading/empty/complete/
-	 * error states never show a stale docked keyboard. Mode C
-	 * ('formula-build') is skipped here NOT to "force-clear" a competing
-	 * registration (Plan 06's framing, now stale) but because the embedded
-	 * BuildSession instance is the sole registrant for that mode (Plan 07,
-	 * Task 1) - RecallSession simply never writes to the registry while a
-	 * Mode C card is current, so there is no last-writer race to reason
-	 * about: on entering Mode C this effect's cleanup fires and nothing
-	 * re-registers in its place (BuildSession's own effect, mounting a beat
-	 * later, is the only writer); on leaving Mode C (BuildSession unmounts
-	 * and clears its own token-guarded registration first) this effect
-	 * re-runs and restores the next card's real docked keyboard.
-	 */
-	$effect(() => {
-		if (pageState !== 'reviewing' || currentItem?.mode === 'formula-build') return;
-		// A formula-mode card only shows a meaningful keyboard when its fact is
-		// a chord: the reveal spells the chord's notes on the board. An
-		// interval-size or scale-degree formula card has no keyboard
-		// relationship, so its dockedKeyboard would fall through to an empty
-		// <PianoKeyboard notes={[]} inspectable /> with nothing to inspect -
-		// skip registration entirely rather than dock an unrelated blank board
-		// (IN-01).
-		if (currentItem?.mode === 'formula' && currentFact?.factKind !== 'chord-formula') return;
-		// inputRequired for Mode A (see-play): the docked keyboard is the sole
-		// answer-input surface (tap the chord, then Check), so the dock must
-		// never hide it even if collapse was persisted on a passive page
-		// (WR-01). Mode B (hear-name) and formula reveals are inspect-only and
-		// keep the normal collapse handle.
-		dockRegistry?.register({
-			token: dockToken,
-			keyboard: dockedKeyboard,
-			inputRequired: currentItem?.mode === 'see-play'
-		});
-		return () => dockRegistry?.clear(dockToken);
-	});
 
 	/** The live day-interval tag for one of the four grade buttons (D-04). */
 	function intervalTag(rating: Rating): string {
@@ -566,38 +513,6 @@
 	}
 </script>
 
-<!--
-	The ONE mode-aware docked keyboard (KBD-01/KBD-03): closes over the page's
-	existing reactive state, so it reproduces exactly the props Mode A/formula-
-	reveal's former inline sites rendered, plus Mode B's brand-new inspectable
-	board - never two input surfaces for the same fact. Mode C
-	('formula-build') renders nothing here; BuildSession owns its own keyboard
-	(Plan 07).
--->
-{#snippet dockedKeyboard()}
-	{#if currentItem?.mode === 'see-play' && currentFact?.factKind === 'chord-formula'}
-		{@const target = spellChord(currentFact.symbol)}
-		{@const modeAWrong = modeAAnswered && modeAResult !== undefined && !modeAResult.correct}
-		<PianoKeyboard
-			notes={modeAWrong ? target.notes : []}
-			interactive
-			selected={selected}
-			onToggle={toggleModeAKey}
-			onPress={pressModeAKey}
-			wrongLetters={modeAWrong ? extraLettersPlayed : undefined}
-		/>
-	{:else if currentItem?.mode === 'hear-name'}
-		<PianoKeyboard notes={[]} inspectable />
-	{:else if currentItem?.mode === 'formula'}
-		{#if revealed && currentFact?.factKind === 'chord-formula'}
-			{@const chord = spellChord(currentFact.symbol)}
-			<PianoKeyboard notes={chord.notes} inspectable />
-		{:else}
-			<PianoKeyboard notes={[]} inspectable />
-		{/if}
-	{/if}
-{/snippet}
-
 {#if pageState === 'loading'}
 	<p class="text-label font-mono uppercase" data-testid="recall-loading">
 		COUNTING TODAY'S CARDS...
@@ -710,6 +625,9 @@
 								</div>
 							{/each}
 						</div>
+						<div class="mt-4">
+							<PianoKeyboard notes={chord.notes} />
+						</div>
 					{:else if currentFact.factKind === 'interval-size'}
 						{@const info = intervalFromShort(currentFact.short)}
 						<p class="text-body">Here's the interval:</p>
@@ -750,12 +668,24 @@
 		</div>
 	{:else if currentItem.mode === 'see-play' && currentFact.factKind === 'chord-formula'}
 		{@const target = spellChord(currentFact.symbol)}
+		{@const modeAWrong = modeAAnswered && modeAResult !== undefined && !modeAResult.correct}
 		<div aria-live="polite">
 			<div class="mt-4" data-testid="recall-prompt">
 				<div class="flex items-start gap-4">
 					<ChordGlyph root={target.root} quality={target.symbol.slice(target.root.length)} />
 				</div>
 				<p class="text-body mt-4">Play it on the keyboard.</p>
+			</div>
+
+			<div class="mt-4">
+				<PianoKeyboard
+					notes={modeAWrong ? target.notes : []}
+					interactive
+					selected={selected}
+					onToggle={toggleModeAKey}
+					onPress={pressModeAKey}
+					wrongLetters={modeAWrong ? extraLettersPlayed : undefined}
+				/>
 			</div>
 
 			{#if !modeAAnswered}

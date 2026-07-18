@@ -4,7 +4,6 @@
 	import Button from './Button.svelte';
 	import { playNote } from '$lib/audio/audio';
 	import { toPitch } from '$lib/audio/voicing';
-	import { getDockRegistry } from '$lib/keyboard/dockContext.svelte';
 	import {
 		createScaleKeyboardDrillState,
 		expectedTarget,
@@ -32,11 +31,6 @@
 	 * returning octave onto the tonic key when the 7th degree is a black key
 	 * (see 10-02-PLAN.md's recorded design decision) and its wrongLetters prop
 	 * paints a permanent-per-reveal cross mark, not a momentary flash.
-	 *
-	 * Only the tappable key-strip docks with the shared keyboard dock
-	 * (KBD-01, Scope Decision 6, Phase 15 Plan 04) - the degree register, the
-	 * ascending/descending prompt, and the completion card stay in this
-	 * component's own scrolling flow, never in the dock.
 	 */
 	type KeyKind = 'white' | 'black';
 
@@ -119,42 +113,11 @@
 		wrongTimer = undefined;
 	}
 
-	const dockToken = Symbol('scale-keyboard-drill-dock');
-	const dockRegistry = getDockRegistry();
-
-	/**
-	 * Hands only the tappable key-strip (`keyStrip`) to the shared dock - no
-	 * `register` snippet, since the degree register/prompt stay inline
-	 * (Scope Decision 6). Cleared whenever the drill completes (`drill.done`)
-	 * so a finished drill's dock shows no stray keys; `reset()` flips
-	 * `drill.done` back to false, which re-registers on the next effect run.
-	 */
-	// Track only the `done` boolean, not the whole `drill` object: `drill` is
-	// reassigned (`drill = result.state`) on every correct tap, so an effect
-	// reading `drill.done` directly would re-run - and re-register a fresh dock
-	// config object - on each tap, needlessly re-triggering KeyboardDock's
-	// --dock-height effect. A $derived boolean only notifies the effect when its
-	// value actually flips, so registration fires once per done<->not-done edge
-	// (IN-02).
-	const drillDone = $derived(drill.done);
-	$effect(() => {
-		if (drillDone) {
-			dockRegistry?.clear(dockToken);
-		} else {
-			// inputRequired: tapping the key-strip IS the drill - the dock must
-			// never hide it, even if collapse was persisted on a passive page (WR-01).
-			dockRegistry?.register({ token: dockToken, keyboard: keyStrip, inputRequired: true });
-		}
-	});
-
 	// If the component unmounts (e.g. switching back to Explore, or
 	// navigating away) while a wrong-flash timer is pending, cancel it so
-	// its callback never fires against an already-torn-down instance. Also
-	// clears the dock registration so a stray key-strip never lingers once
-	// Practice mode unmounts (T-15-03).
+	// its callback never fires against an already-torn-down instance.
 	onDestroy(() => {
 		clearTimeout(wrongTimer);
-		dockRegistry?.clear(dockToken);
 	});
 
 	function scrollTonicIntoView() {
@@ -293,6 +256,9 @@
 		>
 			{register}
 		</p>
+		<div class="mt-2">
+			{@render keyStrip()}
+		</div>
 	{/if}
 </div>
 
