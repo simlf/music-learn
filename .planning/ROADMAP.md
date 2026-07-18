@@ -502,6 +502,20 @@ Plans:
 
 **Design reference**: `.planning/sketches/012-interactive-theory/` (winner Variant A: guided steps; B lesson-map as the later container)
 **UI hint**: yes
+**Plans**: 4 plans
+
+**Wave 1**
+
+- [ ] 19-01-PLAN.md — Thirds lesson data + chroma grading + drill-seed pair (pure module) (LEARN-01)
+- [ ] 19-02-PLAN.md — Drill-seed handoff plumbing: lesson-seeds channel + 'seeded_lesson' source + FROM YOUR LESSON tag (LEARN-03)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 19-03-PLAN.md — InteractiveLesson.svelte: guided steps, chroma-graded taps, per-step audio, handoff card (LEARN-01, LEARN-02, LEARN-03)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 19-04-PLAN.md — /theory integration: interactive lesson as the first section, static lessons intact (LEARN-01)
 
 ### Phase 20: French Translation
 
