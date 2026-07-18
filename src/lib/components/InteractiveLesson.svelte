@@ -227,7 +227,7 @@
 				{@render bodyCopy(step.body)}
 
 				{#if state === 'active'}
-					<div class="mt-4" style="min-width: {8 * 44}px; max-width: 100%;">
+					<div class="mt-4" style="max-width: 100%;">
 						<PianoKeyboard
 							octaves={1}
 							notes={earnedNotes}

@@ -53,6 +53,21 @@ describe('InteractiveLesson (LEARN-01/02/03)', () => {
 		expect(screen.getAllByRole('img', { name: /piano keyboard/i })).toHaveLength(1);
 	});
 
+	it('the active step keyboard wrapper carries no fixed min-width (regression: 375px mobile overflow bug)', () => {
+		// A hardcoded `min-width: 352px` (8 keys * 44px) on this wrapper once
+		// forced the mini keyboard past a 375px/320px viewport, causing
+		// horizontal page overflow. The wrapper must stay free to shrink with
+		// its step card, matching the containment pattern the static /theory
+		// lesson keyboards already rely on (PianoKeyboard's own width: 100%,
+		// no min-width - see PianoKeyboard.svelte's "09-02 defect fix" note).
+		render(InteractiveLesson);
+
+		const activeStep = screen.getByTestId('lesson-step-0');
+		for (const el of activeStep.querySelectorAll<HTMLElement>('[style]')) {
+			expect(el.getAttribute('style') ?? '').not.toMatch(/min-width/);
+		}
+	});
+
 	it('a correct tap on the anchor locks step 1 and reveals step 2', async () => {
 		render(InteractiveLesson);
 
