@@ -160,9 +160,21 @@
 		}
 	}
 
-	function handleHandoff(): void {
-		setLessonSeeds(THIRDS_LESSON_DRILL_SEEDS);
-	}
+	/**
+	 * Writes the handoff seeds as soon as the handoff card becomes reachable
+	 * (activeIndex reaches the end), rather than deferring the write to the
+	 * CTA's `onclick`. A middle-click/Ctrl/Cmd-click open-in-new-tab fires
+	 * anchor navigation via the native `href` without ever dispatching a
+	 * `click` event, so a write gated on `onclick` would silently skip on
+	 * those paths (WR-02). The write is cheap and idempotent (same constant
+	 * array every time), so writing it here - and re-running harmlessly on
+	 * every `activeIndex` change after that point - is safe.
+	 */
+	$effect(() => {
+		if (activeIndex >= steps.length) {
+			setLessonSeeds(THIRDS_LESSON_DRILL_SEEDS);
+		}
+	});
 
 	onDestroy(() => {
 		clearTimeout(flashTimer);
@@ -274,7 +286,7 @@
 			</p>
 			<p class="text-heading mt-4 font-serif">C · Cm</p>
 			<div class="handoff-cta mt-4">
-				<Button href="/drills" onclick={handleHandoff}>Try this in a drill →</Button>
+				<Button href="/drills">Try this in a drill →</Button>
 			</div>
 		</div>
 	{/if}
