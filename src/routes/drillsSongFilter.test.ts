@@ -1,0 +1,221 @@
+import { render, screen, fireEvent, cleanup } from '@testing-library/svelte';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { saveSong } from '$lib/practice/songs';
+
+/**
+ * SONG-01/SONG-02 wiring test for Drills (Phase 18, Plan 02): the SongMark
+ * renders on a song chord prompt regardless of filter state, and the
+ * PRACTICE POOL filter toggle persists per-surface and genuinely restricts
+ * the draw (with the locked no-active-songs fallback). `$lib/practice/songs`
+ * is left UNMOCKED so songProvenance's real
+ * `listSongs()`/`activeSongChordSymbols()` read the real (jsdom) localStorage
+ * seeded below via `saveSong`.
+ */
+
+const flushQueueMock = vi.fn();
+const fetchStatsMock = vi.fn((..._args: unknown[]) => Promise.resolve({ items: [], weakest: [] }));
+vi.mock('$lib/api/progress', () => ({
+	flushQueue: (...args: unknown[]) => flushQueueMock(...args),
+	fetchStats: (...args: unknown[]) => fetchStatsMock(...args),
+	localDateString: () => '2026-07-18'
+}));
+
+vi.mock('$lib/practice/answerTelemetry', () => ({
+	recordPracticeAnswer: vi.fn()
+}));
+
+interface PoolDrawStub {
+	symbol: string;
+	bucket: string;
+	scaffoldStage: string | null;
+}
+const drawFromPoolMock = vi.fn(
+	(..._args: unknown[]): PoolDrawStub => ({ symbol: 'F7', bucket: 'tier', scaffoldStage: null })
+);
+const drawFromSymbolsMock = vi.fn((symbols: string[], ..._rest: unknown[]): string | null =>
+	symbols.length > 0 ? symbols[0] : null
+);
+const scaffoldStageForSymbolMock = vi.fn((..._args: unknown[]): string | null => null);
+vi.mock('$lib/practice/pool', () => ({
+	drawFromPool: (...args: unknown[]) => drawFromPoolMock(...args),
+	drawFromSymbols: (...args: [string[], ...unknown[]]) => drawFromSymbolsMock(...args),
+	scaffoldStageForSymbol: (...args: unknown[]) => scaffoldStageForSymbolMock(...args)
+}));
+
+vi.mock('$lib/practice/practiceLog', () => ({
+	recentMisses: (): string[] => [],
+	appendPracticeAnswer: vi.fn(),
+	readPracticeLog: () => [],
+	practiceDaysSince: () => 99
+}));
+
+vi.mock('$lib/practice/levelState', () => ({
+	getLevelState: () => ({ currentTier: 1, unlockedTiers: [1] }),
+	checkUnlock: () => ({
+		tier: 1,
+		nextTier: 2,
+		eligible: false,
+		rollingAccuracy: 0,
+		rollingCount: 0,
+		lifetimeAttempts: 0,
+		distinctDays: 0,
+		perQuality: []
+	}),
+	isSnoozed: () => false,
+	setCurrentTier: vi.fn(),
+	snoozeSuggestion: vi.fn()
+}));
+
+vi.mock('$lib/practice/scaffold', () => ({
+	readScaffolds: () => ({}),
+	writeScaffold: vi.fn(),
+	recordScaffoldAnswer: (state: unknown) => state
+}));
+
+vi.mock('$lib/practice/drillSeeds', () => ({
+	consumeDrillSeeds: (): string[] => []
+}));
+
+vi.mock('$lib/drills/rotateHint', () => ({
+	isRotateHintDismissed: () => true,
+	dismissRotateHint: vi.fn()
+}));
+
+vi.mock('$lib/audio/audio', () => ({
+	playChord: vi.fn(),
+	playNote: vi.fn(),
+	ensureAudioReady: async () => {}
+}));
+
+const { default: DrillsPage } = await import('./drills/+page.svelte');
+
+const FILTER_KEY = 'music-learn:drills-song-filter';
+
+function renderPage() {
+	return render(DrillsPage);
+}
+
+/** Seeds one active song containing exactly `symbols` (real songs.ts, real localStorage). */
+function seedActiveSong(symbols: string[]) {
+	saveSong({
+		id: 'song-1',
+		name: 'My Tune',
+		chordSymbols: symbols,
+		createdAt: '2026-07-18T00:00:00.000Z',
+		source: 'custom',
+		active: true
+	});
+}
+
+/** family -> chord (0), direction -> 'construction' (well under 0.5). */
+function forceConstruction() {
+	vi.spyOn(Math, 'random').mockReturnValue(0);
+}
+
+/** family -> chord (0), direction -> 'identification' (well over 0.5). */
+function forceIdentification() {
+	let call = 0;
+	const draws = [0, 0.99];
+	vi.spyOn(Math, 'random').mockImplementation(() => {
+		const value = draws[Math.min(call, draws.length - 1)];
+		call++;
+		return value;
+	});
+}
+
+beforeEach(() => {
+	localStorage.clear();
+	drawFromPoolMock.mockClear();
+	drawFromSymbolsMock.mockClear();
+	fetchStatsMock.mockClear();
+	flushQueueMock.mockClear();
+});
+
+afterEach(() => {
+	cleanup();
+	vi.restoreAllMocks();
+});
+
+describe('SongMark on the Drills prompt (SONG-01)', () => {
+	it('shows the SongMark on a construction prompt whose drawn symbol has provenance', () => {
+		seedActiveSong(['F7']);
+		drawFromPoolMock.mockReturnValue({ symbol: 'F7', bucket: 'tier', scaffoldStage: null });
+		forceConstruction();
+
+		renderPage();
+
+		const mark = screen.getByTestId('song-mark');
+		expect(mark).toHaveTextContent('My Tune');
+	});
+
+	it('shows the SongMark on an identification prompt whose drawn symbol has provenance', () => {
+		seedActiveSong(['F7']);
+		drawFromPoolMock.mockReturnValue({ symbol: 'F7', bucket: 'tier', scaffoldStage: null });
+		forceIdentification();
+
+		renderPage();
+
+		expect(screen.getByText('Name this chord.')).toBeInTheDocument();
+		const mark = screen.getByTestId('song-mark');
+		expect(mark).toHaveTextContent('My Tune');
+	});
+
+	it('shows no SongMark for a drawn symbol with no provenance', () => {
+		seedActiveSong(['Cm7']); // Cm7, not F7: the drawn symbol below has no provenance.
+		drawFromPoolMock.mockReturnValue({ symbol: 'F7', bucket: 'tier', scaffoldStage: null });
+		forceConstruction();
+
+		renderPage();
+
+		expect(screen.queryByTestId('song-mark')).not.toBeInTheDocument();
+	});
+});
+
+describe('PRACTICE POOL filter toggle (SONG-02)', () => {
+	it('renders labelled PRACTICE POOL, defaulting to aria-pressed=false', () => {
+		forceConstruction();
+		renderPage();
+
+		expect(screen.getByText('PRACTICE POOL')).toBeInTheDocument();
+		const toggle = screen.getByRole('button', { name: /From my songs/i });
+		expect(toggle).toHaveAttribute('aria-pressed', 'false');
+	});
+
+	it('persists "true" under music-learn:drills-song-filter on click', async () => {
+		forceConstruction();
+		renderPage();
+
+		const toggle = screen.getByRole('button', { name: /From my songs/i });
+		await fireEvent.click(toggle);
+
+		expect(localStorage.getItem(FILTER_KEY)).toBe('true');
+		expect(toggle).toHaveAttribute('aria-pressed', 'true');
+	});
+
+	it('with a drillable song chord, turning the filter on restricts the draw to drawFromSymbols and clears the fallback note', async () => {
+		seedActiveSong(['Bbmaj7']);
+		forceConstruction();
+		renderPage();
+
+		const toggle = screen.getByRole('button', { name: /From my songs/i });
+		await fireEvent.click(toggle);
+
+		expect(drawFromSymbolsMock).toHaveBeenCalled();
+		const [restrictedSymbols] = drawFromSymbolsMock.mock.calls.at(-1) as [string[]];
+		expect(restrictedSymbols).toEqual(['Bbmaj7']);
+		expect(screen.queryByTestId('song-filter-note')).not.toBeInTheDocument();
+	});
+
+	it('with no drillable song chords, turning the filter on shows the fallback note and stays visually on', async () => {
+		forceConstruction();
+		renderPage();
+
+		const toggle = screen.getByRole('button', { name: /From my songs/i });
+		await fireEvent.click(toggle);
+
+		expect(toggle).toHaveAttribute('aria-pressed', 'true');
+		expect(screen.getByTestId('song-filter-note')).toHaveTextContent(
+			'No active songs yet, so showing the full library instead.'
+		);
+	});
+});
