@@ -67,6 +67,7 @@
 	import type { MatchResult } from '$lib/drills/matchChord';
 	import PianoKeyboard, { type InspectPayload } from '$lib/components/PianoKeyboard.svelte';
 	import InspectRegister from '$lib/components/InspectRegister.svelte';
+	import { t } from '$lib/i18n/locale.svelte';
 	import ChordGlyph from '$lib/components/ChordGlyph.svelte';
 	import IntervalChip from '$lib/components/IntervalChip.svelte';
 	import RevealInsight from '$lib/components/RevealInsight.svelte';
@@ -82,11 +83,22 @@
 	 * Right-answer confirmation variants (D-08): the stamp beat is the reward,
 	 * this is a one-line caption, not a celebration banner. Rotated with a
 	 * no-immediate-repeat picker mirroring $lib/copy/hints's pickHint.
+	 * $derived.by (mirrors 20-02/20-03's identical pattern) so a live locale
+	 * flip re-renders the rotation without touching pickVariant's call sites.
 	 */
-	const CORRECT_VARIANTS = ['Nailed it.', 'Et voilà.', 'Bang on.', 'Spot on, mon ami.'];
+	const CORRECT_VARIANTS = $derived.by(() => [
+		t('drills.confirm.0'),
+		t('drills.confirm.1'),
+		t('drills.confirm.2'),
+		t('drills.confirm.3')
+	]);
 
 	/** Wrong-answer headline variants (D-09), same rotation discipline. */
-	const WRONG_VARIANTS = ['Not quite.', 'Close, but no cigar.', 'Not this time.'];
+	const WRONG_VARIANTS = $derived.by(() => [
+		t('drills.wrong.0'),
+		t('drills.wrong.1'),
+		t('drills.wrong.2')
+	]);
 
 	let lastCorrectIndex = -1;
 	let lastWrongIndex = -1;
@@ -228,11 +240,11 @@
 	}
 
 	/** Deck selector (Track C): CHORDS, INTERVALS, or the default even MIX. */
-	const MODES: { value: DrillMode; label: string }[] = [
-		{ value: 'chords', label: 'Chords' },
-		{ value: 'intervals', label: 'Intervals' },
-		{ value: 'mix', label: 'Mix' }
-	];
+	const MODES = $derived.by((): { value: DrillMode; label: string }[] => [
+		{ value: 'chords', label: t('drills.mode.chords') },
+		{ value: 'intervals', label: t('drills.mode.intervals') },
+		{ value: 'mix', label: t('drills.mode.mix') }
+	]);
 	let mode = $state<DrillMode>('mix');
 
 	/**
@@ -677,12 +689,14 @@
 		return quality === '' ? 'maj' : quality;
 	}
 
-	const SOURCE_TAGS: Partial<Record<QuestionSource, string>> = {
-		warmup: 'BACK FOR ANOTHER GO',
-		retry: 'ONE MORE TIME',
-		seeded: 'FROM YOUR WEAK LIST',
-		seeded_lesson: 'FROM YOUR LESSON'
-	};
+	const SOURCE_TAGS = $derived.by(
+		(): Partial<Record<QuestionSource, string>> => ({
+			warmup: t('drills.source.warmup'),
+			retry: t('drills.source.retry'),
+			seeded: t('drills.source.weakList'),
+			seeded_lesson: t('drills.source.lesson')
+		})
+	);
 
 	/** Hinted scaffolding stage: taking the hint reveals the formula and marks the answer assisted. */
 	function takeHint() {
@@ -785,7 +799,7 @@
 {/snippet}
 
 <main class="bg-paper text-ink min-h-screen px-2 py-8 font-sans sm:px-8">
-	<h1 class="text-heading mt-2 font-bold">Drills</h1>
+	<h1 class="text-heading mt-2 font-bold">{t('drills.page.title')}</h1>
 
 	<!-- Beginner on-ramp (sketch 007): the level lives where you practice. -->
 	<div class="mt-6">
@@ -793,7 +807,12 @@
 	</div>
 
 	<div class="mt-8 flex flex-wrap items-center justify-between gap-2">
-		<div class="flex gap-4" data-testid="drill-mode-row" role="group" aria-label="Drill mode">
+		<div
+			class="flex gap-4"
+			data-testid="drill-mode-row"
+			role="group"
+			aria-label={t('drills.aria.modeGroup')}
+		>
 			{#each MODES as modeOption (modeOption.value)}
 				<button
 					type="button"
@@ -807,8 +826,9 @@
 			{/each}
 		</div>
 		<p class="text-label text-right font-mono uppercase" data-testid="score-register">
-			{Math.min(session.asked + 1, session.length)} OF {session.length} · {score.correct} RIGHT · {score.streak}
-			STREAK
+			{Math.min(session.asked + 1, session.length)} {t('drills.score.of')} {session.length} ·
+			{score.correct} {t('drills.score.right')} · {score.streak}
+			{t('drills.score.streak')}
 		</p>
 	</div>
 
@@ -817,22 +837,22 @@
 			class="border-ink bg-paper-bright stamp mt-8 border-2 px-2 py-6 sm:px-6"
 			data-testid="session-end-card"
 		>
-			<p class="text-label font-mono uppercase">ROUND COMPLETE</p>
+			<p class="text-label font-mono uppercase">{t('drills.end.roundComplete')}</p>
 			<p class="text-display mt-2 font-mono font-bold">
 				{sessionSummary.correct} / {sessionSummary.total}
 			</p>
 			<p class="text-label font-mono uppercase" data-testid="end-card-streak">
-				BEST RUN: {sessionSummary.bestStreak} IN A ROW
+				{t('drills.end.bestRunPrefix')} {sessionSummary.bestStreak} {t('drills.end.bestRunSuffix')}
 			</p>
 
 			{#if sessionSummary.missedItems.length > 0}
-				<p class="text-body mt-6">Worth another look:</p>
+				<p class="text-body mt-6">{t('drills.end.worthAnotherLook')}</p>
 				<div class="mt-2 flex flex-wrap gap-2" data-testid="end-card-misses">
 					{#each sessionSummary.missedItems as missed (`${missed.family}:${missed.symbol}`)}
 						<Button
 							type="button"
 							variant="ghost"
-							aria-label={`Redrill ${missed.symbol}`}
+							aria-label={`${t('drills.aria.redrillPrefix')} ${missed.symbol}`}
 							onclick={() => redrillMiss(missed)}
 						>
 							<span class="font-serif font-bold">{missed.symbol}</span>
@@ -840,47 +860,53 @@
 					{/each}
 				</div>
 			{:else}
-				<p class="text-body mt-6">Clean sheet. The press ran true, mon ami.</p>
+				<p class="text-body mt-6">{t('drills.end.cleanSheet')}</p>
 			{/if}
 
 			{#if unlockSuggestion !== null && unlockSuggestion.nextTier !== null && !unlockDismissed}
 				<div class="border-ink mt-6 border-2 p-4" data-testid="unlock-card">
 					<p class="text-label font-mono uppercase">
-						TIER {unlockSuggestion.nextTier} LOOKS READY
+						{t('drills.unlock.tierPrefix')} {unlockSuggestion.nextTier} {t(
+							'drills.unlock.tierSuffix'
+						)}
 					</p>
 					<p class="text-body mt-2">
-						Your last {unlockSuggestion.rollingCount} answers are {Math.round(
-							unlockSuggestion.rollingAccuracy * 100
-						)}% correct across {unlockSuggestion.distinctDays} days. Unlock {tierById(
+						{t('drills.unlock.prefix')} {unlockSuggestion.rollingCount} {t(
+							'drills.unlock.answersAre'
+						)} {Math.round(unlockSuggestion.rollingAccuracy * 100)}{t(
+							'drills.unlock.correctAcross'
+						)} {unlockSuggestion.distinctDays} {t('drills.unlock.daysUnlock')} {tierById(
 							unlockSuggestion.nextTier
-						).name.toLowerCase()}: {tierById(unlockSuggestion.nextTier)
+						).name.toLowerCase()}{t('drills.unlock.colon')} {tierById(unlockSuggestion.nextTier)
 							.qualities.map(qualityLabel)
-							.join(', ')}?
+							.join(', ')}{t('drills.unlock.questionMark')}
 					</p>
 					<div class="mt-4 flex flex-wrap gap-4">
 						<Button type="button" variant="primary" onclick={unlockNextTier}>
-							Unlock Tier {unlockSuggestion.nextTier}
+							{t('drills.unlock.button.prefix')} {unlockSuggestion.nextTier}
 						</Button>
-						<Button type="button" variant="ghost" onclick={snoozeUnlock}>Not yet</Button>
+						<Button type="button" variant="ghost" onclick={snoozeUnlock}
+							>{t('drills.common.notYet')}</Button
+						>
 					</div>
 				</div>
 			{/if}
 
 			<div class="mt-6">
 				<Button type="button" variant="primary" onclick={() => startNewRound()}>
-					Run it again
+					{t('drills.end.runAgain')}
 				</Button>
 			</div>
 		</div>
 	{:else}
 	<div class="mt-8">
 		<SongFilterToggle
-			poolLabel="PRACTICE POOL"
+			poolLabel={t('drills.filter.poolLabel')}
 			on={songFilterOn}
 			onToggle={toggleSongFilter}
-			note={songFallbackActive ? 'No active songs yet, so showing the full library instead.' : undefined}
-			noteOn={`Filter on: practicing the ${songChordCount} chords from your active songs only.`}
-			noteOff="Filter off: full chord library. Chords from your songs still carry their mark."
+			note={songFallbackActive ? t('drills.filter.noteFallback') : undefined}
+			noteOn={`${t('drills.filter.noteOnPrefix')} ${songChordCount} ${t('drills.filter.noteOnSuffix')}`}
+			noteOff={t('drills.filter.noteOff')}
 		/>
 	</div>
 	<div
@@ -889,9 +915,9 @@
 	>
 		{#if !hintDismissed}
 			<p class="drill-layout__hint text-label border-ink flex items-center justify-between gap-4 border-2 px-3 py-2 font-mono uppercase" data-testid="rotate-hint">
-				<span>Turn the phone sideways for the full two-octave board.</span>
+				<span>{t('drills.hint.rotate')}</span>
 				<button type="button" class="text-label shrink-0 font-mono underline" onclick={dismissHint}>
-					Got it
+					{t('drills.hint.gotIt')}
 				</button>
 			</p>
 		{/if}
@@ -909,11 +935,11 @@
 				<div class="mt-2">
 					<SongMark songs={songsForSymbol(question.symbol, provenanceIndex)} />
 				</div>
-				<p class="text-body mt-4">Click the notes for {question.symbol}.</p>
+				<p class="text-body mt-4">{t('drills.prompt.clickNotesFor')} {question.symbol}.</p>
 
 				{#if scaffoldStage === 'formula-first'}
 					<div class="border-ink mt-4 border-2 p-4" data-testid="scaffold-card">
-						<p class="text-label font-mono uppercase">NEW CHORD. FORMULA FIRST.</p>
+						<p class="text-label font-mono uppercase">{t('drills.scaffold.newChord')}</p>
 						<div class="mt-3 flex flex-wrap gap-4">
 							{#each formulaFor(target) as entry (entry.role + entry.letter)}
 								<div class="flex flex-col items-center gap-1">
@@ -923,7 +949,7 @@
 								</div>
 							{/each}
 						</div>
-						<p class="text-muted mt-3">Read it, then play it. This one counts as assisted.</p>
+						<p class="text-muted mt-3">{t('drills.scaffold.readThenPlay')}</p>
 					</div>
 				{:else if scaffoldStage === 'hinted' && !answered}
 					{#if hintTaken}
@@ -938,7 +964,9 @@
 						</div>
 					{:else}
 						<div class="mt-4">
-							<Button type="button" variant="ghost" onclick={takeHint}>Show formula</Button>
+							<Button type="button" variant="ghost" onclick={takeHint}
+								>{t('drills.hint.showFormula')}</Button
+							>
 						</div>
 					{/if}
 				{/if}
@@ -969,11 +997,13 @@
 						disabled={selected.size === 0}
 						onclick={checkAnswer}
 					>
-						Check
+						{t('drills.button.check')}
 					</Button>
 				</div>
 				<div class="drill-controls__secondary">
-					<Button type="button" variant="ghost" onclick={clearSelection}>Clear</Button>
+					<Button type="button" variant="ghost" onclick={clearSelection}
+						>{t('drills.button.clear')}</Button
+					>
 				</div>
 			</div>
 		{:else if question.kind === 'chord'}
@@ -983,7 +1013,7 @@
 						{SOURCE_TAGS[questionSource]}
 					</p>
 				{/if}
-				<p class="text-body">Name this chord.</p>
+				<p class="text-body">{t('drills.prompt.nameChord')}</p>
 				<div class="mt-2">
 					<SongMark songs={songsForSymbol(question.symbol, provenanceIndex)} />
 				</div>
@@ -1000,7 +1030,7 @@
 							type="button"
 							variant="ghost"
 							disabled={answered}
-							aria-label={`Answer: ${choice}`}
+							aria-label={`${t('drills.aria.answerPrefix')} ${choice}`}
 							onclick={() => selectChoice(choice)}
 						>
 							<span class="font-serif text-heading font-bold">{choice}</span>
@@ -1015,7 +1045,7 @@
 						{SOURCE_TAGS[questionSource]}
 					</p>
 				{/if}
-				<p class="text-body">Name this interval.</p>
+				<p class="text-body">{t('drills.prompt.nameInterval')}</p>
 			</div>
 
 			<div class="drill-layout__keyboard">
@@ -1029,7 +1059,7 @@
 							type="button"
 							variant="ghost"
 							disabled={answered}
-							aria-label={`Answer: ${choice}`}
+							aria-label={`${t('drills.aria.answerPrefix')} ${choice}`}
 							onclick={() => selectIntervalChoice(choice)}
 						>
 							<span class="flex flex-col items-center">
@@ -1048,7 +1078,9 @@
 					</p>
 				{/if}
 				<p class="text-body" data-testid="interval-construction-prompt">
-					Tap a <span class="font-mono font-bold">{question.interval.short}</span> above
+					{t('drills.prompt.tapPrefix')}
+					<span class="font-mono font-bold">{question.interval.short}</span>
+					{t('drills.prompt.tapAboveInfix')}
 					<span class="font-mono font-bold">{question.root}</span>.
 					<span class="text-muted">{capitalizeFr(question.interval.longFr)}.</span>
 				</p>
@@ -1068,7 +1100,7 @@
 						<p class="text-label text-mustard font-mono uppercase">{headlineText}</p>
 					</div>
 					{#if question.kind === 'chord'}
-						<p class="text-muted mt-4">Here is the shape:</p>
+						<p class="text-muted mt-4">{t('drills.feedback.hereIsShape')}</p>
 						{#if question.direction === 'identification'}
 							<div class="mt-4 flex items-start gap-4">
 								<ChordGlyph root={target.root} quality={target.symbol.slice(target.root.length)} />
@@ -1082,7 +1114,7 @@
 										style="background-color: var(--color-third);"
 										aria-hidden="true"
 									></span>
-									The chord
+									{t('drills.feedback.legendChord')}
 								</span>
 								<span class="inline-flex items-center gap-2">
 									<span
@@ -1090,7 +1122,7 @@
 										style="background-color: var(--color-wrong);"
 										aria-hidden="true"
 									></span>
-									Your extra note
+									{t('drills.feedback.legendExtra')}
 								</span>
 							</p>
 						{/if}
@@ -1108,14 +1140,14 @@
 							givenSymbol={question.direction === 'identification' ? givenSymbol : undefined}
 						/>
 					{:else}
-						<p class="text-muted mt-4">Here is the interval:</p>
+						<p class="text-muted mt-4">{t('drills.feedback.hereIsInterval')}</p>
 						<p class="text-label mt-2 font-mono uppercase" data-testid="interval-answer-line">
 							{question.interval.short} · {question.interval.longFr}
 						</p>
 						{#if question.direction === 'construction' && tappedReadout}
 							<p class="text-label mt-2 font-mono uppercase" data-testid="interval-tap-line">
-								You tapped {tappedReadout.letter} · {tappedReadout.info.short} · {tappedReadout.info
-									.longFr}
+								{t('drills.feedback.youTapped')} {tappedReadout.letter} · {tappedReadout.info.short} ·
+								{tappedReadout.info.longFr}
 							</p>
 						{/if}
 						<SongHook short={question.interval.short} />
@@ -1129,7 +1161,7 @@
 
 		{#if answered}
 			<div class="drill-layout__next">
-				<Button type="button" variant="primary" onclick={nextQuestion}>Next</Button>
+				<Button type="button" variant="primary" onclick={nextQuestion}>{t('drills.button.next')}</Button>
 			</div>
 		{/if}
 	</div>

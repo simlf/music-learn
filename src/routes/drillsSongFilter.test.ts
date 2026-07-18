@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, cleanup } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { saveSong } from '$lib/practice/songs';
+import { setLocale } from '$lib/i18n/locale.svelte';
 
 /**
  * SONG-01/SONG-02 wiring test for Drills (Phase 18, Plan 02): the SongMark
@@ -148,6 +149,7 @@ beforeEach(() => {
 afterEach(() => {
 	cleanup();
 	vi.restoreAllMocks();
+	setLocale('en');
 });
 
 describe('SongMark on the Drills prompt (SONG-01)', () => {
@@ -329,5 +331,25 @@ describe('Lesson-seeds handoff to Drills (LEARN-03)', () => {
 		renderPage();
 
 		expect(screen.getByTestId('question-source-tag')).toHaveTextContent('FROM YOUR LESSON');
+	});
+});
+
+describe('Drills renders in French (I18N-02, Phase 20 Plan 04)', () => {
+	it('shows the French construction prompt and the DE TA LEÇON tag under fr, with the chord symbol rendering identically to EN', () => {
+		consumeLessonSeedsMock.mockImplementation((): string[] => ['Cm7']);
+		drawFromPoolMock.mockReturnValue({ symbol: 'Cm7', bucket: 'tier', scaffoldStage: null });
+		forceConstruction();
+		setLocale('fr');
+
+		renderPage();
+
+		const tag = screen.getByTestId('question-source-tag');
+		expect(tag).toHaveTextContent('DE TA LEÇON');
+		expect(screen.getByText('Clique sur les notes de Cm7.')).toBeInTheDocument();
+
+		// The chord symbol itself (ChordGlyph's root/quality spans) renders
+		// verbatim regardless of locale (I18N-02 immunity boundary).
+		expect(screen.getAllByText('C').length).toBeGreaterThan(0);
+		expect(screen.getAllByText('m7').length).toBeGreaterThan(0);
 	});
 });
