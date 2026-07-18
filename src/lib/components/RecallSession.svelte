@@ -119,6 +119,7 @@
 		| 'loading'
 		| 'empty-no-deck'
 		| 'empty-none-due'
+		| 'empty-filtered-none-due'
 		| 'reviewing'
 		| 'complete'
 		| 'error';
@@ -128,6 +129,8 @@
 	let cardsByKey = $state(new Map<string, CardRecord>());
 	let revealed = $state(false);
 	let reviewedCount = $state(0);
+	/** MD-02: how many real due cards the song filter is currently hiding, for the filter-aware empty message. */
+	let filteredHiddenCount = $state(0);
 
 	// ---- Mode A ('see-play') per-card state --------------------------------
 	// See the symbol, play it on the keyboard, grade by chroma set equality
@@ -186,8 +189,19 @@
 		pageState = 'loading';
 		try {
 			await introduceNewCards();
-			const due = applySongFilter(await getDueCards());
+			const rawDue = await getDueCards();
+			const due = applySongFilter(rawDue);
 			if (due.length === 0) {
+				// MD-02: distinguish "the filter hid everything" from "truly
+				// nothing due" - rawDue is only non-empty here when
+				// applySongFilter actually restricted the set (filter ON with a
+				// non-empty provenance index), so real due cards exist but are
+				// hidden, never genuinely absent.
+				if (rawDue.length > 0) {
+					filteredHiddenCount = rawDue.length;
+					pageState = 'empty-filtered-none-due';
+					return;
+				}
 				const all = await getAllCards();
 				pageState = all.length === 0 ? 'empty-no-deck' : 'empty-none-due';
 				return;
@@ -560,6 +574,18 @@
 		<p class="text-heading font-bold">Nothing due today.</p>
 		<p class="text-body mt-4">
 			Every card's tucked in for later. Come back tomorrow, or warm up with free practice.
+		</p>
+		<div class="mt-6">
+			<Button variant="ghost" href="/drills">Practice Now</Button>
+		</div>
+	</div>
+{:else if pageState === 'empty-filtered-none-due'}
+	<div data-testid="recall-empty-filtered-none-due">
+		<p class="text-heading font-bold">No song chords due today.</p>
+		<p class="text-body mt-4">
+			{filteredHiddenCount}
+			{filteredHiddenCount === 1 ? 'other card is' : 'other cards are'} waiting. Turn the filter off
+			to see them.
 		</p>
 		<div class="mt-6">
 			<Button variant="ghost" href="/drills">Practice Now</Button>

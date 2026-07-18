@@ -1093,6 +1093,44 @@ describe('RecallSession song-filter queue restriction (SONG-02, 18-03)', () => {
 		await waitFor(() => screen.getByTestId('recall-register'));
 		expect(screen.getByTestId('recall-register')).toHaveTextContent('2 LEFT TODAY');
 	});
+
+	/**
+	 * MD-02 regression: when the song filter hides every real due card, the
+	 * page must not fold into the generic "Nothing due today" copy (which is
+	 * factually wrong here - real due cards exist, they're just hidden). A
+	 * distinct filter-aware message surfaces instead, so a user can't let real
+	 * due cards go stale indefinitely without realizing the filter is why.
+	 */
+	it('with the filter ON hiding every due card while real due cards exist, shows a distinct filter-aware empty message (MD-02)', async () => {
+		const nonSongChordCard = makeCard('chord-formula:Gm7', 'chord-formula', 'formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([nonSongChordCard]);
+		getAllCardsMock.mockResolvedValue([nonSongChordCard]);
+
+		const provenanceIndex = new Map([[normalizeSymbolForMatch('Cm7'), ['Autumn Leaves']]]);
+		renderRecallSession({ songFilterOn: true, provenanceIndex });
+
+		await waitFor(() => screen.getByTestId('recall-empty-filtered-none-due'));
+		expect(screen.getByText('No song chords due today.')).toBeInTheDocument();
+		expect(screen.getByText(/1 other card is waiting\. Turn the filter off to see them\./)).toBeInTheDocument();
+		// Never the generic message, which would be factually wrong here.
+		expect(screen.queryByTestId('recall-empty-none-due')).not.toBeInTheDocument();
+		expect(screen.queryByText('Nothing due today.')).not.toBeInTheDocument();
+	});
+
+	it('with the filter ON hiding multiple due cards, pluralizes the hidden-card count correctly (MD-02)', async () => {
+		const gm7 = makeCard('chord-formula:Gm7', 'chord-formula', 'formula');
+		const dm7 = makeCard('chord-formula:Dm7', 'chord-formula', 'formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([gm7, dm7]);
+		getAllCardsMock.mockResolvedValue([gm7, dm7]);
+
+		const provenanceIndex = new Map([[normalizeSymbolForMatch('Cm7'), ['Autumn Leaves']]]);
+		renderRecallSession({ songFilterOn: true, provenanceIndex });
+
+		await waitFor(() => screen.getByTestId('recall-empty-filtered-none-due'));
+		expect(screen.getByText(/2 other cards are waiting\. Turn the filter off to see them\./)).toBeInTheDocument();
+	});
 });
 
 /**
