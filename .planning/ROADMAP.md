@@ -530,11 +530,11 @@ Plans:
 
 **Design reference**: `.planning/sketches/013-french-fit-test/` (winner Variant A: header toggle; C stress-panel is the overflow audit)
 **UI hint**: yes
-**Plans**: 10 plans
+**Plans**: 1/10 plans executed
 
 **Wave 1**
 
-- [ ] 20-01-PLAN.md — i18n foundation: reactive locale store + t() + per-domain dictionaries + LocaleToggle + masthead nav flip (I18N-01/02)
+- [x] 20-01-PLAN.md — i18n foundation: reactive locale store + t() + per-domain dictionaries + LocaleToggle + masthead nav flip (I18N-01/02)
 
 **Wave 2** *(parallel: file-disjoint per-surface conversions, blocked on Wave 1)*
 
@@ -579,4 +579,4 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 | 17. Chord Explainer | 0/TBD | Pending | - |
 | 18. Your Songs' Chords | 4/4 | Complete    | 2026-07-18 |
 | 19. Interactive Theory | 4/4 | Complete    | 2026-07-18 |
-| 20. French Translation | 0/10 | Planned | - |
+| 20. French Translation | 1/10 | In Progress|  |
