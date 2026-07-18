@@ -20,7 +20,7 @@ import type { LocaleDict } from './index';
  * progress.ts, added as a Phase 20 addendum) rather than a drills.ts key -
  * LevelPicker.svelte imports `t()` and looks those keys up directly.
  */
-export const drills: LocaleDict = {
+export const drills = {
 	en: {
 		'drills.page.title': 'Drills',
 
@@ -204,4 +204,4 @@ export const drills: LocaleDict = {
 
 		'drills.scaffold.caption': 'Cet accord est'
 	}
-};
+} satisfies LocaleDict;

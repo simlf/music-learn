@@ -6,12 +6,12 @@
 	import { getApiToken } from '$lib/api/client';
 	import StreakBadge from '$lib/components/StreakBadge.svelte';
 	import LocaleToggle from '$lib/components/LocaleToggle.svelte';
-	import { initLocale, t } from '$lib/i18n/locale.svelte';
+	import { initLocale, t, type MessageKey } from '$lib/i18n/locale.svelte';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
 
-	const navLinks = [
+	const navLinks: { href: string; labelKey: MessageKey }[] = [
 		{ href: '/', labelKey: 'nav.lookup' },
 		{ href: '/drills', labelKey: 'nav.drills' },
 		{ href: '/build', labelKey: 'nav.build' },

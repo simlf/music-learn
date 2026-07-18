@@ -12,7 +12,7 @@ import type { LocaleDict } from './index';
  * day-interval sub-label (e.g. "1d") stay identical in both locales and
  * are never routed through t().
  */
-export const recall: LocaleDict = {
+export const recall = {
 	en: {
 		// Grade buttons (locked FR strings, 20-UI-SPEC "Grading buttons").
 		'recall.grade.again': 'Again',
@@ -214,4 +214,4 @@ export const recall: LocaleDict = {
 		'recall.page.note.off':
 			"Filtre désactivé : bibliothèque d'accords complète. Les accords de tes morceaux gardent leur repère."
 	}
-};
+} satisfies LocaleDict;

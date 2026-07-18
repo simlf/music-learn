@@ -3,7 +3,7 @@ import { createRawSnippet, flushSync } from 'svelte';
 import { readable } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { messages } from './messages/index';
-import { setLocale, t } from './locale.svelte';
+import { setLocale, t, type MessageKey } from './locale.svelte';
 import { newCard } from '$lib/srs/scheduler';
 import type { CardRecord } from '$lib/srs/deck';
 import { intervalFromRoot } from '$lib/theory/interval';
@@ -510,7 +510,7 @@ describe('Chord/glyph/interval-shorthand/solfège immunity across surfaces (I18N
 
 describe('No raw-key leak across every domain (I18N-02)', () => {
 	it('every catalog key resolves to a real value (not the bare key) in both en and fr', () => {
-		const keys = Object.keys(messages.en);
+		const keys = Object.keys(messages.en) as MessageKey[];
 		expect(keys.length).toBeGreaterThan(0);
 
 		for (const key of keys) {
@@ -520,7 +520,7 @@ describe('No raw-key leak across every domain (I18N-02)', () => {
 	});
 
 	it('t() resolves a representative key from every domain under both locales', () => {
-		const sample = [
+		const sample: MessageKey[] = [
 			'nav.drills', // chrome
 			'recall.grade.again', // recall
 			'build.caption.root', // build

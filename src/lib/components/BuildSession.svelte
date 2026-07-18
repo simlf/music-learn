@@ -22,7 +22,7 @@
 	import { newCard, Rating } from '$lib/srs/scheduler';
 	import { scaleFormulaFactId } from '$lib/srs/facts';
 	import { ensureAudioReady, playArpeggio, playChord, soundEnabled, studyModeEnabled } from '$lib/audio/audio';
-	import { currentLocale, t } from '$lib/i18n/locale.svelte';
+	import { currentLocale, t, type MessageKey } from '$lib/i18n/locale.svelte';
 	import Button from './Button.svelte';
 	import ChordGlyph from './ChordGlyph.svelte';
 	import IntervalChip from './IntervalChip.svelte';
@@ -837,7 +837,9 @@
 							<p class="text-body mt-2" data-testid="build-diagnostic">
 								{feedback.semitones}
 								{feedback.semitones === 1 ? t('build.unit.halfStep') : t('build.unit.halfSteps')}
-								{t('build.diagnostic.too')} {t(`build.direction.${feedback.direction}`)}.
+								{t('build.diagnostic.too')} {t(
+									`build.direction.${feedback.direction}` as MessageKey
+								)}.
 							</p>
 							{#if promptStep}
 								<p class="text-body mt-2" data-testid="build-restatement">

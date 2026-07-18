@@ -13,6 +13,21 @@ import { messages } from './messages/index';
  */
 export type Locale = 'en' | 'fr';
 
+/**
+ * The full key union of the merged catalog (WR-03): derived from
+ * `messages.en`'s literal-keyed shape (every domain dict is declared with
+ * `satisfies LocaleDict` rather than `: LocaleDict`, which is what keeps its
+ * keys as literal string types instead of widening to `Record<string,
+ * string>`). A typo'd `t('nav.drils')` call site is now a compile-time
+ * `npm run check` error instead of a silent raw-key leak at runtime.
+ *
+ * A handful of call sites build a key from runtime data via a template
+ * literal (e.g. `t(\`progress.tier.${id}.name\`)`); those keep compiling via
+ * a documented `as MessageKey` cast at each such site, rather than widening
+ * this type back to `string`.
+ */
+export type MessageKey = keyof typeof messages.en;
+
 const STORAGE_KEY = 'music-learn:locale';
 
 /** Default is 'en' so the adapter-static prerender is deterministic. */
@@ -70,7 +85,7 @@ export function initLocale(): void {
  * only - always rendered via Svelte's auto-escaped `{t(...)}` interpolation,
  * never `{@html}` (T-20-02).
  */
-export function t(key: string): string {
+export function t(key: MessageKey): string {
 	const lang = current;
 	return messages[lang][key] ?? messages.en[key] ?? key;
 }

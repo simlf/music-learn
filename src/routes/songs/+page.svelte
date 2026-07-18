@@ -4,7 +4,7 @@
 	import { spellChord } from '$lib/theory/chord';
 	import { didYouMean } from '$lib/theory/didYouMean';
 	import Button from '$lib/components/Button.svelte';
-	import { t } from '$lib/i18n/locale.svelte';
+	import { t, type MessageKey } from '$lib/i18n/locale.svelte';
 
 	/**
 	 * The song list. Initialized synchronously like the lookup page's recents:
@@ -278,7 +278,9 @@
 						onclick={() => addPreset(preset)}
 					>
 						<span class="block font-bold">{preset.name}</span>
-						<span class="text-muted mt-1 block">{t(`songs.preset.${preset.presetId}.note`)}</span>
+						<span class="text-muted mt-1 block"
+							>{t(`songs.preset.${preset.presetId}.note` as MessageKey)}</span
+						>
 						<span class="text-label text-muted mt-2 block font-mono uppercase">
 							{preset.chordSymbols.length} {t('songs.page.presets.chordsSuffix')}
 						</span>

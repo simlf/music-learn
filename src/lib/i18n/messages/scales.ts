@@ -20,7 +20,7 @@ import type { LocaleDict } from './index';
  * itself is owned by Plan 20-09 and is never edited from this file; this
  * page only supplies its `idleText` prop via a translated key.
  */
-export const scales: LocaleDict = {
+export const scales = {
 	en: {
 		'scales.page.title': 'Scales',
 		'scales.page.subtitle':
@@ -82,4 +82,4 @@ export const scales: LocaleDict = {
 
 		'scales.inspect.idle': "Touche une note pour l'inspecter."
 	}
-};
+} satisfies LocaleDict;

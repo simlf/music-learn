@@ -23,7 +23,7 @@ import type { LocaleDict } from './index';
  * locale-aware. `presets.ts` itself stays an English-only data module (its
  * own `presets.test.ts` asserts the raw `note` string literals directly).
  */
-export const songs: LocaleDict = {
+export const songs = {
 	en: {
 		// SongMark (shared, Drills/Recall/Lookup/Songs).
 		'songs.mark.count': '{N} SONGS',
@@ -170,4 +170,4 @@ export const songs: LocaleDict = {
 		'songs.preset.fly-me-to-the-moon-c.note':
 			'En do, en orbite autour de la mineur. Les extensions comme G9 et E7b9 sont enregistrées en G7 et E7.'
 	}
-};
+} satisfies LocaleDict;

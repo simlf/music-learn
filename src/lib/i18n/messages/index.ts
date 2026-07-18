@@ -25,7 +25,7 @@ export interface LocaleDict {
  * plans touch only their own file and this merge point never needs editing
  * again once all nine modules exist.
  */
-export const messages: LocaleDict = {
+export const messages = {
 	en: {
 		...chrome.en,
 		...recall.en,
@@ -48,4 +48,4 @@ export const messages: LocaleDict = {
 		...progress.fr,
 		...home.fr
 	}
-};
+} satisfies LocaleDict;

@@ -26,7 +26,7 @@ import type { LocaleDict } from './index';
  * /progress) renders through instead of the raw `tier.name`/`tier.blurb`
  * fields, keyed by the tier's stable numeric id.
  */
-export const progress: LocaleDict = {
+export const progress = {
 	en: {
 		'progress.page.title': 'Progress',
 
@@ -184,4 +184,4 @@ export const progress: LocaleDict = {
 		'progress.tier.6.blurb':
 			"Neuvièmes, dominantes altérées et d'autres couleurs harmoniques. Bientôt disponible."
 	}
-};
+} satisfies LocaleDict;

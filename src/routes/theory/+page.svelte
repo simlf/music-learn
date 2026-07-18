@@ -7,7 +7,7 @@
 	import NoteLabel from '$lib/components/NoteLabel.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import InteractiveLesson from '$lib/components/InteractiveLesson.svelte';
-	import { t } from '$lib/i18n/locale.svelte';
+	import { t, type MessageKey } from '$lib/i18n/locale.svelte';
 
 	/**
 	 * /theory (Track D): six short shape-first lessons decoding jazz chord
@@ -19,7 +19,7 @@
 	 */
 
 	/** The five seventh shapes on C, with their triad + 7th construction captions. */
-	const SEVENTH_SHAPES = [
+	const SEVENTH_SHAPES: { symbol: string; suffix: string; captionKey: MessageKey }[] = [
 		{ symbol: 'Cmaj7', suffix: 'maj7', captionKey: 'theory.sevenths.caption.maj7' },
 		{ symbol: 'C7', suffix: '7', captionKey: 'theory.sevenths.caption.dom7' },
 		{ symbol: 'Cm7', suffix: 'm7', captionKey: 'theory.sevenths.caption.m7' },
@@ -28,7 +28,7 @@
 	];
 
 	/** The diatonic sevenths of C major: all white keys, four qualities, their day jobs. */
-	const ANCHOR_CHORDS = [
+	const ANCHOR_CHORDS: { symbol: string; captionKey: MessageKey }[] = [
 		{ symbol: 'Cmaj7', captionKey: 'theory.anchor.caption.i' },
 		{ symbol: 'Dm7', captionKey: 'theory.anchor.caption.ii' },
 		{ symbol: 'Em7', captionKey: 'theory.anchor.caption.iii' },

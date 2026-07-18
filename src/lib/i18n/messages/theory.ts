@@ -10,7 +10,7 @@ import type { LocaleDict } from './index';
  * the mnemonic hook lines themselves (mnemonics.ts is owned by 20-09; only
  * this file's OWN "The hook" sidebar label is keyed here).
  */
-export const theory: LocaleDict = {
+export const theory = {
 	en: {
 		'theory.page.title': 'Theory',
 		'theory.page.subtitle':
@@ -149,4 +149,4 @@ export const theory: LocaleDict = {
 
 		'theory.footer.drillsButton': 'Direction les exercices'
 	}
-};
+} satisfies LocaleDict;

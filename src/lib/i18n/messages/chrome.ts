@@ -6,7 +6,7 @@ import type { LocaleDict } from './index';
  * IDENTICAL in en and fr - "MUSIC LEARN" is a proper noun and never
  * translates (locked in 20-UI-SPEC.md).
  */
-export const chrome: LocaleDict = {
+export const chrome = {
 	en: {
 		'nav.lookup': 'Lookup',
 		'nav.drills': 'Drills',
@@ -35,4 +35,4 @@ export const chrome: LocaleDict = {
 		'locale.aria.en': 'EN, anglais',
 		'locale.aria.fr': 'FR, français'
 	}
-};
+} satisfies LocaleDict;

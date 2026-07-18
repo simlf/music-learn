@@ -10,7 +10,7 @@ import type { LocaleDict } from './index';
  * are NEVER keyed here - they render verbatim from the theory engine
  * regardless of locale (20-UI-SPEC "Chord Glyph & Symbol Immunity").
  */
-export const home: LocaleDict = {
+export const home = {
 	en: {
 		'home.title': 'Chord lookup',
 		'home.input.placeholder': 'Type a chord: Cm7, F♯ø7, B♭maj7...',
@@ -42,4 +42,4 @@ export const home: LocaleDict = {
 		'home.inspect.semitones.singular': 'demi-ton',
 		'home.inspect.semitones.plural': 'demi-tons'
 	}
-};
+} satisfies LocaleDict;

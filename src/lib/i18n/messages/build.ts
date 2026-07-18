@@ -12,7 +12,7 @@ import type { LocaleDict } from './index';
  * vocabulary here (Build's own domain, not a re-derivation of the
  * degree/quality noun-and-adjective machinery already in interval.ts).
  */
-export const build: LocaleDict = {
+export const build = {
 	en: {
 		'build.kind.chords': 'Chords',
 		'build.kind.scales': 'Scales',
@@ -197,4 +197,4 @@ export const build: LocaleDict = {
 		'build.page.title': 'Construire',
 		'build.page.subtitle': "Gagne chaque note. Empile l'intervalle, ne te contente pas de le lire."
 	}
-};
+} satisfies LocaleDict;
