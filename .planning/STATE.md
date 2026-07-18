@@ -4,17 +4,17 @@ milestone: v2.1
 milestone_name: Playability & Comprehension
 current_phase: 18
 current_phase_name: Your Songs' Chords
-status: executing
-stopped_at: Completed 18-02-PLAN.md
-last_updated: "2026-07-18T12:24:30.497Z"
+status: verifying
+stopped_at: Completed 18-04-PLAN.md
+last_updated: "2026-07-18T12:30:39.159Z"
 last_activity: 2026-07-18
 last_activity_desc: Phase 18 execution started
 progress:
   total_phases: 19
-  completed_phases: 10
+  completed_phases: 11
   total_plans: 60
-  completed_plans: 57
-  percent: 53
+  completed_plans: 58
+  percent: 58
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 
 Phase: 18 (Your Songs' Chords) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-18 — Phase 18 execution started
 
 **v2.0 Learning Upgrade (Phases 10-13): COMPLETE (shipped 2026-07-15).**
@@ -129,6 +129,7 @@ Last activity: 2026-07-18 — Phase 18 execution started
 | Phase 18 P01 | 15min | 3 tasks | 6 files |
 | Phase 18 P02 | 30min | 2 tasks | 4 files |
 | Phase 18 P03 | 15min | 3 tasks | 4 files |
+| Phase 18 P04 | 12min | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -243,6 +244,7 @@ Recent decisions affecting current work:
 - [Phase 18-02]: drawFromSymbols is additive (new export beside drawFromPool), not a parameter bolted onto it, so the proven 0/60/25/15 bucket-weighting tests need zero changes — Keeps restricted and weighted draw paths provably independent
 - [Phase 18-02]: The Drills SONG-02 restriction lives in freshPoolQuestion, never in poolContext(): poolContext().songSymbols keeps feeding the existing always-on 60% song-bucket weighting for the filter-OFF case — Preserves the existing weighting seam per the plan's explicit prohibition
 - [Phase ?]: [Phase 18-03]: applySongFilter() is a dedicated named helper inside RecallSession's load(), mirroring 18-02's drawFromSymbols/drawFromPool call-site branching pattern
+- [Phase 18]: [Phase 18-04]: Lookup SongMark test harness dropped the removed Phase 15 keyboard dock context, rendering the page plainly (like drillsSongFilter.test.ts) since +page.svelte now renders PianoKeyboard inline after quick task 260718-iyj
 
 ### Pending Todos
 
@@ -274,7 +276,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-18T12:22:30.648Z
-Stopped at: Completed 18-02-PLAN.md
+Last session: 2026-07-18T12:30:39.151Z
+Stopped at: Completed 18-04-PLAN.md
 Resume file: 
 None

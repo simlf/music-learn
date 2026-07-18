@@ -39,7 +39,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 15: Playable Keyboard Everywhere** - A docked, always-playable keyboard on every keyboard-bearing page (sketch 008-A) (planned 2026-07-15) (completed 2026-07-15)
 - [ ] **Phase 16: Hear the Chord** - Auto-play + synced pulse on the BUILD reveal for audio memory (sketch 009-A) (planned 2026-07-15)
 - [ ] **Phase 17: Chord Explainer** - Escalating in-place hints for unknown chords in Recall (sketch 010-A) (planned 2026-07-15)
-- [ ] **Phase 18: Your Songs' Chords** - Song-provenance marks + a From-my-songs filter across the app (sketch 011-A) (planned 2026-07-15)
+- [x] **Phase 18: Your Songs' Chords** - Song-provenance marks + a From-my-songs filter across the app (sketch 011-A) (planned 2026-07-15) (completed 2026-07-18)
 - [ ] **Phase 19: Interactive Theory** - Guided-step beginner lessons that hand off into the first drill (sketch 012-A) (planned 2026-07-15)
 - [ ] **Phase 20: French Translation** - Header EN|FR toggle and a full French i18n layer (sketch 013-A) (planned 2026-07-15)
 
@@ -477,7 +477,7 @@ Plans:
 
 **Design reference**: `.planning/sketches/011-your-songs-chords/` (winner Variant A: provenance mark + filter)
 **UI hint**: yes
-**Plans**: 3/4 plans executed
+**Plans**: 4/4 plans complete
 
 **Wave 1**
 
@@ -487,7 +487,7 @@ Plans:
 
 - [x] 18-02-PLAN.md — Drills surface: SongMark in prompt + From my songs filter restricting the chord pool (SONG-01, SONG-02)
 - [x] 18-03-PLAN.md — Recall surface: SongMark across modes (hear-name spoiler-safe) + filter restricting the review queue (SONG-01, SONG-02)
-- [ ] 18-04-PLAN.md — Chord Lookup: SongMark in the result header (SONG-01)
+- [x] 18-04-PLAN.md — Chord Lookup: SongMark in the result header (SONG-01)
 
 ### Phase 19: Interactive Theory
 
@@ -543,6 +543,6 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 | 15. Playable Keyboard Everywhere | 7/7 | Complete    | 2026-07-15 |
 | 16. Hear the Chord | 5/6 | In Progress|  |
 | 17. Chord Explainer | 0/TBD | Pending | - |
-| 18. Your Songs' Chords | 3/4 | In Progress|  |
+| 18. Your Songs' Chords | 4/4 | Complete   | 2026-07-18 |
 | 19. Interactive Theory | 0/TBD | Pending | - |
 | 20. French Translation | 0/TBD | Pending | - |
