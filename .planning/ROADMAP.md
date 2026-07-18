@@ -40,7 +40,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 16: Hear the Chord** - Auto-play + synced pulse on the BUILD reveal for audio memory (sketch 009-A) (planned 2026-07-15)
 - [ ] **Phase 17: Chord Explainer** - Escalating in-place hints for unknown chords in Recall (sketch 010-A) (planned 2026-07-15)
 - [x] **Phase 18: Your Songs' Chords** - Song-provenance marks + a From-my-songs filter across the app (sketch 011-A) (planned 2026-07-15) (completed 2026-07-18)
-- [ ] **Phase 19: Interactive Theory** - Guided-step beginner lessons that hand off into the first drill (sketch 012-A) (planned 2026-07-15)
+- [x] **Phase 19: Interactive Theory** - Guided-step beginner lessons that hand off into the first drill (sketch 012-A) (planned 2026-07-15) (completed 2026-07-18)
 - [ ] **Phase 20: French Translation** - Header EN|FR toggle and a full French i18n layer (sketch 013-A) (planned 2026-07-15)
 
 ## Phase Details
@@ -502,7 +502,7 @@ Plans:
 
 **Design reference**: `.planning/sketches/012-interactive-theory/` (winner Variant A: guided steps; B lesson-map as the later container)
 **UI hint**: yes
-**Plans**: 3/4 plans executed
+**Plans**: 4/4 plans complete
 
 **Wave 1**
 
@@ -515,7 +515,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 19-04-PLAN.md — /theory integration: interactive lesson as the first section, static lessons intact (LEARN-01)
+- [x] 19-04-PLAN.md — /theory integration: interactive lesson as the first section, static lessons intact (LEARN-01)
 
 ### Phase 20: French Translation
 
@@ -558,5 +558,5 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 | 16. Hear the Chord | 5/6 | In Progress|  |
 | 17. Chord Explainer | 0/TBD | Pending | - |
 | 18. Your Songs' Chords | 4/4 | Complete    | 2026-07-18 |
-| 19. Interactive Theory | 3/4 | In Progress|  |
+| 19. Interactive Theory | 4/4 | Complete   | 2026-07-18 |
 | 20. French Translation | 0/TBD | Pending | - |
