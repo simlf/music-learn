@@ -5,15 +5,15 @@ milestone_name: Playability & Comprehension
 current_phase: 23
 current_phase_name: Phase-First UX for Phone
 status: executing
-stopped_at: Completed 22-03-PLAN.md
-last_updated: "2026-07-19T17:14:29.359Z"
+stopped_at: Completed 23-01-PLAN.md
+last_updated: "2026-07-19T19:34:27.411Z"
 last_activity: 2026-07-19
 last_activity_desc: Phase 23 execution started
 progress:
   total_phases: 22
   completed_phases: 17
   total_plans: 86
-  completed_plans: 82
+  completed_plans: 83
   percent: 77
 ---
 
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 ## Current Position
 
 Phase: 23 (Phase-First UX for Phone) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 23
+Plan: 2 of 4
+Status: Ready to execute
 Last activity: 2026-07-19 — Phase 23 execution started
 Full suite: 1284 tests green; svelte-check 0 errors.
 
@@ -148,6 +148,7 @@ Full suite: 1284 tests green; svelte-check 0 errors.
 | Phase 20 P08 | 25min | 3 tasks | 9 files |
 | Phase 20-french-translation P09 | 25min | 3 tasks | 13 files |
 | Phase 20 P10 | 20min | 2 tasks | 1 files |
+| Phase 23 P01 | 11min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -294,6 +295,8 @@ Recent decisions affecting current work:
 - [Phase 20-09]: RevealInsight needed no code changes; its French behavior is inherited from mnemonicFor()'s locale-reactivity.
 - [Phase ?]: Combined Task 1 (FR-wiring/immunity/no-key-leak) and Task 2 (I18N-03 fit-rule assertions) into one commit since both build the same coverage.test.ts file as one coherent gate
 - [Phase ?]: tiers.ts and presets.ts English residuals left untranslated (out of Phase 20 files_modified scope per 20-UI-SPEC.md); flagged for a future decision rather than silently expanded
+- [Phase ?]: isPhone read synchronously via guarded matchMedia at init so SSR/jsdom default to desktop, keeping existing drills suites green
+- [Phase ?]: Strip/sheet content branched with if isPhone / else exclusively, never dual-rendered
 
 ### Pending Todos
 
@@ -325,7 +328,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-18T19:55:16.679Z
-Stopped at: Completed 20-08-PLAN.md; merged origin/main (Phases 16/17)
+Last session: 2026-07-19T19:34:27.404Z
+Stopped at: Completed 23-01-PLAN.md
 Resume file: 
-.planning/phases/17-chord-explainer/17-UI-SPEC.md
+None

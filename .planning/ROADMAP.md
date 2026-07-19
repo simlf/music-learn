@@ -639,11 +639,11 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 **Requirements**: UX-1A, UX-1B, UX-1C
 **Depends on:** Phase 22
 **Source spec:** `.planning/phases/23-phase-first-ux-for-phone-bottom-tab-bar-nav-1a-drills-questi/SOURCE-SPEC.md`
-**Plans:** 4 plans (execution order 1B → 1C-server → 1C-ui → 1A)
+**Plans:** 1/4 plans executed
 
 **Wave 1** *(parallel: disjoint file sets)*
 
-- [ ] 23-01-PLAN.md — 1B Drills question-first reflow: BottomSheet primitive + phone compact strip + grid reflow (UX-1B)
+- [x] 23-01-PLAN.md — 1B Drills question-first reflow: BottomSheet primitive + phone compact strip + grid reflow (UX-1B)
 - [ ] 23-02-PLAN.md — 1C server: GET /streak `last7` 7-day field + client StreakResult mirror + server tests (UX-1C)
 
 **Wave 2** *(blocked on 23-02)*
