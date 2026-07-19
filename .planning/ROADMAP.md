@@ -606,6 +606,7 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 **Depends on:** Phase 20
 
 **Requirements delivered:**
+
 - **DPOL-01** — Selecting a preset song already in the list does not create a duplicate; the already-added preset is marked and clicking it surfaces the existing song instead of saving a copy.
 - **DPOL-02** — The /drills practice-pool (bassin de pratique) filter bar is visually discrete: it recedes during play and reveals on hover/focus on desktop, stays readable on touch, and its filter on/off state persists across sessions. Recall's use of the shared toggle is not broken.
 - **DPOL-03** — In the /drills answer reveal, an on-demand control replays the full chord (chord questions, both directions), reusing the existing audio engine.
@@ -613,3 +614,18 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 **Plans:** 1 plan
 
 - [x] 21-01-PLAN.md — Prevent duplicate preset (DPOL-01), discrete /drills filter bar (DPOL-02), on-demand chord replay (DPOL-03)
+
+### Phase 22: Installable PWA — add a service worker for offline app-shell caching, make the app installable on mobile (Android/Chrome + iOS add-to-home-screen polish), and surface a new-version update prompt
+
+**Goal:** The app installs like a native app on the user's phone for one-tap access next to the piano: a service worker caches the app shell so it opens instantly and works offline, the install/add-to-home-screen experience is correct on Android and iOS, and a new deploy surfaces a gentle "update available" prompt instead of silently serving a stale cached build.
+**Requirements**: PWA-01, PWA-02, PWA-03
+**Depends on:** Phase 9 (deploy/HTTPS), Phase 21
+
+**Requirements delivered:**
+- **PWA-01** — A service worker precaches the built app shell + static assets on install, cleans stale caches on activate, and serves cache-first with network fallback so the app loads offline and instantly on repeat visits. Built on SvelteKit's native `$service-worker` module (no new runtime dependency).
+- **PWA-02** — The app is installable on mobile: it meets Android/Chrome install criteria (manifest + active service worker over HTTPS) and the iOS add-to-home-screen presentation is correct (apple-mobile-web-app meta tags, title, status bar style, adequate apple-touch-icon). An in-app install affordance is optional.
+- **PWA-03** — When a new version is deployed, the user gets an unobtrusive bilingual "update available, reload" prompt (service-worker update flow) rather than being stuck on a stale cached build.
+
+**Plans:**
+
+- [ ] TBD (run /gsd-plan-phase 22 to break down)

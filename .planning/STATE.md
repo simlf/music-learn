@@ -153,6 +153,7 @@ Full suite: 1254 tests green; svelte-check 0 errors.
 ### Roadmap Evolution
 
 - Phase 21 added: Drills Polish — prevent duplicate song selection; make practice-pool container discrete (desktop hover reveal) + persist enabled state; replay played chord as a full chord for memorization.
+- Phase 22 added: Installable PWA — native SvelteKit service worker for offline app-shell caching, mobile installability (Android + iOS add-to-home-screen polish), and a new-version update prompt. Samples excluded from install precache.
 
 ### Decisions
 
