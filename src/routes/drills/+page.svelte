@@ -908,6 +908,7 @@
 			note={songFallbackActive ? t('drills.filter.noteFallback') : undefined}
 			noteOn={`${t('drills.filter.noteOnPrefix')} ${songChordCount} ${t('drills.filter.noteOnSuffix')}`}
 			noteOff={t('drills.filter.noteOff')}
+			discrete
 		/>
 	</div>
 	<div
