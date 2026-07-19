@@ -639,8 +639,17 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 **Requirements**: UX-1A, UX-1B, UX-1C
 **Depends on:** Phase 22
 **Source spec:** `.planning/phases/23-phase-first-ux-for-phone-bottom-tab-bar-nav-1a-drills-questi/SOURCE-SPEC.md`
-**Plans:** 0 plans (suggested order: 1B → 1C → 1A)
+**Plans:** 4 plans (execution order 1B → 1C-server → 1C-ui → 1A)
 
-Plans:
+**Wave 1** *(parallel: disjoint file sets)*
 
-- [ ] TBD (run /gsd-plan-phase 23 to break down)
+- [ ] 23-01-PLAN.md — 1B Drills question-first reflow: BottomSheet primitive + phone compact strip + grid reflow (UX-1B)
+- [ ] 23-02-PLAN.md — 1C server: GET /streak `last7` 7-day field + client StreakResult mirror + server tests (UX-1C)
+
+**Wave 2** *(blocked on 23-02)*
+
+- [ ] 23-03-PLAN.md — 1C UI: 7-day streak strip + inline accuracy bars + per-row DRILL + "Drill all N" (UX-1C)
+
+**Wave 3** *(blocked on 23-01: reuses BottomSheet; layout-wide)*
+
+- [ ] 23-04-PLAN.md — 1A bottom tab bar + slim phone header + safe-area bottom padding + masthead test split (UX-1A)
