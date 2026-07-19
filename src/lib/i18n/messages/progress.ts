@@ -56,6 +56,8 @@ export const progress = {
 		'progress.weakest.heading': 'Weakest Spots',
 		'progress.weakest.body': 'The chords and scales tripping you up most. Give these extra reps.',
 		'progress.weakest.cta': 'Drill these',
+		'progress.weakest.drillOne': 'Drill',
+		'progress.weakest.drillOneAria': 'Drill {ITEM}',
 
 		// All Stats section.
 		'progress.stats.heading': 'All Stats',
@@ -135,6 +137,8 @@ export const progress = {
 		'progress.weakest.body':
 			'Les accords et les gammes qui te posent le plus de souci. Fais-en quelques reprises de plus.',
 		'progress.weakest.cta': 'Exercer ceux-ci',
+		'progress.weakest.drillOne': 'Exercer',
+		'progress.weakest.drillOneAria': 'Exercer {ITEM}',
 
 		'progress.stats.heading': 'Toutes les statistiques',
 
