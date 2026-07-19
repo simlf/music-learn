@@ -609,6 +609,6 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 - **DPOL-02** — The /drills practice-pool (bassin de pratique) filter bar is visually discrete: it recedes during play and reveals on hover/focus on desktop, stays readable on touch, and its filter on/off state persists across sessions. Recall's use of the shared toggle is not broken.
 - **DPOL-03** — In the /drills answer reveal, an on-demand control replays the full chord (chord questions, both directions), reusing the existing audio engine.
 
-**Plans:**
+**Plans:** 1 plan
 
-- [ ] TBD (run /gsd-plan-phase 21 to break down)
+- [ ] 21-01-PLAN.md — Prevent duplicate preset (DPOL-01), discrete /drills filter bar (DPOL-02), on-demand chord replay (DPOL-03)
