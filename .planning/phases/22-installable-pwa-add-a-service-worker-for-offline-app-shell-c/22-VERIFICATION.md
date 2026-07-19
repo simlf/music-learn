@@ -1,7 +1,8 @@
 ---
 phase: 22-installable-pwa-add-a-service-worker-for-offline-app-shell-c
 verified: 2026-07-19T12:53:35Z
-status: human_needed
+status: passed
+status_note: "Shipped on user approval (2026-07-19). 9/9 must-haves verified at the code layer (1284 tests + svelte-check clean). The remaining items are inherently on-device (a service worker can't run in jsdom/preview); deploying is the prerequisite to exercising them, so this ships and the device checks run against the live deploy. See human_verification below."
 score: 9/9 must-haves verified (automated layer)
 behavior_unverified: 0
 overrides_applied: 0
