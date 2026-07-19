@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Playability & Comprehension
-current_phase: 22
-current_phase_name: Installable PWA
-status: verifying
+current_phase: 23
+current_phase_name: Phase-First UX for Phone
+status: executing
 stopped_at: Completed 22-03-PLAN.md
-last_updated: "2026-07-19T12:31:44.398Z"
+last_updated: "2026-07-19T17:14:29.359Z"
 last_activity: 2026-07-19
-last_activity_desc: Phase 22 executed + code-verified (9/9); PWA behaviors pending on-device checks
+last_activity_desc: Phase 23 execution started
 progress:
   total_phases: 22
-  completed_phases: 16
-  total_plans: 82
+  completed_phases: 17
+  total_plans: 86
   completed_plans: 82
-  percent: 76
+  percent: 77
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-14)
 
 **Core value:** See a jazz chord symbol and know instantly what to play with the left hand.
-**Current focus:** Phase 22 — Installable PWA
+**Current focus:** Phase 23 — Phase-First UX for Phone
 
 ## Current Position
 
-Phase: 22 (Installable PWA) — code-verified (9/9), device checks pending
-Plan: 3 of 3 complete (22-01 SW + precache, 22-02 iOS meta/install, 22-03 update prompt)
-Status: Executed + code-verified. All pure logic + type-check + i18n parity pass. Service-worker offline load, Cache Storage (samples excluded), Android install + Lighthouse PWA audit, iOS add-to-home-screen, and the two-deploy update prompt are inherently on-device checks (jsdom/preview cannot run a SW). Deploy note: nginx sets no explicit Cache-Control on /service-worker.js — add `no-cache` for the SW script so updates are detected (infra, not app code).
-Last activity: 2026-07-19 — Phase 22 executed, code-verified, docs committed
+Phase: 23 (Phase-First UX for Phone) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 23
+Last activity: 2026-07-19 — Phase 23 execution started
 Full suite: 1284 tests green; svelte-check 0 errors.
 
 **v2.0 Learning Upgrade (Phases 10-13): COMPLETE (shipped 2026-07-15).**
