@@ -597,3 +597,18 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 | 18. Your Songs' Chords | 4/4 | Complete    | 2026-07-18 |
 | 19. Interactive Theory | 4/4 | Complete    | 2026-07-18 |
 | 20. French Translation | 10/10 | Complete    | 2026-07-18 |
+
+### Phase 21: Drills Polish — prevent duplicate song selection; make practice-pool container discrete (desktop hover reveal) and persist its enabled state; replay played chord as a full chord for memorization
+
+**Goal:** Polish the practice surfaces: adding a preset song can no longer create a duplicate; the /drills practice-pool filter bar recedes so it stops breaking immersion (discrete on desktop, revealing on hover/focus) while its on/off state keeps persisting; and after answering a chord the user can replay the full chord on demand to aid memorization.
+**Requirements**: DPOL-01, DPOL-02, DPOL-03
+**Depends on:** Phase 20
+
+**Requirements delivered:**
+- **DPOL-01** — Selecting a preset song already in the list does not create a duplicate; the already-added preset is marked and clicking it surfaces the existing song instead of saving a copy.
+- **DPOL-02** — The /drills practice-pool (bassin de pratique) filter bar is visually discrete: it recedes during play and reveals on hover/focus on desktop, stays readable on touch, and its filter on/off state persists across sessions. Recall's use of the shared toggle is not broken.
+- **DPOL-03** — In the /drills answer reveal, an on-demand control replays the full chord (chord questions, both directions), reusing the existing audio engine.
+
+**Plans:**
+
+- [ ] TBD (run /gsd-plan-phase 21 to break down)
