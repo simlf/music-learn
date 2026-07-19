@@ -93,4 +93,24 @@ describe('BottomSheet dismiss paths', () => {
 
 		expect(onClose).not.toHaveBeenCalled();
 	});
+
+	it('calls onClose on Escape fired from inside the surface (WR-01, 23-REVIEW)', async () => {
+		const onClose = vi.fn();
+		render(BottomSheet, { open: true, onClose, children: childrenSnippet() });
+
+		// Escape must still bubble to window even though the surface stops
+		// propagation of clicks - it must not stop propagation of keydown.
+		await fireEvent.keyDown(screen.getByTestId('sheet-body'), { key: 'Escape' });
+
+		expect(onClose).toHaveBeenCalledTimes(1);
+	});
+
+	it('calls onClose on Escape fired from the Close button inside the surface', async () => {
+		const onClose = vi.fn();
+		render(BottomSheet, { open: true, onClose, children: childrenSnippet() });
+
+		await fireEvent.keyDown(screen.getByTestId('bottom-sheet-close'), { key: 'Escape' });
+
+		expect(onClose).toHaveBeenCalledTimes(1);
+	});
 });

@@ -60,6 +60,16 @@
 		onclick={onClose}
 		onkeydown={handleBackdropKeydown}
 	>
+		<!--
+			svelte-ignore a11y_click_events_have_key_events -- this onclick is
+			purely an event-bubbling guard (stop clicks inside the dialog from
+			reaching the backdrop's close handler), not a click-to-activate
+			affordance, so it has no keyboard equivalent to pair it with. Escape
+			(the modal's real keyboard interaction) is handled by
+			svelte:window's handleWindowKeydown above and must be allowed to
+			bubble past this element uninterrupted (WR-01, 23-REVIEW) - do not
+			add an onkeydown here that stops propagation.
+		-->
 		<div
 			class="bottom-sheet__surface"
 			data-testid="bottom-sheet"
@@ -68,7 +78,6 @@
 			aria-label={ariaLabel}
 			tabindex="-1"
 			onclick={stopPropagation}
-			onkeydown={stopPropagation as unknown as (event: KeyboardEvent) => void}
 		>
 			<div class="bottom-sheet__closeRow">
 				<Button
