@@ -114,6 +114,19 @@ describe('AccuracyTable', () => {
 		const rows = within(table).getAllByTestId('practice-item-row');
 		expect(rows).toHaveLength(2);
 	});
+
+	it('renders the inline accuracy bar on every row (WR-03, 23-REVIEW): AccuracyTable delegates row rendering to PracticeItemRow, which always includes the bar', () => {
+		render(AccuracyTable, {
+			items: [
+				{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4 },
+				{ item: 'G7', kind: 'chord', attempts: 5, accuracy: 0.8 }
+			]
+		});
+
+		const table = screen.getByTestId('accuracy-table');
+		const bars = within(table).getAllByTestId('accuracy-bar');
+		expect(bars).toHaveLength(2);
+	});
 });
 
 describe('French locale (I18N-02)', () => {
