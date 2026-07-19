@@ -23,7 +23,8 @@ export const chrome = {
 		'pwa.update.message': 'Update available.',
 		'pwa.update.action': 'Reload',
 		'pwa.update.dismiss': 'Dismiss',
-		'chrome.sheet.close': 'Close'
+		'chrome.sheet.close': 'Close',
+		'nav.more': 'More'
 	},
 	fr: {
 		'nav.lookup': 'Rechercher',
@@ -41,6 +42,7 @@ export const chrome = {
 		'pwa.update.message': 'Mise à jour disponible.',
 		'pwa.update.action': 'Recharger',
 		'pwa.update.dismiss': 'Ignorer',
-		'chrome.sheet.close': 'Fermer'
+		'chrome.sheet.close': 'Fermer',
+		'nav.more': 'Plus'
 	}
 } satisfies LocaleDict;
