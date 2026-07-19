@@ -150,6 +150,10 @@ Last activity: 2026-07-18 — Phase 20 complete; reconciled Phases 16/17 (Hear t
 
 ## Accumulated Context
 
+### Roadmap Evolution
+
+- Phase 21 added: Drills Polish — prevent duplicate song selection; make practice-pool container discrete (desktop hover reveal) + persist enabled state; replay played chord as a full chord for memorization.
+
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
