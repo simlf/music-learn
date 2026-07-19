@@ -4,11 +4,10 @@ milestone: v2.1
 milestone_name: Playability & Comprehension
 current_phase: 21
 current_phase_name: Drills Polish
-status: verifying
+status: "Phase 21 shipped — PR #11"
 stopped_at: Completed 21-01-PLAN.md
-last_updated: "2026-07-19T11:05:26.737Z"
+last_updated: "2026-07-19T12:04:22.689Z"
 last_activity: 2026-07-19
-last_activity_desc: Phase 21 executed + verified (5/6); one DPOL-02 hover visual pending human eyeball
 progress:
   total_phases: 21
   completed_phases: 15
@@ -30,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 
 Phase: 21 (Drills Polish) — VERIFIED (5/6), one visual pending
 Plan: 1 of 1 complete (21-01)
-Status: Implemented + verified. DPOL-01 (no duplicate preset) and DPOL-03 (on-demand chord replay) fully pass. DPOL-02 (discrete /drills filter bar) passes by code+CSS+SSR+tests; only the live desktop hover/focus recede-reveal needs a human eyeball (preview harness sandboxes the app in a null-origin frame, so it can't be driven headlessly).
-Last activity: 2026-07-19 — Phase 21 executed, verified, docs committed
+Status: Phase 21 shipped — PR #11
+Last activity: 2026-07-19
 Full suite: 1254 tests green; svelte-check 0 errors.
 
 **v2.0 Learning Upgrade (Phases 10-13): COMPLETE (shipped 2026-07-15).**
