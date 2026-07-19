@@ -22,7 +22,8 @@ export const chrome = {
 		'locale.aria.fr': 'FR, Français',
 		'pwa.update.message': 'Update available.',
 		'pwa.update.action': 'Reload',
-		'pwa.update.dismiss': 'Dismiss'
+		'pwa.update.dismiss': 'Dismiss',
+		'chrome.sheet.close': 'Close'
 	},
 	fr: {
 		'nav.lookup': 'Rechercher',
@@ -39,6 +40,7 @@ export const chrome = {
 		'locale.aria.fr': 'FR, français',
 		'pwa.update.message': 'Mise à jour disponible.',
 		'pwa.update.action': 'Recharger',
-		'pwa.update.dismiss': 'Ignorer'
+		'pwa.update.dismiss': 'Ignorer',
+		'chrome.sheet.close': 'Fermer'
 	}
 } satisfies LocaleDict;
