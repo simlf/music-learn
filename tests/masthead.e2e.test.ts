@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { render, screen, fireEvent, cleanup, within } from '@testing-library/svelte';
 import { createRawSnippet } from 'svelte';
 import { readable } from 'svelte/store';
@@ -164,5 +167,37 @@ describe('bottom tab bar + More sheet (23-04, UX-1A)', () => {
 		await fireEvent.click(sheet.getByRole('link', { name: 'Build' }));
 
 		expect(screen.queryByTestId('bottom-sheet')).not.toBeInTheDocument();
+	});
+});
+
+describe('bottom tab bar is actually hidden on desktop (CR-01, 23-REVIEW)', () => {
+	/**
+	 * jsdom never evaluates CSS/media queries, so no amount of
+	 * render()+assert-computed-style here can catch a regression of CR-01
+	 * (Svelte's unlayered scoped `<style>` beating Tailwind's layered
+	 * `sm:hidden` utility). Instead this statically asserts the source of
+	 * +layout.svelte's own scoped stylesheet contains an unlayered
+	 * `@media (min-width: 640px) { .bottom-tab-bar { display: none; } }`
+	 * rule - the actual mechanism that hides the bar on desktop, independent
+	 * of the `sm:hidden` utility class which cannot be relied on alone (see
+	 * CR-01's root cause: Tailwind v4 utilities live inside `@layer
+	 * utilities`, which always loses to unlayered component styles).
+	 */
+	const __dirname = dirname(fileURLToPath(import.meta.url));
+	const layoutPath = join(__dirname, '..', 'src', 'routes', '+layout.svelte');
+	const source = readFileSync(layoutPath, 'utf8');
+
+	it('declares an unconditional display:flex base rule for .bottom-tab-bar', () => {
+		expect(source).toMatch(/\.bottom-tab-bar\s*\{\s*display:\s*flex;\s*\}/);
+	});
+
+	it('declares an unlayered @media (min-width: 640px) rule that turns .bottom-tab-bar off', () => {
+		const desktopHideRule =
+			/@media\s*\(min-width:\s*640px\)\s*\{\s*\.bottom-tab-bar\s*\{\s*display:\s*none;\s*\}\s*\}/;
+		expect(source).toMatch(desktopHideRule);
+	});
+
+	it('does not wrap the desktop-hide rule in an @layer block (which Tailwind utilities would lose to)', () => {
+		expect(source).not.toMatch(/@layer[^{]*\{[^}]*\.bottom-tab-bar/);
 	});
 });

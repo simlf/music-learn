@@ -168,12 +168,29 @@
 	 * Phone-only bottom tab bar (1A, UX-1A). Fixed to the viewport bottom,
 	 * below the BottomSheet backdrop/surface (z-index 100/101 - see
 	 * BottomSheet.svelte's own comment) so an open More sheet visually
-	 * covers it. `sm:hidden` (Tailwind, min-width:640px) removes it from
-	 * layout on desktop; the `639.98px` custom-CSS boundary below matches
-	 * that breakpoint with no 1px overlap.
+	 * covers it.
+	 *
+	 * CR-01 (23-REVIEW): Tailwind v4 emits its utilities inside
+	 * `@layer utilities`, while a Svelte component's own scoped `<style>`
+	 * output is unlayered. Per the CSS Cascade Layers spec, unlayered
+	 * normal-priority rules always beat layered ones regardless of
+	 * specificity or source order - so the `sm:hidden` utility class in the
+	 * markup can never actually hide this element; the unconditional
+	 * `display: flex` below would always win. The fix is to make this
+	 * component's own scoped stylesheet self-contained: an explicit,
+	 * unlayered `@media (min-width: 640px)` rule that turns the bar off,
+	 * matching Tailwind's `sm:` breakpoint exactly (no reliance on the
+	 * utility class to do the hiding - it's kept in the markup as a
+	 * belt-and-braces no-op).
 	 */
 	.bottom-tab-bar {
 		display: flex;
+	}
+
+	@media (min-width: 640px) {
+		.bottom-tab-bar {
+			display: none;
+		}
 	}
 
 	@media (max-width: 639.98px) {
