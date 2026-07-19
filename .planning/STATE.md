@@ -4,17 +4,17 @@ milestone: v2.1
 milestone_name: Playability & Comprehension
 current_phase: 23
 current_phase_name: Phase-First UX for Phone
-status: executing
-stopped_at: Completed 23-03-PLAN.md
-last_updated: "2026-07-19T19:51:46.597Z"
+status: verifying
+stopped_at: Completed 23-04-PLAN.md
+last_updated: "2026-07-19T20:03:48.109Z"
 last_activity: 2026-07-19
 last_activity_desc: Phase 23 execution started
 progress:
   total_phases: 22
-  completed_phases: 17
+  completed_phases: 18
   total_plans: 86
-  completed_plans: 85
-  percent: 77
+  completed_plans: 86
+  percent: 82
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 
 Phase: 23 (Phase-First UX for Phone) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-19 — Phase 23 execution started
 Full suite: 1284 tests green; svelte-check 0 errors.
 
@@ -151,6 +151,7 @@ Full suite: 1284 tests green; svelte-check 0 errors.
 | Phase 23 P01 | 11min | 3 tasks | 6 files |
 | Phase 23 P02 | 6min | 2 tasks | 3 files |
 | Phase 23 P03 | 9min | 2 tasks | 5 files |
+| Phase 23 P04 | 24min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -302,6 +303,8 @@ Recent decisions affecting current work:
 - [Phase 23-02]: last7 built as a fixed 7-iteration backward walk using the existing previousDate() helper, then reversed to oldest->today - no new date-math primitive introduced
 - [Phase 23-02]: Client StreakResult.last7 kept optional (not required) so existing streak mocks that omit it stay valid
 - [Phase ?]: [Phase 23-03]: progress.weakest.drillOne/drillOneAria i18n keys added a task early (Task 1, not Task 2) since MessageKey's keyof-derived type would fail svelte-check if PracticeItemRow referenced an unadded key — Task 1's own acceptance criteria require npm run check clean; the two keys were needed immediately for type-safety, not deferred
+- [Phase ?]: [Phase 23-04]: bottomTabLinks/moreLinks derived via Array.filter over the single navLinks source array (not second literal arrays), so the desktop masthead, phone tab bar, and More sheet can never list different routes
+- [Phase ?]: [Phase 23-04]: layout-rendering tests scope desktop-nav/LocaleToggle queries via within(getByTestId('masthead')), since jsdom dual-renders the desktop masthead and the new phone-only bottom-tab-bar (no media-query evaluation)
 
 ### Pending Todos
 
@@ -333,7 +336,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-19T19:51:46.586Z
-Stopped at: Completed 23-03-PLAN.md
+Last session: 2026-07-19T20:03:48.099Z
+Stopped at: Completed 23-04-PLAN.md
 Resume file: 
 None

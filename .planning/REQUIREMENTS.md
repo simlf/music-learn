@@ -129,7 +129,7 @@ Grounded in Session 4 sketches 008–013 (`.planning/sketches/MANIFEST.md`). Loc
 
 - [x] **UX-1B**: On a phone, the Drills page puts the question first. LevelPicker, mode tabs, and the song filter collapse into one compact strip that opens a bottom sheet; the prompt sits directly under the strip and the keyboard plus Check sit in the thumb zone, so there is no per-question scroll. Desktop keeps the full LevelPicker card unchanged.
 - [x] **UX-1C**: The Progress page is glanceable and actionable. A 7-day practiced strip (server-backed) sits on the streak hero, inline accuracy bars replace the weak-accent border on every practice row and the All-Stats table, and a per-row DRILL button seeds one weak chord into /drills while the bulk CTA reads "Drill all N".
-- [ ] **UX-1A**: On a phone, navigation moves to a thumb-reachable fixed bottom tab bar (Lookup, Drills, Recall, Songs, More), the top header slims to brand plus StreakBadge, and every full-height page clears the bar. "More" opens a sheet holding Build, Scales, Theory, Progress, and the EN|FR toggle. Desktop keeps its full masthead unchanged.
+- [x] **UX-1A**: On a phone, navigation moves to a thumb-reachable fixed bottom tab bar (Lookup, Drills, Recall, Songs, More), the top header slims to brand plus StreakBadge, and every full-height page clears the bar. "More" opens a sheet holding Build, Scales, Theory, Progress, and the EN|FR toggle. Desktop keeps its full masthead unchanged.
 
 ## Future Requirements
 

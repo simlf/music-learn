@@ -639,7 +639,7 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 **Requirements**: UX-1A, UX-1B, UX-1C
 **Depends on:** Phase 22
 **Source spec:** `.planning/phases/23-phase-first-ux-for-phone-bottom-tab-bar-nav-1a-drills-questi/SOURCE-SPEC.md`
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 **Wave 1** *(parallel: disjoint file sets)*
 
@@ -652,4 +652,4 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 
 **Wave 3** *(blocked on 23-01: reuses BottomSheet; layout-wide)*
 
-- [ ] 23-04-PLAN.md — 1A bottom tab bar + slim phone header + safe-area bottom padding + masthead test split (UX-1A)
+- [x] 23-04-PLAN.md — 1A bottom tab bar + slim phone header + safe-area bottom padding + masthead test split (UX-1A)
