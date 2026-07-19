@@ -23,9 +23,17 @@
 		noteOn?: string;
 		/** Explanatory note shown when `on` is false and `note` (the fallback) is not set, e.g. "Filter off: full chord library. Chords from your songs still carry their mark." */
 		noteOff?: string;
+		/**
+		 * DPOL-02: opt-in discrete variant (Drills only; Recall never sets this).
+		 * Drops the loud filled box for lighter/compact styling and, on
+		 * hover-capable desktops, recedes to reduced opacity until hover or
+		 * keyboard focus. Defaults to false so Recall's bar is byte-for-byte
+		 * unchanged.
+		 */
+		discrete?: boolean;
 	}
 
-	let { poolLabel, on, onToggle, note, noteOn, noteOff }: Props = $props();
+	let { poolLabel, on, onToggle, note, noteOn, noteOff, discrete = false }: Props = $props();
 
 	/**
 	 * The fallback `note` (no-active-songs edge case) always wins when set;
@@ -35,7 +43,12 @@
 	const displayNote = $derived(note ?? (on ? noteOn : noteOff));
 </script>
 
-<div class="song-filter-toggle-bar">
+<div
+	class="song-filter-toggle-bar"
+	class:song-filter-toggle-bar--discrete={discrete}
+	data-testid="song-filter-toggle-bar"
+	data-discrete={discrete}
+>
 	<div class="song-filter-toggle-row">
 		<p class="text-label font-mono uppercase">{poolLabel}</p>
 		<button class="song-filter-toggle" type="button" aria-pressed={on} onclick={onToggle}>
@@ -99,5 +112,46 @@
 
 	.song-filter-toggle:active {
 		transform: translate(1px, 1px);
+	}
+
+	/*
+	 * DPOL-02: Drills-only discrete variant. Lighter/compact box (no heavy
+	 * fill/border/padding) so the bar stops competing with the drill card.
+	 * Base (non-discrete) rules above are untouched, so Recall's bar renders
+	 * exactly as before.
+	 */
+	.song-filter-toggle-bar--discrete {
+		border: none;
+		background: transparent;
+		padding: var(--spacing-sm) 0;
+	}
+
+	/* Touch / no-hover: always fully readable, just the lighter styling above. */
+	.song-filter-toggle-bar--discrete {
+		opacity: 1;
+	}
+
+	/* Desktop (hover-capable): recede during play, reveal on hover/keyboard focus. */
+	@media (hover: hover) {
+		.song-filter-toggle-bar--discrete {
+			opacity: 0.5;
+			transition: opacity 160ms ease-out;
+		}
+
+		.song-filter-toggle-bar--discrete:hover,
+		.song-filter-toggle-bar--discrete:focus-within {
+			opacity: 1;
+		}
+	}
+
+	/* Keyboard users always get a full reveal, hover-capable or not. */
+	.song-filter-toggle-bar--discrete:has(.song-filter-toggle:focus-visible) {
+		opacity: 1;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.song-filter-toggle-bar--discrete {
+			transition: none;
+		}
 	}
 </style>

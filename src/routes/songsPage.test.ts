@@ -1,4 +1,4 @@
-import { render, screen, cleanup } from '@testing-library/svelte';
+import { render, screen, cleanup, fireEvent } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { saveSong } from '$lib/practice/songs';
 import { setLocale } from '$lib/i18n/locale.svelte';
@@ -75,5 +75,28 @@ describe('Songs page renders in French (I18N-02, Phase 20 Plan 05)', () => {
 		expect(
 			screen.getByText('Do mineur, 16 mesures, rien de simplifié. Un bon premier morceau, mon ami.')
 		).toBeInTheDocument();
+	});
+});
+
+describe('Preset shelf dedupe (DPOL-01)', () => {
+	it('clicking the same preset card twice creates exactly one song row and marks it Added', async () => {
+		renderPage();
+
+		const presetCards = screen.getAllByTestId('preset-card');
+		const firstCard = presetCards[0];
+
+		await fireEvent.click(firstCard);
+		await fireEvent.click(firstCard);
+
+		expect(screen.getAllByTestId('song-row')).toHaveLength(1);
+		expect(firstCard).toHaveTextContent('Added');
+		expect(screen.getByTestId('preset-added-marker')).toBeInTheDocument();
+	});
+
+	it('does not mark an untouched preset as Added', () => {
+		renderPage();
+
+		const presetCards = screen.getAllByTestId('preset-card');
+		expect(presetCards[0]).not.toHaveTextContent('Added');
 	});
 });

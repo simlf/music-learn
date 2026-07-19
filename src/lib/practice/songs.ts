@@ -98,6 +98,15 @@ export function activeSongChordSymbols(): string[] {
 	return [...union];
 }
 
+/**
+ * Finds the first song copied from the given preset, if the user already
+ * added it. Total and side-effect-free: an empty list, no match, or a list
+ * of custom songs (no presetId at all) all return undefined, never throw.
+ */
+export function findSongByPresetId(songs: Song[], presetId: string): Song | undefined {
+	return songs.find((song) => song.presetId === presetId);
+}
+
 /** Schema guard for one stored entry; anything off-shape is dropped on read. */
 function isSong(value: unknown): value is Song {
 	if (typeof value !== 'object' || value === null) return false;

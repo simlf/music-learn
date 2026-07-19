@@ -94,6 +94,29 @@ describe('SongFilterToggle', () => {
 	});
 });
 
+describe('SongFilterToggle discrete variant (DPOL-02)', () => {
+	it('does not carry the discrete class when the prop is omitted (Recall\'s base variant)', () => {
+		render(SongFilterToggle, { poolLabel: 'PRACTICE POOL', on: false, onToggle: () => {} });
+
+		const bar = screen.getByTestId('song-filter-toggle-bar');
+		expect(bar).not.toHaveClass('song-filter-toggle-bar--discrete');
+		expect(bar).toHaveAttribute('data-discrete', 'false');
+	});
+
+	it('carries the discrete class only when discrete is explicitly true', () => {
+		render(SongFilterToggle, {
+			poolLabel: 'PRACTICE POOL',
+			on: false,
+			onToggle: () => {},
+			discrete: true
+		});
+
+		const bar = screen.getByTestId('song-filter-toggle-bar');
+		expect(bar).toHaveClass('song-filter-toggle-bar--discrete');
+		expect(bar).toHaveAttribute('data-discrete', 'true');
+	});
+});
+
 describe('SongFilterToggle renders in French (I18N-02, Phase 20 Plan 05)', () => {
 	it('renders the French button copy while the caller-supplied poolLabel stays as passed', () => {
 		setLocale('fr');

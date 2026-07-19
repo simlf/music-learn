@@ -457,6 +457,19 @@
 		playNote(toPitch(letter, octave));
 	}
 
+	/**
+	 * DPOL-03: on-demand "hear it again" for the answered chord reveal,
+	 * chord questions only (both directions, right or wrong). Reuses the
+	 * exact same full-chord call recordGrade already auto-plays once; the
+	 * audio-unlock call mirrors pressKey so a fresh page load can still play
+	 * sound without a prior tap.
+	 */
+	function replayChord() {
+		if (question.kind !== 'chord') return;
+		void ensureAudioReady();
+		playChord(target.notes.map((note) => note.letter));
+	}
+
 	function recordGrade(correct: boolean, given?: string) {
 		// Reveal rule (Track A): EVERY answer reveal plays the correct answer,
 		// correct answers included; on a miss this is the correct one, never
@@ -908,6 +921,7 @@
 			note={songFallbackActive ? t('drills.filter.noteFallback') : undefined}
 			noteOn={`${t('drills.filter.noteOnPrefix')} ${songChordCount} ${t('drills.filter.noteOnSuffix')}`}
 			noteOff={t('drills.filter.noteOff')}
+			discrete
 		/>
 	</div>
 	<div
@@ -1153,6 +1167,13 @@
 						{/if}
 						<SongHook short={question.interval.short} />
 					{/if}
+				{/if}
+				{#if question.kind === 'chord'}
+					<div class="mt-4">
+						<Button type="button" variant="ghost" onclick={replayChord}>
+							{t('drills.button.replayChord')}
+						</Button>
+					</div>
 				{/if}
 				{#if drillInspect}
 					<InspectRegister payload={drillInspect} />

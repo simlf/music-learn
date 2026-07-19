@@ -77,6 +77,7 @@ export const drills = {
 		'drills.feedback.hereIsInterval': 'Here is the interval:',
 		'drills.feedback.youTapped': 'You tapped',
 		'drills.button.next': 'Next',
+		'drills.button.replayChord': 'Hear it again',
 
 		// Right/wrong confirmation variant pools.
 		'drills.confirm.0': 'Nailed it.',
@@ -167,6 +168,7 @@ export const drills = {
 		'drills.feedback.hereIsInterval': "Voici l'intervalle :",
 		'drills.feedback.youTapped': 'Tu as joué',
 		'drills.button.next': 'Suivant',
+		'drills.button.replayChord': 'Réécouter',
 
 		'drills.confirm.0': 'Dans le mille.',
 		'drills.confirm.1': 'Et voilà.',

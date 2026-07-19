@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { activeSongChordSymbols, deleteSong, listSongs, saveSong, type Song } from './songs';
+import {
+	activeSongChordSymbols,
+	deleteSong,
+	findSongByPresetId,
+	listSongs,
+	saveSong,
+	type Song
+} from './songs';
 
 const STORAGE_KEY = 'music-learn:songs';
 
@@ -114,6 +121,26 @@ describe('songs localStorage persistence', () => {
 			saveSong(song({ id: 'a', active: false }));
 
 			expect(activeSongChordSymbols()).toEqual([]);
+		});
+	});
+
+	describe('findSongByPresetId (DPOL-01)', () => {
+		it('returns undefined for an empty list', () => {
+			expect(findSongByPresetId([], 'blue-bossa-cm')).toBeUndefined();
+		});
+
+		it('returns the song copied from the matching preset', () => {
+			const preset = song({ id: 'p1', source: 'preset', presetId: 'blue-bossa-cm' });
+			const other = song({ id: 'p2', source: 'preset', presetId: 'summertime-am' });
+
+			expect(findSongByPresetId([other, preset], 'blue-bossa-cm')).toEqual(preset);
+		});
+
+		it('ignores custom songs (no presetId) and non-matching presetIds', () => {
+			const custom = song({ id: 'c1', source: 'custom' });
+			const otherPreset = song({ id: 'p1', source: 'preset', presetId: 'summertime-am' });
+
+			expect(findSongByPresetId([custom, otherPreset], 'blue-bossa-cm')).toBeUndefined();
 		});
 	});
 
