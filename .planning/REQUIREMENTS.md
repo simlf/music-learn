@@ -109,21 +109,21 @@ Grounded in Session 4 sketches 008–013 (`.planning/sketches/MANIFEST.md`). Loc
 
 ### Your Songs' Chords
 
-- [ ] **SONG-01**: Any chord in one of the user's added songs carries a consistent provenance mark wherever it appears (Drills prompt, Recall card, Chord Lookup result)
-- [ ] **SONG-02**: Drills and Recall expose a "From my songs" filter restricting the practiced set to song chords; with it off the full library shows but song chords keep their mark
-- [ ] **SONG-03**: Provenance is derived from the songs stored on the /songs profile surface (single source of truth)
+- [x] **SONG-01**: Any chord in one of the user's added songs carries a consistent provenance mark wherever it appears (Drills prompt, Recall card, Chord Lookup result)
+- [x] **SONG-02**: Drills and Recall expose a "From my songs" filter restricting the practiced set to song chords; with it off the full library shows but song chords keep their mark
+- [x] **SONG-03**: Provenance is derived from the songs stored on the /songs profile surface (single source of truth)
 
 ### Interactive Theory
 
-- [ ] **LEARN-01**: A lesson runs as a vertical sequence of small do-then-check steps pairing a plain-English sentence with a keyboard action; correct advances with confirmation, wrong gives a gentle retry
-- [ ] **LEARN-02**: Steps can play their interval/chord so the learner hears what they build
-- [ ] **LEARN-03**: Each lesson ends with an explicit "Try this in a drill" handoff into the beginner course on /drills
+- [x] **LEARN-01**: A lesson runs as a vertical sequence of small do-then-check steps pairing a plain-English sentence with a keyboard action; correct advances with confirmation, wrong gives a gentle retry
+- [x] **LEARN-02**: Steps can play their interval/chord so the learner hears what they build
+- [x] **LEARN-03**: Each lesson ends with an explicit "Try this in a drill" handoff into the beginner course on /drills
 
 ### French Translation
 
-- [ ] **I18N-01**: A header EN|FR toggle switches all UI copy to correct French and persists the choice; chord symbols and the serif glyph never translate
-- [ ] **I18N-02**: An i18n layer holds every user-facing string as a keyed EN/FR translation, replacing loose inline strings
-- [ ] **I18N-03**: The tight Print Shop surfaces audited in sketch 013 (mono register labels, grading buttons, nav) render French without overflow
+- [x] **I18N-01**: A header EN|FR toggle switches all UI copy to correct French and persists the choice; chord symbols and the serif glyph never translate
+- [x] **I18N-02**: An i18n layer holds every user-facing string as a keyed EN/FR translation, replacing loose inline strings
+- [x] **I18N-03**: The tight Print Shop surfaces audited in sketch 013 (mono register labels, grading buttons, nav) render French without overflow
 
 ## Future Requirements
 

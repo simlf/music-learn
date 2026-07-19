@@ -1,7 +1,8 @@
-import { render, screen, fireEvent, within } from '@testing-library/svelte';
+import { render, screen, fireEvent, within, cleanup } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import LevelPicker from './LevelPicker.svelte';
 import { LEVEL_KEY } from '$lib/practice/levelState';
+import { setLocale } from '$lib/i18n/locale.svelte';
 
 // LevelPicker reads/writes the real levelState via localStorage (jsdom
 // provides it). Each test seeds the level explicitly.
@@ -15,6 +16,8 @@ beforeEach(() => {
 
 afterEach(() => {
 	localStorage.clear();
+	cleanup();
+	setLocale('en');
 });
 
 describe('LevelPicker course stepper (sketch 007)', () => {
@@ -69,5 +72,46 @@ describe('LevelPicker course stepper (sketch 007)', () => {
 		expect(screen.getByTestId('level-picker')).toHaveTextContent('All-key triads');
 		// Persisted through levelState (setCurrentTier rewrites unlockedTiers to 1..2).
 		expect(JSON.parse(localStorage.getItem(LEVEL_KEY)!).currentTier).toBe(2);
+	});
+});
+
+describe('LevelPicker renders in French (I18N-02, Phase 20 Plan 04)', () => {
+	it('shows the French course caption, tier tag, and Change level control under fr', () => {
+		setLocale('fr');
+		render(LevelPicker);
+
+		const picker = screen.getByTestId('level-picker');
+		expect(within(picker).getByText('Ton parcours')).toBeInTheDocument();
+		expect(within(picker).getByTestId('current-tier-tag')).toHaveTextContent('Niveau 1');
+		expect(within(picker).getByTestId('next-up')).toHaveTextContent('Niveau 2:');
+		expect(within(picker).getByTestId('next-up')).toHaveTextContent('Pas encore');
+	});
+
+	it('translates the tier name and blurb (Phase 20 addendum: tiers.ts residual)', () => {
+		setLocale('fr');
+		render(LevelPicker);
+
+		const picker = screen.getByTestId('level-picker');
+		expect(within(picker).getByText('Triades aux touches blanches')).toBeInTheDocument();
+		expect(
+			within(picker).getByText(/Seulement les accords majeurs et mineurs des touches blanches/)
+		).toBeInTheDocument();
+		expect(within(picker).getByTestId('next-up')).toHaveTextContent(
+			'Niveau 2: Triades sur toutes les touches'
+		);
+	});
+
+	it('offers reached tiers with translated names under fr', async () => {
+		seedLevel(3, [1, 2, 3]);
+		setLocale('fr');
+		render(LevelPicker);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Changer de niveau' }));
+
+		const reached = screen.getByTestId('reached-tiers');
+		expect(within(reached).getByText('Niveau 1: Triades aux touches blanches')).toBeInTheDocument();
+		expect(
+			within(reached).getByText('Niveau 3: Les trois grandes septièmes')
+		).toBeInTheDocument();
 	});
 });

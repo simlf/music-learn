@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getLevelState, setCurrentTier } from '$lib/practice/levelState';
 	import { TIERS, tierById, type TierId } from '$lib/practice/tiers';
+	import { t } from '$lib/i18n/locale.svelte';
 	import Button from './Button.svelte';
 
 	/**
@@ -40,10 +41,10 @@
 <section
 	class="border-ink bg-paper-bright border-2 px-4 py-4 sm:px-6"
 	data-testid="level-picker"
-	aria-label="Your course"
+	aria-label={t('drills.level.ariaCourse')}
 >
 	<p class="text-label text-muted font-mono uppercase" style="letter-spacing: 0.12em;">
-		Your course
+		{t('drills.level.ariaCourse')}
 	</p>
 
 	<div class="mt-2 flex flex-wrap items-baseline gap-2">
@@ -51,12 +52,12 @@
 			class="border-ink text-label border px-2 py-1 font-mono uppercase"
 			data-testid="current-tier-tag"
 		>
-			Tier {current.id}
+			{t('drills.level.tier')} {current.id}
 		</span>
-		<span class="text-heading font-serif font-bold">{current.name}</span>
+		<span class="text-heading font-serif font-bold">{t(`progress.tier.${current.id}.name`)}</span>
 	</div>
 
-	<p class="text-body mt-2">{current.blurb}</p>
+	<p class="text-body mt-2">{t(`progress.tier.${current.id}.blurb`)}</p>
 
 	{#if reachedTiers.length > 1}
 		<div class="mt-4">
@@ -66,7 +67,7 @@
 				aria-expanded={changing}
 				onclick={() => (changing = !changing)}
 			>
-				{changing ? 'Close' : 'Change level'}
+				{changing ? t('drills.level.close') : t('drills.level.changeLevel')}
 			</Button>
 
 			{#if changing}
@@ -75,11 +76,11 @@
 						<Button
 							type="button"
 							variant={tier.id === level.currentTier ? 'primary' : 'ghost'}
-							aria-label={`Switch to tier ${tier.id}`}
+							aria-label={`${t('drills.level.switchToTierPrefix')} ${tier.id}`}
 							aria-pressed={tier.id === level.currentTier}
 							onclick={() => pick(tier.id)}
 						>
-							Tier {tier.id}: {tier.name}
+							{t('drills.level.tier')} {tier.id}: {t(`progress.tier.${tier.id}.name`)}
 						</Button>
 					{/each}
 				</div>
@@ -90,12 +91,16 @@
 	{#if nextTier}
 		<div class="border-ink/30 mt-4 border-t pt-3" data-testid="next-up">
 			<p class="text-label text-muted font-mono uppercase" style="letter-spacing: 0.12em;">
-				Next up
+				{t('drills.level.nextUp')}
 			</p>
 			<div class="mt-1 flex flex-wrap items-baseline justify-between gap-2">
-				<span class="text-body font-serif font-bold">Tier {nextTier.id}: {nextTier.name}</span>
+				<span class="text-body font-serif font-bold"
+					>{t('drills.level.tier')} {nextTier.id}: {t(
+						`progress.tier.${nextTier.id}.name`
+					)}</span
+				>
 				<span class="text-label text-muted border-ink/40 border px-2 py-1 font-mono uppercase">
-					Not yet
+					{t('drills.common.notYet')}
 				</span>
 			</div>
 		</div>

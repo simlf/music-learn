@@ -3,6 +3,7 @@ import { createRawSnippet } from 'svelte';
 import { readable } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ProgressPage from '../src/routes/progress/+page.svelte';
+import { setLocale } from '$lib/i18n/locale.svelte';
 
 // +layout.svelte reads the `$page` store from $app/stores to mark the active
 // nav link, same mock shape as tests/drills.e2e.test.ts.
@@ -93,6 +94,7 @@ beforeEach(() => {
 
 afterEach(() => {
 	vi.restoreAllMocks();
+	setLocale('en');
 });
 
 describe('progress page populated state', () => {
@@ -279,6 +281,50 @@ describe('practice settings section (Track B)', () => {
 
 		expect(setSoundEnabledMock).toHaveBeenCalledWith(false);
 		expect(toggle).toHaveTextContent('SOUND OFF');
+	});
+});
+
+describe('French locale (I18N-02)', () => {
+	it('renders Practice Settings heading, SOUND/STUDY MODE labels, and an accuracy-table header in French', async () => {
+		setLocale('fr');
+		storedToken = 'secret';
+		fetchStatsMock.mockResolvedValue({
+			items: [{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4, needsPractice: true }],
+			weakest: []
+		});
+
+		render(ProgressPage);
+		await waitFor(() => expect(screen.getByTestId('accuracy-table')).toBeInTheDocument());
+
+		expect(screen.getByText('Réglages de pratique')).toBeInTheDocument();
+		expect(screen.getByText('SON')).toBeInTheDocument();
+		expect(screen.getByText('MODE ÉTUDE')).toBeInTheDocument();
+
+		const table = screen.getByTestId('accuracy-table');
+		expect(within(table).getByText('SYMBOLE')).toBeInTheDocument();
+	});
+
+	it('renders an accuracy percentage and a chord symbol identically in fr and en', async () => {
+		storedToken = 'secret';
+		fetchStatsMock.mockResolvedValue({
+			items: [{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4, needsPractice: true }],
+			weakest: []
+		});
+
+		setLocale('en');
+		const { unmount } = render(ProgressPage);
+		await waitFor(() => expect(screen.getByTestId('accuracy-table')).toBeInTheDocument());
+		const enTable = screen.getByTestId('accuracy-table');
+		expect(within(enTable).getByText('Cm7')).toBeInTheDocument();
+		expect(within(enTable).getByText('40%')).toBeInTheDocument();
+		unmount();
+
+		setLocale('fr');
+		render(ProgressPage);
+		await waitFor(() => expect(screen.getByTestId('accuracy-table')).toBeInTheDocument());
+		const frTable = screen.getByTestId('accuracy-table');
+		expect(within(frTable).getByText('Cm7')).toBeInTheDocument();
+		expect(within(frTable).getByText('40%')).toBeInTheDocument();
 	});
 });
 

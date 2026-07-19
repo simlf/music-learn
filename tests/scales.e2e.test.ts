@@ -1,7 +1,8 @@
-import { render, screen, fireEvent, within } from '@testing-library/svelte';
+import { render, screen, fireEvent, within, cleanup } from '@testing-library/svelte';
 import { createRawSnippet } from 'svelte';
 import { readable } from 'svelte/store';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { setLocale } from '$lib/i18n/locale.svelte';
 
 // Masthead active-link check reads $page from $app/stores (see
 // drills.e2e.test.ts for the stub rationale).
@@ -87,13 +88,13 @@ describe('scales page inspect flow', () => {
 		expect(screen.getByTestId('inspect-register')).toHaveTextContent('Tap a key to inspect it.');
 	});
 
-	it('tapping a scale degree plays it and names its interval from the tonic', async () => {
+	it('tapping a scale degree plays it and names its interval from the tonic (en default)', async () => {
 		render(ScalesPage);
 
 		await fireEvent.click(screen.getByRole('button', { name: 'A degree 6' }));
 
 		const register = screen.getByTestId('inspect-register');
-		expect(register).toHaveTextContent('A · La · M6 · sixte majeure · 9 demi-tons');
+		expect(register).toHaveTextContent('A · La · M6 · major 6th · 9 semitones');
 		expect(playNoteMock).toHaveBeenCalledWith('A4');
 	});
 
@@ -120,5 +121,46 @@ describe('scales masthead nav link', () => {
 
 		const link = screen.getByRole('link', { name: 'Scales' });
 		expect(link).toHaveAttribute('href', '/scales');
+	});
+});
+
+describe('scales page French locale (I18N-02)', () => {
+	afterEach(() => {
+		cleanup();
+		setLocale('en');
+	});
+
+	it('renders the page title, tonic quality suffix, mode toggle, and idle inspect line in French', () => {
+		setLocale('fr');
+		render(ScalesPage);
+
+		expect(screen.getByRole('heading', { name: 'Gammes' })).toBeInTheDocument();
+		expect(screen.getByTestId('scale-title')).toHaveTextContent('C majeur');
+		expect(within(screen.getByTestId('tonic-row')).getByRole('button', { name: 'C majeur' })).toHaveAttribute(
+			'aria-pressed',
+			'true'
+		);
+		expect(screen.getByRole('button', { name: 'Explorer' })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Pratiquer' })).toBeInTheDocument();
+		expect(screen.getByTestId('inspect-register')).toHaveTextContent("Touche une note pour l'inspecter.");
+	});
+
+	it('renders a degree-strip caption (aria-label) in French while the note letter and degree number stay identical to English', () => {
+		setLocale('en');
+		const { unmount } = render(ScalesPage);
+		const enCell = within(screen.getByTestId('degree-strip')).getAllByRole('button')[0];
+		const enLabel = enCell.getAttribute('aria-label');
+		const enLetter = enCell.textContent;
+		unmount();
+
+		setLocale('fr');
+		render(ScalesPage);
+		const frCell = within(screen.getByTestId('degree-strip')).getAllByRole('button')[0];
+		const frLabel = frCell.getAttribute('aria-label');
+		const frLetter = frCell.textContent;
+
+		expect(frLabel).toBe('C degré 1');
+		expect(enLabel).toBe('C degree 1');
+		expect(frLetter).toBe(enLetter);
 	});
 });

@@ -5,9 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import TheoryPage from '../src/routes/theory/+page.svelte';
 
 /**
- * Theory's playable keyboard renders inline in the page's own scrolling flow
- * (the "Try the keys" section), so a plain page render puts the keyboard
- * content in the same `document.body` that `screen` queries.
+ * Theory's lessons render display keyboards inline in the page's own scrolling
+ * flow (the InteractiveLesson plus each chord lesson), so a plain page render
+ * puts the keyboard content in the same `document.body` that `screen` queries.
  */
 function renderPage() {
 	return { page: render(TheoryPage) };

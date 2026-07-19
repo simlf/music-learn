@@ -17,7 +17,7 @@
 	import { ensureAudioReady, playChord, playNote } from '$lib/audio/audio';
 	import { toPitch } from '$lib/audio/voicing';
 	import { recordPracticeAnswer } from '$lib/practice/answerTelemetry';
-	import { consumeDrillSeeds } from '$lib/practice/drillSeeds';
+	import { consumeDrillSeeds, consumeLessonSeeds } from '$lib/practice/drillSeeds';
 	import {
 		checkUnlock,
 		getLevelState,
@@ -32,7 +32,13 @@
 		readPracticeLog,
 		recentMisses
 	} from '$lib/practice/practiceLog';
-	import { drawFromPool, scaffoldStageForSymbol, type PoolContext } from '$lib/practice/pool';
+	import {
+		drawFromPool,
+		drawFromSymbols,
+		limitScaffoldingQualities,
+		scaffoldStageForSymbol,
+		type PoolContext
+	} from '$lib/practice/pool';
 	import {
 		readScaffolds,
 		recordScaffoldAnswer,
@@ -51,15 +57,23 @@
 		type SessionItem
 	} from '$lib/practice/session';
 	import { activeSongChordSymbols } from '$lib/practice/songs';
+	import {
+		buildProvenanceIndex,
+		drillableSongSymbols,
+		songsForSymbol
+	} from '$lib/practice/songProvenance';
 	import { splitSymbol, tierById, type TierId } from '$lib/practice/tiers';
 	import type { DrillMode, DrillQuestion } from '$lib/drills/generateQuestion';
 	import type { MatchResult } from '$lib/drills/matchChord';
 	import PianoKeyboard, { type InspectPayload } from '$lib/components/PianoKeyboard.svelte';
 	import InspectRegister from '$lib/components/InspectRegister.svelte';
+	import { t } from '$lib/i18n/locale.svelte';
 	import ChordGlyph from '$lib/components/ChordGlyph.svelte';
 	import IntervalChip from '$lib/components/IntervalChip.svelte';
 	import RevealInsight from '$lib/components/RevealInsight.svelte';
 	import SongHook from '$lib/components/SongHook.svelte';
+	import SongMark from '$lib/components/SongMark.svelte';
+	import SongFilterToggle from '$lib/components/SongFilterToggle.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import LevelPicker from '$lib/components/LevelPicker.svelte';
 	import IntervalScaffold from '$lib/components/IntervalScaffold.svelte';
@@ -69,11 +83,22 @@
 	 * Right-answer confirmation variants (D-08): the stamp beat is the reward,
 	 * this is a one-line caption, not a celebration banner. Rotated with a
 	 * no-immediate-repeat picker mirroring $lib/copy/hints's pickHint.
+	 * $derived.by (mirrors 20-02/20-03's identical pattern) so a live locale
+	 * flip re-renders the rotation without touching pickVariant's call sites.
 	 */
-	const CORRECT_VARIANTS = ['Nailed it.', 'Et voilà.', 'Bang on.', 'Spot on, mon ami.'];
+	const CORRECT_VARIANTS = $derived.by(() => [
+		t('drills.confirm.0'),
+		t('drills.confirm.1'),
+		t('drills.confirm.2'),
+		t('drills.confirm.3')
+	]);
 
 	/** Wrong-answer headline variants (D-09), same rotation discipline. */
-	const WRONG_VARIANTS = ['Not quite.', 'Close, but no cigar.', 'Not this time.'];
+	const WRONG_VARIANTS = $derived.by(() => [
+		t('drills.wrong.0'),
+		t('drills.wrong.1'),
+		t('drills.wrong.2')
+	]);
 
 	let lastCorrectIndex = -1;
 	let lastWrongIndex = -1;
@@ -115,12 +140,89 @@
 	let questionShownAt = Date.now();
 
 	let session = $state<Session>(
-		createSession({
-			// Drill-these seeds are chord symbols (Progress filters to kind 'chord').
-			seeds: consumeDrillSeeds().map((symbol) => ({ symbol, family: 'chord' as const })),
-			warmupCandidates: recentMisses(5)
-		})
+		createSession(
+			(() => {
+				// Both one-shot channels are consumed regardless of which wins, so
+				// neither leaks into a later session; a lesson handoff takes
+				// precedence over a Progress weak-list handoff when both are
+				// somehow present.
+				const lessonSeeds = consumeLessonSeeds().map((symbol) => ({
+					symbol,
+					family: 'chord' as const,
+					origin: 'lesson' as const
+				}));
+				// Drill-these seeds are chord symbols (Progress filters to kind 'chord').
+				const weakSeeds = consumeDrillSeeds().map((symbol) => ({
+					symbol,
+					family: 'chord' as const
+				}));
+				return {
+					seeds: lessonSeeds.length > 0 ? lessonSeeds : weakSeeds,
+					warmupCandidates: recentMisses(5)
+				};
+			})()
+		)
 	);
+
+	/**
+	 * Song-provenance index (SONG-01): built once at init from active songs,
+	 * feeding SongMark on every rendered chord prompt regardless of filter
+	 * state (the mark is not gated by the filter).
+	 */
+	let provenanceIndex = $state(buildProvenanceIndex());
+
+	/**
+	 * SONG-02: distinct active-song chord symbols the "From my songs" filter
+	 * restricts fresh draws to, for the explanatory pool-note's {N}
+	 * interpolation. Read once at mount (mirrors provenanceIndex's own
+	 * snapshot-at-init pattern above) since song data isn't tracked as
+	 * reactive state elsewhere on this page.
+	 */
+	const songChordCount = drillableSongSymbols().length;
+
+	/** Reads the persisted "From my songs" filter flag, degrading to off on any storage failure (mirrors songs.ts). */
+	function readDrillsSongFilter(): boolean {
+		try {
+			return localStorage.getItem('music-learn:drills-song-filter') === 'true';
+		} catch {
+			return false;
+		}
+	}
+
+	/** SONG-02 filter state: restricts fresh chord draws to active-song chords when on. Persists per-surface, defaults off. */
+	let songFilterOn = $state(readDrillsSongFilter());
+	/** True only when the filter is ON but no song chords are derivable (locked fallback edge case). */
+	let songFallbackActive = $state(false);
+
+	/**
+	 * Flips the filter, persists it, and re-draws the next question so the
+	 * restriction takes effect immediately. Mirrors setMode's exact guard and
+	 * resets: a fresh pool draw only replaces an unanswered POOL-sourced
+	 * question. An in-flight warmup/retry/seeded item is left untouched (it
+	 * was already popped from the session's own queue, so silently swapping
+	 * it out would corrupt session bookkeeping), and hintTaken/questionShownAt
+	 * are reset alongside the swap so a stale taken hint can never
+	 * auto-reveal the new chord's formula or corrupt the assisted/duration_ms
+	 * telemetry (HI-01).
+	 */
+	function toggleSongFilter() {
+		songFilterOn = !songFilterOn;
+		try {
+			localStorage.setItem('music-learn:drills-song-filter', String(songFilterOn));
+		} catch {
+			// Swallow quota/disabled-storage errors (matches songs.ts pattern).
+		}
+		if (answered || questionSource !== 'pool') return;
+		hintTaken = false;
+		questionShownAt = Date.now();
+		question = freshPoolQuestion();
+		selected = new Set();
+		feedback = null;
+		playedLetters = [];
+		givenSymbol = undefined;
+		tappedLetter = null;
+		drillInspect = null;
+	}
 
 	function poolContext(): PoolContext {
 		return {
@@ -138,11 +240,11 @@
 	}
 
 	/** Deck selector (Track C): CHORDS, INTERVALS, or the default even MIX. */
-	const MODES: { value: DrillMode; label: string }[] = [
-		{ value: 'chords', label: 'Chords' },
-		{ value: 'intervals', label: 'Intervals' },
-		{ value: 'mix', label: 'Mix' }
-	];
+	const MODES = $derived.by((): { value: DrillMode; label: string }[] => [
+		{ value: 'chords', label: t('drills.mode.chords') },
+		{ value: 'intervals', label: t('drills.mode.intervals') },
+		{ value: 'mix', label: t('drills.mode.mix') }
+	]);
 	let mode = $state<DrillMode>('mix');
 
 	/**
@@ -155,7 +257,31 @@
 			scaffoldStage = null;
 			return generateIntervalQuestion();
 		}
-		const symbol = drawFromPool(poolContext()).symbol;
+
+		// SONG-02: with the filter ON, restrict the draw to active-song chords
+		// (a genuine restriction, not just a weight). Falls back to the full
+		// library (and flags songFallbackActive) when filtered ON but nothing
+		// is derivable, per the locked no-active-songs edge case. This never
+		// touches poolContext().songSymbols, which stays the existing 60%
+		// song-bucket weighting seam for the filter-OFF case.
+		//
+		// MD-01: the restricted candidate set is run through the same
+		// "max maxScaffoldingQualities unfamiliar qualities in scaffolding at
+		// once" pacing gate songCandidates() applies to the unrestricted song
+		// bucket, so the From-my-songs filter cannot exceed the simultaneous
+		// new-quality cap.
+		const restricted = songFilterOn
+			? limitScaffoldingQualities(drillableSongSymbols(), poolContext())
+			: null;
+		let symbol: string;
+		if (restricted && restricted.length > 0) {
+			symbol = drawFromSymbols(restricted, poolContext()) ?? drawFromPool(poolContext()).symbol;
+			songFallbackActive = false;
+		} else {
+			songFallbackActive = songFilterOn;
+			symbol = drawFromPool(poolContext()).symbol;
+		}
+
 		scaffoldStage = scaffoldStageForSymbol(poolContext(), symbol);
 		lastQualities = [...lastQualities.slice(-1), splitSymbol(symbol)?.quality ?? ''];
 		return generateQuestion({
@@ -563,11 +689,14 @@
 		return quality === '' ? 'maj' : quality;
 	}
 
-	const SOURCE_TAGS: Partial<Record<QuestionSource, string>> = {
-		warmup: 'BACK FOR ANOTHER GO',
-		retry: 'ONE MORE TIME',
-		seeded: 'FROM YOUR WEAK LIST'
-	};
+	const SOURCE_TAGS = $derived.by(
+		(): Partial<Record<QuestionSource, string>> => ({
+			warmup: t('drills.source.warmup'),
+			retry: t('drills.source.retry'),
+			seeded: t('drills.source.weakList'),
+			seeded_lesson: t('drills.source.lesson')
+		})
+	);
 
 	/** Hinted scaffolding stage: taking the hint reveals the formula and marks the answer assisted. */
 	function takeHint() {
@@ -609,13 +738,13 @@
 </script>
 
 <!--
-	The ONE mode-aware keyboard: closes over the page's existing reactive
-	state, so it reproduces exactly the props each of the four question
-	branches needs - never two input surfaces for the same fact
-	(interactive/inspectable are mutually exclusive per question branch).
-	Rendered inline in `.drill-layout__keyboard` for every branch.
+	The ONE mode-aware inline keyboard: closes over the page's existing
+	reactive state, so it reproduces exactly the props each question branch
+	needs - never two input surfaces for the same fact (interactive/
+	inspectable are mutually exclusive per question branch). Rendered inline
+	in `.drill-layout__keyboard` for every branch.
 -->
-{#snippet boardKeyboard()}
+{#snippet inlineKeyboard()}
 	{#if question.kind === 'chord' && question.direction === 'construction'}
 		<PianoKeyboard
 			notes={showConstructionReveal ? target.notes : []}
@@ -632,9 +761,8 @@
 		<!--
 			Identification: keys always play on tap (inspectable). Before
 			answering, no onInspect/badges are wired (ear support only, no
-			give-away); once answered, the SAME element becomes the
-			reveal - onInspect + showIntervalBadges wire up, matching the prior
-			separate feedback-block keyboard exactly (no second element).
+			give-away); once answered, the SAME element becomes the reveal -
+			onInspect + showIntervalBadges wire up (no second element).
 		-->
 		<PianoKeyboard
 			notes={target.notes}
@@ -672,7 +800,7 @@
 {/snippet}
 
 <main class="bg-paper text-ink min-h-screen px-2 py-8 font-sans sm:px-8">
-	<h1 class="text-heading mt-2 font-bold">Drills</h1>
+	<h1 class="text-heading mt-2 font-bold">{t('drills.page.title')}</h1>
 
 	<!-- Beginner on-ramp (sketch 007): the level lives where you practice. -->
 	<div class="mt-6">
@@ -680,7 +808,12 @@
 	</div>
 
 	<div class="mt-8 flex flex-wrap items-center justify-between gap-2">
-		<div class="flex gap-4" data-testid="drill-mode-row" role="group" aria-label="Drill mode">
+		<div
+			class="flex gap-4"
+			data-testid="drill-mode-row"
+			role="group"
+			aria-label={t('drills.aria.modeGroup')}
+		>
 			{#each MODES as modeOption (modeOption.value)}
 				<button
 					type="button"
@@ -694,8 +827,9 @@
 			{/each}
 		</div>
 		<p class="text-label text-right font-mono uppercase" data-testid="score-register">
-			{Math.min(session.asked + 1, session.length)} OF {session.length} · {score.correct} RIGHT · {score.streak}
-			STREAK
+			{Math.min(session.asked + 1, session.length)} {t('drills.score.of')} {session.length} ·
+			{score.correct} {t('drills.score.right')} · {score.streak}
+			{t('drills.score.streak')}
 		</p>
 	</div>
 
@@ -704,22 +838,22 @@
 			class="border-ink bg-paper-bright stamp mt-8 border-2 px-2 py-6 sm:px-6"
 			data-testid="session-end-card"
 		>
-			<p class="text-label font-mono uppercase">ROUND COMPLETE</p>
+			<p class="text-label font-mono uppercase">{t('drills.end.roundComplete')}</p>
 			<p class="text-display mt-2 font-mono font-bold">
 				{sessionSummary.correct} / {sessionSummary.total}
 			</p>
 			<p class="text-label font-mono uppercase" data-testid="end-card-streak">
-				BEST RUN: {sessionSummary.bestStreak} IN A ROW
+				{t('drills.end.bestRunPrefix')} {sessionSummary.bestStreak} {t('drills.end.bestRunSuffix')}
 			</p>
 
 			{#if sessionSummary.missedItems.length > 0}
-				<p class="text-body mt-6">Worth another look:</p>
+				<p class="text-body mt-6">{t('drills.end.worthAnotherLook')}</p>
 				<div class="mt-2 flex flex-wrap gap-2" data-testid="end-card-misses">
 					{#each sessionSummary.missedItems as missed (`${missed.family}:${missed.symbol}`)}
 						<Button
 							type="button"
 							variant="ghost"
-							aria-label={`Redrill ${missed.symbol}`}
+							aria-label={`${t('drills.aria.redrillPrefix')} ${missed.symbol}`}
 							onclick={() => redrillMiss(missed)}
 						>
 							<span class="font-serif font-bold">{missed.symbol}</span>
@@ -727,48 +861,64 @@
 					{/each}
 				</div>
 			{:else}
-				<p class="text-body mt-6">Clean sheet. The press ran true, mon ami.</p>
+				<p class="text-body mt-6">{t('drills.end.cleanSheet')}</p>
 			{/if}
 
 			{#if unlockSuggestion !== null && unlockSuggestion.nextTier !== null && !unlockDismissed}
 				<div class="border-ink mt-6 border-2 p-4" data-testid="unlock-card">
 					<p class="text-label font-mono uppercase">
-						TIER {unlockSuggestion.nextTier} LOOKS READY
+						{t('drills.unlock.tierPrefix')} {unlockSuggestion.nextTier} {t(
+							'drills.unlock.tierSuffix'
+						)}
 					</p>
 					<p class="text-body mt-2">
-						Your last {unlockSuggestion.rollingCount} answers are {Math.round(
-							unlockSuggestion.rollingAccuracy * 100
-						)}% correct across {unlockSuggestion.distinctDays} days. Unlock {tierById(
+						{t('drills.unlock.prefix')} {unlockSuggestion.rollingCount} {t(
+							'drills.unlock.answersAre'
+						)} {Math.round(unlockSuggestion.rollingAccuracy * 100)}{t(
+							'drills.unlock.correctAcross'
+						)} {unlockSuggestion.distinctDays} {t('drills.unlock.daysUnlock')} {tierById(
 							unlockSuggestion.nextTier
-						).name.toLowerCase()}: {tierById(unlockSuggestion.nextTier)
+						).name.toLowerCase()}{t('drills.unlock.colon')} {tierById(unlockSuggestion.nextTier)
 							.qualities.map(qualityLabel)
-							.join(', ')}?
+							.join(', ')}{t('drills.unlock.questionMark')}
 					</p>
 					<div class="mt-4 flex flex-wrap gap-4">
 						<Button type="button" variant="primary" onclick={unlockNextTier}>
-							Unlock Tier {unlockSuggestion.nextTier}
+							{t('drills.unlock.button.prefix')} {unlockSuggestion.nextTier}
 						</Button>
-						<Button type="button" variant="ghost" onclick={snoozeUnlock}>Not yet</Button>
+						<Button type="button" variant="ghost" onclick={snoozeUnlock}
+							>{t('drills.common.notYet')}</Button
+						>
 					</div>
 				</div>
 			{/if}
 
 			<div class="mt-6">
 				<Button type="button" variant="primary" onclick={() => startNewRound()}>
-					Run it again
+					{t('drills.end.runAgain')}
 				</Button>
 			</div>
 		</div>
 	{:else}
+	<div class="mt-8">
+		<SongFilterToggle
+			poolLabel={t('drills.filter.poolLabel')}
+			on={songFilterOn}
+			onToggle={toggleSongFilter}
+			note={songFallbackActive ? t('drills.filter.noteFallback') : undefined}
+			noteOn={`${t('drills.filter.noteOnPrefix')} ${songChordCount} ${t('drills.filter.noteOnSuffix')}`}
+			noteOff={t('drills.filter.noteOff')}
+		/>
+	</div>
 	<div
-		class="drill-layout border-ink bg-paper-bright mt-8 border-2 px-2 py-6 sm:px-6"
+		class="drill-layout border-ink bg-paper-bright mt-4 border-2 px-2 py-6 sm:px-6"
 		data-testid="drill-card"
 	>
 		{#if !hintDismissed}
 			<p class="drill-layout__hint text-label border-ink flex items-center justify-between gap-4 border-2 px-3 py-2 font-mono uppercase" data-testid="rotate-hint">
-				<span>Turn the phone sideways for the full two-octave board.</span>
+				<span>{t('drills.hint.rotate')}</span>
 				<button type="button" class="text-label shrink-0 font-mono underline" onclick={dismissHint}>
-					Got it
+					{t('drills.hint.gotIt')}
 				</button>
 			</p>
 		{/if}
@@ -783,11 +933,14 @@
 				<div class="flex items-start gap-4">
 					<ChordGlyph root={target.root} quality={target.symbol.slice(target.root.length)} />
 				</div>
-				<p class="text-body mt-4">Click the notes for {question.symbol}.</p>
+				<div class="mt-2">
+					<SongMark songs={songsForSymbol(question.symbol, provenanceIndex)} />
+				</div>
+				<p class="text-body mt-4">{t('drills.prompt.clickNotesFor')} {question.symbol}.</p>
 
 				{#if scaffoldStage === 'formula-first'}
 					<div class="border-ink mt-4 border-2 p-4" data-testid="scaffold-card">
-						<p class="text-label font-mono uppercase">NEW CHORD. FORMULA FIRST.</p>
+						<p class="text-label font-mono uppercase">{t('drills.scaffold.newChord')}</p>
 						<div class="mt-3 flex flex-wrap gap-4">
 							{#each formulaFor(target) as entry (entry.role + entry.letter)}
 								<div class="flex flex-col items-center gap-1">
@@ -797,7 +950,7 @@
 								</div>
 							{/each}
 						</div>
-						<p class="text-muted mt-3">Read it, then play it. This one counts as assisted.</p>
+						<p class="text-muted mt-3">{t('drills.scaffold.readThenPlay')}</p>
 					</div>
 				{:else if scaffoldStage === 'hinted' && !answered}
 					{#if hintTaken}
@@ -812,7 +965,9 @@
 						</div>
 					{:else}
 						<div class="mt-4">
-							<Button type="button" variant="ghost" onclick={takeHint}>Show formula</Button>
+							<Button type="button" variant="ghost" onclick={takeHint}
+								>{t('drills.hint.showFormula')}</Button
+							>
 						</div>
 					{/if}
 				{/if}
@@ -832,7 +987,7 @@
 			</div>
 
 			<div class="drill-layout__keyboard">
-				{@render boardKeyboard()}
+				{@render inlineKeyboard()}
 			</div>
 
 			<div class="drill-layout__controls drill-controls">
@@ -843,11 +998,13 @@
 						disabled={selected.size === 0}
 						onclick={checkAnswer}
 					>
-						Check
+						{t('drills.button.check')}
 					</Button>
 				</div>
 				<div class="drill-controls__secondary">
-					<Button type="button" variant="ghost" onclick={clearSelection}>Clear</Button>
+					<Button type="button" variant="ghost" onclick={clearSelection}
+						>{t('drills.button.clear')}</Button
+					>
 				</div>
 			</div>
 		{:else if question.kind === 'chord'}
@@ -857,11 +1014,14 @@
 						{SOURCE_TAGS[questionSource]}
 					</p>
 				{/if}
-				<p class="text-body">Name this chord.</p>
+				<p class="text-body">{t('drills.prompt.nameChord')}</p>
+				<div class="mt-2">
+					<SongMark songs={songsForSymbol(question.symbol, provenanceIndex)} />
+				</div>
 			</div>
 
 			<div class="drill-layout__keyboard">
-				{@render boardKeyboard()}
+				{@render inlineKeyboard()}
 			</div>
 
 			<div class="drill-layout__controls">
@@ -871,7 +1031,7 @@
 							type="button"
 							variant="ghost"
 							disabled={answered}
-							aria-label={`Answer: ${choice}`}
+							aria-label={`${t('drills.aria.answerPrefix')} ${choice}`}
 							onclick={() => selectChoice(choice)}
 						>
 							<span class="font-serif text-heading font-bold">{choice}</span>
@@ -886,11 +1046,11 @@
 						{SOURCE_TAGS[questionSource]}
 					</p>
 				{/if}
-				<p class="text-body">Name this interval.</p>
+				<p class="text-body">{t('drills.prompt.nameInterval')}</p>
 			</div>
 
 			<div class="drill-layout__keyboard">
-				{@render boardKeyboard()}
+				{@render inlineKeyboard()}
 			</div>
 
 			<div class="drill-layout__controls">
@@ -900,7 +1060,7 @@
 							type="button"
 							variant="ghost"
 							disabled={answered}
-							aria-label={`Answer: ${choice}`}
+							aria-label={`${t('drills.aria.answerPrefix')} ${choice}`}
 							onclick={() => selectIntervalChoice(choice)}
 						>
 							<span class="flex flex-col items-center">
@@ -919,14 +1079,16 @@
 					</p>
 				{/if}
 				<p class="text-body" data-testid="interval-construction-prompt">
-					Tap a <span class="font-mono font-bold">{question.interval.short}</span> above
+					{t('drills.prompt.tapPrefix')}
+					<span class="font-mono font-bold">{question.interval.short}</span>
+					{t('drills.prompt.tapAboveInfix')}
 					<span class="font-mono font-bold">{question.root}</span>.
 					<span class="text-muted">{capitalizeFr(question.interval.longFr)}.</span>
 				</p>
 			</div>
 
 			<div class="drill-layout__keyboard">
-				{@render boardKeyboard()}
+				{@render inlineKeyboard()}
 			</div>
 		{/if}
 
@@ -939,7 +1101,7 @@
 						<p class="text-label text-mustard font-mono uppercase">{headlineText}</p>
 					</div>
 					{#if question.kind === 'chord'}
-						<p class="text-muted mt-4">Here is the shape:</p>
+						<p class="text-muted mt-4">{t('drills.feedback.hereIsShape')}</p>
 						{#if question.direction === 'identification'}
 							<div class="mt-4 flex items-start gap-4">
 								<ChordGlyph root={target.root} quality={target.symbol.slice(target.root.length)} />
@@ -953,7 +1115,7 @@
 										style="background-color: var(--color-third);"
 										aria-hidden="true"
 									></span>
-									The chord
+									{t('drills.feedback.legendChord')}
 								</span>
 								<span class="inline-flex items-center gap-2">
 									<span
@@ -961,7 +1123,7 @@
 										style="background-color: var(--color-wrong);"
 										aria-hidden="true"
 									></span>
-									Your extra note
+									{t('drills.feedback.legendExtra')}
 								</span>
 							</p>
 						{/if}
@@ -979,14 +1141,14 @@
 							givenSymbol={question.direction === 'identification' ? givenSymbol : undefined}
 						/>
 					{:else}
-						<p class="text-muted mt-4">Here is the interval:</p>
+						<p class="text-muted mt-4">{t('drills.feedback.hereIsInterval')}</p>
 						<p class="text-label mt-2 font-mono uppercase" data-testid="interval-answer-line">
 							{question.interval.short} · {question.interval.longFr}
 						</p>
 						{#if question.direction === 'construction' && tappedReadout}
 							<p class="text-label mt-2 font-mono uppercase" data-testid="interval-tap-line">
-								You tapped {tappedReadout.letter} · {tappedReadout.info.short} · {tappedReadout.info
-									.longFr}
+								{t('drills.feedback.youTapped')} {tappedReadout.letter} · {tappedReadout.info.short} ·
+								{tappedReadout.info.longFr}
 							</p>
 						{/if}
 						<SongHook short={question.interval.short} />
@@ -1000,7 +1162,7 @@
 
 		{#if answered}
 			<div class="drill-layout__next">
-				<Button type="button" variant="primary" onclick={nextQuestion}>Next</Button>
+				<Button type="button" variant="primary" onclick={nextQuestion}>{t('drills.button.next')}</Button>
 			</div>
 		{/if}
 	</div>

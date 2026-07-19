@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/svelte';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { setLocale } from '$lib/i18n/locale.svelte';
 import SongHook from './SongHook.svelte';
 
 /**
@@ -35,5 +36,22 @@ describe('SongHook', () => {
 
 		await fireEvent.click(button);
 		expect(screen.queryByText(/Greensleeves/)).not.toBeInTheDocument();
+	});
+});
+
+describe('SongHook renders in French (I18N-02, Phase 20 Plan 05)', () => {
+	afterEach(() => {
+		setLocale('en');
+	});
+
+	it('renders the French toggle copy and flips to "Masquer l\'air" on reveal', async () => {
+		setLocale('fr');
+		render(SongHook, { short: 'm3' });
+
+		const button = screen.getByRole('button');
+		expect(button).toHaveTextContent('Ça sonne comme…');
+
+		await fireEvent.click(button);
+		expect(button).toHaveTextContent("Masquer l'air");
 	});
 });

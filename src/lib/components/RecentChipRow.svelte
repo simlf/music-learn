@@ -6,6 +6,7 @@
 	 * no history yet, per the mobile-portrait above-the-fold budget.
 	 */
 	import Button from './Button.svelte';
+	import { t } from '$lib/i18n/locale.svelte';
 
 	interface Props {
 		recent: string[];
@@ -13,16 +14,26 @@
 	}
 
 	let { recent, onselect }: Props = $props();
+
+	/** Substitutes the chord symbol (kept verbatim, never translated) into the locale's aria-label template. */
+	function chipAriaLabel(symbol: string): string {
+		return t('home.recent.chip-aria').replace('{symbol}', symbol);
+	}
 </script>
 
 {#if recent.length > 0}
-	<div class="mt-4 flex flex-wrap gap-2" data-testid="recent-chip-row">
+	<div
+		class="mt-4 flex flex-wrap gap-2"
+		data-testid="recent-chip-row"
+		role="group"
+		aria-label={t('home.recent.heading')}
+	>
 		{#each recent as symbol (symbol)}
 			<Button
 				type="button"
 				variant="ghost"
 				data-testid="recent-chip"
-				aria-label={`Look up ${symbol} again`}
+				aria-label={chipAriaLabel(symbol)}
 				onclick={() => onselect(symbol)}
 			>
 				<span class="font-mono text-label">{symbol}</span>

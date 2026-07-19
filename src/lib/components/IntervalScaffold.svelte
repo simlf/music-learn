@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { FormulaEntry } from '$lib/lookup/chordPresentation';
 	import type { IntervalScaffoldLevel } from '$lib/practice/scaffoldLevel';
+	import { t } from '$lib/i18n/locale.svelte';
 	import IntervalChip from './IntervalChip.svelte';
 
 	/**
@@ -24,7 +25,7 @@
 {#if level !== 'off'}
 	<div class="border-ink mt-4 border-2 px-3 py-3" data-testid="interval-scaffold">
 		<p class="text-label text-muted font-mono uppercase" style="letter-spacing: 0.12em;">
-			This chord is
+			{t('drills.scaffold.caption')}
 		</p>
 		<div class="mt-2 flex flex-wrap gap-3" data-scaffold-level={level}>
 			{#each entries as entry (entry.role + entry.label)}

@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { spellChord } from '$lib/theory/chord';
 import { formulaFor, aliasLine, formulaSentence } from './chordPresentation';
+import { setLocale } from '$lib/i18n/locale.svelte';
 
 describe('formulaFor', () => {
 	it('returns R, m3, P5, m7 labels in order for Cm7 with correct letters and solfege', () => {
@@ -89,6 +90,47 @@ describe('formulaSentence', () => {
 	});
 
 	it('contains no em dashes in any generated sentence', () => {
+		for (const symbol of ['Cdim', 'Cm7b5', 'Cmaj7', 'Cm', 'C', 'C7']) {
+			expect(formulaSentence(spellChord(symbol))).not.toMatch(/—|–/);
+		}
+	});
+});
+
+describe('formulaSentence: FR locale (Phase 17 copy translated)', () => {
+	afterEach(() => {
+		setLocale('en');
+	});
+
+	it('generates the canonical dim worked example in French', () => {
+		setLocale('fr');
+		expect(formulaSentence(spellChord('Cdim'))).toBe(
+			'À partir de la fondamentale, empile une tierce mineure, puis une quinte diminuée.'
+		);
+	});
+
+	it('generates the maj7 worked example in French (three tones beyond root)', () => {
+		setLocale('fr');
+		expect(formulaSentence(spellChord('Cmaj7'))).toBe(
+			'À partir de la fondamentale, empile une tierce majeure, puis une quinte juste, puis une septième majeure.'
+		);
+	});
+
+	it('is total under fr: empty string for an unrecognized chord', () => {
+		setLocale('fr');
+		expect(formulaSentence(spellChord('nonsense'))).toBe('');
+	});
+
+	it('round-trips back to English after setLocale("en")', () => {
+		setLocale('fr');
+		expect(formulaSentence(spellChord('Cdim'))).toContain('À partir de la fondamentale');
+		setLocale('en');
+		expect(formulaSentence(spellChord('Cdim'))).toBe(
+			'From the root, stack a minor 3rd, then a diminished 5th.'
+		);
+	});
+
+	it('contains no em dashes in any generated French sentence', () => {
+		setLocale('fr');
 		for (const symbol of ['Cdim', 'Cm7b5', 'Cmaj7', 'Cm', 'C', 'C7']) {
 			expect(formulaSentence(spellChord(symbol))).not.toMatch(/—|–/);
 		}

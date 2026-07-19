@@ -1,3 +1,5 @@
+import { currentLocale } from '$lib/i18n/locale.svelte';
+
 /**
  * Rotating streak-encouragement copy (PROG-03), mirroring $lib/copy/hints's
  * rotation-pool + anti-repeat picker pattern. Each pool keeps its own
@@ -8,7 +10,15 @@
  * caller substitutes with the streak count (mirroring {SYMBOL} in
  * suggestionHints). zeroStreak never mentions a count and never scolds:
  * a lapsed streak reads identically to a first-ever visit, per Phase 1
- * D-02's never-scolding rule.
+ * D-02's never-scolding rule (both true in en AND fr).
+ *
+ * (I18N-02, Phase 20 Plan 08): parallel Fr pools carry the same {N}
+ * placeholder and the same non-scolding zeroStreak tone. pickStreakLine
+ * reads currentLocale() to pick the active-locale pool; lastIndices stays a
+ * single Record<StreakLineKind, number> (not split per-locale) since a
+ * language switch mid-session is a rare edge case and each kind's anti-repeat
+ * behavior only needs to stay independent from the *other two* kinds, not
+ * from itself across a locale flip.
  */
 
 /** Streak is active and today has already been practiced. */
@@ -32,12 +42,40 @@ export const zeroStreak: string[] = [
 	'Day one is free. Go stamp something.'
 ];
 
+/** Fr parallel of activePracticedToday, same {N} placeholder, same count. */
+export const activePracticedTodayFr: string[] = [
+	'{N} jours de suite. Bravo.',
+	"{N} d'affilée. Et voilà.",
+	'{N} jours de suite. Presses encore chaudes.'
+];
+
+/** Fr parallel of activeNudge: gentle nudge, never guilt. */
+export const activeNudgeFr: string[] = [
+	"{N} jours et ça continue. Joue un peu aujourd'hui pour garder la série.",
+	"{N} d'affilée pour l'instant. Quelques minutes aujourd'hui suffisent.",
+	"{N} jours solides. Ne laisse pas aujourd'hui devenir le trou."
+];
+
+/** Fr parallel of zeroStreak: never mentions a count, never scolds. */
+export const zeroStreakFr: string[] = [
+	'Pas encore de série. Chaque parcours commence au jour un.',
+	'Page vierge. Joue quelques accords pour lancer le compteur.',
+	'Le jour un est gratuit. Va tamponner quelque chose.'
+];
+
 export type StreakLineKind = 'activePracticedToday' | 'activeNudge' | 'zeroStreak';
 
-const pools: Record<StreakLineKind, string[]> = {
-	activePracticedToday,
-	activeNudge,
-	zeroStreak
+const poolsByLocale: Record<'en' | 'fr', Record<StreakLineKind, string[]>> = {
+	en: {
+		activePracticedToday,
+		activeNudge,
+		zeroStreak
+	},
+	fr: {
+		activePracticedToday: activePracticedTodayFr,
+		activeNudge: activeNudgeFr,
+		zeroStreak: zeroStreakFr
+	}
 };
 
 const lastIndices: Record<StreakLineKind, number> = {
@@ -47,13 +85,13 @@ const lastIndices: Record<StreakLineKind, number> = {
 };
 
 /**
- * Picks a line from the given pool, avoiding an immediate repeat of the
- * previous pick for that same pool (mirroring pickHint's anti-repeat
- * while-loop exactly). Returns the raw line WITH its {N} placeholder still
- * in place, if any; the caller substitutes the count.
+ * Picks a line from the given pool for the CURRENT locale, avoiding an
+ * immediate repeat of the previous pick for that same kind (mirroring
+ * pickHint's anti-repeat while-loop exactly). Returns the raw line WITH its
+ * {N} placeholder still in place, if any; the caller substitutes the count.
  */
 export function pickStreakLine(kind: StreakLineKind): string {
-	const pool = pools[kind];
+	const pool = poolsByLocale[currentLocale()][kind];
 	if (pool.length === 1) {
 		lastIndices[kind] = 0;
 		return pool[0];

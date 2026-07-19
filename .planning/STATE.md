@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Playability & Comprehension
-current_phase: 17
-current_phase_name: chord-explainer
-status: verified
-stopped_at: Phase 17 executed + verified
-last_updated: "2026-07-17T19:41:50.904Z"
-last_activity: 2026-07-17
-last_activity_desc: Phase 17 Chord Explainer executed + verified (HINT-01..03)
+current_phase: 20
+status: verifying
+stopped_at: Completed 20-08-PLAN.md
+last_updated: "2026-07-18T20:34:59.856Z"
+last_activity: 2026-07-18
+last_activity_desc: Phase 20 complete; merged origin/main (Phases 16/17)
 progress:
   total_phases: 19
-  completed_phases: 12
-  total_plans: 61
-  completed_plans: 61
-  percent: 63
+  completed_phases: 13
+  total_plans: 74
+  completed_plans: 72
+  percent: 68
+current_phase_name: French Translation
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-14)
 
 **Core value:** See a jazz chord symbol and know instantly what to play with the left hand.
-**Current focus:** Phase 17 — chord-explainer
+**Current focus:** Phase 20 — French Translation (merged with Phases 16/17 from origin/main)
 
 ## Current Position
 
-Phase: 17 (chord-explainer) — COMPLETE (verified)
-Plan: 4 of 4
-Status: Verified — HINT-01, HINT-02, HINT-03 delivered; ready to ship
-Last activity: 2026-07-17 — Phase 17 Chord Explainer executed + verified (hint ladder in Recall)
+Phase: 20
+Plan: Not started
+Status: Phase complete — ready for verification; Phases 16/17 merged in from origin/main
+Last activity: 2026-07-18 — Phase 20 complete; reconciled Phases 16/17 (Hear the Chord, Chord Explainer) via merge
 
 **v2.0 Learning Upgrade (Phases 10-13): COMPLETE (shipped 2026-07-15).**
 
@@ -50,7 +50,7 @@ Last activity: 2026-07-17 — Phase 17 Chord Explainer executed + verified (hint
 
 **Velocity:**
 
-- Total plans completed: 38
+- Total plans completed: 56
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -66,6 +66,9 @@ Last activity: 2026-07-17 — Phase 17 Chord Explainer executed + verified (hint
 | 12 | 6 | - | - |
 | 13 | 6 | - | - |
 | 15 | 7 | - | - |
+| 18 | 4 | - | - |
+| 19 | 4 | - | - |
+| 20 | 10 | - | - |
 
 **Recent Trend:**
 
@@ -126,6 +129,24 @@ Last activity: 2026-07-17 — Phase 17 Chord Explainer executed + verified (hint
 | Phase 16 P03 | 12min | 1 tasks | 2 files |
 | Phase 16 P04 | 8min | 1 tasks | 2 files |
 | Phase 16 P5 | 12 | 2 tasks | 2 files |
+| Phase 18 P01 | 15min | 3 tasks | 6 files |
+| Phase 18 P02 | 30min | 2 tasks | 4 files |
+| Phase 18 P03 | 15min | 3 tasks | 4 files |
+| Phase 18 P04 | 12min | 1 tasks | 2 files |
+| Phase 19 P01 | 10min | 2 tasks | 2 files |
+| Phase 19 P02 | 10min | 3 tasks | 8 files |
+| Phase 19-interactive-theory P03 | 25min | 2 tasks | 3 files |
+| Phase 19 P04 | 10min | 2 tasks | 2 files |
+| Phase 20 P01 | 20min | 3 tasks | 16 files |
+| Phase 20 P02 | 8min | 3 tasks | 5 files |
+| Phase 20-french-translation P03 | 25min | 2 tasks | 4 files |
+| Phase 20 P04 | 20min | 3 tasks | 7 files |
+| Phase 20-french-translation P05 | 6m | 3 tasks | 5 files |
+| Phase 20 P06 | 35min | 3 tasks | 8 files |
+| Phase 20-french-translation P07 | 10min | 2 tasks | 6 files |
+| Phase 20 P08 | 25min | 3 tasks | 9 files |
+| Phase 20-french-translation P09 | 25min | 3 tasks | 13 files |
+| Phase 20 P10 | 20min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -236,6 +257,36 @@ Recent decisions affecting current work:
 - [Phase 16]: ChordGlyph pulseToken retrigger reuses PianoKeyboard's exact off/on setTimeout(0)/setTimeout(200) idiom (Plan 16-02) rather than a key-block remount, for consistency across both components sharing the same app.css keyframes
 - [Phase ?]: [Phase 16-04]: STUDY MODE toggle is a byte-for-byte structural sibling of the existing SOUND toggle (same ghost Button, same mono label, same mt-6 spacing) per D-04
 - [Phase ?]: [Phase 16-05]: triggerReveal()/hearAgain() gate only the playChord call on soundEnabled(), always bumping revealPulseToken - no extra stamp-settle delay needed in BuildSession since the shared app.css combined-animation selector already sequences the glyph's stamp-in and pulse, and the complete-block PianoKeyboard never receives wrongLetters so its keys never carry --stamped
+- [Phase ?]: [Phase 18-01]: songProvenance's normalizeSymbolForMatch keys on root pitch-class (tonal Note.get chroma) + spellChord quality name, not spellChord's echoed symbol field - Chord.get(...).symbol merely echoes the input alias spelling (Cm7 stays Cm7, C-7 stays C-7) so it does not collapse aliases on its own
+- [Phase 18-02]: drawFromSymbols is additive (new export beside drawFromPool), not a parameter bolted onto it, so the proven 0/60/25/15 bucket-weighting tests need zero changes — Keeps restricted and weighted draw paths provably independent
+- [Phase 18-02]: The Drills SONG-02 restriction lives in freshPoolQuestion, never in poolContext(): poolContext().songSymbols keeps feeding the existing always-on 60% song-bucket weighting for the filter-OFF case — Preserves the existing weighting seam per the plan's explicit prohibition
+- [Phase ?]: [Phase 18-03]: applySongFilter() is a dedicated named helper inside RecallSession's load(), mirroring 18-02's drawFromSymbols/drawFromPool call-site branching pattern
+- [Phase 18]: [Phase 18-04]: Lookup SongMark test harness dropped the removed Phase 15 keyboard dock context, rendering the page plainly (like drillsSongFilter.test.ts) since +page.svelte now renders PianoKeyboard inline after quick task 260718-iyj
+- [Phase 19-01]: Body copy stores literal **phrase** markdown-style emphasis markers verbatim from the UI-SPEC; component (19-03) owns parsing them into verdigris-colored spans — Keeps the pure module free of Svelte/DOM concerns while locking the exact copy contract
+- [Phase 19-01]: LessonStep shape kept deliberately generic (title/body/targetChroma/role/letter/hearable/correctLine/wrongHint) for future lessons — Future lessons (triads, sevenths) can ship as additional LessonStep arrays without changing grading or component logic
+- [Phase ?]: [Phase 19-02]: Lesson seeds take precedence over weak-list seeds when both channels are present at drills init; both are always consumed one-shot regardless of which wins
+- [Phase ?]: [Phase 19-02]: SessionItem.origin never participates in dedupeItems' family+symbol dedupe key - it is a UX label only, never a correctness signal
+- [Phase ?]: Button.svelte's onclick widened to a plain MouseEvent handler wired on both button and anchor branches, fixing a silent drop of the click handler when href was set (needed for the lesson handoff CTA).
+- [Phase ?]: InteractiveLesson's Hear-it control previews the active step's own target letter (not earnedNotes) for the two graded third steps, since an immediate advance-on-correct means a role='third' step is never simultaneously active and already earned.
+- [Phase ?]: [Phase 19-04]: InteractiveLesson's outer /theory section wrapper carries only shared card chrome, no duplicate heading, since the component renders its own heading/lead internally
+- [Phase 20]: locale.svelte.ts uses the .svelte.ts extension so t() stays reactive across component templates; LocaleDict is defined once in messages/index.ts and imported type-only by domain files to avoid a runtime circular dependency
+- [Phase ?]: recall.ts: split-sentence keys for interpolated strings (prefix/infix/suffix keyed separately around an untranslated dynamic value) established as the second domain-file i18n pattern
+- [Phase ?]: RecallSession/RecallMap module-level const arrays that depend on t() are converted to $derived.by(() => [...]) so a live locale flip re-renders them
+- [Phase ?]: Chord interval terminology (Build surface) reads IntervalInfo.longFr directly; new whole/half-tone French vocabulary for scale steps lives in build.ts, since interval.ts has no French seed for that scale-step phrasing.
+- [Phase ?]: intervalWordFor() now pre-bakes its plural form for both locales (EN unchanged; FR pluralizes word-by-word since the fixed FR vocabulary is regular +s plural).
+- [Phase ?]: Drills' interval long-name (IntervalInfo.longFr) stays always-French regardless of the EN|FR toggle, per its pre-existing bilingual pedagogy convention predating Phase 20
+- [Phase ?]: SongMark's {N} count reads a t()-keyed template with a literal {N} placeholder, substituted client-side (t() has no interpolation)
+- [Phase ?]: InteractiveLesson feedbackLine resolves currentLocale() imperatively at tap time; done-state correctLine reads it live in the template
+- [Phase ?]: theory.hearIt is a single shared dictionary key reused by InteractiveLesson and ChordExample Hear it controls
+- [Phase 20-french-translation]: scale-title now reads a single locale-driven qualitySuffix key instead of a permanently bilingual literal
+- [Phase 20-french-translation]: ScaleKeyboardDrill per-key aria-label words (key/scale degree) and the drill group aria-label were translated beyond the plan's explicit must_haves since they are in-scope screen-reader prose
+- [Phase 20-08]: Tier names/blurbs (tiers.ts data) stay untranslated/English per 20-04 precedent; only the surrounding TIER/NIVEAU chrome words are keyed
+- [Phase 20-08]: PracticeItemRow's CHORD/SCALE/INTERVAL kind tag is translated (category word, not a symbol), mirroring 20-02's recall.map.kind.* precedent
+- [Phase 20-09]: InspectRegister long-name now switches info.long/info.longFr by locale instead of always rendering longFr; fixed downstream tests across drills/scales/components suites accordingly.
+- [Phase 20-09]: recent-lookups group heading implemented as an accessible aria-label (no visible new heading markup).
+- [Phase 20-09]: RevealInsight needed no code changes; its French behavior is inherited from mnemonicFor()'s locale-reactivity.
+- [Phase ?]: Combined Task 1 (FR-wiring/immunity/no-key-leak) and Task 2 (I18N-03 fit-rule assertions) into one commit since both build the same coverage.test.ts file as one coherent gate
+- [Phase ?]: tiers.ts and presets.ts English residuals left untranslated (out of Phase 20 files_modified scope per 20-UI-SPEC.md); flagged for a future decision rather than silently expanded
 
 ### Pending Todos
 
@@ -249,6 +300,13 @@ None yet.
 - ⚠️ [Phase 8, for Phase 9] CORS_ORIGIN must match the deployed frontend origin exactly; UAT hit a block when the app ran on a non-allowed port (npm run preview, 4173). Deploy config must set CORS_ORIGIN.
 - ⚠️ [Phase 8] Progress page shows the generic "server's not answering" copy for a 401 (wrong access key). Misleading during setup; consider a distinct wrong-key message (minor UX).
 - ⚠️ [Phase 8] 08-REVIEW.md CR-02: on a fresh Linux host, the ./data bind mount may shadow the image chown and crash the non-root app user (SQLITE_CANTOPEN). Worked locally; re-check on the Oracle server in Phase 9.
+- ~~A concurrent, unrelated task reverted the Phase 15 keyboard-dock feature (KeyboardDock.svelte, dockContext.svelte.ts deleted) on this same working tree during Phase 18 Plan 02 execution, leaving buildSession.test.ts/recallSession.test.ts/scaleKeyboardDrill.test.ts and the full-suite type-check red for reasons unrelated to Phase 18.~~ — RESOLVED 2026-07-18: quick task 260718-iyj completed (recorded in Quick Tasks table, wrap-up commit 4aaae71). Verified branch health at HEAD 08dccad: `npm run check` = 0 errors / 0 warnings (1294 files), `npm test` = 1020 tests / 73 files all pass. Phase 18 drills song-wiring (SongMark, SongFilterToggle, drawFromSymbols) confirmed intact in current tree despite the 18-02 commit-hash shuffle. NOTE for Phases 19-20: the dock is gone, keyboards are inline again ([[keyboard-inline-not-docked]]) — Phase 19 (Interactive Theory) and any keyboard-bearing copy must target inline keyboards, not the removed dock.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260718-iyj | Remove collapsible keyboard dock, restore inline keyboards | 2026-07-18 | 9108219 | [260718-iyj-remove-collapsible-keyboard-dock-restore](./quick/260718-iyj-remove-collapsible-keyboard-dock-restore/) |
 
 ## Deferred Items
 
@@ -260,7 +318,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-17T18:44:28.758Z
-Stopped at: Phase 17 UI-SPEC approved
+Last session: 2026-07-18T19:55:16.679Z
+Stopped at: Completed 20-08-PLAN.md; merged origin/main (Phases 16/17)
 Resume file: 
 .planning/phases/17-chord-explainer/17-UI-SPEC.md

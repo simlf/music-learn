@@ -63,7 +63,8 @@ vi.mock('$lib/practice/levelState', () => ({
 }));
 
 vi.mock('$lib/practice/songs', () => ({
-	activeSongChordSymbols: (): string[] => []
+	activeSongChordSymbols: (): string[] => [],
+	listSongs: (): unknown[] => []
 }));
 
 vi.mock('$lib/practice/scaffold', () => ({
@@ -73,7 +74,8 @@ vi.mock('$lib/practice/scaffold', () => ({
 }));
 
 vi.mock('$lib/practice/drillSeeds', () => ({
-	consumeDrillSeeds: (): string[] => []
+	consumeDrillSeeds: (): string[] => [],
+	consumeLessonSeeds: (): string[] => []
 }));
 
 vi.mock('$lib/audio/audio', () => ({

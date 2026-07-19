@@ -12,6 +12,8 @@
 	 * no href), min-height 44px for visual consistency with the rest of the
 	 * app's touch-target rule even though nothing here is tappable yet.
 	 */
+	import { t } from '$lib/i18n/locale.svelte';
+
 	interface PracticeItem {
 		item: string;
 		kind: 'chord' | 'scale' | 'interval';
@@ -27,13 +29,13 @@
 
 	const isWeak = $derived(item.attempts >= 3 && item.accuracy < 0.7);
 	const accuracyPercent = $derived(Math.round(item.accuracy * 100));
+	/** CHORD/SCALE/INTERVAL category word, translated (the symbol itself never is). */
+	const kindLabel = $derived(t(`progress.table.kind.${item.kind}`));
 </script>
 
 <tr class="practice-row" class:practice-row--weak={isWeak} data-testid="practice-item-row">
 	<td class="practice-row__symbol text-heading font-bold">{item.item}</td>
-	<td class="practice-row__kind text-label font-mono hidden sm:table-cell"
-		>{item.kind.toUpperCase()}</td
-	>
+	<td class="practice-row__kind text-label font-mono hidden sm:table-cell">{kindLabel}</td>
 	<td class="practice-row__attempts text-body">{item.attempts}</td>
 	<td
 		class="practice-row__accuracy text-body"

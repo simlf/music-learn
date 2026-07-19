@@ -4,6 +4,7 @@
 	 * KIND / ATTEMPTS / ACCURACY columns, then one PracticeItemRow per item -
 	 * mirrors RecentChipRow's parent-iterates-child list pattern.
 	 */
+	import { t } from '$lib/i18n/locale.svelte';
 	import PracticeItemRow from './PracticeItemRow.svelte';
 
 	interface PracticeItem {
@@ -23,10 +24,11 @@
 <table class="accuracy-table w-full" data-testid="accuracy-table">
 	<thead>
 		<tr>
-			<th class="text-label font-mono">SYMBOL</th>
-			<th class="text-label font-mono hidden sm:table-cell">KIND</th>
-			<th class="text-label font-mono">ATTEMPTS</th>
-			<th class="text-label font-mono">ACCURACY</th>
+			<th class="text-label font-mono">{t('progress.table.header.symbol')}</th>
+			<th class="text-label font-mono hidden sm:table-cell">{t('progress.table.header.kind')}</th
+			>
+			<th class="text-label font-mono">{t('progress.table.header.attempts')}</th>
+			<th class="text-label font-mono">{t('progress.table.header.accuracy')}</th>
 		</tr>
 	</thead>
 	<tbody>

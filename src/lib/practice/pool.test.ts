@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { StatItem } from '$lib/api/progress';
-import { DEFAULT_POOL_CONFIG, drawFromPool, scaffoldStageForSymbol, type PoolContext } from './pool';
+import {
+	DEFAULT_POOL_CONFIG,
+	drawFromPool,
+	drawFromSymbols,
+	limitScaffoldingQualities,
+	scaffoldStageForSymbol,
+	type PoolContext
+} from './pool';
 import { itemsForTiers } from './tiers';
 import type { ScaffoldState } from './scaffold';
 
@@ -264,6 +271,119 @@ describe('above-tier song chords: scaffolding bypass', () => {
 		const bbmDraws = songDraws.filter((draw) => draw.symbol === 'Bbm');
 		expect(bbmDraws.length).toBeGreaterThan(0);
 		expect(bbmDraws.every((draw) => draw.scaffoldStage === 'formula-first')).toBe(true);
+	});
+});
+
+describe('drawFromSymbols (SONG-02 restricted draw)', () => {
+	it('returns null for an empty candidate set', () => {
+		const ctx = baseContext();
+		expect(drawFromSymbols([], ctx, DEFAULT_POOL_CONFIG, mulberry32(1))).toBeNull();
+	});
+
+	it('draws only from the passed symbols across many seeded draws, never a tier/review symbol outside the set', () => {
+		const ctx = baseContext({
+			currentTier: 3,
+			unlockedTiers: [1, 2, 3],
+			recentMisses: ['Dm7', 'Am7'],
+			weakest: [{ item: 'Em7', kind: 'chord', attempts: 6, accuracy: 0.3, needsPractice: true }]
+		});
+		const rng = mulberry32(11);
+		const allowed = new Set(['Cm7', 'F7', 'Bbmaj7']);
+		for (let i = 0; i < 500; i++) {
+			const symbol = drawFromSymbols(['Cm7', 'F7', 'Bbmaj7'], ctx, DEFAULT_POOL_CONFIG, rng);
+			expect(symbol).not.toBeNull();
+			expect(allowed.has(symbol as string)).toBe(true);
+		}
+	});
+
+	it('favors a higher-need (lower-accuracy) symbol when stats are populated, capped near 35% per item', () => {
+		const ctx = baseContext({
+			stats: [
+				chordStat('Cm7', 50, 0.0),
+				chordStat('F7', 50, 1.0),
+				chordStat('G7', 50, 1.0),
+				chordStat('Bbmaj7', 50, 1.0)
+			]
+		});
+		const rng = mulberry32(21);
+		const symbols = ['Cm7', 'F7', 'G7', 'Bbmaj7'];
+		const draws: string[] = [];
+		for (let i = 0; i < 4000; i++) {
+			draws.push(drawFromSymbols(symbols, ctx, DEFAULT_POOL_CONFIG, rng) as string);
+		}
+		const weakShare = draws.filter((symbol) => symbol === 'Cm7').length / draws.length;
+		expect(weakShare).toBeGreaterThan(0.28);
+		expect(weakShare).toBeLessThan(0.42);
+	});
+
+	it('honors the max-same-quality-run interleaving constraint', () => {
+		const rng = mulberry32(33);
+		const symbols = ['Cm7', 'Dm7', 'C', 'F'];
+		const qualityOf = (symbol: string) => symbol.replace(/^[A-G][b#]?/, '');
+		const lastQualities: string[] = [];
+		for (let i = 0; i < 300; i++) {
+			const ctx = baseContext({ lastQualities: [...lastQualities] });
+			const symbol = drawFromSymbols(symbols, ctx, DEFAULT_POOL_CONFIG, rng) as string;
+			const quality = qualityOf(symbol);
+			if (lastQualities.length >= 2) {
+				const [a, b] = lastQualities.slice(-2);
+				if (a === b) expect(quality).not.toBe(a);
+			}
+			lastQualities.push(quality);
+		}
+	});
+
+	it('is pure and deterministic under an injected rng', () => {
+		const ctx = baseContext({ songSymbols: ['Cm7', 'F7', 'Bbmaj7'] });
+		const symbols = ['Cm7', 'F7', 'Bbmaj7'];
+		const first = drawFromSymbols(symbols, ctx, DEFAULT_POOL_CONFIG, mulberry32(99));
+		const second = drawFromSymbols(symbols, ctx, DEFAULT_POOL_CONFIG, mulberry32(99));
+		expect(first).toBe(second);
+	});
+});
+
+describe('limitScaffoldingQualities (MD-01: shared restricted-draw pacing gate)', () => {
+	it('throttles a third unfamiliar quality out of an arbitrary candidate list once 2 are already in-flight, the same way songCandidates does', () => {
+		const scaffolds: Record<string, ScaffoldState> = {
+			Cmaj7: { symbol: 'Cmaj7', exposures: 2, coldCorrectConstructions: 0 },
+			Dm7: { symbol: 'Dm7', exposures: 1, coldCorrectConstructions: 0 }
+		};
+		const ctx = baseContext({
+			currentTier: 1,
+			unlockedTiers: [1],
+			scaffolds
+		});
+		// This is NOT ctx.songSymbols - it's an arbitrary restricted candidate
+		// set (mirrors the Drills page's drillableSongSymbols() call site for
+		// the "From my songs" filter). maj7 and m7 are already in-flight;
+		// quality '7' (G7) must be throttled out. C (tier 1, no scaffolding)
+		// always passes through.
+		const restricted = limitScaffoldingQualities(['Cmaj7', 'Dm7', 'G7', 'C'], ctx);
+		expect(restricted).not.toContain('G7');
+		expect(restricted).toContain('Cmaj7');
+		expect(restricted).toContain('Dm7');
+		expect(restricted).toContain('C');
+	});
+
+	it('lets a candidate through once its quality is already in-flight, or once it is a normal (non-scaffolding) item', () => {
+		const scaffolds: Record<string, ScaffoldState> = {
+			Cmaj7: { symbol: 'Cmaj7', exposures: 2, coldCorrectConstructions: 0 },
+			Dm7: { symbol: 'Dm7', exposures: 1, coldCorrectConstructions: 0 }
+		};
+		const ctx = baseContext({ currentTier: 1, unlockedTiers: [1], scaffolds });
+		// A second Cmaj7-quality symbol (same quality already in-flight) is
+		// never throttled by the 2-quality cap, since it doesn't add a THIRD
+		// distinct quality.
+		expect(limitScaffoldingQualities(['Gmaj7'], ctx)).toEqual(['Gmaj7']);
+	});
+
+	it('with no scaffolding at all, returns every candidate unfiltered', () => {
+		const ctx = baseContext({ currentTier: 3, unlockedTiers: [1, 2, 3] });
+		expect(limitScaffoldingQualities(['Cm7', 'F7', 'Bbmaj7'], ctx)).toEqual([
+			'Cm7',
+			'F7',
+			'Bbmaj7'
+		]);
 	});
 });
 

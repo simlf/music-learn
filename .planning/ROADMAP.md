@@ -37,11 +37,11 @@ Decimal phases appear between their surrounding integers in numeric order.
 *(Phase 14 is the standalone `14-mastery-criterion` improvement; this v2.1 batch continues at 15. Design winners are Session 4 sketches 008–013.)*
 
 - [x] **Phase 15: Playable Keyboard Everywhere** - A docked, always-playable keyboard on every keyboard-bearing page (sketch 008-A) (planned 2026-07-15) (completed 2026-07-15)
-- [x] **Phase 16: Hear the Chord** - Auto-play + synced pulse on the BUILD reveal for audio memory (sketch 009-A) — COMPLETE (verified 2026-07-16)
-- [x] **Phase 17: Chord Explainer** - Escalating in-place hints for unknown chords in Recall (sketch 010-A) — COMPLETE (verified 2026-07-17)
-- [ ] **Phase 18: Your Songs' Chords** - Song-provenance marks + a From-my-songs filter across the app (sketch 011-A) (planned 2026-07-15)
-- [ ] **Phase 19: Interactive Theory** - Guided-step beginner lessons that hand off into the first drill (sketch 012-A) (planned 2026-07-15)
-- [ ] **Phase 20: French Translation** - Header EN|FR toggle and a full French i18n layer (sketch 013-A) (planned 2026-07-15)
+- [x] **Phase 16: Hear the Chord** - Auto-play + synced pulse on the BUILD reveal for audio memory (sketch 009-A) (completed 2026-07-16)
+- [x] **Phase 17: Chord Explainer** - Escalating in-place hints for unknown chords in Recall (sketch 010-A) (completed 2026-07-17)
+- [x] **Phase 18: Your Songs' Chords** - Song-provenance marks + a From-my-songs filter across the app (sketch 011-A) (planned 2026-07-15) (completed 2026-07-18)
+- [x] **Phase 19: Interactive Theory** - Guided-step beginner lessons that hand off into the first drill (sketch 012-A) (planned 2026-07-15) (completed 2026-07-18)
+- [x] **Phase 20: French Translation** - Header EN|FR toggle and a full French i18n layer (sketch 013-A) (planned 2026-07-15) (completed 2026-07-18)
 
 ## Phase Details
 
@@ -494,6 +494,17 @@ Plans:
 
 **Design reference**: `.planning/sketches/011-your-songs-chords/` (winner Variant A: provenance mark + filter)
 **UI hint**: yes
+**Plans**: 4/4 plans complete
+
+**Wave 1**
+
+- [x] 18-01-PLAN.md — Shared primitives: songProvenance module + SongMark tag + SongFilterToggle bar (SONG-01/02/03)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [x] 18-02-PLAN.md — Drills surface: SongMark in prompt + From my songs filter restricting the chord pool (SONG-01, SONG-02)
+- [x] 18-03-PLAN.md — Recall surface: SongMark across modes (hear-name spoiler-safe) + filter restricting the review queue (SONG-01, SONG-02)
+- [x] 18-04-PLAN.md — Chord Lookup: SongMark in the result header (SONG-01)
 
 ### Phase 19: Interactive Theory
 
@@ -508,6 +519,20 @@ Plans:
 
 **Design reference**: `.planning/sketches/012-interactive-theory/` (winner Variant A: guided steps; B lesson-map as the later container)
 **UI hint**: yes
+**Plans**: 4/4 plans complete
+
+**Wave 1**
+
+- [x] 19-01-PLAN.md — Thirds lesson data + chroma grading + drill-seed pair (pure module) (LEARN-01)
+- [x] 19-02-PLAN.md — Drill-seed handoff plumbing: lesson-seeds channel + 'seeded_lesson' source + FROM YOUR LESSON tag (LEARN-03)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [x] 19-03-PLAN.md — InteractiveLesson.svelte: guided steps, chroma-graded taps, per-step audio, handoff card (LEARN-01, LEARN-02, LEARN-03)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [x] 19-04-PLAN.md — /theory integration: interactive lesson as the first section, static lessons intact (LEARN-01)
 
 ### Phase 20: French Translation
 
@@ -522,6 +547,26 @@ Plans:
 
 **Design reference**: `.planning/sketches/013-french-fit-test/` (winner Variant A: header toggle; C stress-panel is the overflow audit)
 **UI hint**: yes
+**Plans**: 10/10 plans complete
+
+**Wave 1**
+
+- [x] 20-01-PLAN.md — i18n foundation: reactive locale store + t() + per-domain dictionaries + LocaleToggle + masthead nav flip (I18N-01/02)
+
+**Wave 2** *(parallel: file-disjoint per-surface conversions, blocked on Wave 1)*
+
+- [x] 20-02-PLAN.md — Recall surface: grades/modes/map + tight-surface fit (I18N-02/03)
+- [x] 20-03-PLAN.md — Build surface: captions/steps/WHY, interval longFr seed (I18N-02)
+- [x] 20-04-PLAN.md — Drills surface: prompts/feedback/CTAs + FROM YOUR LESSON tag (I18N-02)
+- [x] 20-05-PLAN.md — Songs + Phase 18 shared song components (I18N-02)
+- [x] 20-06-PLAN.md — Theory + Phase 19 interactive lesson (bilingual lesson data) (I18N-02)
+- [x] 20-07-PLAN.md — Scales surface: drill + degree strip (I18N-02)
+- [x] 20-08-PLAN.md — Progress + streak copy + masthead streak chip (I18N-02)
+- [x] 20-09-PLAN.md — Lookup/home + shared reveal/inspect components + hints/mnemonics (I18N-02)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [x] 20-10-PLAN.md — French fit audit + cross-surface immunity/completeness gate + visual sign-off (I18N-01/02/03)
 
 ## Progress
 
@@ -549,6 +594,6 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 | 15. Playable Keyboard Everywhere | 7/7 | Complete    | 2026-07-15 |
 | 16. Hear the Chord | 5/6 | In Progress|  |
 | 17. Chord Explainer | 0/TBD | Pending | - |
-| 18. Your Songs' Chords | 0/TBD | Pending | - |
-| 19. Interactive Theory | 0/TBD | Pending | - |
-| 20. French Translation | 0/TBD | Pending | - |
+| 18. Your Songs' Chords | 4/4 | Complete    | 2026-07-18 |
+| 19. Interactive Theory | 4/4 | Complete    | 2026-07-18 |
+| 20. French Translation | 10/10 | Complete    | 2026-07-18 |

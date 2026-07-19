@@ -1,7 +1,8 @@
-import { render, screen } from '@testing-library/svelte';
+import { render, screen, fireEvent, cleanup } from '@testing-library/svelte';
 import { createRawSnippet } from 'svelte';
 import { readable } from 'svelte/store';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { setLocale } from '../src/lib/i18n/locale.svelte';
 
 // +layout.svelte reads the `$page` store from $app/stores to mark the active
 // nav link. That store is populated by the real SvelteKit client router at
@@ -39,5 +40,39 @@ describe('masthead responsive nav (09-06)', () => {
 		expect(screen.getByRole('link', { name: 'Songs' })).toHaveAttribute('href', '/songs');
 		expect(screen.getByRole('link', { name: 'Theory' })).toHaveAttribute('href', '/theory');
 		expect(screen.queryByRole('link', { name: 'Showcase' })).not.toBeInTheDocument();
+	});
+});
+
+describe('EN|FR toggle live-flips the nav (I18N-01/02)', () => {
+	afterEach(() => {
+		cleanup();
+		setLocale('en');
+	});
+
+	it('defaults to English nav labels with the brand unchanged', () => {
+		const emptyChildren = createRawSnippet(() => ({
+			render: () => '<div></div>'
+		}));
+
+		render(RootLayout, { params: {}, data: {}, children: emptyChildren });
+
+		expect(screen.getByRole('link', { name: 'Drills' })).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Theory' })).toBeInTheDocument();
+		expect(screen.getByText('MUSIC LEARN')).toBeInTheDocument();
+	});
+
+	it('flips the nav to French live when the FR segment is clicked, keeping the brand unchanged', async () => {
+		const emptyChildren = createRawSnippet(() => ({
+			render: () => '<div></div>'
+		}));
+
+		render(RootLayout, { params: {}, data: {}, children: emptyChildren });
+
+		const frSegment = screen.getByRole('button', { name: /français/i });
+		await fireEvent.click(frSegment);
+
+		expect(screen.getByRole('link', { name: 'Exercices' })).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Théorie' })).toBeInTheDocument();
+		expect(screen.getByText('MUSIC LEARN')).toBeInTheDocument();
 	});
 });

@@ -28,6 +28,8 @@
 	import { pickDistractors } from '$lib/drills/generateQuestion';
 	import { ensureAudioReady, playChord, playNote } from '$lib/audio/audio';
 	import { toPitch } from '$lib/audio/voicing';
+	import { symbolHasProvenance, songsForSymbol } from '$lib/practice/songProvenance';
+	import { t } from '$lib/i18n/locale.svelte';
 	import ChordGlyph from './ChordGlyph.svelte';
 	import IntervalChip from './IntervalChip.svelte';
 	import NoteLabel from './NoteLabel.svelte';
@@ -35,6 +37,7 @@
 	import Button from './Button.svelte';
 	import RevealInsight from './RevealInsight.svelte';
 	import BuildSession from './BuildSession.svelte';
+	import SongMark from './SongMark.svelte';
 	import HintLadder from './HintLadder.svelte';
 
 	/**
@@ -44,20 +47,31 @@
 	 * TODAY" register. The arrow is the same "→" glyph already used
 	 * elsewhere in this codebase, never an em dash.
 	 */
-	const MODE_LABELS: Record<Mode, string> = {
-		formula: 'SYMBOL → FORMULA',
-		'formula-build': 'FORMULA → BUILD',
-		'see-play': 'SYMBOL → PLAY',
-		'hear-name': 'SOUND → NAME'
-	};
+	const MODE_LABELS = $derived.by(
+		(): Record<Mode, string> => ({
+			formula: t('recall.mode.formula'),
+			'formula-build': t('recall.mode.formula-build'),
+			'see-play': t('recall.mode.see-play'),
+			'hear-name': t('recall.mode.hear-name')
+		})
+	);
 
 	/**
 	 * Right-answer/wrong-answer confirmation variants (mirrors
 	 * drills/+page.svelte's own CORRECT_VARIANTS/WRONG_VARIANTS/pickVariant
 	 * verbatim, scoped to this component for Mode A's feedback line).
 	 */
-	const CORRECT_VARIANTS = ['Nailed it.', 'Et voilà.', 'Bang on.', 'Spot on, mon ami.'];
-	const WRONG_VARIANTS = ['Not quite.', 'Close, but no cigar.', 'Not this time.'];
+	const CORRECT_VARIANTS = $derived.by(() => [
+		t('recall.feedback.correct.0'),
+		t('recall.feedback.correct.1'),
+		t('recall.feedback.correct.2'),
+		t('recall.feedback.correct.3')
+	]);
+	const WRONG_VARIANTS = $derived.by(() => [
+		t('recall.feedback.wrong.0'),
+		t('recall.feedback.wrong.1'),
+		t('recall.feedback.wrong.2')
+	]);
 
 	/**
 	 * Picks a variant, avoiding an immediate repeat, mirroring drills'
@@ -106,14 +120,19 @@
 
 	interface Props {
 		onViewMap?: () => void;
+		/** SONG-02: "From my songs" restriction on the review queue. Default off (byte-identical to no filter). */
+		songFilterOn?: boolean;
+		/** Pre-built symbol -> song-names index (18-01's buildProvenanceIndex); the page builds it once and passes it down. */
+		provenanceIndex?: Map<string, string[]>;
 	}
 
-	let { onViewMap }: Props = $props();
+	let { onViewMap, songFilterOn = false, provenanceIndex }: Props = $props();
 
 	type PageState =
 		| 'loading'
 		| 'empty-no-deck'
 		| 'empty-none-due'
+		| 'empty-filtered-none-due'
 		| 'reviewing'
 		| 'complete'
 		| 'error';
@@ -123,6 +142,8 @@
 	let cardsByKey = $state(new Map<string, CardRecord>());
 	let revealed = $state(false);
 	let reviewedCount = $state(0);
+	/** MD-02: how many real due cards the song filter is currently hiding, for the filter-aware empty message. */
+	let filteredHiddenCount = $state(0);
 
 	// ---- Mode A ('see-play') per-card state --------------------------------
 	// See the symbol, play it on the keyboard, grade by chroma set equality
@@ -167,6 +188,27 @@
 	}
 
 	/**
+	 * SONG-02's queue restriction: when the filter is ON and a non-empty
+	 * provenance index is available, keep only chord-formula cards whose
+	 * symbol belongs to an active song (dropping non-song chords AND
+	 * non-chord facts like interval-size/scale-degree). When the filter is ON
+	 * but the index is empty (no derivable song chords), leave `due`
+	 * unchanged so the session never dead-ends - the page already surfaces
+	 * the fallback note in that case.
+	 */
+	function applySongFilter(due: CardRecord[]): CardRecord[] {
+		if (!songFilterOn || !provenanceIndex || provenanceIndex.size === 0) return due;
+		return due.filter((card) => {
+			const fact = factById(card.factId);
+			return (
+				fact !== undefined &&
+				fact.factKind === 'chord-formula' &&
+				symbolHasProvenance(fact.symbol, provenanceIndex)
+			);
+		});
+	}
+
+	/**
 	 * Single source of per-mode HintLadder layer selection (HINT-01), reused by
 	 * Plan 04 for hear-name. `see-play` and `hear-name` get the full 4-item
 	 * ladder; `formula-build` skips the formula-chip layer (D-03) since the
@@ -183,8 +225,19 @@
 		pageState = 'loading';
 		try {
 			await introduceNewCards();
-			const due = await getDueCards();
+			const rawDue = await getDueCards();
+			const due = applySongFilter(rawDue);
 			if (due.length === 0) {
+				// MD-02: distinguish "the filter hid everything" from "truly
+				// nothing due" - rawDue is only non-empty here when
+				// applySongFilter actually restricted the set (filter ON with a
+				// non-empty provenance index), so real due cards exist but are
+				// hidden, never genuinely absent.
+				if (rawDue.length > 0) {
+					filteredHiddenCount = rawDue.length;
+					pageState = 'empty-filtered-none-due';
+					return;
+				}
 				const all = await getAllCards();
 				pageState = all.length === 0 ? 'empty-no-deck' : 'empty-none-due';
 				return;
@@ -541,12 +594,14 @@
 		}
 	}
 
-	const GRADES: { rating: Rating; label: string }[] = [
-		{ rating: Rating.Again, label: 'Again' },
-		{ rating: Rating.Hard, label: 'Hard' },
-		{ rating: Rating.Good, label: 'Good' },
-		{ rating: Rating.Easy, label: 'Easy' }
-	];
+	const GRADES = $derived.by(
+		(): { rating: Rating; label: string }[] => [
+			{ rating: Rating.Again, label: t('recall.grade.again') },
+			{ rating: Rating.Hard, label: t('recall.grade.hard') },
+			{ rating: Rating.Good, label: t('recall.grade.good') },
+			{ rating: Rating.Easy, label: t('recall.grade.easy') }
+		]
+	);
 
 	/** Inline style override for the Again grade button (D-color rule: reuses --color-wrong verbatim, no new token). */
 	function gradeButtonStyle(rating: Rating): string | undefined {
@@ -589,55 +644,66 @@
 
 {#if pageState === 'loading'}
 	<p class="text-label font-mono uppercase" data-testid="recall-loading">
-		COUNTING TODAY'S CARDS...
+		{t('recall.state.loading')}
 	</p>
 {:else if pageState === 'empty-no-deck'}
 	<div data-testid="recall-empty-no-deck">
-		<p class="text-heading font-bold">Nothing to recall yet.</p>
+		<p class="text-heading font-bold">{t('recall.empty.no-deck.heading')}</p>
 		<p class="text-body mt-4">
-			Play a few Drills first. Recall cards show up here as you meet new chords, intervals, and
-			scale degrees.
+			{t('recall.empty.no-deck.body')}
 		</p>
 		<div class="mt-6">
-			<Button variant="primary" href="/drills">Practice Now</Button>
+			<Button variant="primary" href="/drills">{t('recall.cta.practice-now')}</Button>
 		</div>
 	</div>
 {:else if pageState === 'empty-none-due'}
 	<div data-testid="recall-empty-none-due">
-		<p class="text-heading font-bold">Nothing due today.</p>
+		<p class="text-heading font-bold">{t('recall.empty.none-due.heading')}</p>
 		<p class="text-body mt-4">
-			Every card's tucked in for later. Come back tomorrow, or warm up with free practice.
+			{t('recall.empty.none-due.body')}
 		</p>
 		<div class="mt-6">
-			<Button variant="ghost" href="/drills">Practice Now</Button>
+			<Button variant="ghost" href="/drills">{t('recall.cta.practice-now')}</Button>
+		</div>
+	</div>
+{:else if pageState === 'empty-filtered-none-due'}
+	<div data-testid="recall-empty-filtered-none-due">
+		<p class="text-heading font-bold">{t('recall.empty.filtered.heading')}</p>
+		<p class="text-body mt-4">
+			{filteredHiddenCount}
+			{filteredHiddenCount === 1
+				? t('recall.empty.filtered.singular')
+				: t('recall.empty.filtered.plural')}
+		</p>
+		<div class="mt-6">
+			<Button variant="ghost" href="/drills">{t('recall.cta.practice-now')}</Button>
 		</div>
 	</div>
 {:else if pageState === 'error'}
 	<div data-testid="recall-error">
 		<p class="text-body">
-			Couldn't open the practice ledger. Reload the page, mon ami. If it keeps happening, your
-			browser's storage might be full or blocked.
+			{t('recall.error.body')}
 		</p>
 		<div class="mt-6">
-			<Button type="button" variant="ghost" onclick={load}>Try Again</Button>
+			<Button type="button" variant="ghost" onclick={load}>{t('recall.cta.try-again')}</Button>
 		</div>
 	</div>
 {:else if pageState === 'complete'}
 	<div data-testid="recall-complete">
-		<p class="text-heading font-bold">Voila. That's today's stack.</p>
+		<p class="text-heading font-bold">{t('recall.complete.heading')}</p>
 		<p class="text-label mt-2 font-mono uppercase" data-testid="recall-reviewed-count">
-			{reviewedCount} REVIEWED TODAY
+			{reviewedCount} {t('recall.register.reviewed-today')}
 		</p>
 		<div class="mt-6">
-			<Button variant="primary" href="/drills">Practice Now</Button>
+			<Button variant="primary" href="/drills">{t('recall.cta.practice-now')}</Button>
 			{#if onViewMap}
-				<Button type="button" variant="ghost" onclick={onViewMap}>View Recall Map</Button>
+				<Button type="button" variant="ghost" onclick={onViewMap}>{t('recall.cta.view-map')}</Button>
 			{/if}
 		</div>
 	</div>
 {:else if pageState === 'reviewing' && currentItem}
 	<p class="text-label font-mono uppercase" aria-live="polite" data-testid="recall-register">
-		{remaining} LEFT TODAY
+		{remaining} {t('recall.register.left-today')}
 	</p>
 	<p class="text-label mt-2 font-mono uppercase" data-testid="recall-mode-chip">
 		{MODE_LABELS[currentItem.mode as Mode]}
@@ -653,15 +719,22 @@
 					</div>
 				{/if}
 				<div class="mt-4">
+					<SongMark
+						songs={currentFact?.factKind === 'chord-formula'
+							? songsForSymbol(currentFact.symbol, provenanceIndex)
+							: []}
+					/>
 					<BuildSession embedFact={embedTarget} onComplete={handleModeCNext} />
 				</div>
 			{/key}
 		{:else}
 			<p class="text-body mt-4" data-testid="recall-unrenderable">
-				Couldn't show this card.
+				{t('recall.unrenderable.message')}
 			</p>
 			<div class="mt-6">
-				<Button type="button" variant="ghost" onclick={handleUnrenderableSkip}>Skip</Button>
+				<Button type="button" variant="ghost" onclick={handleUnrenderableSkip}
+					>{t('recall.cta.skip')}</Button
+				>
 			</div>
 		{/if}
 	{:else if currentFact}
@@ -672,17 +745,21 @@
 					{@const chord = spellChord(currentFact.symbol)}
 					<div class="flex items-start gap-4">
 						<ChordGlyph root={chord.root} quality={chord.symbol.slice(chord.root.length)} />
+						<SongMark songs={songsForSymbol(currentFact.symbol, provenanceIndex)} />
 					</div>
-					<p class="text-body mt-4">What's the formula?</p>
+					<p class="text-body mt-4">{t('recall.prompt.formula-question')}</p>
 				{:else if currentFact.factKind === 'interval-size'}
 					{@const targetLetter = transposeFrom('C', currentFact.short)}
-					<p class="text-heading font-serif font-bold">C to {targetLetter}</p>
-					<p class="text-body mt-4">What's the interval?</p>
+					<p class="text-heading font-serif font-bold">
+						C {t('recall.prompt.c-to')} {targetLetter}
+					</p>
+					<p class="text-body mt-4">{t('recall.prompt.interval-question')}</p>
 				{:else if currentFact.factKind === 'scale-degree'}
 					<p class="text-heading font-bold">
-						Degree {currentFact.degree} of {currentFact.tonic} major
+						{t('recall.prompt.degree-prefix')} {currentFact.degree} {t('recall.prompt.degree-of')}
+						{currentFact.tonic} {t('recall.prompt.degree-major')}
 					</p>
-					<p class="text-body mt-4">Which note?</p>
+					<p class="text-body mt-4">{t('recall.prompt.note-question')}</p>
 				{/if}
 			</div>
 
@@ -694,13 +771,15 @@
 
 			{#if !revealed}
 				<div class="mt-6">
-					<Button type="button" variant="primary" onclick={handleReveal}>Show Answer</Button>
+					<Button type="button" variant="primary" onclick={handleReveal}
+						>{t('recall.cta.show-answer')}</Button
+					>
 				</div>
 			{:else}
 				<div class="stamp mt-6" data-testid="recall-reveal">
 					{#if currentFact.factKind === 'chord-formula'}
 						{@const chord = spellChord(currentFact.symbol)}
-						<p class="text-body">Here's the formula:</p>
+						<p class="text-body">{t('recall.reveal.formula')}</p>
 						<div class="mt-4 flex flex-wrap gap-4">
 							{#each formulaFor(chord) as entry (entry.role + entry.letter)}
 								<div class="flex flex-col items-center gap-1">
@@ -712,13 +791,13 @@
 						</div>
 					{:else if currentFact.factKind === 'interval-size'}
 						{@const info = intervalFromShort(currentFact.short)}
-						<p class="text-body">Here's the interval:</p>
+						<p class="text-body">{t('recall.reveal.interval')}</p>
 						<div class="mt-4">
 							<IntervalChip role={info.role} label={info.short} longName={info.longFr} />
 						</div>
 					{:else if currentFact.factKind === 'scale-degree'}
 						{@const degreeNote = majorScaleNotes(currentFact.tonic)[currentFact.degree - 1]}
-						<p class="text-body">Here's the note:</p>
+						<p class="text-body">{t('recall.reveal.note')}</p>
 						{#if degreeNote}
 							<div
 								class="mt-4 inline-block border-2 p-2"
@@ -754,8 +833,9 @@
 			<div class="mt-4" data-testid="recall-prompt">
 				<div class="flex items-start gap-4">
 					<ChordGlyph root={target.root} quality={target.symbol.slice(target.root.length)} />
+					<SongMark songs={songsForSymbol(currentFact.symbol, provenanceIndex)} />
 				</div>
-				<p class="text-body mt-4">Play it on the keyboard.</p>
+				<p class="text-body mt-4">{t('recall.prompt.see-play')}</p>
 			</div>
 
 			<div class="mt-4">
@@ -777,12 +857,12 @@
 							disabled={selected.size === 0}
 							onclick={handleModeACheck}
 						>
-							Check
+							{t('recall.cta.check')}
 						</Button>
 					</div>
 					<div class="mode-a-controls__secondary">
 						<Button type="button" variant="ghost" onclick={() => (selected = new Set())}>
-							Clear
+							{t('recall.cta.clear')}
 						</Button>
 					</div>
 				</div>
@@ -801,7 +881,7 @@
 									style="background-color: var(--color-third);"
 									aria-hidden="true"
 								></span>
-								The chord
+								{t('recall.legend.chord')}
 							</span>
 							<span class="inline-flex items-center gap-2">
 								<span
@@ -809,14 +889,16 @@
 									style="background-color: var(--color-wrong);"
 									aria-hidden="true"
 								></span>
-								Your extra note
+								{t('recall.legend.extra-note')}
 							</span>
 						</p>
 					{/if}
 				</div>
 
 				<div class="mt-6">
-					<Button type="button" variant="primary" onclick={handleModeANext}>Next</Button>
+					<Button type="button" variant="primary" onclick={handleModeANext}
+						>{t('recall.cta.next')}</Button
+					>
 				</div>
 			{/if}
 		</div>
@@ -825,7 +907,7 @@
 		{@const hearNameCorrect = hearNameAnswered && hearNameGiven === currentFact.symbol}
 		<div aria-live="polite">
 			<div class="mt-4" data-testid="recall-prompt">
-				<p class="text-body">Listen. Name the chord.</p>
+				<p class="text-body">{t('recall.prompt.hear-name')}</p>
 			</div>
 
 			<div class="mt-4">
@@ -834,7 +916,7 @@
 					variant="primary"
 					onclick={() => handleHearNamePlay(chord)}
 				>
-					{hearNamePlayCount === 0 ? 'Play' : 'Play again'}
+					{hearNamePlayCount === 0 ? t('recall.cta.play') : t('recall.cta.play-again')}
 				</Button>
 			</div>
 
@@ -848,7 +930,7 @@
 						type="button"
 						variant="ghost"
 						disabled={hearNameAnswered}
-						aria-label={`Answer: ${choice}`}
+						aria-label={`${t('recall.aria.answer-prefix')} ${choice}`}
 						onclick={() => handleHearNameChoice(choice)}
 					>
 						<span class="font-serif text-heading font-bold">{choice}</span>
@@ -866,6 +948,9 @@
 						</div>
 						<RevealInsight correctSymbol={currentFact.symbol} givenSymbol={hearNameGiven} />
 					{/if}
+					<div class="mt-4">
+						<SongMark songs={songsForSymbol(currentFact.symbol, provenanceIndex)} />
+					</div>
 				</div>
 
 				{#key cardKey(currentItem.factId, currentItem.mode)}
@@ -885,7 +970,7 @@
 							variant="ghost"
 							onclick={() => advanceHearName(hearNameCommittedRating ?? Rating.Again)}
 						>
-							Continue
+							{t('recall.cta.continue')}
 						</Button>
 					</div>
 				{/if}
@@ -893,16 +978,20 @@
 		</div>
 	{:else}
 		<p class="text-body mt-4" data-testid="recall-unrenderable">
-			Couldn't show this card.
+			{t('recall.unrenderable.message')}
 		</p>
 		<div class="mt-6">
-			<Button type="button" variant="ghost" onclick={handleUnrenderableSkip}>Skip</Button>
+			<Button type="button" variant="ghost" onclick={handleUnrenderableSkip}
+				>{t('recall.cta.skip')}</Button
+			>
 		</div>
 	{/if}
 {:else}
-	<p class="text-body mt-4" data-testid="recall-unrenderable">Couldn't show this card.</p>
+	<p class="text-body mt-4" data-testid="recall-unrenderable">{t('recall.unrenderable.message')}</p>
 	<div class="mt-6">
-		<Button type="button" variant="ghost" onclick={handleUnrenderableSkip}>Skip</Button>
+		<Button type="button" variant="ghost" onclick={handleUnrenderableSkip}
+			>{t('recall.cta.skip')}</Button
+		>
 	</div>
 {/if}
 {/if}

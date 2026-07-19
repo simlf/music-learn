@@ -1,5 +1,14 @@
-import { describe, expect, it } from 'vitest';
-import { activePracticedToday, activeNudge, zeroStreak, pickStreakLine } from './streak';
+import { afterEach, describe, expect, it } from 'vitest';
+import {
+	activePracticedToday,
+	activeNudge,
+	zeroStreak,
+	activePracticedTodayFr,
+	activeNudgeFr,
+	zeroStreakFr,
+	pickStreakLine
+} from './streak';
+import { setLocale } from '$lib/i18n/locale.svelte';
 
 describe('streak copy pools', () => {
 	it('activePracticedToday has the exact UI-SPEC lines', () => {
@@ -39,7 +48,48 @@ describe('streak copy pools', () => {
 	});
 });
 
+describe('Fr streak copy pools (I18N-02)', () => {
+	afterEach(() => {
+		setLocale('en');
+	});
+
+	it('each Fr pool is non-empty and matches its en pool length', () => {
+		expect(activePracticedTodayFr.length).toBeGreaterThan(0);
+		expect(activeNudgeFr.length).toBeGreaterThan(0);
+		expect(zeroStreakFr.length).toBeGreaterThan(0);
+		expect(activePracticedTodayFr.length).toBe(activePracticedToday.length);
+		expect(activeNudgeFr.length).toBe(activeNudge.length);
+		expect(zeroStreakFr.length).toBe(zeroStreak.length);
+	});
+
+	it('preserves the {N} placeholder where the en pool has it', () => {
+		for (const line of [...activePracticedTodayFr, ...activeNudgeFr]) {
+			expect(line).toContain('{N}');
+		}
+		for (const line of zeroStreakFr) {
+			expect(line).not.toContain('{N}');
+		}
+	});
+
+	it('no Fr pool line contains an em dash character', () => {
+		for (const line of [...activePracticedTodayFr, ...activeNudgeFr, ...zeroStreakFr]) {
+			expect(line).not.toContain('—');
+		}
+	});
+
+	it('pickStreakLine returns a Fr line for each kind under setLocale("fr")', () => {
+		setLocale('fr');
+		expect(activePracticedTodayFr).toContain(pickStreakLine('activePracticedToday'));
+		expect(activeNudgeFr).toContain(pickStreakLine('activeNudge'));
+		expect(zeroStreakFr).toContain(pickStreakLine('zeroStreak'));
+	});
+});
+
 describe('pickStreakLine', () => {
+	afterEach(() => {
+		setLocale('en');
+	});
+
 	it('returns a member of the requested pool', () => {
 		expect(activePracticedToday).toContain(pickStreakLine('activePracticedToday'));
 		expect(activeNudge).toContain(pickStreakLine('activeNudge'));

@@ -183,11 +183,26 @@ function applyInterleaving<T>(
 	};
 }
 
-function songCandidates(ctx: PoolContext, config: PoolConfig): string[] {
+/**
+ * R3's "at most maxScaffoldingQualities unfamiliar qualities in scaffolding at
+ * once" pacing gate, shared by songCandidates() (drawFromPool's own 60% song
+ * bucket) and drawFromSymbols' restricted "From my songs" draw (MD-01) - both
+ * candidate sources must respect the same simultaneous-new-quality cap, or a
+ * restricted draw could bypass the invariant the unrestricted path enforces.
+ * A normal item (no active scaffold stage), an already-unlocked quality, or a
+ * quality already counted among the in-flight ones always passes through
+ * unfiltered; only a BRAND NEW unfamiliar quality is throttled once the cap
+ * is reached.
+ */
+export function limitScaffoldingQualities(
+	symbols: string[],
+	ctx: PoolContext,
+	config: PoolConfig = DEFAULT_POOL_CONFIG
+): string[] {
 	const unlocked = availableUnlocked(ctx);
 	const unlockedQualities = new Set(unlocked.flatMap((id) => tierById(id).qualities));
 	const inFlight = activeScaffoldQualities(ctx.scaffolds);
-	return ctx.songSymbols.filter((symbol) => {
+	return symbols.filter((symbol) => {
 		if (scaffoldStageForSymbol(ctx, symbol) === null) return true; // normal item
 		const quality = splitSymbol(symbol)?.quality;
 		if (quality === undefined) return true; // unclassifiable root: let it through
@@ -195,6 +210,10 @@ function songCandidates(ctx: PoolContext, config: PoolConfig): string[] {
 		if (inFlight.includes(quality)) return true; // already one of the in-flight qualities
 		return inFlight.length < config.maxScaffoldingQualities;
 	});
+}
+
+function songCandidates(ctx: PoolContext, config: PoolConfig): string[] {
+	return limitScaffoldingQualities(ctx.songSymbols, ctx, config);
 }
 
 function reviewCandidates(
@@ -297,4 +316,30 @@ export function drawFromPool(
 	}
 
 	return { symbol, bucket: chosen, scaffoldStage: scaffoldStageForSymbol(ctx, symbol) };
+}
+
+/**
+ * SONG-02 restricted draw: draws ONLY from `symbols` (the caller's candidate
+ * set, e.g. the active-song chords when the "From my songs" filter is ON),
+ * reusing the pool's own need-weighting, per-item cap, and interleaving
+ * machinery so a restricted draw still favors weak chords and still respects
+ * the max-same-quality-run constraint. Returns `null` for an empty candidate
+ * set so the caller can fall back to the full library (drawFromPool).
+ *
+ * Additive-only: does not modify drawFromPool or any existing export, so the
+ * proven 0/60/25/15 bucket weighting is unaffected.
+ */
+export function drawFromSymbols(
+	symbols: string[],
+	ctx: PoolContext,
+	config: PoolConfig = DEFAULT_POOL_CONFIG,
+	rng: Rng = Math.random
+): string | null {
+	if (symbols.length === 0) return null;
+
+	const qualityOf = (symbol: string) => splitSymbol(symbol)?.quality ?? null;
+	const needs = symbols.map((candidate) => needFor(candidate, ctx.stats));
+	const shares = cappedShares(needs, config.maxItemShare);
+	const filtered = applyInterleaving(symbols, shares, qualityOf, ctx, config);
+	return weightedDraw(filtered.candidates, filtered.weights, rng);
 }

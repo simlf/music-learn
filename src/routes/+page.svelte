@@ -12,11 +12,22 @@
 	import IntervalChip from '$lib/components/IntervalChip.svelte';
 	import InspectRegister from '$lib/components/InspectRegister.svelte';
 	import SongHook from '$lib/components/SongHook.svelte';
+	import SongMark from '$lib/components/SongMark.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import RecentChipRow from '$lib/components/RecentChipRow.svelte';
+	import { buildProvenanceIndex, songsForSymbol } from '$lib/practice/songProvenance';
+	import { t } from '$lib/i18n/locale.svelte';
 
 	/** Starter chords for the empty state (D-09): zero-friction first success. */
 	const STARTER_CHORDS = ['Cm7', 'Fmaj7', 'G7'];
+
+	/**
+	 * Built once at component init (SONG-01): the shared provenance index
+	 * driving the SongMark beside the resolved chord's name. Lookup carries
+	 * no filter control (SONG-02 is Drills/Recall only) - this index is
+	 * read-only here.
+	 */
+	const provenanceIndex = buildProvenanceIndex();
 
 	let symbol = $state('');
 	let result = $state<ChordResult | null>(null);
@@ -136,7 +147,7 @@
 </script>
 
 <main class="bg-paper text-ink min-h-screen px-2 py-8 font-sans sm:px-8">
-	<h1 class="text-heading mt-2 font-bold">Chord lookup</h1>
+	<h1 class="text-heading mt-2 font-bold">{t('home.title')}</h1>
 
 	<form class="mt-8 flex items-center gap-2" onsubmit={handleSubmit}>
 		<input
@@ -144,13 +155,13 @@
 			bind:value={symbol}
 			bind:this={inputEl}
 			use:autofocus
-			placeholder="Type a chord: Cm7, F♯ø7, B♭maj7..."
+			placeholder={t('home.input.placeholder')}
 			class="border-ink bg-paper-bright min-w-0 flex-1 border-2 p-2"
 		/>
 		<Button
 			type="button"
 			variant="ghost"
-			aria-label="Insert sharp"
+			aria-label={t('home.insert.sharp')}
 			onclick={() => insertGlyph('♯')}
 		>
 			♯
@@ -158,12 +169,12 @@
 		<Button
 			type="button"
 			variant="ghost"
-			aria-label="Insert flat"
+			aria-label={t('home.insert.flat')}
 			onclick={() => insertGlyph('♭')}
 		>
 			♭
 		</Button>
-		<Button type="submit">Stamp</Button>
+		<Button type="submit">{t('home.action.stamp')}</Button>
 	</form>
 
 	<RecentChipRow {recent} onselect={showChordFromSymbol} />
@@ -186,9 +197,9 @@
 
 	{#if !result}
 		<div class="mt-8">
-			<p class="text-heading font-bold">No chord yet</p>
+			<p class="text-heading font-bold">{t('home.empty.title')}</p>
 			<p class="text-muted mt-2">
-				Type a symbol like Cm7 and press Stamp to see its notes in ink and color.
+				{t('home.empty.body')}
 			</p>
 			<div class="mt-4 flex gap-2">
 				{#each STARTER_CHORDS as starter (starter)}
@@ -209,7 +220,8 @@
 		<div class="stamp mt-8" data-testid="chord-result">
 			<div class="flex items-start gap-4">
 				<ChordGlyph root={result.root} quality={result.symbol.slice(result.root.length)} />
-				<Button type="button" variant="ghost" onclick={hearIt}>Hear it</Button>
+				<SongMark songs={songsForSymbol(result.symbol, provenanceIndex)} />
+				<Button type="button" variant="ghost" onclick={hearIt}>{t('home.action.hear-it')}</Button>
 			</div>
 
 			{#if result.aliases.length > 0}
@@ -227,7 +239,7 @@
 				/>
 			</div>
 
-			<InspectRegister payload={inspectPayload} idleText="Tap a key to hear it." />
+			<InspectRegister payload={inspectPayload} />
 
 			<SongHook short={inspectPayload?.info?.short ?? ''} />
 

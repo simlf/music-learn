@@ -1,10 +1,16 @@
-import { render, screen, within } from '@testing-library/svelte';
-import { describe, expect, it } from 'vitest';
+import { render, screen, within, cleanup } from '@testing-library/svelte';
+import { afterEach, describe, expect, it } from 'vitest';
 import IntervalScaffold from './IntervalScaffold.svelte';
 import { formulaFor } from '$lib/lookup/chordPresentation';
 import { spellChord } from '$lib/theory/chord';
+import { setLocale } from '$lib/i18n/locale.svelte';
 
 const cm7 = formulaFor(spellChord('Cm7'));
+
+afterEach(() => {
+	cleanup();
+	setLocale('en');
+});
 
 describe('IntervalScaffold (sketch 005)', () => {
 	it('full level shows every interval short name plus its French long name', () => {
@@ -38,5 +44,15 @@ describe('IntervalScaffold (sketch 005)', () => {
 	it('renders nothing at level off', () => {
 		render(IntervalScaffold, { entries: cm7, level: 'off' });
 		expect(screen.queryByTestId('interval-scaffold')).not.toBeInTheDocument();
+	});
+});
+
+describe('IntervalScaffold renders in French (I18N-02, Phase 20 Plan 04)', () => {
+	it('shows the French caption label under fr', () => {
+		setLocale('fr');
+		render(IntervalScaffold, { entries: cm7, level: 'full' });
+
+		const scaffold = screen.getByTestId('interval-scaffold');
+		expect(within(scaffold).getByText('Cet accord est')).toBeInTheDocument();
 	});
 });

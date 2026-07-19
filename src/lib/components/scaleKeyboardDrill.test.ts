@@ -5,6 +5,7 @@ import { majorScaleNotes } from '$lib/theory/scale';
 import { placeAscendingScaleKeys, type ScaleKeyPlacement } from '$lib/practice/scaleKeyboardDrill';
 import { whiteLettersForOctaves, blackKeysForOctaves } from '$lib/components/keyboardLayout';
 import type { SpelledNote } from '$lib/theory/types';
+import { setLocale } from '$lib/i18n/locale.svelte';
 
 /**
  * The tappable key-strip, the degree register, the ascending/descending
@@ -22,7 +23,8 @@ const whiteLetters = whiteLettersForOctaves(2);
 const blackKeyPatterns = blackKeysForOctaves(2);
 
 function renderDrill(props: { notes: SpelledNote[]; tonic: string }) {
-	return render(ScaleKeyboardDrill, { props });
+	const drill = render(ScaleKeyboardDrill, { props });
+	return { drill };
 }
 
 /** Board-geometry aria-label for a placement's key: always the raw board letter
@@ -41,7 +43,8 @@ function ariaLabelFor(kind: 'white' | 'black', keyIndex: number): string {
 // Every placement passed to tapButtonFor is one of the 8 canonical ascending
 // placements, so its accessible name always carries the WR-04 scale-degree
 // suffix (a static, fill-independent label - see the component's
-// placementByKey/ariaLabelFor). The button renders inline in the drill's own DOM.
+// placementByKey/ariaLabelFor). The key-strip renders inline in the drill's
+// own DOM while a drill is active.
 function tapButtonFor(placement: ScaleKeyPlacement): HTMLElement {
 	return screen.getByRole('button', {
 		name: `${ariaLabelFor(placement.kind, placement.keyIndex)}, scale degree ${placement.degree}`
@@ -79,7 +82,8 @@ describe('ScaleKeyboardDrill (tonic-anchored 2-octave keyboard, SCALE-04)', () =
 	});
 
 	it('renders the tappable key-strip, the degree register, and the prompt inline in its own DOM', () => {
-		const { container } = renderDrill({ notes: majorScaleNotes('C'), tonic: 'C' });
+		const { drill } = renderDrill({ notes: majorScaleNotes('C'), tonic: 'C' });
+		const { container } = drill;
 
 		// Register + prompt live in the component's own inline output...
 		expect(container.querySelector('[data-testid="scale-keyboard-register"]')).not.toBeNull();
@@ -88,6 +92,7 @@ describe('ScaleKeyboardDrill (tonic-anchored 2-octave keyboard, SCALE-04)', () =
 		expect(
 			container.querySelector('[role="group"][aria-label="Scale keyboard, C major, two octaves"]')
 		).not.toBeNull();
+		expect(container.querySelectorAll('[role="button"]').length).toBeGreaterThan(0);
 	});
 
 	it('tapping the tonic first fills the leftmost key and plays it; no key left of it is filled', async () => {
@@ -191,7 +196,7 @@ describe('ScaleKeyboardDrill (tonic-anchored 2-octave keyboard, SCALE-04)', () =
 	it('resets to degree 1 ascending and updates the instruction when the tonic/notes change', async () => {
 		const cNotes = majorScaleNotes('C');
 		const cPlacements = placeAscendingScaleKeys(cNotes);
-		const drill = renderDrill({ notes: cNotes, tonic: 'C' });
+		const { drill } = renderDrill({ notes: cNotes, tonic: 'C' });
 
 		await fireEvent.click(tapButtonFor(cPlacements[0]));
 		expect(tapButtonFor(cPlacements[0])).toHaveClass('key--root');
@@ -274,5 +279,96 @@ describe('ScaleKeyboardDrill (tonic-anchored 2-octave keyboard, SCALE-04)', () =
 		expect(degree7Button).toHaveClass('key--seventh');
 		expect(screen.getByTestId('scale-keyboard-register')).toHaveTextContent('DEGREE 8 OF 8 · ASCENDING');
 		expect(degree7Button.textContent).toContain('E♯');
+	});
+});
+
+/**
+ * Locale-agnostic key lookup: unlike `tapButtonFor` above (which builds its
+ * accessible name from the always-English test-local `ariaLabelFor` helper),
+ * these French-locale tests must find keys without depending on the
+ * (now-translated) aria-label wording. Board order is deterministic - every
+ * white key first (DOM index === keyIndex), then every black key (DOM index
+ * === whiteLetters.length + keyIndex) - matching the component's own
+ * `{#each whiteKeys}` then `{#each blackKeys}` render order.
+ */
+function keyButtonByPlacement(container: HTMLElement, placement: ScaleKeyPlacement): HTMLElement {
+	const buttons = Array.from(container.querySelectorAll('[role="button"]')) as HTMLElement[];
+	const domIndex =
+		placement.kind === 'white' ? placement.keyIndex : whiteLetters.length + placement.keyIndex;
+	return buttons[domIndex];
+}
+
+async function tapAscendingLocaleAgnostic(container: HTMLElement, placements: ScaleKeyPlacement[]) {
+	for (const placement of placements) {
+		await fireEvent.click(keyButtonByPlacement(container, placement));
+	}
+}
+
+async function tapDescendingLocaleAgnostic(container: HTMLElement, placements: ScaleKeyPlacement[]) {
+	for (let degree = 7; degree >= 1; degree -= 1) {
+		await fireEvent.click(keyButtonByPlacement(container, placements[degree - 1]));
+	}
+}
+
+describe('ScaleKeyboardDrill French locale (I18N-02)', () => {
+	afterEach(() => {
+		cleanup();
+		setLocale('en');
+	});
+
+	it('renders the prompt and register in French', () => {
+		setLocale('fr');
+		renderDrill({ notes: majorScaleNotes('C'), tonic: 'C' });
+
+		expect(
+			screen.getByText('Joue la gamme de C majeur en montant, puis en descendant.')
+		).toBeInTheDocument();
+		expect(screen.getByTestId('scale-keyboard-register')).toHaveTextContent('DEGRÉ 1 SUR 8 · MONTANT');
+	});
+
+	it('renders the completion card and Recommencer button in French', async () => {
+		const notes = majorScaleNotes('C');
+		const placements = placeAscendingScaleKeys(notes);
+		setLocale('fr');
+		const { drill } = renderDrill({ notes, tonic: 'C' });
+
+		await tapAscendingLocaleAgnostic(drill.container, placements);
+		await tapDescendingLocaleAgnostic(drill.container, placements);
+
+		expect(screen.getByTestId('scale-keyboard-complete')).toBeInTheDocument();
+		expect(
+			screen.getByText('Voilà. Gamme de C majeur, montée puis descente, nickel.')
+		).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Recommencer' })).toBeInTheDocument();
+	});
+
+	it('a tapped key\'s note letter and scale degree number render identically across locales', async () => {
+		const notes = majorScaleNotes('C');
+		const placements = placeAscendingScaleKeys(notes);
+
+		setLocale('en');
+		const { drill: enDrill } = renderDrill({ notes, tonic: 'C' });
+		const enButton = keyButtonByPlacement(enDrill.container, placements[0]);
+		await fireEvent.click(enButton);
+		const enLabel = enButton.textContent;
+		const enAriaDegree = enButton.getAttribute('aria-label');
+		enDrill.unmount();
+
+		setLocale('fr');
+		const { drill: frDrill } = renderDrill({ notes, tonic: 'C' });
+		const frButton = keyButtonByPlacement(frDrill.container, placements[0]);
+		await fireEvent.click(frButton);
+		const frLabel = frButton.textContent;
+		const frAriaDegree = frButton.getAttribute('aria-label');
+		frDrill.unmount();
+
+		// The filled note-letter chip (immune content) is identical across locales.
+		expect(frLabel).toBe(enLabel);
+		expect(frLabel).toContain('C');
+		// The degree number embedded in the (locale-translated) aria-label is
+		// the same immune digit in both languages, even though the words
+		// around it ("scale degree" vs "degré de la gamme") differ.
+		expect(enAriaDegree).toContain(' 1');
+		expect(frAriaDegree).toContain(' 1');
 	});
 });

@@ -2,6 +2,7 @@
 	import { spellChord } from '$lib/theory/chord';
 	import { formulaFor, formulaSentence } from '$lib/lookup/chordPresentation';
 	import { familyLineFor, mnemonicFor } from '$lib/copy/mnemonics';
+	import { t } from '$lib/i18n/locale.svelte';
 	import ChordGlyph from './ChordGlyph.svelte';
 	import IntervalScaffold from './IntervalScaffold.svelte';
 	import NoteLabel from './NoteLabel.svelte';
@@ -54,12 +55,17 @@
 
 	let shownDepth = $state(0);
 
-	const TIER_TITLE: Record<LayerKind, string> = {
-		family: 'the family',
-		formula: 'the formula',
-		keyboard: 'on the keys',
-		spelling: 'full spelling'
-	};
+	/**
+	 * Per-tier titles, routed through the recall i18n domain (Phase 17 copy).
+	 * The interval shorthand / chord symbols inside a revealed layer stay
+	 * immune; only these framing labels translate.
+	 */
+	const TIER_TITLE: Record<LayerKind, string> = $derived({
+		family: t('recall.hint.tier.family'),
+		formula: t('recall.hint.tier.formula'),
+		keyboard: t('recall.hint.tier.keyboard'),
+		spelling: t('recall.hint.tier.spelling')
+	});
 
 	/**
 	 * The "next layer to reveal" label. `family` never actually appears as the
@@ -67,21 +73,21 @@
 	 * here is unreachable in practice - kept only so the lookup stays a total
 	 * Record over LayerKind rather than requiring an unsafe cast.
 	 */
-	const SHOW_LABEL: Record<LayerKind, string> = {
-		family: 'Need a hint?',
-		formula: 'Show the formula',
-		keyboard: 'Show it on the keyboard',
-		spelling: 'Show the full spelling'
-	};
+	const SHOW_LABEL: Record<LayerKind, string> = $derived({
+		family: t('recall.hint.need-hint'),
+		formula: t('recall.hint.show.formula'),
+		keyboard: t('recall.hint.show.keyboard'),
+		spelling: t('recall.hint.show.spelling')
+	});
 
 	/** Depth-0 is always "Need a hint?"; after that, the label names the next layer to reveal. */
 	const controlLabel = $derived(
-		shownDepth === 0 ? 'Need a hint?' : SHOW_LABEL[layers[shownDepth] ?? 'family']
+		shownDepth === 0 ? t('recall.hint.need-hint') : SHOW_LABEL[layers[shownDepth] ?? 'family']
 	);
 
 	/** Tier label for the i-th shown layer (0-indexed), renumbered sequentially from `layers`. */
 	function tierLabel(index: number): string {
-		return `Hint ${index + 1} · ${TIER_TITLE[layers[index]]}`;
+		return `${t('recall.hint.tier-prefix')} ${index + 1} · ${TIER_TITLE[layers[index]]}`;
 	}
 
 	function reveal() {
@@ -141,7 +147,7 @@
 			</div>
 		{:else}
 			<p class="hint-closing-line text-label mt-6" data-testid="hint-closing-line">
-				That's the whole chord.
+				{t('recall.hint.closing')}
 			</p>
 		{/if}
 	</div>

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { t } from '$lib/i18n/locale.svelte';
+
 	/**
 	 * Renders the daily practice streak count (PROG-03). Two variants:
 	 * `compact` (masthead chip) and `hero` (Progress page headline). Same
@@ -14,6 +16,11 @@
 	 * ChordGlyph's display + serif "chord glyph" rule). It's vermilion only
 	 * when the streak is active (count >= 1); a zero streak renders in ink,
 	 * so vermilion stays a reward signal, not decoration.
+	 *
+	 * `compact`'s label reads `progress.streakBadge.compactCount` (I18N-02):
+	 * a {N}-templated string substituted with the raw count, mirroring
+	 * `songs.mark.count`'s "{N} SONGS"/"{N} MORCEAUX" pattern. This also
+	 * flips the masthead's streak chip, since StreakBadge is shared there.
 	 */
 	interface Props {
 		/** Current streak count. */
@@ -33,7 +40,7 @@
 			class="streak-badge streak-badge--compact text-label font-mono uppercase"
 			data-testid="streak-badge"
 		>
-			{count} DAY STREAK
+			{t('progress.streakBadge.compactCount').replace('{N}', String(count))}
 		</span>
 	{/if}
 {:else}

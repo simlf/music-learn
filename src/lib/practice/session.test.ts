@@ -84,6 +84,20 @@ describe('nextQuestion priorities', () => {
 		expect(nextQuestion(first.session).plan.source).toBe('pool');
 	});
 
+	it('an origin-less seed still yields plan source "seeded" (backward compatible)', () => {
+		const session = createSession({ seeds: [{ symbol: 'Cm7', family: 'chord' }] });
+		const { plan } = nextQuestion(session);
+		expect(plan).toEqual({ symbol: 'Cm7', family: 'chord', source: 'seeded' });
+	});
+
+	it('a lesson-origin seed yields plan source "seeded_lesson"', () => {
+		const session = createSession({
+			seeds: [{ symbol: 'C', family: 'chord', origin: 'lesson' }]
+		});
+		const { plan } = nextQuestion(session);
+		expect(plan).toEqual({ symbol: 'C', family: 'chord', source: 'seeded_lesson' });
+	});
+
 	it('warm-up only covers the first 5 questions: leftovers are dropped after that', () => {
 		let session = createSession({ warmupCandidates: ['C', 'Dm', 'Em', 'F', 'G', 'Am'] });
 		// Answer 5 questions (the warm-up window).

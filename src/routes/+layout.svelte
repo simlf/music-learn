@@ -5,19 +5,21 @@
 	import { fetchStreak, localDateString } from '$lib/api/progress';
 	import { getApiToken } from '$lib/api/client';
 	import StreakBadge from '$lib/components/StreakBadge.svelte';
+	import LocaleToggle from '$lib/components/LocaleToggle.svelte';
+	import { initLocale, t, type MessageKey } from '$lib/i18n/locale.svelte';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
 
-	const navLinks = [
-		{ href: '/', label: 'Lookup' },
-		{ href: '/drills', label: 'Drills' },
-		{ href: '/build', label: 'Build' },
-		{ href: '/recall', label: 'Recall' },
-		{ href: '/scales', label: 'Scales' },
-		{ href: '/songs', label: 'Songs' },
-		{ href: '/theory', label: 'Theory' },
-		{ href: '/progress', label: 'Progress' }
+	const navLinks: { href: string; labelKey: MessageKey }[] = [
+		{ href: '/', labelKey: 'nav.lookup' },
+		{ href: '/drills', labelKey: 'nav.drills' },
+		{ href: '/build', labelKey: 'nav.build' },
+		{ href: '/recall', labelKey: 'nav.recall' },
+		{ href: '/scales', labelKey: 'nav.scales' },
+		{ href: '/songs', labelKey: 'nav.songs' },
+		{ href: '/theory', labelKey: 'nav.theory' },
+		{ href: '/progress', labelKey: 'nav.progress' }
 	];
 
 	/**
@@ -31,6 +33,7 @@
 	let streakLoading = $state(false);
 
 	onMount(() => {
+		initLocale();
 		if (getApiToken() === '') return;
 		streakLoading = true;
 		fetchStreak(localDateString())
@@ -51,8 +54,11 @@
 	class="bg-paper border-ink flex flex-row flex-wrap items-center justify-between gap-2 border-b-2 p-2 md:gap-4 md:px-6 md:py-4"
 	data-testid="masthead"
 >
-	<span class="text-heading font-bold uppercase tracking-tight whitespace-nowrap">MUSIC LEARN</span>
-	<StreakBadge variant="compact" count={streakCount} loading={streakLoading} />
+	<div class="flex flex-wrap items-center gap-2">
+		<span class="text-heading font-bold uppercase tracking-tight whitespace-nowrap">{t('brand')}</span>
+		<StreakBadge variant="compact" count={streakCount} loading={streakLoading} />
+		<LocaleToggle />
+	</div>
 	<div class="flex flex-wrap gap-x-2 gap-y-1 md:gap-4">
 		{#each navLinks as link (link.href)}
 			<a
@@ -61,7 +67,7 @@
 				class:masthead__link--active={$page.url.pathname === link.href}
 				style="letter-spacing: 0.08em;"
 			>
-				{link.label}
+				{t(link.labelKey)}
 			</a>
 		{/each}
 	</div>

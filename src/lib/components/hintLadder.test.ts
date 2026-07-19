@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, within } from '@testing-library/svelte';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import HintLadder from './HintLadder.svelte';
+import { setLocale } from '$lib/i18n/locale.svelte';
 
 /**
  * Standalone component tests (mirrors intervalScaffold.test.ts /
@@ -177,5 +178,54 @@ describe('HintLadder', () => {
 
 		await fireEvent.click(button());
 		expect(onOpen).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('HintLadder: FR locale (Phase 17 copy translated)', () => {
+	afterEach(() => {
+		setLocale('en');
+	});
+
+	it('translates the control, tier, and closing framing labels; keeps chord symbols/interval shorthand immune', async () => {
+		setLocale('fr');
+		render(HintLadder, { symbol: 'Cdim', layers: ['family', 'formula', 'keyboard', 'spelling'] });
+
+		const cta = () => screen.getByTestId('hint-cta');
+		const button = () => within(cta()).getByRole('button');
+
+		// Depth 0 control is the French "Need a hint?".
+		expect(within(cta()).getByText("Besoin d'un indice ?")).toBeInTheDocument();
+		await fireEvent.click(button());
+
+		// Tier 1 title translated; family body is the French mnemonic/family line.
+		expect(
+			within(screen.getAllByTestId('hint-layer')[0]).getByText('Indice 1 · la famille', {
+				exact: false
+			})
+		).toBeInTheDocument();
+
+		// Escalating show-labels translate.
+		expect(within(cta()).getByText('Montrer la formule')).toBeInTheDocument();
+		await fireEvent.click(button());
+
+		// Formula sentence translated; interval shorthand (R/m3/P5) stays immune.
+		expect(
+			screen.getByText(
+				'À partir de la fondamentale, empile une tierce mineure, puis une quinte diminuée.'
+			)
+		).toBeInTheDocument();
+		const scaffold = screen.getByTestId('interval-scaffold');
+		expect(within(scaffold).getAllByText('m3').length).toBeGreaterThan(0);
+
+		expect(within(cta()).getByText('Montrer sur le clavier')).toBeInTheDocument();
+		await fireEvent.click(button());
+		expect(within(cta()).getByText('Montrer toutes les notes')).toBeInTheDocument();
+		await fireEvent.click(button());
+
+		// Closing line translated. Note boxes keep immune note letters (C/E♭/G♭).
+		expect(screen.getByTestId('hint-closing-line')).toHaveTextContent("Voilà tout l'accord.");
+		const noteBoxes = screen.getByTestId('hint-note-boxes');
+		expect(within(noteBoxes).getByText('C')).toBeInTheDocument();
+		expect(within(noteBoxes).getByText('E♭')).toBeInTheDocument();
 	});
 });
