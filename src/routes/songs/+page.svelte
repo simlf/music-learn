@@ -1,5 +1,12 @@
 <script lang="ts">
-	import { deleteSong, listSongs, saveSong, type Song, type SongSource } from '$lib/practice/songs';
+	import {
+		deleteSong,
+		findSongByPresetId,
+		listSongs,
+		saveSong,
+		type Song,
+		type SongSource
+	} from '$lib/practice/songs';
 	import { SONG_PRESETS, songFromPreset, type SongPreset } from '$lib/practice/presets';
 	import { spellChord } from '$lib/theory/chord';
 	import { didYouMean } from '$lib/theory/didYouMean';
@@ -33,6 +40,11 @@
 
 	const saveDisabled = $derived(
 		draft === null || draft.name.trim() === '' || draft.chips.length === 0
+	);
+
+	/** DPOL-01: presetIds already copied into the user's list, so the preset shelf can mark them "Added". */
+	const addedPresetIds = $derived(
+		new Set(songs.filter((song) => song.presetId !== undefined).map((song) => song.presetId))
 	);
 
 	/** Mono register line under each song name, status-register voice. */
@@ -186,12 +198,27 @@
 		songs = listSongs();
 	}
 
+	/**
+	 * DPOL-01: dedupe by presetId, not by re-adding. An already-added preset
+	 * never calls saveSong again; it just scrolls to / highlights the
+	 * existing row. Only an unseen preset is copied in and scrolled to.
+	 */
 	function addPreset(preset: SongPreset) {
+		const existing = findSongByPresetId(songs, preset.presetId);
+		if (existing !== undefined) {
+			scrollToSongRow(existing.id);
+			return;
+		}
+
 		const song = songFromPreset(preset);
 		saveSong(song);
 		songs = listSongs();
+		scrollToSongRow(song.id);
+	}
+
+	function scrollToSongRow(id: string) {
 		queueMicrotask(() => {
-			const row = document.getElementById(`song-${song.id}`);
+			const row = document.getElementById(`song-${id}`);
 			if (row && typeof row.scrollIntoView === 'function') {
 				row.scrollIntoView({ behavior: 'smooth', block: 'center' });
 			}
@@ -270,14 +297,27 @@
 		</p>
 		<ul class="mt-4 flex list-none flex-col gap-3 p-0">
 			{#each SONG_PRESETS as preset (preset.presetId)}
+				{@const added = addedPresetIds.has(preset.presetId)}
 				<li>
 					<button
 						type="button"
 						class="preset-card border-ink bg-paper-bright w-full cursor-pointer border-2 text-left"
+						class:preset-card--added={added}
 						data-testid="preset-card"
+						data-added={added}
 						onclick={() => addPreset(preset)}
 					>
-						<span class="block font-bold">{preset.name}</span>
+						<span class="flex items-center justify-between gap-2">
+							<span class="block font-bold">{preset.name}</span>
+							{#if added}
+								<span
+									class="text-label bg-ink text-mustard shrink-0 px-2 py-1 font-mono uppercase"
+									data-testid="preset-added-marker"
+								>
+									{t('songs.page.presets.added')}
+								</span>
+							{/if}
+						</span>
 						<span class="text-muted mt-1 block"
 							>{t(`songs.preset.${preset.presetId}.note` as MessageKey)}</span
 						>
@@ -445,6 +485,11 @@
 		padding: var(--spacing-md);
 		min-height: 44px;
 		font-size: var(--text-body);
+	}
+
+	/* DPOL-01: already-added preset stays discoverable/clickable, just visually receded. */
+	.preset-card--added {
+		opacity: 0.7;
 	}
 
 	.chip {

@@ -60,6 +60,7 @@ export const songs = {
 		'songs.page.presets.subtitle':
 			"One tap sets a standard in your list, already in rotation. Yours to edit after: charts disagree, your arrangement wins.",
 		'songs.page.presets.chordsSuffix': 'CHORDS · TAP TO ADD',
+		'songs.page.presets.added': 'Added',
 
 		'songs.page.editSong.title': 'Edit song',
 		'songs.page.form.nameLabel': 'Name',
@@ -131,6 +132,7 @@ export const songs = {
 		'songs.page.presets.subtitle':
 			"Un tap ajoute un standard à ta liste, déjà en rotation. À toi de le modifier ensuite : les partitions varient, ton arrangement l'emporte.",
 		'songs.page.presets.chordsSuffix': 'ACCORDS · TOUCHER POUR AJOUTER',
+		'songs.page.presets.added': 'Déjà ajouté',
 
 		'songs.page.editSong.title': 'Modifier le morceau',
 		'songs.page.form.nameLabel': 'Nom',
