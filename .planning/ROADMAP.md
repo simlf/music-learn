@@ -628,6 +628,6 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 
 **Plans:** 3 plans
 
-- [ ] 22-01-PLAN.md — Service worker + offline app-shell caching, samples excluded from install precache (PWA-01)
-- [ ] 22-02-PLAN.md — iOS add-to-home-screen meta tags + 180 apple-touch-icon + manifest installability guard (PWA-02)
-- [ ] 22-03-PLAN.md — Bilingual new-version update prompt with SW skipWaiting/reload flow (PWA-03)
+- [x] 22-01-PLAN.md — Service worker + offline app-shell caching, samples excluded from install precache (PWA-01)
+- [x] 22-02-PLAN.md — iOS add-to-home-screen meta tags + 180 apple-touch-icon + manifest installability guard (PWA-02)
+- [x] 22-03-PLAN.md — Bilingual new-version update prompt with SW skipWaiting/reload flow (PWA-03)
