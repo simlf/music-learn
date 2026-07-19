@@ -328,8 +328,8 @@ describe('French locale (I18N-02)', () => {
 	});
 });
 
-describe('Drill these button (weakest spots -> seeded session)', () => {
-	it('seeds the drill session with the weakest chord items and navigates to /drills', async () => {
+describe('Drill all N button (weakest spots -> seeded session)', () => {
+	it('reads "Drill all 2" for two weak chords, seeds the drill session with the weakest chord items, and navigates to /drills', async () => {
 		storedToken = 'secret';
 		fetchStatsMock.mockResolvedValue({
 			items: [
@@ -346,9 +346,140 @@ describe('Drill these button (weakest spots -> seeded session)', () => {
 		await waitFor(() => expect(screen.getByTestId('weakest-spots')).toBeInTheDocument());
 
 		const weakestSection = screen.getByTestId('weakest-spots');
-		await fireEvent.click(within(weakestSection).getByRole('button', { name: 'Drill these' }));
+		await fireEvent.click(within(weakestSection).getByRole('button', { name: 'Drill all 2' }));
 
 		expect(setDrillSeedsMock).toHaveBeenCalledWith(['Cm7', 'F#m7b5']);
 		expect(gotoMock).toHaveBeenCalledWith('/drills');
+	});
+
+	it('the per-row DRILL button seeds only that one symbol and navigates to /drills', async () => {
+		storedToken = 'secret';
+		fetchStatsMock.mockResolvedValue({
+			items: [
+				{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4, needsPractice: true },
+				{ item: 'F#m7b5', kind: 'chord', attempts: 4, accuracy: 0.25, needsPractice: true }
+			],
+			weakest: [
+				{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4, needsPractice: true },
+				{ item: 'F#m7b5', kind: 'chord', attempts: 4, accuracy: 0.25, needsPractice: true }
+			]
+		});
+
+		render(ProgressPage);
+		await waitFor(() => expect(screen.getByTestId('weakest-spots')).toBeInTheDocument());
+
+		const weakestSection = screen.getByTestId('weakest-spots');
+		await fireEvent.click(within(weakestSection).getByRole('button', { name: 'Drill Cm7' }));
+
+		expect(setDrillSeedsMock).toHaveBeenCalledWith(['Cm7']);
+		expect(gotoMock).toHaveBeenCalledWith('/drills');
+	});
+});
+
+describe('7-day streak strip (UX-1C)', () => {
+	it('renders no strip when fetchStreak resolves without a last7 field', async () => {
+		storedToken = 'secret';
+		fetchStatsMock.mockResolvedValue({
+			items: [{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4, needsPractice: true }],
+			weakest: []
+		});
+		fetchStreakMock.mockResolvedValue({ streak: 3, practicedToday: true });
+
+		render(ProgressPage);
+		await waitFor(() => expect(screen.getByTestId('streak-hero')).toBeInTheDocument());
+
+		expect(screen.queryByTestId('streak-last7')).not.toBeInTheDocument();
+	});
+
+	it('renders 7 streak-day squares when fetchStreak resolves a last7 array', async () => {
+		storedToken = 'secret';
+		fetchStatsMock.mockResolvedValue({
+			items: [{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4, needsPractice: true }],
+			weakest: []
+		});
+		fetchStreakMock.mockResolvedValue({
+			streak: 3,
+			practicedToday: true,
+			last7: [
+				{ date: '2026-07-07', practiced: false },
+				{ date: '2026-07-08', practiced: false },
+				{ date: '2026-07-09', practiced: true },
+				{ date: '2026-07-10', practiced: false },
+				{ date: '2026-07-11', practiced: true },
+				{ date: '2026-07-12', practiced: true },
+				{ date: '2026-07-13', practiced: true }
+			]
+		});
+
+		render(ProgressPage);
+		await waitFor(() => expect(screen.getByTestId('streak-last7')).toBeInTheDocument());
+
+		const strip = screen.getByTestId('streak-last7');
+		expect(within(strip).getAllByTestId('streak-day')).toHaveLength(7);
+	});
+
+	it('formats the aria-label date for the active locale instead of the raw ISO string (WR-04, 23-REVIEW)', async () => {
+		storedToken = 'secret';
+		fetchStatsMock.mockResolvedValue({
+			items: [{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4, needsPractice: true }],
+			weakest: []
+		});
+		fetchStreakMock.mockResolvedValue({
+			streak: 1,
+			practicedToday: true,
+			last7: [
+				{ date: '2026-07-07', practiced: false },
+				{ date: '2026-07-08', practiced: false },
+				{ date: '2026-07-09', practiced: true },
+				{ date: '2026-07-10', practiced: false },
+				{ date: '2026-07-11', practiced: true },
+				{ date: '2026-07-12', practiced: true },
+				{ date: '2026-07-13', practiced: true }
+			]
+		});
+
+		render(ProgressPage);
+		await waitFor(() => expect(screen.getByTestId('streak-last7')).toBeInTheDocument());
+
+		const strip = screen.getByTestId('streak-last7');
+		const days = within(strip).getAllByTestId('streak-day');
+		const firstDayLabel = days[0].getAttribute('aria-label') ?? '';
+
+		expect(firstDayLabel).not.toContain('2026-07-07');
+		expect(firstDayLabel).toContain('July 7');
+	});
+
+	it('formats the aria-label date in French when the FR locale is active', async () => {
+		setLocale('fr');
+		storedToken = 'secret';
+		fetchStatsMock.mockResolvedValue({
+			items: [{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4, needsPractice: true }],
+			weakest: []
+		});
+		fetchStreakMock.mockResolvedValue({
+			streak: 1,
+			practicedToday: true,
+			last7: [
+				{ date: '2026-07-07', practiced: false },
+				{ date: '2026-07-08', practiced: false },
+				{ date: '2026-07-09', practiced: true },
+				{ date: '2026-07-10', practiced: false },
+				{ date: '2026-07-11', practiced: true },
+				{ date: '2026-07-12', practiced: true },
+				{ date: '2026-07-13', practiced: true }
+			]
+		});
+
+		render(ProgressPage);
+		await waitFor(() => expect(screen.getByTestId('streak-last7')).toBeInTheDocument());
+
+		const strip = screen.getByTestId('streak-last7');
+		const days = within(strip).getAllByTestId('streak-day');
+		const firstDayLabel = days[0].getAttribute('aria-label') ?? '';
+
+		expect(firstDayLabel).not.toContain('2026-07-07');
+		expect(firstDayLabel).toContain('juillet');
+
+		setLocale('en');
 	});
 });

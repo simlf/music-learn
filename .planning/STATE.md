@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Playability & Comprehension
-current_phase: 22
-current_phase_name: Installable PWA
+current_phase: 23
+current_phase_name: Phase-First UX for Phone
 status: verifying
-stopped_at: Completed 22-03-PLAN.md
-last_updated: "2026-07-19T12:31:44.398Z"
+stopped_at: Completed 23-04-PLAN.md
+last_updated: "2026-07-19T20:03:48.109Z"
 last_activity: 2026-07-19
-last_activity_desc: Phase 22 executed + code-verified (9/9); PWA behaviors pending on-device checks
+last_activity_desc: Phase 23 execution started
 progress:
   total_phases: 22
-  completed_phases: 16
-  total_plans: 82
-  completed_plans: 82
-  percent: 76
+  completed_phases: 18
+  total_plans: 86
+  completed_plans: 86
+  percent: 82
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-14)
 
 **Core value:** See a jazz chord symbol and know instantly what to play with the left hand.
-**Current focus:** Phase 22 — Installable PWA
+**Current focus:** Phase 23 — Phase-First UX for Phone
 
 ## Current Position
 
-Phase: 22 (Installable PWA) — code-verified (9/9), device checks pending
-Plan: 3 of 3 complete (22-01 SW + precache, 22-02 iOS meta/install, 22-03 update prompt)
-Status: Executed + code-verified. All pure logic + type-check + i18n parity pass. Service-worker offline load, Cache Storage (samples excluded), Android install + Lighthouse PWA audit, iOS add-to-home-screen, and the two-deploy update prompt are inherently on-device checks (jsdom/preview cannot run a SW). Deploy note: nginx sets no explicit Cache-Control on /service-worker.js — add `no-cache` for the SW script so updates are detected (infra, not app code).
-Last activity: 2026-07-19 — Phase 22 executed, code-verified, docs committed
+Phase: 23 (Phase-First UX for Phone) — EXECUTING
+Plan: 4 of 4
+Status: Phase complete — ready for verification
+Last activity: 2026-07-19 — Phase 23 execution started
 Full suite: 1284 tests green; svelte-check 0 errors.
 
 **v2.0 Learning Upgrade (Phases 10-13): COMPLETE (shipped 2026-07-15).**
@@ -148,6 +148,10 @@ Full suite: 1284 tests green; svelte-check 0 errors.
 | Phase 20 P08 | 25min | 3 tasks | 9 files |
 | Phase 20-french-translation P09 | 25min | 3 tasks | 13 files |
 | Phase 20 P10 | 20min | 2 tasks | 1 files |
+| Phase 23 P01 | 11min | 3 tasks | 6 files |
+| Phase 23 P02 | 6min | 2 tasks | 3 files |
+| Phase 23 P03 | 9min | 2 tasks | 5 files |
+| Phase 23 P04 | 24min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -155,6 +159,7 @@ Full suite: 1284 tests green; svelte-check 0 errors.
 
 - Phase 21 added: Drills Polish — prevent duplicate song selection; make practice-pool container discrete (desktop hover reveal) + persist enabled state; replay played chord as a full chord for memorization.
 - Phase 22 added: Installable PWA — native SvelteKit service worker for offline app-shell caching, mobile installability (Android + iOS add-to-home-screen polish), and a new-version update prompt. Samples excluded from install precache.
+- Phase 23 added: Phase-First UX for Phone — bottom tab bar nav (1A), Drills question-first reflow with folded chrome (1B), glanceable+actionable Progress with 7-day strip and inline accuracy bars (1C). Phone-first; desktop mostly unchanged. Source spec: UX Improvements.dc.html.
 
 ### Decisions
 
@@ -293,6 +298,13 @@ Recent decisions affecting current work:
 - [Phase 20-09]: RevealInsight needed no code changes; its French behavior is inherited from mnemonicFor()'s locale-reactivity.
 - [Phase ?]: Combined Task 1 (FR-wiring/immunity/no-key-leak) and Task 2 (I18N-03 fit-rule assertions) into one commit since both build the same coverage.test.ts file as one coherent gate
 - [Phase ?]: tiers.ts and presets.ts English residuals left untranslated (out of Phase 20 files_modified scope per 20-UI-SPEC.md); flagged for a future decision rather than silently expanded
+- [Phase ?]: isPhone read synchronously via guarded matchMedia at init so SSR/jsdom default to desktop, keeping existing drills suites green
+- [Phase ?]: Strip/sheet content branched with if isPhone / else exclusively, never dual-rendered
+- [Phase 23-02]: last7 built as a fixed 7-iteration backward walk using the existing previousDate() helper, then reversed to oldest->today - no new date-math primitive introduced
+- [Phase 23-02]: Client StreakResult.last7 kept optional (not required) so existing streak mocks that omit it stay valid
+- [Phase ?]: [Phase 23-03]: progress.weakest.drillOne/drillOneAria i18n keys added a task early (Task 1, not Task 2) since MessageKey's keyof-derived type would fail svelte-check if PracticeItemRow referenced an unadded key — Task 1's own acceptance criteria require npm run check clean; the two keys were needed immediately for type-safety, not deferred
+- [Phase ?]: [Phase 23-04]: bottomTabLinks/moreLinks derived via Array.filter over the single navLinks source array (not second literal arrays), so the desktop masthead, phone tab bar, and More sheet can never list different routes
+- [Phase ?]: [Phase 23-04]: layout-rendering tests scope desktop-nav/LocaleToggle queries via within(getByTestId('masthead')), since jsdom dual-renders the desktop masthead and the new phone-only bottom-tab-bar (no media-query evaluation)
 
 ### Pending Todos
 
@@ -324,7 +336,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-18T19:55:16.679Z
-Stopped at: Completed 20-08-PLAN.md; merged origin/main (Phases 16/17)
+Last session: 2026-07-19T20:03:48.099Z
+Stopped at: Completed 23-04-PLAN.md
 Resume file: 
-.planning/phases/17-chord-explainer/17-UI-SPEC.md
+None

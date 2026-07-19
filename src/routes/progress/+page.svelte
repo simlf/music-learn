@@ -10,7 +10,7 @@
 		studyModeEnabled
 	} from '$lib/audio/audio';
 	import { pickStreakLine } from '$lib/copy/streak';
-	import { t } from '$lib/i18n/locale.svelte';
+	import { currentLocale, t } from '$lib/i18n/locale.svelte';
 	import { setDrillSeeds } from '$lib/practice/drillSeeds';
 	import { getLevelState, setCurrentTier } from '$lib/practice/levelState';
 	import { TIERS, type TierId } from '$lib/practice/tiers';
@@ -40,6 +40,7 @@
 	let tokenInput = $state('');
 	let streak = $state(0);
 	let practicedToday = $state(false);
+	let last7 = $state<{ date: string; practiced: boolean }[]>([]);
 
 	const streakLine = $derived.by(() => {
 		const kind = streak === 0 ? 'zeroStreak' : practicedToday ? 'activePracticedToday' : 'activeNudge';
@@ -65,9 +66,11 @@
 			const streakResult = await fetchStreak(localDateString());
 			streak = streakResult.streak;
 			practicedToday = streakResult.practicedToday;
+			last7 = streakResult.last7 ?? [];
 		} catch {
 			streak = 0;
 			practicedToday = false;
+			last7 = [];
 		}
 	}
 
@@ -106,6 +109,22 @@
 	function drillThese(): void {
 		setDrillSeeds(weakest.filter((item) => item.kind === 'chord').map((item) => item.item));
 		void goto('/drills');
+	}
+
+	/**
+	 * Locale-formats a `YYYY-MM-DD` day string for the 7-day streak strip's
+	 * aria-label (WR-04, 23-REVIEW): the UI-SPEC requires `{DATE}` to be
+	 * substituted with a locale-formatted date, not the raw ISO string,
+	 * matching `songs.mark.count`'s `{N}` interpolation pattern. Parsed with
+	 * an explicit `T00:00:00` local-time suffix (never bare `new
+	 * Date('YYYY-MM-DD')`, which parses as UTC midnight and can shift a day
+	 * backward in negative-UTC-offset timezones) - same local-calendar-date
+	 * rule `localDateString` already follows elsewhere in this file.
+	 */
+	function formatStreakDate(dateStr: string): string {
+		return new Intl.DateTimeFormat(currentLocale(), { month: 'long', day: 'numeric' }).format(
+			new Date(`${dateStr}T00:00:00`)
+		);
 	}
 </script>
 
@@ -158,6 +177,25 @@
 			<div class="mt-4">
 				<StreakBadge variant="hero" count={streak} />
 			</div>
+			{#if last7.length > 0}
+				<div class="streak-last7 mt-4" data-testid="streak-last7">
+					{#each last7 as day (day.date)}
+						{@const isToday = day.date === localDateString()}
+						<div
+							class="streak-day"
+							class:streak-day--practiced={day.practiced}
+							class:streak-day--today={!day.practiced && isToday}
+							data-testid="streak-day"
+							aria-label={(day.practiced
+								? t('progress.streak.last7.practicedAria')
+								: isToday
+									? t('progress.streak.last7.todayAria')
+									: t('progress.streak.last7.missedAria')
+							).replace('{DATE}', formatStreakDate(day.date))}
+						></div>
+					{/each}
+				</div>
+			{/if}
 			<div class="mt-6">
 				<Button variant="primary" href="/drills">{t('progress.streak.cta')}</Button>
 			</div>
@@ -169,14 +207,23 @@
 			<table class="mt-4 w-full">
 				<tbody>
 					{#each weakest as item (item.item + item.kind)}
-						<PracticeItemRow {item} />
+						<PracticeItemRow
+							{item}
+							onDrill={(symbol) => {
+								setDrillSeeds([symbol]);
+								void goto('/drills');
+							}}
+						/>
 					{/each}
 				</tbody>
 			</table>
 			{#if weakest.some((item) => item.kind === 'chord')}
 				<div class="mt-4">
 					<Button type="button" variant="primary" onclick={drillThese}
-						>{t('progress.weakest.cta')}</Button
+						>{t('progress.weakest.ctaAllN').replace(
+							'{N}',
+							String(weakest.filter((item) => item.kind === 'chord').length)
+						)}</Button
 					>
 				</div>
 			{/if}
@@ -258,5 +305,30 @@
 		height: 64px;
 		background-color: var(--color-paper-bright);
 		border: 2px solid var(--color-ink);
+	}
+
+	/* 7-day streak strip (UX-1C): oldest -> today squares below the hero
+	   numeral. Past-unpracticed = solid border, paper bg (calm); today
+	   unpracticed = dashed border (the one attention-getting cue);
+	   practiced = filled vermilion. Color is never the sole signal (fill
+	   + border style both change). */
+	.streak-last7 {
+		display: flex;
+		gap: var(--spacing-sm);
+	}
+
+	.streak-day {
+		width: var(--spacing-xl);
+		height: var(--spacing-xl);
+		border: 2px solid var(--color-ink);
+		background: var(--color-paper);
+	}
+
+	.streak-day--practiced {
+		background: var(--color-vermilion);
+	}
+
+	.streak-day--today {
+		border-style: dashed;
 	}
 </style>

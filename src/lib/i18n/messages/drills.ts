@@ -118,7 +118,12 @@ export const drills = {
 		'drills.level.nextUp': 'Next up',
 
 		// IntervalScaffold (sketch 005) caption.
-		'drills.scaffold.caption': 'This chord is'
+		'drills.scaffold.caption': 'This chord is',
+
+		// Phone compact strip (Phase 23 1B): open/close the sheet holding the
+		// full LevelPicker + mode tabs + SongFilterToggle + rotate hint.
+		'drills.strip.ariaOpen': 'Open level and mode settings',
+		'drills.strip.ariaClose': 'Close level and mode settings'
 	},
 	fr: {
 		'drills.page.title': 'Exercices',
@@ -204,6 +209,9 @@ export const drills = {
 		'drills.level.switchToTierPrefix': 'Passer au niveau',
 		'drills.level.nextUp': 'À suivre',
 
-		'drills.scaffold.caption': 'Cet accord est'
+		'drills.scaffold.caption': 'Cet accord est',
+
+		'drills.strip.ariaOpen': 'Ouvrir les réglages de niveau et de mode',
+		'drills.strip.ariaClose': 'Fermer les réglages de niveau et de mode'
 	}
 } satisfies LocaleDict;

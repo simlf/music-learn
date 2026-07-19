@@ -97,6 +97,30 @@ body {
 	font-family: var(--font-sans);
 }
 
+:root {
+	/*
+	 * Phone-only bottom tab bar clearance (Phase 23 1A, UX-1A). 64px matches
+	 * the fixed bar's content-row height (src/routes/+layout.svelte); the
+	 * safe-area addend covers the iOS home-indicator inset on this installed
+	 * PWA (Phase 22) - resolves to 0 without app.html's viewport-fit=cover.
+	 * One shared token so every page's `main` gets the same clearance rather
+	 * than a hand-copied calc per +page.svelte.
+	 */
+	--tab-bar-clearance: calc(64px + env(safe-area-inset-bottom));
+}
+
+/*
+ * Every route's `main` uses min-h-screen (see +page.svelte files across the
+ * app); on phone the fixed bottom tab bar would otherwise cover their last
+ * ~64px+ of content. A component-scoped `main` rule (e.g. drills'
+ * landscape-compact rule) has higher specificity and wins where it applies.
+ */
+@media (max-width: 639.98px) {
+	main {
+		padding-bottom: var(--tab-bar-clearance);
+	}
+}
+
 /*
  * Shared reveal "stamp-in" beat (Sketch 001 Variant A). Used by the drills
  * feedback block (.stamp, src/routes/drills/+page.svelte) and by

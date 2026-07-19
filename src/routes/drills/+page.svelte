@@ -75,6 +75,7 @@
 	import SongMark from '$lib/components/SongMark.svelte';
 	import SongFilterToggle from '$lib/components/SongFilterToggle.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import BottomSheet from '$lib/components/BottomSheet.svelte';
 	import LevelPicker from '$lib/components/LevelPicker.svelte';
 	import IntervalScaffold from '$lib/components/IntervalScaffold.svelte';
 	import { intervalScaffoldLevel } from '$lib/practice/scaffoldLevel';
@@ -247,6 +248,9 @@
 	]);
 	let mode = $state<DrillMode>('mix');
 
+	/** The current mode's label, for the phone strip's tier/mode summary line. */
+	const activeModeLabel = $derived(MODES.find((option) => option.value === mode)?.label ?? '');
+
 	/**
 	 * A fresh (non-session-sourced) question: the deck mode decides the
 	 * family FIRST, and only a chord family draws a weighted symbol from the
@@ -409,6 +413,23 @@
 		hintDismissed = true;
 	}
 
+	/**
+	 * Phase 23 1B: phone-portrait compact-strip gate. Read synchronously at
+	 * init (mirrors hintDismissed's own synchronous read above) so SSR/
+	 * prerender and jsdom (no matchMedia) both resolve to desktop
+	 * deterministically, keeping every pre-existing drills test suite on the
+	 * desktop branch untouched. Flips live via the onMount listener below on
+	 * resize/rotation.
+	 */
+	let isPhone = $state(
+		typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+			? window.matchMedia('(max-width: 639.98px)').matches
+			: false
+	);
+
+	/** Drives the phone-only strip's sheet (LevelPicker + mode tabs + SongFilterToggle + rotate hint). */
+	let sheetOpen = $state(false);
+
 	// Drain any answers queued from a previous offline session (PROG-01).
 	onMount(() => {
 		flushQueue();
@@ -446,6 +467,19 @@
 		if (mql.matches) dismissHint();
 		mql.addEventListener('change', handleOrientationChange);
 		return () => mql.removeEventListener('change', handleOrientationChange);
+	});
+
+	// Phase 23 1B: keeps isPhone live across resize/rotation (mirrors the
+	// orientation listener above). Feature-detected so this is a silent no-op
+	// in jsdom/browsers lacking matchMedia - progressive enhancement only.
+	onMount(() => {
+		if (typeof window.matchMedia !== 'function') return;
+		const mql = window.matchMedia('(max-width: 639.98px)');
+		const handlePhoneChange = (event: MediaQueryListEvent) => {
+			isPhone = event.matches;
+		};
+		mql.addEventListener('change', handlePhoneChange);
+		return () => mql.removeEventListener('change', handlePhoneChange);
 	});
 
 	/**
@@ -815,36 +849,116 @@
 <main class="bg-paper text-ink min-h-screen px-2 py-8 font-sans sm:px-8">
 	<h1 class="text-heading mt-2 font-bold">{t('drills.page.title')}</h1>
 
-	<!-- Beginner on-ramp (sketch 007): the level lives where you practice. -->
-	<div class="mt-6">
-		<LevelPicker onChange={handleLevelChange} />
-	</div>
-
-	<div class="mt-8 flex flex-wrap items-center justify-between gap-2">
-		<div
-			class="flex gap-4"
-			data-testid="drill-mode-row"
-			role="group"
-			aria-label={t('drills.aria.modeGroup')}
-		>
-			{#each MODES as modeOption (modeOption.value)}
-				<button
-					type="button"
-					class="mode-tab text-label font-mono uppercase"
-					class:mode-tab--active={mode === modeOption.value}
-					aria-pressed={mode === modeOption.value}
-					onclick={() => setMode(modeOption.value)}
-				>
-					{modeOption.label}
-				</button>
-			{/each}
+	{#if isPhone}
+		<!--
+			Phase 23 1B: phone-portrait compact strip. Replaces the LevelPicker
+			card, the mode-tabs/score row, and the SongFilterToggle bar with one
+			line; tapping it opens a sheet holding all four unmodified.
+		-->
+		<div class="drill-strip mt-6" data-testid="drill-strip">
+			<button
+				type="button"
+				class="drill-strip__toggle text-label font-mono uppercase"
+				class:drill-strip__toggle--active={sheetOpen}
+				aria-expanded={sheetOpen}
+				aria-label={sheetOpen ? t('drills.strip.ariaClose') : t('drills.strip.ariaOpen')}
+				onclick={() => (sheetOpen = !sheetOpen)}
+			>
+				{t('drills.level.tier')} {levelState.currentTier} · {activeModeLabel} ▾
+			</button>
+			<p class="text-label font-mono uppercase" data-testid="drill-strip-score">
+				{Math.min(session.asked + 1, session.length)}/{session.length} · {score.correct} ✓
+			</p>
 		</div>
-		<p class="text-label text-right font-mono uppercase" data-testid="score-register">
-			{Math.min(session.asked + 1, session.length)} {t('drills.score.of')} {session.length} ·
-			{score.correct} {t('drills.score.right')} · {score.streak}
-			{t('drills.score.streak')}
-		</p>
-	</div>
+
+		<BottomSheet
+			open={sheetOpen}
+			onClose={() => (sheetOpen = false)}
+			ariaLabel={t('drills.strip.ariaOpen')}
+		>
+			<LevelPicker onChange={handleLevelChange} />
+
+			<div
+				class="mt-6 flex gap-4"
+				data-testid="drill-mode-row"
+				role="group"
+				aria-label={t('drills.aria.modeGroup')}
+			>
+				{#each MODES as modeOption (modeOption.value)}
+					<button
+						type="button"
+						class="mode-tab text-label font-mono uppercase"
+						class:mode-tab--active={mode === modeOption.value}
+						aria-pressed={mode === modeOption.value}
+						onclick={() => setMode(modeOption.value)}
+					>
+						{modeOption.label}
+					</button>
+				{/each}
+			</div>
+
+			{#if !showEndCard}
+				<div class="mt-6">
+					<SongFilterToggle
+						poolLabel={t('drills.filter.poolLabel')}
+						on={songFilterOn}
+						onToggle={toggleSongFilter}
+						note={songFallbackActive ? t('drills.filter.noteFallback') : undefined}
+						noteOn={`${t('drills.filter.noteOnPrefix')} ${songChordCount} ${t('drills.filter.noteOnSuffix')}`}
+						noteOff={t('drills.filter.noteOff')}
+						discrete={false}
+					/>
+				</div>
+
+				{#if !hintDismissed}
+					<p
+						class="text-label border-ink mt-6 flex items-center justify-between gap-4 border-2 px-3 py-2 font-mono uppercase"
+						data-testid="rotate-hint"
+					>
+						<span>{t('drills.hint.rotate')}</span>
+						<button
+							type="button"
+							class="text-label shrink-0 font-mono underline"
+							onclick={dismissHint}
+						>
+							{t('drills.hint.gotIt')}
+						</button>
+					</p>
+				{/if}
+			{/if}
+		</BottomSheet>
+	{:else}
+		<!-- Beginner on-ramp (sketch 007): the level lives where you practice. -->
+		<div class="mt-6">
+			<LevelPicker onChange={handleLevelChange} />
+		</div>
+
+		<div class="mt-8 flex flex-wrap items-center justify-between gap-2">
+			<div
+				class="flex gap-4"
+				data-testid="drill-mode-row"
+				role="group"
+				aria-label={t('drills.aria.modeGroup')}
+			>
+				{#each MODES as modeOption (modeOption.value)}
+					<button
+						type="button"
+						class="mode-tab text-label font-mono uppercase"
+						class:mode-tab--active={mode === modeOption.value}
+						aria-pressed={mode === modeOption.value}
+						onclick={() => setMode(modeOption.value)}
+					>
+						{modeOption.label}
+					</button>
+				{/each}
+			</div>
+			<p class="text-label text-right font-mono uppercase" data-testid="score-register">
+				{Math.min(session.asked + 1, session.length)} {t('drills.score.of')} {session.length} ·
+				{score.correct} {t('drills.score.right')} · {score.streak}
+				{t('drills.score.streak')}
+			</p>
+		</div>
+	{/if}
 
 	{#if showEndCard}
 		<div
@@ -913,22 +1027,24 @@
 			</div>
 		</div>
 	{:else}
-	<div class="mt-8">
-		<SongFilterToggle
-			poolLabel={t('drills.filter.poolLabel')}
-			on={songFilterOn}
-			onToggle={toggleSongFilter}
-			note={songFallbackActive ? t('drills.filter.noteFallback') : undefined}
-			noteOn={`${t('drills.filter.noteOnPrefix')} ${songChordCount} ${t('drills.filter.noteOnSuffix')}`}
-			noteOff={t('drills.filter.noteOff')}
-			discrete
-		/>
-	</div>
+	{#if !isPhone}
+		<div class="mt-8">
+			<SongFilterToggle
+				poolLabel={t('drills.filter.poolLabel')}
+				on={songFilterOn}
+				onToggle={toggleSongFilter}
+				note={songFallbackActive ? t('drills.filter.noteFallback') : undefined}
+				noteOn={`${t('drills.filter.noteOnPrefix')} ${songChordCount} ${t('drills.filter.noteOnSuffix')}`}
+				noteOff={t('drills.filter.noteOff')}
+				discrete
+			/>
+		</div>
+	{/if}
 	<div
 		class="drill-layout border-ink bg-paper-bright mt-4 border-2 px-2 py-6 sm:px-6"
 		data-testid="drill-card"
 	>
-		{#if !hintDismissed}
+		{#if !hintDismissed && !isPhone}
 			<p class="drill-layout__hint text-label border-ink flex items-center justify-between gap-4 border-2 px-3 py-2 font-mono uppercase" data-testid="rotate-hint">
 				<span>{t('drills.hint.rotate')}</span>
 				<button type="button" class="text-label shrink-0 font-mono underline" onclick={dismissHint}>
@@ -1343,5 +1459,73 @@
 	.drill-controls__primary :global(.ps-button),
 	.drill-controls__secondary :global(.ps-button) {
 		width: 100%;
+	}
+
+	/*
+	 * Phase 23 1B: the compact phone strip replacing LevelPicker + mode row +
+	 * SongFilterToggle. Uses `@media (max-width: 639.98px)` (not a literal
+	 * 640px) to avoid a 1px overlap with Tailwind's `sm:` boundary (UI-SPEC
+	 * "Breakpoint precision") - matched below by the grid-reflow query on the
+	 * same threshold.
+	 */
+	.drill-strip {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: var(--spacing-md);
+		border: 2px solid var(--color-ink);
+		background: var(--color-paper-bright);
+		padding: var(--spacing-sm) var(--spacing-md);
+	}
+
+	.drill-strip__toggle {
+		background: transparent;
+		border: none;
+		padding: var(--spacing-xs) var(--spacing-sm);
+		color: var(--color-ink);
+		cursor: pointer;
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
+	}
+
+	/*
+	 * Active/open state reuses LocaleToggle's exact active-segment treatment
+	 * (ink fill, paper text) - never vermilion, which is reserved for
+	 * reward/practice-state semantics (UI-SPEC Color section).
+	 */
+	.drill-strip__toggle--active {
+		background: var(--color-ink);
+		color: var(--color-paper);
+	}
+
+	/*
+	 * D-10-equivalent for phone (UI-SPEC 1B): grow the keyboard toward ~180px
+	 * and the Check button toward ~52px so both sit comfortably in the thumb
+	 * zone once the strip collapse removes the per-question scroll. The
+	 * keyboard's own height is intrinsic to PianoKeyboard.svelte (a fixed
+	 * 160px on `.piano-keyboard`, scoped to that component), so this overrides
+	 * it from the host container via the same `:global()` idiom already used
+	 * for the Check/Clear width override below. Never `position: fixed`/
+	 * `sticky` here - the keyboard stays in the grid's normal flow
+	 * ([[keyboard-inline-not-docked]]).
+	 */
+	@media (max-width: 639.98px) {
+		.drill-layout {
+			grid-template-areas:
+				'prompt'
+				'keyboard'
+				'controls'
+				'feedback'
+				'next';
+		}
+
+		.drill-layout__keyboard :global(.piano-keyboard) {
+			height: 180px;
+		}
+
+		.drill-controls__primary :global(.ps-button) {
+			min-height: 52px;
+		}
 	}
 </style>

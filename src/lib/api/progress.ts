@@ -39,6 +39,8 @@ export interface StatItem {
 export interface StreakResult {
 	streak: number;
 	practicedToday: boolean;
+	/** Ordered oldest -> today, length 7. Optional: mirrors the server field, added in Phase 23 (UX-1C). */
+	last7?: { date: string; practiced: boolean }[];
 }
 
 const QUEUE_KEY = 'music-learn:answer-queue';

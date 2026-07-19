@@ -14,6 +14,8 @@ import type { AnswerRow } from './db.js';
 export interface StreakResult {
 	streak: number;
 	practicedToday: boolean;
+	/** Ordered oldest -> today, length 7. Final entry's date === `today` and practiced === practicedToday. */
+	last7: { date: string; practiced: boolean }[];
 }
 
 /**
@@ -47,13 +49,21 @@ export function computeStreak(rows: AnswerRow[], today: string): StreakResult {
 	const practicedDates = new Set(rows.map((row) => row.client_date));
 	const practicedToday = practicedDates.has(today);
 
+	const last7: { date: string; practiced: boolean }[] = [];
+	let dateCursor = today;
+	for (let i = 0; i < 7; i++) {
+		last7.push({ date: dateCursor, practiced: practicedDates.has(dateCursor) });
+		dateCursor = previousDate(dateCursor);
+	}
+	last7.reverse();
+
 	let anchor: string;
 	if (practicedToday) {
 		anchor = today;
 	} else {
 		const yesterday = previousDate(today);
 		if (!practicedDates.has(yesterday)) {
-			return { streak: 0, practicedToday };
+			return { streak: 0, practicedToday, last7 };
 		}
 		anchor = yesterday;
 	}
@@ -65,5 +75,5 @@ export function computeStreak(rows: AnswerRow[], today: string): StreakResult {
 		cursor = previousDate(cursor);
 	}
 
-	return { streak, practicedToday };
+	return { streak, practicedToday, last7 };
 }
