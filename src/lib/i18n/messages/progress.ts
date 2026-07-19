@@ -52,10 +52,15 @@ export const progress = {
 		// Streak hero card.
 		'progress.streak.cta': 'Practice Now',
 
+		// 7-day practiced strip (UX-1C): {DATE} substituted client-side.
+		'progress.streak.last7.practicedAria': '{DATE}: practiced',
+		'progress.streak.last7.missedAria': '{DATE}: not practiced',
+		'progress.streak.last7.todayAria': '{DATE}: today, not yet practiced',
+
 		// Weakest Spots card.
 		'progress.weakest.heading': 'Weakest Spots',
 		'progress.weakest.body': 'The chords and scales tripping you up most. Give these extra reps.',
-		'progress.weakest.cta': 'Drill these',
+		'progress.weakest.ctaAllN': 'Drill all {N}',
 		'progress.weakest.drillOne': 'Drill',
 		'progress.weakest.drillOneAria': 'Drill {ITEM}',
 
@@ -133,10 +138,14 @@ export const progress = {
 
 		'progress.streak.cta': 'Pratiquer maintenant',
 
+		'progress.streak.last7.practicedAria': '{DATE} : pratiqué',
+		'progress.streak.last7.missedAria': '{DATE} : pas pratiqué',
+		'progress.streak.last7.todayAria': "{DATE} : aujourd'hui, pas encore pratiqué",
+
 		'progress.weakest.heading': 'Points faibles',
 		'progress.weakest.body':
 			'Les accords et les gammes qui te posent le plus de souci. Fais-en quelques reprises de plus.',
-		'progress.weakest.cta': 'Exercer ceux-ci',
+		'progress.weakest.ctaAllN': 'Exercer les {N}',
 		'progress.weakest.drillOne': 'Exercer',
 		'progress.weakest.drillOneAria': 'Exercer {ITEM}',
 
