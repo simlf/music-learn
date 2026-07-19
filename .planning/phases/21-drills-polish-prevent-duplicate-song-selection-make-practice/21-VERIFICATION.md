@@ -1,7 +1,8 @@
 ---
 phase: 21-drills-polish-prevent-duplicate-song-selection-make-practice
 verified: 2026-07-19T13:30:00Z
-status: human_needed
+status: passed
+status_note: "Shipped on user approval (2026-07-19). 5/6 must-haves machine-verified; the DPOL-02 desktop hover recede-reveal is accepted-unverified pending a user eyeball on /drills (CSS confirmed structurally correct). See human_verification below."
 score: 5/6 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
