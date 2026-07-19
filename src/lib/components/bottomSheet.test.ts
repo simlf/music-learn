@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, cleanup } from '@testing-library/svelte';
+import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import BottomSheet from './BottomSheet.svelte';
 import { createRawSnippet } from 'svelte';
@@ -112,5 +112,92 @@ describe('BottomSheet dismiss paths', () => {
 		await fireEvent.keyDown(screen.getByTestId('bottom-sheet-close'), { key: 'Escape' });
 
 		expect(onClose).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not call onClose on Space pressed inside a focused element in the sheet body (WR-02 regression guard)', async () => {
+		const onClose = vi.fn();
+		render(BottomSheet, { open: true, onClose, children: childrenSnippet() });
+
+		// Space bubbling from a focused descendant must not be mistaken for
+		// the backdrop's own Enter/Space-to-close activation.
+		await fireEvent.keyDown(screen.getByTestId('sheet-body'), { key: ' ' });
+
+		expect(onClose).not.toHaveBeenCalled();
+	});
+});
+
+describe('BottomSheet focus management (WR-02, 23-REVIEW)', () => {
+	it('moves focus into the dialog surface when it opens', async () => {
+		const onClose = vi.fn();
+		const { rerender } = render(BottomSheet, {
+			open: false,
+			onClose,
+			children: childrenSnippet()
+		});
+		expect(screen.queryByTestId('bottom-sheet')).not.toBeInTheDocument();
+
+		await rerender({ open: true, onClose, children: childrenSnippet() });
+
+		await waitFor(() => expect(screen.getByTestId('bottom-sheet')).toHaveFocus());
+	});
+
+	it('returns focus to the element that opened the sheet when it closes', async () => {
+		const opener = document.createElement('button');
+		document.body.appendChild(opener);
+		opener.focus();
+		expect(opener).toHaveFocus();
+
+		const onClose = vi.fn();
+		const { rerender } = render(BottomSheet, {
+			open: false,
+			onClose,
+			children: childrenSnippet()
+		});
+
+		await rerender({ open: true, onClose, children: childrenSnippet() });
+		await waitFor(() => expect(screen.getByTestId('bottom-sheet')).toHaveFocus());
+
+		await rerender({ open: false, onClose, children: childrenSnippet() });
+		await waitFor(() => expect(opener).toHaveFocus());
+
+		document.body.removeChild(opener);
+	});
+
+	it('traps Tab forward from the last focusable back to the surface\'s first (the Close button)', async () => {
+		const onClose = vi.fn();
+		const withButton = createRawSnippet(() => ({
+			render: () =>
+				`<div data-testid="sheet-body"><button data-testid="last-focusable">Last</button></div>`
+		}));
+		render(BottomSheet, { open: true, onClose, children: withButton });
+
+		const lastButton = screen.getByTestId('last-focusable');
+		lastButton.focus();
+		expect(lastButton).toHaveFocus();
+
+		await fireEvent.keyDown(lastButton, { key: 'Tab' });
+
+		// jsdom does not implement native Tab focus movement, so the trap's
+		// own preventDefault + explicit .focus() call is what must fire here,
+		// wrapping forward-Tab from the last focusable to the Close button
+		// (the surface's first focusable, always rendered above children).
+		expect(screen.getByTestId('bottom-sheet-close')).toHaveFocus();
+	});
+
+	it('traps Shift+Tab backward from the first focusable (the Close button) to the last', async () => {
+		const onClose = vi.fn();
+		const withButton = createRawSnippet(() => ({
+			render: () =>
+				`<div data-testid="sheet-body"><button data-testid="last-focusable">Last</button></div>`
+		}));
+		render(BottomSheet, { open: true, onClose, children: withButton });
+
+		const closeButton = screen.getByTestId('bottom-sheet-close');
+		closeButton.focus();
+		expect(closeButton).toHaveFocus();
+
+		await fireEvent.keyDown(closeButton, { key: 'Tab', shiftKey: true });
+
+		expect(screen.getByTestId('last-focusable')).toHaveFocus();
 	});
 });

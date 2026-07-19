@@ -35,9 +35,59 @@
 	}
 
 	function handleBackdropKeydown(event: KeyboardEvent) {
+		// WR-01 removed the surface's blanket keydown stopPropagation, so a
+		// keydown fired on a focused descendant (e.g. Space on a toggle button
+		// inside the sheet body) genuinely bubbles up to this handler too -
+		// `event.target`/`currentTarget` are the only reliable way to restrict
+		// this Enter/Space-to-close behavior to the backdrop itself actually
+		// being focused, matching the documented intent.
+		if (event.target !== event.currentTarget) return;
 		if (event.key === 'Enter' || event.key === ' ') {
 			event.preventDefault();
 			onClose();
+		}
+	}
+
+	// ---- Focus management (WR-02, 23-REVIEW) ----------------------------
+	// Minimal WAI-ARIA APG modal dialog pattern: move focus into the dialog
+	// on open, trap Tab/Shift+Tab within it while open, and restore focus to
+	// the element that opened it on close.
+	let surfaceEl: HTMLDivElement | undefined = $state();
+	let previouslyFocusedEl: HTMLElement | null = null;
+
+	$effect(() => {
+		if (open) {
+			previouslyFocusedEl =
+				document.activeElement instanceof HTMLElement ? document.activeElement : null;
+			surfaceEl?.focus();
+		} else if (previouslyFocusedEl) {
+			previouslyFocusedEl.focus();
+			previouslyFocusedEl = null;
+		}
+	});
+
+	function focusableElements(): HTMLElement[] {
+		if (!surfaceEl) return [];
+		return Array.from(
+			surfaceEl.querySelectorAll<HTMLElement>(
+				'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+			)
+		);
+	}
+
+	/** Traps Tab/Shift+Tab within the surface; never stops propagation so Escape still bubbles to window (WR-01). */
+	function handleSurfaceKeydown(event: KeyboardEvent) {
+		if (event.key !== 'Tab') return;
+		const focusables = focusableElements();
+		if (focusables.length === 0) return;
+		const first = focusables[0];
+		const last = focusables[focusables.length - 1];
+		if (event.shiftKey && document.activeElement === first) {
+			event.preventDefault();
+			last.focus();
+		} else if (!event.shiftKey && document.activeElement === last) {
+			event.preventDefault();
+			first.focus();
 		}
 	}
 </script>
@@ -64,13 +114,13 @@
 			svelte-ignore a11y_click_events_have_key_events -- this onclick is
 			purely an event-bubbling guard (stop clicks inside the dialog from
 			reaching the backdrop's close handler), not a click-to-activate
-			affordance, so it has no keyboard equivalent to pair it with. Escape
-			(the modal's real keyboard interaction) is handled by
-			svelte:window's handleWindowKeydown above and must be allowed to
-			bubble past this element uninterrupted (WR-01, 23-REVIEW) - do not
-			add an onkeydown here that stops propagation.
+			affordance. The paired onkeydown below (WR-02's Tab trap) never
+			calls stopPropagation, so Escape (the modal's real keyboard
+			interaction, handled by svelte:window's handleWindowKeydown above)
+			is still allowed to bubble past this element uninterrupted (WR-01).
 		-->
 		<div
+			bind:this={surfaceEl}
 			class="bottom-sheet__surface"
 			data-testid="bottom-sheet"
 			role="dialog"
@@ -78,6 +128,7 @@
 			aria-label={ariaLabel}
 			tabindex="-1"
 			onclick={stopPropagation}
+			onkeydown={handleSurfaceKeydown}
 		>
 			<div class="bottom-sheet__closeRow">
 				<Button
