@@ -30,25 +30,25 @@ describe('computeStreak', () => {
 			row({ client_date: '2026-07-11' })
 		];
 
-		expect(computeStreak(rows, '2026-07-13')).toEqual({ streak: 3, practicedToday: true });
+		expect(computeStreak(rows, '2026-07-13')).toMatchObject({ streak: 3, practicedToday: true });
 	});
 
 	it('not practiced today but practiced yesterday and the day before -> streak 2, practicedToday false (grace)', () => {
 		const rows = [row({ client_date: '2026-07-12' }), row({ client_date: '2026-07-11' })];
 
-		expect(computeStreak(rows, '2026-07-13')).toEqual({ streak: 2, practicedToday: false });
+		expect(computeStreak(rows, '2026-07-13')).toMatchObject({ streak: 2, practicedToday: false });
 	});
 
 	it('most recent practice date is 2+ days before today -> streak 0, practicedToday false', () => {
 		const rows = [row({ client_date: '2026-07-10' })];
 
-		expect(computeStreak(rows, '2026-07-13')).toEqual({ streak: 0, practicedToday: false });
+		expect(computeStreak(rows, '2026-07-13')).toMatchObject({ streak: 0, practicedToday: false });
 	});
 
 	it('single practice day == today -> streak 1, practicedToday true', () => {
 		const rows = [row({ client_date: '2026-07-13' })];
 
-		expect(computeStreak(rows, '2026-07-13')).toEqual({ streak: 1, practicedToday: true });
+		expect(computeStreak(rows, '2026-07-13')).toMatchObject({ streak: 1, practicedToday: true });
 	});
 
 	it('duplicate answers on the same date count that date once', () => {
@@ -59,11 +59,63 @@ describe('computeStreak', () => {
 			row({ client_date: '2026-07-12' })
 		];
 
-		expect(computeStreak(rows, '2026-07-13')).toEqual({ streak: 2, practicedToday: true });
+		expect(computeStreak(rows, '2026-07-13')).toMatchObject({ streak: 2, practicedToday: true });
 	});
 
 	it('returns streak 0, practicedToday false for empty rows', () => {
-		expect(computeStreak([], '2026-07-13')).toEqual({ streak: 0, practicedToday: false });
+		expect(computeStreak([], '2026-07-13')).toMatchObject({ streak: 0, practicedToday: false });
+	});
+
+	it('last7: practiced today only -> length 7, only final entry practiced, final date === today', () => {
+		const rows = [row({ client_date: '2026-07-13' })];
+
+		const result = computeStreak(rows, '2026-07-13');
+
+		expect(result.last7).toHaveLength(7);
+		expect(result.last7[6]).toEqual({ date: '2026-07-13', practiced: true });
+		expect(result.last7.slice(0, 6).every((entry) => entry.practiced === false)).toBe(true);
+		expect(result.last7.map((entry) => entry.date)).toEqual([
+			'2026-07-07',
+			'2026-07-08',
+			'2026-07-09',
+			'2026-07-10',
+			'2026-07-11',
+			'2026-07-12',
+			'2026-07-13'
+		]);
+	});
+
+	it('last7: a gap inside the window shows an interior practiced:false entry', () => {
+		// Practiced today and 2 days ago, but not yesterday.
+		const rows = [row({ client_date: '2026-07-13' }), row({ client_date: '2026-07-11' })];
+
+		const result = computeStreak(rows, '2026-07-13');
+
+		expect(result.last7).toHaveLength(7);
+		expect(result.last7[4]).toEqual({ date: '2026-07-11', practiced: true });
+		expect(result.last7[5]).toEqual({ date: '2026-07-12', practiced: false });
+		expect(result.last7[6]).toEqual({ date: '2026-07-13', practiced: true });
+	});
+
+	it('last7: empty rows -> all 7 entries practiced:false, ordered oldest -> today', () => {
+		const result = computeStreak([], '2026-07-13');
+
+		expect(result.last7).toHaveLength(7);
+		expect(result.last7.every((entry) => entry.practiced === false)).toBe(true);
+		expect(result.last7[6].date).toBe('2026-07-13');
+		expect(result.last7[0].date).toBe('2026-07-07');
+	});
+
+	it('last7: duplicate answers on one date still yield a single practiced:true entry', () => {
+		const rows = [
+			row({ client_date: '2026-07-13' }),
+			row({ client_date: '2026-07-13' }),
+			row({ client_date: '2026-07-13' })
+		];
+
+		const result = computeStreak(rows, '2026-07-13');
+
+		expect(result.last7[6]).toEqual({ date: '2026-07-13', practiced: true });
 	});
 });
 
@@ -96,7 +148,10 @@ describe('GET /streak (authenticated)', () => {
 		});
 
 		expect(response.statusCode).toBe(200);
-		expect(response.json()).toEqual({ streak: 2, practicedToday: true });
+		const body = response.json();
+		expect(body).toMatchObject({ streak: 2, practicedToday: true });
+		expect(body.last7).toHaveLength(7);
+		expect(body.last7[6]).toEqual({ date: '2026-07-13', practiced: true });
 	});
 });
 
