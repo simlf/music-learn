@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/svelte';
 import { createRawSnippet, flushSync } from 'svelte';
 import { readable } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -210,12 +210,17 @@ describe('Masthead FR wiring + nav flex-wrap fit rule (I18N-01/03)', () => {
 	it('flips nav labels live, keeps the brand immune, and keeps the nav-links flex-wrap layout under fr', () => {
 		const emptyChildren = createRawSnippet(() => ({ render: () => '<div></div>' }));
 		render(RootLayout, { params: {}, data: {}, children: emptyChildren });
+		// jsdom does not evaluate media queries, so Phase 23 1A's phone-only
+		// bottom-tab-bar renders alongside the desktop masthead nav,
+		// duplicating Lookup/Drills/Recall/Songs - scope to the masthead
+		// (getByTestId) to resolve the desktop copy unambiguously.
+		const masthead = within(screen.getByTestId('masthead'));
 
-		expect(screen.getByRole('link', { name: 'Drills' })).toBeInTheDocument();
+		expect(masthead.getByRole('link', { name: 'Drills' })).toBeInTheDocument();
 		expect(screen.getByText('MUSIC LEARN')).toBeInTheDocument();
 
 		flushSync(() => setLocale('fr'));
-		const drillsLink = screen.getByRole('link', { name: 'Exercices' });
+		const drillsLink = masthead.getByRole('link', { name: 'Exercices' });
 		expect(drillsLink).toBeInTheDocument();
 		expect(screen.getByText('MUSIC LEARN')).toBeInTheDocument();
 
@@ -225,7 +230,7 @@ describe('Masthead FR wiring + nav flex-wrap fit rule (I18N-01/03)', () => {
 		expect(navContainer?.className).toContain('flex-wrap');
 
 		flushSync(() => setLocale('en'));
-		expect(screen.getByRole('link', { name: 'Drills' })).toBeInTheDocument();
+		expect(masthead.getByRole('link', { name: 'Drills' })).toBeInTheDocument();
 	});
 });
 

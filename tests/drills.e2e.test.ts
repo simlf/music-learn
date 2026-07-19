@@ -373,7 +373,10 @@ describe('drills masthead nav link', () => {
 
 		render(RootLayout, { params: {}, data: {}, children: emptyChildren });
 
-		const link = screen.getByRole('link', { name: 'Drills' });
+		// jsdom does not evaluate media queries, so Phase 23 1A's phone-only
+		// bottom-tab-bar renders alongside the desktop masthead nav,
+		// duplicating the Drills link - scope to the masthead to disambiguate.
+		const link = within(screen.getByTestId('masthead')).getByRole('link', { name: 'Drills' });
 		expect(link).toBeInTheDocument();
 		expect(link).toHaveAttribute('href', '/drills');
 	});
