@@ -155,6 +155,7 @@ Full suite: 1284 tests green; svelte-check 0 errors.
 
 - Phase 21 added: Drills Polish — prevent duplicate song selection; make practice-pool container discrete (desktop hover reveal) + persist enabled state; replay played chord as a full chord for memorization.
 - Phase 22 added: Installable PWA — native SvelteKit service worker for offline app-shell caching, mobile installability (Android + iOS add-to-home-screen polish), and a new-version update prompt. Samples excluded from install precache.
+- Phase 23 added: Phase-First UX for Phone — bottom tab bar nav (1A), Drills question-first reflow with folded chrome (1B), glanceable+actionable Progress with 7-day strip and inline accuracy bars (1C). Phone-first; desktop mostly unchanged. Source spec: UX Improvements.dc.html.
 
 ### Decisions
 

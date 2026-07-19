@@ -622,6 +622,7 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 **Depends on:** Phase 9 (deploy/HTTPS), Phase 21
 
 **Requirements delivered:**
+
 - **PWA-01** — A service worker precaches the built app shell + static assets on install, cleans stale caches on activate, and serves cache-first with network fallback so the app loads offline and instantly on repeat visits. Built on SvelteKit's native `$service-worker` module (no new runtime dependency).
 - **PWA-02** — The app is installable on mobile: it meets Android/Chrome install criteria (manifest + active service worker over HTTPS) and the iOS add-to-home-screen presentation is correct (apple-mobile-web-app meta tags, title, status bar style, adequate apple-touch-icon). An in-app install affordance is optional.
 - **PWA-03** — When a new version is deployed, the user gets an unobtrusive bilingual "update available, reload" prompt (service-worker update flow) rather than being stuck on a stale cached build.
@@ -631,3 +632,15 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 - [x] 22-01-PLAN.md — Service worker + offline app-shell caching, samples excluded from install precache (PWA-01)
 - [x] 22-02-PLAN.md — iOS add-to-home-screen meta tags + 180 apple-touch-icon + manifest installability guard (PWA-02)
 - [x] 22-03-PLAN.md — Bilingual new-version update prompt with SW skipWaiting/reload flow (PWA-03)
+
+### Phase 23: Phase-First UX for Phone — bottom tab bar nav (1A), Drills question-first reflow (1B), glanceable+actionable Progress (1C)
+
+**Goal:** The app is phone-first where it matters most. Nav moves to a thumb-reachable bottom tab bar on phones (Lookup, Drills, Recall, Songs, More-sheet) with the top masthead slimmed to brand + streak; desktop keeps its full masthead. The Drills page puts the question first — LevelPicker/mode/song-filter fold into one compact strip, prompt sits directly under it, and keyboard + Check anchor in the thumb zone so no scroll per question. Progress becomes glanceable and actionable — a 7-day practiced strip on the streak hero, inline accuracy bars on weak-item rows and the All-Stats table, and a per-row DRILL button that seeds one item into /drills.
+**Requirements**: UX-1A, UX-1B, UX-1C
+**Depends on:** Phase 22
+**Source spec:** `.planning/phases/23-phase-first-ux-for-phone-bottom-tab-bar-nav-1a-drills-questi/SOURCE-SPEC.md`
+**Plans:** 0 plans (suggested order: 1B → 1C → 1A)
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 23 to break down)
