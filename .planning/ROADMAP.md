@@ -639,7 +639,7 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 **Requirements**: UX-1A, UX-1B, UX-1C
 **Depends on:** Phase 22
 **Source spec:** `.planning/phases/23-phase-first-ux-for-phone-bottom-tab-bar-nav-1a-drills-questi/SOURCE-SPEC.md`
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 
 **Wave 1** *(parallel: disjoint file sets)*
 
@@ -648,7 +648,7 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 
 **Wave 2** *(blocked on 23-02)*
 
-- [ ] 23-03-PLAN.md — 1C UI: 7-day streak strip + inline accuracy bars + per-row DRILL + "Drill all N" (UX-1C)
+- [x] 23-03-PLAN.md — 1C UI: 7-day streak strip + inline accuracy bars + per-row DRILL + "Drill all N" (UX-1C)
 
 **Wave 3** *(blocked on 23-01: reuses BottomSheet; layout-wide)*
 
