@@ -626,6 +626,8 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 - **PWA-02** — The app is installable on mobile: it meets Android/Chrome install criteria (manifest + active service worker over HTTPS) and the iOS add-to-home-screen presentation is correct (apple-mobile-web-app meta tags, title, status bar style, adequate apple-touch-icon). An in-app install affordance is optional.
 - **PWA-03** — When a new version is deployed, the user gets an unobtrusive bilingual "update available, reload" prompt (service-worker update flow) rather than being stuck on a stale cached build.
 
-**Plans:**
+**Plans:** 3 plans
 
-- [ ] TBD (run /gsd-plan-phase 22 to break down)
+- [ ] 22-01-PLAN.md — Service worker + offline app-shell caching, samples excluded from install precache (PWA-01)
+- [ ] 22-02-PLAN.md — iOS add-to-home-screen meta tags + 180 apple-touch-icon + manifest installability guard (PWA-02)
+- [ ] 22-03-PLAN.md — Bilingual new-version update prompt with SW skipWaiting/reload flow (PWA-03)
