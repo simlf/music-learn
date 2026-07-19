@@ -417,4 +417,69 @@ describe('7-day streak strip (UX-1C)', () => {
 		const strip = screen.getByTestId('streak-last7');
 		expect(within(strip).getAllByTestId('streak-day')).toHaveLength(7);
 	});
+
+	it('formats the aria-label date for the active locale instead of the raw ISO string (WR-04, 23-REVIEW)', async () => {
+		storedToken = 'secret';
+		fetchStatsMock.mockResolvedValue({
+			items: [{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4, needsPractice: true }],
+			weakest: []
+		});
+		fetchStreakMock.mockResolvedValue({
+			streak: 1,
+			practicedToday: true,
+			last7: [
+				{ date: '2026-07-07', practiced: false },
+				{ date: '2026-07-08', practiced: false },
+				{ date: '2026-07-09', practiced: true },
+				{ date: '2026-07-10', practiced: false },
+				{ date: '2026-07-11', practiced: true },
+				{ date: '2026-07-12', practiced: true },
+				{ date: '2026-07-13', practiced: true }
+			]
+		});
+
+		render(ProgressPage);
+		await waitFor(() => expect(screen.getByTestId('streak-last7')).toBeInTheDocument());
+
+		const strip = screen.getByTestId('streak-last7');
+		const days = within(strip).getAllByTestId('streak-day');
+		const firstDayLabel = days[0].getAttribute('aria-label') ?? '';
+
+		expect(firstDayLabel).not.toContain('2026-07-07');
+		expect(firstDayLabel).toContain('July 7');
+	});
+
+	it('formats the aria-label date in French when the FR locale is active', async () => {
+		setLocale('fr');
+		storedToken = 'secret';
+		fetchStatsMock.mockResolvedValue({
+			items: [{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4, needsPractice: true }],
+			weakest: []
+		});
+		fetchStreakMock.mockResolvedValue({
+			streak: 1,
+			practicedToday: true,
+			last7: [
+				{ date: '2026-07-07', practiced: false },
+				{ date: '2026-07-08', practiced: false },
+				{ date: '2026-07-09', practiced: true },
+				{ date: '2026-07-10', practiced: false },
+				{ date: '2026-07-11', practiced: true },
+				{ date: '2026-07-12', practiced: true },
+				{ date: '2026-07-13', practiced: true }
+			]
+		});
+
+		render(ProgressPage);
+		await waitFor(() => expect(screen.getByTestId('streak-last7')).toBeInTheDocument());
+
+		const strip = screen.getByTestId('streak-last7');
+		const days = within(strip).getAllByTestId('streak-day');
+		const firstDayLabel = days[0].getAttribute('aria-label') ?? '';
+
+		expect(firstDayLabel).not.toContain('2026-07-07');
+		expect(firstDayLabel).toContain('juillet');
+
+		setLocale('en');
+	});
 });

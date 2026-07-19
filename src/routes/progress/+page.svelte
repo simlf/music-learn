@@ -10,7 +10,7 @@
 		studyModeEnabled
 	} from '$lib/audio/audio';
 	import { pickStreakLine } from '$lib/copy/streak';
-	import { t } from '$lib/i18n/locale.svelte';
+	import { currentLocale, t } from '$lib/i18n/locale.svelte';
 	import { setDrillSeeds } from '$lib/practice/drillSeeds';
 	import { getLevelState, setCurrentTier } from '$lib/practice/levelState';
 	import { TIERS, type TierId } from '$lib/practice/tiers';
@@ -110,6 +110,22 @@
 		setDrillSeeds(weakest.filter((item) => item.kind === 'chord').map((item) => item.item));
 		void goto('/drills');
 	}
+
+	/**
+	 * Locale-formats a `YYYY-MM-DD` day string for the 7-day streak strip's
+	 * aria-label (WR-04, 23-REVIEW): the UI-SPEC requires `{DATE}` to be
+	 * substituted with a locale-formatted date, not the raw ISO string,
+	 * matching `songs.mark.count`'s `{N}` interpolation pattern. Parsed with
+	 * an explicit `T00:00:00` local-time suffix (never bare `new
+	 * Date('YYYY-MM-DD')`, which parses as UTC midnight and can shift a day
+	 * backward in negative-UTC-offset timezones) - same local-calendar-date
+	 * rule `localDateString` already follows elsewhere in this file.
+	 */
+	function formatStreakDate(dateStr: string): string {
+		return new Intl.DateTimeFormat(currentLocale(), { month: 'long', day: 'numeric' }).format(
+			new Date(`${dateStr}T00:00:00`)
+		);
+	}
 </script>
 
 <main class="bg-paper text-ink min-h-screen p-8 font-sans">
@@ -175,7 +191,7 @@
 								: isToday
 									? t('progress.streak.last7.todayAria')
 									: t('progress.streak.last7.missedAria')
-							).replace('{DATE}', day.date)}
+							).replace('{DATE}', formatStreakDate(day.date))}
 						></div>
 					{/each}
 				</div>
