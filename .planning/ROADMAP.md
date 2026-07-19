@@ -42,6 +42,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 18: Your Songs' Chords** - Song-provenance marks + a From-my-songs filter across the app (sketch 011-A) (planned 2026-07-15) (completed 2026-07-18)
 - [x] **Phase 19: Interactive Theory** - Guided-step beginner lessons that hand off into the first drill (sketch 012-A) (planned 2026-07-15) (completed 2026-07-18)
 - [x] **Phase 20: French Translation** - Header EN|FR toggle and a full French i18n layer (sketch 013-A) (planned 2026-07-15) (completed 2026-07-18)
+- [x] **Phase 21: Drills Polish** - No-duplicate preset songs, a discrete /drills practice-pool filter bar, and on-demand full-chord replay in the answer reveal (completed 2026-07-19; DPOL-02 hover visual pending a human eyeball)
 
 ## Phase Details
 
@@ -611,4 +612,4 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 
 **Plans:** 1 plan
 
-- [ ] 21-01-PLAN.md — Prevent duplicate preset (DPOL-01), discrete /drills filter bar (DPOL-02), on-demand chord replay (DPOL-03)
+- [x] 21-01-PLAN.md — Prevent duplicate preset (DPOL-01), discrete /drills filter bar (DPOL-02), on-demand chord replay (DPOL-03)

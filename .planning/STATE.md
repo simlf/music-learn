@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Playability & Comprehension
-current_phase: 20
+current_phase: 21
+current_phase_name: Drills Polish
 status: verifying
-stopped_at: Completed 20-08-PLAN.md
-last_updated: "2026-07-18T20:34:59.856Z"
-last_activity: 2026-07-18
-last_activity_desc: Phase 20 complete; merged origin/main (Phases 16/17)
+stopped_at: Completed 21-01-PLAN.md
+last_updated: "2026-07-19T11:05:26.737Z"
+last_activity: 2026-07-19
+last_activity_desc: Phase 21 executed + verified (5/6); one DPOL-02 hover visual pending human eyeball
 progress:
-  total_phases: 19
-  completed_phases: 13
-  total_plans: 74
-  completed_plans: 72
-  percent: 68
-current_phase_name: French Translation
+  total_phases: 21
+  completed_phases: 15
+  total_plans: 80
+  completed_plans: 80
+  percent: 75
 ---
 
 # Project State
@@ -24,14 +24,15 @@ current_phase_name: French Translation
 See: .planning/PROJECT.md (updated 2026-07-14)
 
 **Core value:** See a jazz chord symbol and know instantly what to play with the left hand.
-**Current focus:** Phase 20 — French Translation (merged with Phases 16/17 from origin/main)
+**Current focus:** Phase 21 — Drills Polish
 
 ## Current Position
 
-Phase: 20
-Plan: Not started
-Status: Phase complete — ready for verification; Phases 16/17 merged in from origin/main
-Last activity: 2026-07-18 — Phase 20 complete; reconciled Phases 16/17 (Hear the Chord, Chord Explainer) via merge
+Phase: 21 (Drills Polish) — VERIFIED (5/6), one visual pending
+Plan: 1 of 1 complete (21-01)
+Status: Implemented + verified. DPOL-01 (no duplicate preset) and DPOL-03 (on-demand chord replay) fully pass. DPOL-02 (discrete /drills filter bar) passes by code+CSS+SSR+tests; only the live desktop hover/focus recede-reveal needs a human eyeball (preview harness sandboxes the app in a null-origin frame, so it can't be driven headlessly).
+Last activity: 2026-07-19 — Phase 21 executed, verified, docs committed
+Full suite: 1254 tests green; svelte-check 0 errors.
 
 **v2.0 Learning Upgrade (Phases 10-13): COMPLETE (shipped 2026-07-15).**
 
