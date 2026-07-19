@@ -6,7 +6,9 @@
 	import { getApiToken } from '$lib/api/client';
 	import StreakBadge from '$lib/components/StreakBadge.svelte';
 	import LocaleToggle from '$lib/components/LocaleToggle.svelte';
+	import UpdatePrompt from '$lib/components/UpdatePrompt.svelte';
 	import { initLocale, t, type MessageKey } from '$lib/i18n/locale.svelte';
+	import { registerUpdateWatcher } from '$lib/pwa/swUpdate.svelte';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
@@ -34,6 +36,7 @@
 
 	onMount(() => {
 		initLocale();
+		registerUpdateWatcher();
 		if (getApiToken() === '') return;
 		streakLoading = true;
 		fetchStreak(localDateString())
@@ -74,6 +77,8 @@
 </nav>
 
 {@render children()}
+
+<UpdatePrompt />
 
 <style>
 	.masthead__link {

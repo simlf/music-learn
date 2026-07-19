@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Playability & Comprehension
-current_phase: 21
-current_phase_name: Drills Polish
+current_phase: 22
+current_phase_name: Installable PWA
 status: verifying
-stopped_at: Completed 21-01-PLAN.md
-last_updated: "2026-07-19T11:05:26.737Z"
+stopped_at: Completed 22-03-PLAN.md
+last_updated: "2026-07-19T12:31:44.398Z"
 last_activity: 2026-07-19
-last_activity_desc: Phase 21 executed + verified (5/6); one DPOL-02 hover visual pending human eyeball
+last_activity_desc: Phase 22 executed + code-verified (9/9); PWA behaviors pending on-device checks
 progress:
-  total_phases: 21
-  completed_phases: 15
-  total_plans: 80
-  completed_plans: 80
-  percent: 75
+  total_phases: 22
+  completed_phases: 16
+  total_plans: 82
+  completed_plans: 82
+  percent: 76
 ---
 
 # Project State
@@ -24,15 +24,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-14)
 
 **Core value:** See a jazz chord symbol and know instantly what to play with the left hand.
-**Current focus:** Phase 21 — Drills Polish
+**Current focus:** Phase 22 — Installable PWA
 
 ## Current Position
 
-Phase: 21 (Drills Polish) — VERIFIED (5/6), one visual pending
-Plan: 1 of 1 complete (21-01)
-Status: Implemented + verified. DPOL-01 (no duplicate preset) and DPOL-03 (on-demand chord replay) fully pass. DPOL-02 (discrete /drills filter bar) passes by code+CSS+SSR+tests; only the live desktop hover/focus recede-reveal needs a human eyeball (preview harness sandboxes the app in a null-origin frame, so it can't be driven headlessly).
-Last activity: 2026-07-19 — Phase 21 executed, verified, docs committed
-Full suite: 1254 tests green; svelte-check 0 errors.
+Phase: 22 (Installable PWA) — code-verified (9/9), device checks pending
+Plan: 3 of 3 complete (22-01 SW + precache, 22-02 iOS meta/install, 22-03 update prompt)
+Status: Executed + code-verified. All pure logic + type-check + i18n parity pass. Service-worker offline load, Cache Storage (samples excluded), Android install + Lighthouse PWA audit, iOS add-to-home-screen, and the two-deploy update prompt are inherently on-device checks (jsdom/preview cannot run a SW). Deploy note: nginx sets no explicit Cache-Control on /service-worker.js — add `no-cache` for the SW script so updates are detected (infra, not app code).
+Last activity: 2026-07-19 — Phase 22 executed, code-verified, docs committed
+Full suite: 1284 tests green; svelte-check 0 errors.
 
 **v2.0 Learning Upgrade (Phases 10-13): COMPLETE (shipped 2026-07-15).**
 
@@ -154,6 +154,7 @@ Full suite: 1254 tests green; svelte-check 0 errors.
 ### Roadmap Evolution
 
 - Phase 21 added: Drills Polish — prevent duplicate song selection; make practice-pool container discrete (desktop hover reveal) + persist enabled state; replay played chord as a full chord for memorization.
+- Phase 22 added: Installable PWA — native SvelteKit service worker for offline app-shell caching, mobile installability (Android + iOS add-to-home-screen polish), and a new-version update prompt. Samples excluded from install precache.
 
 ### Decisions
 

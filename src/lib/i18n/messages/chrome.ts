@@ -19,7 +19,10 @@ export const chrome = {
 		brand: 'MUSIC LEARN',
 		'locale.aria.group': 'Language',
 		'locale.aria.en': 'EN, English',
-		'locale.aria.fr': 'FR, Français'
+		'locale.aria.fr': 'FR, Français',
+		'pwa.update.message': 'Update available.',
+		'pwa.update.action': 'Reload',
+		'pwa.update.dismiss': 'Dismiss'
 	},
 	fr: {
 		'nav.lookup': 'Rechercher',
@@ -33,6 +36,9 @@ export const chrome = {
 		brand: 'MUSIC LEARN',
 		'locale.aria.group': 'Langue',
 		'locale.aria.en': 'EN, anglais',
-		'locale.aria.fr': 'FR, français'
+		'locale.aria.fr': 'FR, français',
+		'pwa.update.message': 'Mise à jour disponible.',
+		'pwa.update.action': 'Recharger',
+		'pwa.update.dismiss': 'Ignorer'
 	}
 } satisfies LocaleDict;
