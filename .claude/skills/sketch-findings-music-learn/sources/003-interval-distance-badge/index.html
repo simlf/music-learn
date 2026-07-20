@@ -1,0 +1,126 @@
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../themes/default.css" />
+<style>
+	* { box-sizing: border-box; }
+	body { margin: 0; background: var(--color-paper); color: var(--color-ink); font-family: var(--font-sans); padding: var(--space-6); }
+	h1 { font-size: var(--text-heading); margin: 0 0 var(--space-1); }
+	.sub { color: var(--color-muted); margin: 0 0 var(--space-6); }
+	.picker { display: flex; gap: var(--space-1); flex-wrap: wrap; margin-bottom: var(--space-4); }
+	.picker button, .tab { font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; border: 2px solid var(--color-ink); background: var(--color-paper-bright); cursor: pointer; padding: var(--space-2) var(--space-4); }
+	.picker button { min-width: 56px; min-height: 40px; }
+	.picker button[aria-pressed="true"], .tab[aria-selected="true"] { background: var(--color-ink); color: var(--color-paper-bright); }
+	.tabs { display: flex; gap: var(--space-2); margin: var(--space-6) 0 var(--space-4); flex-wrap: wrap; }
+	.panel { display: none; } .panel[data-active="true"] { display: block; }
+	.card { border: 2px solid var(--color-ink); background: var(--color-paper-bright); padding: var(--space-6); }
+	.note-sm { font-size: 13px; color: var(--color-muted); margin-top: var(--space-4); }
+	.reg { font: 700 var(--text-label)/1.4 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-muted); margin: 0 0 var(--space-4); }
+
+	.kbd { position: relative; height: 190px; width: 100%; }
+	.pad-top { padding-top: 34px; } /* room for floating badges (variant C) */
+	.wk, .bk { position: absolute; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: var(--space-1); }
+	.wk { height: 100%; background: var(--color-paper-bright); border: 1.5px solid var(--color-ink); z-index: 1; }
+	.bk { height: 60%; background: var(--color-ink); z-index: 2; color: var(--color-paper-bright); }
+	.deg-root { background: var(--color-root); color: var(--color-on-root); }
+	.deg-third { background: var(--color-third); color: var(--color-on-third); }
+	.deg-fifth { background: var(--color-fifth); color: var(--color-on-fifth); }
+	.deg-seventh { background: var(--color-seventh); color: var(--color-on-seventh); }
+	.note { font: 700 var(--text-body)/1 var(--font-serif); }
+	.solf { font: 400 11px/1 var(--font-mono); opacity: 0.85; }
+
+	/* Variant A: corner tab badge */
+	.badge-corner { position: absolute; top: 3px; left: 50%; transform: translateX(-50%); font: 700 10px/1 var(--font-mono); letter-spacing: 0.06em; background: var(--color-ink); color: var(--color-paper-bright); padding: 3px 5px; }
+	.bk .badge-corner { background: var(--color-paper-bright); color: var(--color-ink); }
+
+	/* Variant B: badge under the label, inside the key */
+	.badge-under { font: 700 10px/1 var(--font-mono); letter-spacing: 0.06em; border: 1.5px solid currentColor; padding: 2px 4px; margin-top: 3px; }
+
+	/* Variant C: floating badge above the key, tick down to it */
+	.floater { position: absolute; top: 0; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; z-index: 5; }
+	.floater .cap { font: 700 11px/1 var(--font-mono); letter-spacing: 0.08em; background: var(--color-ink); color: var(--color-paper-bright); padding: 3px 6px; }
+	.floater .tick { width: 2px; height: 12px; background: var(--color-ink); }
+</style>
+
+<h1>Sketch 003 — Distance-from-root badge</h1>
+<p class="sub">Every highlighted key already carries its interval COLOR. Add its interval-from-root as a readable badge. Three placements.</p>
+
+<div class="picker" id="picker"></div>
+
+<div class="tabs" role="tablist">
+	<button class="tab" role="tab" aria-selected="true" data-tab="A">A · Corner tab</button>
+	<button class="tab" role="tab" aria-selected="false" data-tab="B">B · Under the label</button>
+	<button class="tab" role="tab" aria-selected="false" data-tab="C">C · Floating above</button>
+</div>
+
+<div class="panel" data-tab="A" data-active="true"><div class="card"><p class="reg" id="tA"></p><div class="kbd" id="kA"></div><p class="note-sm">Badge pinned to the top of each colored key. Compact, always attached to its note, but competes with the NoteLabel for the same key space.</p></div></div>
+<div class="panel" data-tab="B" data-active="false"><div class="card"><p class="reg" id="tB"></p><div class="kbd" id="kB"></div><p class="note-sm">Badge stacked under the letter + solfège, inside the key. Reads as one unit (name over interval) but needs vertical room, tight on black keys.</p></div></div>
+<div class="panel" data-tab="C" data-active="false"><div class="card"><p class="reg" id="tC"></p><div class="kbd pad-top" id="kC"></div><p class="note-sm">Badge floats above the keyboard on a tick, never crowding the key face. Clearest read of the interval stack, costs a strip of height above the keys.</p></div></div>
+
+<script>
+	// Chords over a C octave; each note tagged role + interval-from-root shorthand.
+	// black: is the key black (E♭, B♭...).
+	const CHORDS = {
+		'Cm7':   [{n:'C',s:'Do',role:'root',iv:'R',black:false,pos:0},{n:'E♭',s:'Mi♭',role:'third',iv:'m3',black:true,pos:1.5},{n:'G',s:'Sol',role:'fifth',iv:'P5',black:false,pos:4},{n:'B♭',s:'Si♭',role:'seventh',iv:'m7',black:true,pos:5.5}],
+		'Cmaj7': [{n:'C',s:'Do',role:'root',iv:'R',black:false,pos:0},{n:'E',s:'Mi',role:'third',iv:'M3',black:false,pos:2},{n:'G',s:'Sol',role:'fifth',iv:'P5',black:false,pos:4},{n:'B',s:'Si',role:'seventh',iv:'M7',black:false,pos:6}],
+		'C7':    [{n:'C',s:'Do',role:'root',iv:'R',black:false,pos:0},{n:'E',s:'Mi',role:'third',iv:'M3',black:false,pos:2},{n:'G',s:'Sol',role:'fifth',iv:'P5',black:false,pos:4},{n:'B♭',s:'Si♭',role:'seventh',iv:'m7',black:true,pos:5.5}],
+		'Cdim7': [{n:'C',s:'Do',role:'root',iv:'R',black:false,pos:0},{n:'E♭',s:'Mi♭',role:'third',iv:'m3',black:true,pos:1.5},{n:'G♭',s:'Sol♭',role:'fifth',iv:'d5',black:true,pos:3.5},{n:'B♭♭',s:'Si♭♭',role:'seventh',iv:'d7',black:false,pos:5}]
+	};
+	let sym = 'Cm7';
+	// C octave: 8 white slots (C D E F G A B C). White key at integer pos, black between.
+	const WHITE = ['C','D','E','F','G','A','B','C'];
+	const WW = 100/WHITE.length;
+
+	function baseKeyboard(el){
+		el.innerHTML = '';
+		// white keys
+		WHITE.forEach((L,i)=>{
+			const d = document.createElement('div');
+			d.className = 'wk'; d.style.left = (i*WW)+'%'; d.style.width = WW+'%'; d.dataset.pos = i;
+			el.appendChild(d);
+		});
+		// black keys after C,D,F,G,A (positions 0.5,1.5,3.5,4.5,5.5)
+		[0.5,1.5,3.5,4.5,5.5].forEach(p=>{
+			const d = document.createElement('div');
+			d.className = 'bk'; d.style.left = ((p+0.5)*WW - (WW*0.6)/2)+'%'; d.style.width = (WW*0.6)+'%'; d.dataset.pos = p;
+			el.appendChild(d);
+		});
+		return el;
+	}
+	function keyAt(el, pos){ return [...el.children].find(c=>parseFloat(c.dataset.pos)===pos); }
+
+	function paint(el, variant){
+		baseKeyboard(el);
+		const notes = CHORDS[sym];
+		notes.forEach(note=>{
+			const k = keyAt(el, note.pos);
+			if (!k) return;
+			k.classList.add('deg-'+note.role);
+			if (variant==='A'){
+				k.innerHTML = `<span class="badge-corner">${note.iv}</span><span class="note">${note.n}</span><span class="solf">${note.s}</span>`;
+			} else if (variant==='B'){
+				k.innerHTML = `<span class="note">${note.n}</span><span class="solf">${note.s}</span><span class="badge-under">${note.iv}</span>`;
+			} else {
+				k.innerHTML = `<span class="note">${note.n}</span><span class="solf">${note.s}</span>`;
+				const f = document.createElement('div');
+				f.className = 'floater';
+				const centerPct = note.black ? ((note.pos+0.5+0.5)*WW - 0) : (note.pos*WW + WW/2);
+				f.style.left = centerPct+'%';
+				f.innerHTML = `<span class="cap">${note.iv}</span><span class="tick"></span>`;
+				el.appendChild(f);
+			}
+		});
+	}
+	function renderAll(){
+		['A','B','C'].forEach(v=>{ document.getElementById('t'+v).textContent = sym+' · notes with interval-from-root'; });
+		paint(document.getElementById('kA'),'A');
+		paint(document.getElementById('kB'),'B');
+		paint(document.getElementById('kC'),'C');
+	}
+	const picker = document.getElementById('picker');
+	Object.keys(CHORDS).forEach(s=>{
+		const b=document.createElement('button'); b.textContent=s; b.setAttribute('aria-pressed',String(s===sym));
+		b.onclick=()=>{ sym=s; [...picker.children].forEach(c=>c.setAttribute('aria-pressed',String(c.textContent===s))); renderAll(); };
+		picker.appendChild(b);
+	});
+	document.querySelectorAll('.tab').forEach(tab=>{ tab.onclick=()=>{ const id=tab.dataset.tab; document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',String(t===tab))); document.querySelectorAll('.panel').forEach(p=>p.setAttribute('data-active',String(p.dataset.tab===id))); }; });
+	renderAll();
+</script>

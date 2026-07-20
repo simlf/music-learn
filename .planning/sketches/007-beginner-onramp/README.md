@@ -2,7 +2,7 @@
 sketch: 007
 name: beginner-onramp
 question: How does a beginner see the easiest course and pick their level without feeling overwhelmed, right where they practice (the Drills page), with advanced tiers hidden until reached?
-winner: null
+winner: "A"
 tags: [levels, onboarding, drills, beginner]
 ---
 

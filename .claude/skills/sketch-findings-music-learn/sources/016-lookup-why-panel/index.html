@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sketch 016 — Lookup "Pourquoi ces notes ?"</title>
+<link rel="stylesheet" href="../themes/default.css">
+<style>
+  body { margin:0; background:#ddd8ca; font-family:var(--font-sans); color:var(--color-ink); padding-top:56px; }
+  #variant-nav { position:fixed; top:0; left:0; right:0; z-index:9998; background:var(--color-paper-bright); border-bottom:2px solid var(--color-ink); padding:8px 16px; display:flex; gap:8px; }
+  .variant-tab { font-family:var(--font-mono); font-size:12px; text-transform:uppercase; letter-spacing:.08em; background:none; border:2px solid var(--color-ink); padding:6px 10px; cursor:pointer; color:var(--color-ink); transition:all .15s ease; }
+  .variant-tab.active { background:var(--color-ink); color:var(--color-paper); }
+  .variant { display:none; justify-content:center; padding:24px 0; }
+  .variant.active { display:flex; }
+
+  .phone { width:390px; min-height:640px; background:var(--color-paper); border:3px solid var(--color-ink); padding:12px; box-sizing:border-box; }
+  h1.page { font-size:var(--text-heading); margin:4px 0 10px; }
+  .searchbox { width:100%; box-sizing:border-box; border:2px solid var(--color-ink); background:var(--color-paper-bright); font-family:var(--font-mono); font-size:16px; padding:10px; }
+  .card { border:2px solid var(--color-ink); background:var(--color-paper-bright); padding:12px; margin-top:12px; }
+  .glyph { font-family:var(--font-serif); font-size:48px; text-align:center; margin:2px 0; }
+  .register { font-family:var(--font-mono); font-size:var(--text-label); text-transform:uppercase; letter-spacing:.08em; color:var(--color-muted); }
+  .notes { display:flex; justify-content:center; gap:8px; margin:8px 0; }
+  .note { font-family:var(--font-mono); font-size:14px; padding:6px 10px; color:#fff; }
+  .n-root { background:var(--color-root); } .n-third { background:var(--color-third); }
+  .n-fifth { background:var(--color-fifth); color:var(--color-ink); } .n-seventh { background:var(--color-seventh); color:var(--color-ink); }
+  .why-btn { display:block; width:100%; margin-top:10px; font-family:var(--font-mono); font-size:12px; text-transform:uppercase; letter-spacing:.08em; border:2px solid var(--color-ink); background:none; padding:10px; cursor:pointer; transition:all .15s ease; color:var(--color-ink); }
+  .why-btn:hover { background:var(--color-ink); color:var(--color-paper); }
+  .why-panel { display:none; border-top:2px dashed var(--color-ink); margin-top:10px; padding-top:10px; font-size:14px; line-height:1.5; }
+  .why-panel.open { display:block; animation:stampIn 240ms ease-out; }
+  .why-panel .step { margin:0 0 8px; }
+  .why-panel .step b { font-family:var(--font-mono); }
+  .disambig { border:2px solid var(--color-vermilion); background:var(--color-paper-bright); padding:10px; margin-top:12px; font-size:14px; }
+  .chip { display:inline-block; font-family:var(--font-mono); font-size:13px; border:2px solid var(--color-ink); padding:6px 10px; margin:6px 6px 0 0; cursor:pointer; transition:all .15s ease; background:var(--color-paper); }
+  .chip:hover, .chip.sel { background:var(--color-ink); color:var(--color-paper); }
+  .duo { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; }
+  .duo .card { margin-top:0; padding:8px; }
+  .duo .glyph { font-size:30px; }
+  .duo .note { font-size:11px; padding:4px 5px; }
+  .kbd { display:flex; height:56px; margin-top:8px; position:relative; }
+  .kbd .w { flex:1; border:1px solid var(--color-ink); background:#fff; }
+  .hint { color:var(--color-muted); font-size:12px; margin-top:6px; }
+  @keyframes stampIn { from { transform:scale(1.03); opacity:0; } to { transform:scale(1); opacity:1; } }
+</style>
+</head>
+<body>
+
+<div id="variant-nav">
+  <button class="variant-tab active" onclick="showVariant('a', this)">A: Pourquoi ? dépliant ★</button>
+  <button class="variant-tab" onclick="showVariant('b', this)">B: Chips m / maj ★</button>
+  <button class="variant-tab" onclick="showVariant('c', this)">C: Duo comparatif</button>
+</div>
+
+<!-- A: result card grows a "Pourquoi ces notes ?" expandable — reuses the 010 hint-ladder tone -->
+<div id="variant-a" class="variant active">
+  <div class="phone">
+    <h1 class="page">Recherche</h1>
+    <input class="searchbox" value="Am7" readonly>
+    <div class="card">
+      <div class="register">Accord trouvé — la mineur sept</div>
+      <div class="glyph">Am7</div>
+      <div class="notes">
+        <span class="note n-root">A</span><span class="note n-third">C</span><span class="note n-fifth">E</span><span class="note n-seventh">G</span>
+      </div>
+      <button class="why-btn" onclick="this.nextElementSibling.classList.toggle('open')">Pourquoi ces notes ?</button>
+      <div class="why-panel">
+        <p class="step"><b>m</b> = tierce <b>mineure</b> : 3 demi-tons au-dessus de A → <b style="color:var(--color-third)">C naturel</b>, pas C♯.</p>
+        <p class="step">Le C♯ à la clé appartient à la <b>gamme de La majeur</b>. « Am7 » construit l'accord depuis A avec une tierce mineure — la gamme n'impose rien ici.</p>
+        <p class="step">Tu cherchais l'accord <b>majeur</b> avec C♯ ? C'est <b>Amaj7</b> (A · C♯ · E · G♯). <span class="chip" onclick="alert('→ ouvrirait Amaj7')">Voir Amaj7</span></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- B: disambiguation at input time — typing am7/AM7 offers both readings before the result -->
+<div id="variant-b" class="variant">
+  <div class="phone">
+    <h1 class="page">Recherche</h1>
+    <input class="searchbox" value="AM7" readonly>
+    <div class="disambig">
+      <div class="register" style="color:var(--color-vermilion)">« AM7 » est ambigu</div>
+      <p style="margin:6px 0 0;">La casse compte dans les symboles d'accords :</p>
+      <span class="chip" onclick="pickB(this,'min')">Am7 — la <b>mineur</b> 7 (A C E G)</span>
+      <span class="chip" onclick="pickB(this,'maj')">Amaj7 — la <b>majeur</b> 7 (A C♯ E G♯)</span>
+    </div>
+    <div class="card" id="result-b" style="display:none;">
+      <div class="register" id="reg-b"></div>
+      <div class="glyph" id="glyph-b"></div>
+      <div class="notes" id="notes-b"></div>
+      <p class="hint" id="hint-b"></p>
+    </div>
+  </div>
+</div>
+
+<!-- C: side-by-side mini dossiers — teach the m vs maj contrast visually -->
+<div id="variant-c" class="variant">
+  <div class="phone">
+    <h1 class="page">Recherche</h1>
+    <input class="searchbox" value="Am7" readonly>
+    <div class="card">
+      <div class="register">Accord trouvé</div>
+      <div class="glyph">Am7</div>
+      <div class="notes">
+        <span class="note n-root">A</span><span class="note n-third">C</span><span class="note n-fifth">E</span><span class="note n-seventh">G</span>
+      </div>
+    </div>
+    <p class="hint" style="font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.08em;">Ne pas confondre :</p>
+    <div class="duo">
+      <div class="card">
+        <div class="register">mineur — tierce basse</div>
+        <div class="glyph">Am7</div>
+        <div class="notes"><span class="note n-root">A</span><span class="note n-third">C</span><span class="note n-fifth">E</span><span class="note n-seventh">G</span></div>
+        <div class="kbd"><div class="w" style="background:var(--color-root)"></div><div class="w"></div><div class="w" style="background:var(--color-third)"></div><div class="w"></div><div class="w" style="background:var(--color-fifth)"></div><div class="w"></div><div class="w" style="background:var(--color-seventh)"></div></div>
+      </div>
+      <div class="card">
+        <div class="register">majeur — tierce haute</div>
+        <div class="glyph">Amaj7</div>
+        <div class="notes"><span class="note n-root">A</span><span class="note n-third">C♯</span><span class="note n-fifth">E</span><span class="note n-seventh">G♯</span></div>
+        <div class="kbd"><div class="w" style="background:var(--color-root)"></div><div class="w"></div><div class="w" style="background:var(--color-third)"></div><div class="w"></div><div class="w" style="background:var(--color-fifth)"></div><div class="w"></div><div class="w" style="background:var(--color-seventh)"></div></div>
+      </div>
+    </div>
+    <p class="hint">La différence : la <b>tierce</b> (m = 3 demi-tons, maj = 4) et la <b>septième</b>. La clé de la gamme ne change pas les notes du symbole.</p>
+  </div>
+</div>
+
+<div id="sketch-tools" style="position:fixed;bottom:12px;right:12px;z-index:9999;font-family:system-ui;font-size:12px;background:rgba(0,0,0,.7);color:#fff;padding:8px 12px;border-radius:8px;opacity:.4;transition:opacity .2s;" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='.4'">
+  Sketch 016 · Am7 vs Amaj7
+</div>
+
+<script>
+function showVariant(id, tab) {
+  document.querySelectorAll('.variant').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.variant-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('variant-' + id).classList.add('active');
+  tab.classList.add('active');
+}
+function pickB(chip, kind) {
+  chip.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('sel'));
+  chip.classList.add('sel');
+  const r = document.getElementById('result-b'); r.style.display = 'block';
+  if (kind === 'min') {
+    document.getElementById('reg-b').textContent = 'la mineur sept';
+    document.getElementById('glyph-b').textContent = 'Am7';
+    document.getElementById('notes-b').innerHTML = '<span class="note n-root">A</span><span class="note n-third">C</span><span class="note n-fifth">E</span><span class="note n-seventh">G</span>';
+    document.getElementById('hint-b').textContent = 'm = tierce mineure → C naturel, même si la gamme de La majeur a un C♯.';
+  } else {
+    document.getElementById('reg-b').textContent = 'la majeur sept';
+    document.getElementById('glyph-b').textContent = 'Amaj7';
+    document.getElementById('notes-b').innerHTML = '<span class="note n-root">A</span><span class="note n-third">C♯</span><span class="note n-fifth">E</span><span class="note n-seventh">G♯</span>';
+    document.getElementById('hint-b').textContent = 'maj7 = tierce majeure (C♯) + septième majeure (G♯).';
+  }
+}
+</script>
+</body>
+</html>
