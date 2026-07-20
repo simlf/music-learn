@@ -135,3 +135,12 @@ None - no external service configuration required.
 ---
 *Phase: 24-mobile-ux-fixes-from-issue-14-review-action-dock-sketch-014-*
 *Completed: 2026-07-20*
+
+## Self-Check: PASSED
+
+- FOUND: `.planning/phases/24-mobile-ux-fixes-from-issue-14-review-action-dock-sketch-014-/24-04-SUMMARY.md`
+- FOUND: `--tab-bar-clearance: calc(56px + env(safe-area-inset-bottom) + var(--spacing-md))` in `src/app.css`
+- FOUND: `bind:this={dockEl}` on `.review-action-dock` in `src/lib/components/RecallSession.svelte`
+- FOUND: commit `7b0b06f` (Task 1)
+- FOUND: commit `723565c` (deviation fix)
+- FOUND: commit `e221e3a` (this SUMMARY.md)
