@@ -113,6 +113,66 @@ describe('bottom tab bar + More sheet (23-04, UX-1A)', () => {
 		expect(bar.getByRole('button', { name: 'More' })).toBeInTheDocument();
 	});
 
+	it('resolves each of the 4 primary tabs plus More by accessible name even though the visible micro-label may be clipped (24-02, sketch 015-B)', () => {
+		// This is the load-bearing accessibility regression test: each tab's
+		// accessible name comes from an explicit aria-label (Task 1), not from
+		// the 9px .bottom-tab-bar__label text node, which may ellipsis-truncate
+		// in French. Resolving these queries at all proves the aria-label
+		// wiring survives label truncation.
+		const emptyChildren = createRawSnippet(() => ({
+			render: () => '<div></div>'
+		}));
+
+		render(RootLayout, { params: {}, data: {}, children: emptyChildren });
+		const bar = within(screen.getByTestId('bottom-tab-bar'));
+
+		expect(bar.getByRole('link', { name: 'Lookup' })).toHaveAttribute('aria-label', 'Lookup');
+		expect(bar.getByRole('link', { name: 'Drills' })).toHaveAttribute('aria-label', 'Drills');
+		expect(bar.getByRole('link', { name: 'Recall' })).toHaveAttribute('aria-label', 'Recall');
+		expect(bar.getByRole('link', { name: 'Songs' })).toHaveAttribute('aria-label', 'Songs');
+		expect(bar.getByRole('button', { name: 'More' })).toHaveAttribute('aria-label', 'More');
+	});
+
+	it('resolves the FR accessible names live after the locale flip (24-02, I18N-01/02)', async () => {
+		const emptyChildren = createRawSnippet(() => ({
+			render: () => '<div></div>'
+		}));
+
+		render(RootLayout, { params: {}, data: {}, children: emptyChildren });
+		const masthead = within(screen.getByTestId('masthead'));
+		const frSegment = masthead.getByRole('button', { name: /français/i });
+		await fireEvent.click(frSegment);
+
+		const bar = within(screen.getByTestId('bottom-tab-bar'));
+		expect(bar.getByRole('link', { name: 'Rechercher' })).toHaveAttribute('href', '/');
+		expect(bar.getByRole('link', { name: 'Exercices' })).toHaveAttribute('href', '/drills');
+		expect(bar.getByRole('link', { name: 'Révision' })).toHaveAttribute('href', '/recall');
+		expect(bar.getByRole('link', { name: 'Morceaux' })).toHaveAttribute('href', '/songs');
+		expect(bar.getByRole('button', { name: 'Plus' })).toBeInTheDocument();
+	});
+
+	it('renders each tab item as an icon plus a 9px micro-label (24-02, sketch 015-B)', () => {
+		const emptyChildren = createRawSnippet(() => ({
+			render: () => '<div></div>'
+		}));
+
+		render(RootLayout, { params: {}, data: {}, children: emptyChildren });
+		const bar = within(screen.getByTestId('bottom-tab-bar'));
+
+		const lookupTab = bar.getByRole('link', { name: 'Lookup' });
+		const icon = lookupTab.querySelector('.bottom-tab-bar__icon svg');
+		const label = lookupTab.querySelector('.bottom-tab-bar__label');
+
+		expect(icon).toBeTruthy();
+		expect(icon).toHaveAttribute('aria-hidden', 'true');
+		expect(label).toBeTruthy();
+		expect(label?.textContent).toBe('Lookup');
+
+		const moreButton = bar.getByRole('button', { name: 'More' });
+		expect(moreButton.querySelector('.bottom-tab-bar__icon svg')).toBeTruthy();
+		expect(moreButton.querySelector('.bottom-tab-bar__label')?.textContent).toBe('More');
+	});
+
 	it('marks the active tab with the ink-fill/paper-text treatment, never vermilion', () => {
 		const emptyChildren = createRawSnippet(() => ({
 			render: () => '<div></div>'
