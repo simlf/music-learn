@@ -1,0 +1,252 @@
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../themes/default.css" />
+<style>
+	* { box-sizing: border-box; }
+	body { margin: 0; background: var(--color-paper); color: var(--color-ink); font-family: var(--font-sans); padding: var(--space-6); }
+	h1 { font-size: var(--text-heading); margin: 0 0 var(--space-1); }
+	.sub { color: var(--color-muted); margin: 0 0 var(--space-6); font-size: var(--text-body); max-width: 62ch; }
+	.tabs { display: flex; gap: var(--space-2); margin: var(--space-6) 0 var(--space-4); flex-wrap: wrap; }
+	.tab { font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; border: 2px solid var(--color-ink); background: var(--color-paper-bright); cursor: pointer; padding: var(--space-2) var(--space-4); min-width: 44px; min-height: 44px; }
+	.tab[aria-selected="true"] { background: var(--color-ink); color: var(--color-paper-bright); }
+	.panel { display: none; } .panel[data-active="true"] { display: block; }
+	.card { border: 2px solid var(--color-ink); background: var(--color-paper-bright); padding: var(--space-6); }
+	.note-sm { font-size: 13px; color: var(--color-muted); margin-top: var(--space-4); max-width: 62ch; }
+	.reg { font: 700 var(--text-label)/1.4 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-muted); margin: 0 0 var(--space-4); }
+
+	/* Interval chip base, shared across variants */
+	.chip {
+		font: 700 var(--text-label)/1 var(--font-mono);
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		border: 2px solid var(--color-ink);
+		cursor: pointer;
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: var(--space-2) var(--space-4);
+	}
+
+	/* ===================== Variant A: inline expand ===================== */
+	.rowA { display: flex; flex-direction: column; gap: var(--space-2); }
+	.itemA { border: 2px solid var(--color-ink); background: var(--color-paper-bright); }
+	.chipA {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		gap: var(--space-4);
+		justify-content: flex-start;
+		min-height: 52px;
+		padding: var(--space-2) var(--space-4);
+		background: none;
+		border: none;
+		font: 700 var(--text-body)/1 var(--font-mono);
+		cursor: pointer;
+		text-align: left;
+	}
+	.chipA .sw { width: 28px; height: 28px; border: 2px solid var(--color-ink); flex: none; }
+	.chipA .lbl { flex: 1; }
+	.chipA .car { font: 700 14px/1 var(--font-mono); transition: transform 0.15s ease; }
+	.itemA[data-open="true"] .car { transform: rotate(90deg); }
+	.expandA {
+		max-height: 0;
+		overflow: hidden;
+		transition: max-height 0.18s ease;
+		border-top: 0 solid var(--color-ink);
+	}
+	.itemA[data-open="true"] .expandA { max-height: 80px; border-top: 2px solid var(--color-ink); }
+	.expandA-inner { padding: var(--space-2) var(--space-4) var(--space-4) calc(28px + var(--space-4) + var(--space-4)); font: 400 var(--text-body)/1.3 var(--font-serif); font-style: italic; color: var(--color-ink); }
+	.expandA-inner .tag { display: block; font: 700 10px/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-muted); font-style: normal; margin-bottom: 4px; }
+
+	/* ===================== Variant B: flip cards ===================== */
+	.gridB { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: var(--space-2); }
+	.cardB { perspective: 600px; height: 92px; }
+	.cardB-inner {
+		position: relative;
+		width: 100%;
+		height: 100%;
+		text-align: center;
+		transition: transform 0.35s;
+		transform-style: preserve-3d;
+		cursor: pointer;
+	}
+	.cardB[data-flipped="true"] .cardB-inner { transform: rotateY(180deg); }
+	.face { position: absolute; inset: 0; backface-visibility: hidden; border: 2px solid var(--color-ink); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--space-1); }
+	.face-front { font: 700 18px/1 var(--font-mono); }
+	.face-front .full { font: 400 11px/1.2 var(--font-sans); margin-top: 4px; opacity: 0.8; }
+	.face-back { background: var(--color-ink); color: var(--color-paper-bright); transform: rotateY(180deg); font: 400 13px/1.25 var(--font-serif); font-style: italic; padding: var(--space-2); }
+	.face-back .tag { font: 700 9px/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; font-style: normal; opacity: 0.75; margin-bottom: 5px; display: block; }
+
+	/* ===================== Variant C: register line integration ===================== */
+	.pickerC { display: flex; gap: var(--space-1); flex-wrap: wrap; margin-bottom: var(--space-6); }
+	.pickerC button { font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; border: 2px solid var(--color-ink); background: var(--color-paper-bright); cursor: pointer; min-height: 44px; min-width: 52px; padding: var(--space-2) var(--space-2); }
+	.pickerC button[aria-pressed="true"] { background: var(--color-ink); color: var(--color-paper-bright); }
+	.registerC {
+		border: 2px solid var(--color-ink);
+		background: var(--color-paper);
+		padding: var(--space-4) var(--space-4);
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: var(--space-2);
+	}
+	.registerC .line {
+		font: 700 15px/1.4 var(--font-mono);
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+		flex: 1;
+		min-width: 200px;
+	}
+	.registerC .line .hook-text { text-transform: none; font-weight: 400; font-style: italic; font-family: var(--font-serif); letter-spacing: normal; }
+	.hookBtn {
+		font: 700 11px/1 var(--font-mono);
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+		border: 2px solid var(--color-ink);
+		background: var(--color-paper-bright);
+		cursor: pointer;
+		min-height: 40px;
+		padding: var(--space-2) var(--space-4);
+		white-space: nowrap;
+	}
+	.hookBtn[aria-pressed="true"] { background: var(--color-verdigris); color: #ffffff; border-color: var(--color-verdigris); }
+</style>
+
+<h1>Sketch 006 &middot; Song-interval hooks</h1>
+<p class="sub">Every interval can carry a well-known tune as an ear-training aid, but only on tap. Never forced, never shown by default. Three surfaces for the same opt-in reveal.</p>
+
+<div class="tabs" role="tablist">
+	<button class="tab" role="tab" aria-selected="true" data-tab="A">A &middot; Inline expand</button>
+	<button class="tab" role="tab" aria-selected="false" data-tab="B">B &middot; Flip cards</button>
+	<button class="tab" role="tab" aria-selected="false" data-tab="C">C &middot; Register line</button>
+</div>
+
+<div class="panel" data-tab="A" data-active="true">
+	<div class="card">
+		<p class="reg">Tap a row to reveal its tune, tap again to collapse</p>
+		<div class="rowA" id="rowA"></div>
+		<p class="note-sm">Each interval is a full-width row with its color swatch. Tapping opens a short strip beneath it with the tune name, tapping the same row again closes it. Only one hook is visible at a time per row, and nothing shows until asked for.</p>
+	</div>
+</div>
+
+<div class="panel" data-tab="B" data-active="false">
+	<div class="card">
+		<p class="reg">Tap a card to flip it, tap again to flip back</p>
+		<div class="gridB" id="gridB"></div>
+		<p class="note-sm">A tidy grid for browsing the whole interval set at a glance. Front shows the interval name in its color, back reveals the tune on flip. Good for a dedicated reference page where scanning many intervals at once matters more than reading one in context.</p>
+	</div>
+</div>
+
+<div class="panel" data-tab="C" data-active="false">
+	<div class="card">
+		<p class="reg">Pick an interval, then tap the hook button to append its tune to the register line</p>
+		<div class="pickerC" id="pickerC"></div>
+		<div class="registerC" id="registerC"></div>
+		<p class="note-sm">Reuses the app's existing mono inspect register (note &middot; solfege &middot; interval &middot; French name &middot; semitone count). The tune is an optional extra clause appended to that same line, toggled by its own button, so it reads as one more fact in the register rather than a separate UI element.</p>
+	</div>
+</div>
+
+<script>
+	// Vetted ascending-interval tune table. Do not invent others.
+	const INTERVALS = [
+		{ code: 'm2', name: 'Minor 2nd', fr: 'seconde mineure', semi: 1, cls: 'second', tune: 'the Jaws theme' },
+		{ code: 'M2', name: 'Major 2nd', fr: 'seconde majeure', semi: 2, cls: 'second', tune: 'Happy Birthday, first two notes' },
+		{ code: 'm3', name: 'Minor 3rd', fr: 'tierce mineure', semi: 3, cls: 'third', tune: 'Greensleeves, opening' },
+		{ code: 'M3', name: 'Major 3rd', fr: 'tierce majeure', semi: 4, cls: 'third', tune: 'When the Saints Go Marching In' },
+		{ code: 'P4', name: 'Perfect 4th', fr: 'quarte juste', semi: 5, cls: 'fourth', tune: 'Here Comes the Bride' },
+		{ code: 'A4', name: 'Tritone', fr: 'triton', semi: 6, cls: 'fourth', tune: 'The Simpsons theme, first two notes' },
+		{ code: 'P5', name: 'Perfect 5th', fr: 'quinte juste', semi: 7, cls: 'fifth', tune: 'Twinkle Twinkle Little Star, first two notes' },
+		{ code: 'm6', name: 'Minor 6th', fr: 'sixte mineure', semi: 8, cls: 'sixth', tune: 'the theme from Love Story' },
+		{ code: 'M6', name: 'Major 6th', fr: 'sixte majeure', semi: 9, cls: 'sixth', tune: 'My Bonnie Lies Over the Ocean' },
+		{ code: 'm7', name: 'Minor 7th', fr: 'septieme mineure', semi: 10, cls: 'seventh', tune: 'Somewhere, from West Side Story' },
+		{ code: 'M7', name: 'Major 7th', fr: 'septieme majeure', semi: 11, cls: 'seventh', tune: 'Take On Me, the chorus leap' },
+		{ code: 'P8', name: 'Octave', fr: 'octave', semi: 12, cls: 'root', tune: 'Somewhere Over the Rainbow' }
+	];
+
+	// ---------- Variant A: inline expand ----------
+	const rowA = document.getElementById('rowA');
+	INTERVALS.forEach(iv => {
+		const item = document.createElement('div');
+		item.className = 'itemA';
+		item.dataset.open = 'false';
+		item.innerHTML = `
+			<button class="chipA" type="button">
+				<span class="sw" style="background:var(--color-${iv.cls});"></span>
+				<span class="lbl">${iv.code} &middot; ${iv.name}</span>
+				<span class="car">&#8250;</span>
+			</button>
+			<div class="expandA"><div class="expandA-inner"><span class="tag">Sounds like</span>${iv.tune}</div></div>
+		`;
+		item.querySelector('.chipA').addEventListener('click', () => {
+			const isOpen = item.dataset.open === 'true';
+			item.dataset.open = String(!isOpen);
+		});
+		rowA.appendChild(item);
+	});
+
+	// ---------- Variant B: flip cards ----------
+	const gridB = document.getElementById('gridB');
+	INTERVALS.forEach(iv => {
+		const card = document.createElement('div');
+		card.className = 'cardB';
+		card.dataset.flipped = 'false';
+		card.innerHTML = `
+			<div class="cardB-inner">
+				<div class="face face-front" style="background:var(--color-${iv.cls}); color:var(--color-on-${iv.cls}); border-color: var(--color-ink);">
+					<span>${iv.code}</span>
+					<span class="full">${iv.name}</span>
+				</div>
+				<div class="face face-back"><span class="tag">Sounds like</span>${iv.tune}</div>
+			</div>
+		`;
+		card.addEventListener('click', () => {
+			card.dataset.flipped = String(card.dataset.flipped !== 'true');
+		});
+		gridB.appendChild(card);
+	});
+
+	// ---------- Variant C: register line integration ----------
+	const pickerC = document.getElementById('pickerC');
+	const registerC = document.getElementById('registerC');
+	let selected = 'm3';
+	let hookOn = false;
+
+	function renderC() {
+		const iv = INTERVALS.find(x => x.code === selected);
+		[...pickerC.children].forEach(b => b.setAttribute('aria-pressed', String(b.dataset.code === selected)));
+		const base = `${iv.code} &middot; ${iv.name} &middot; ${iv.fr} &middot; ${iv.semi} demi-tons`;
+		const hook = hookOn ? ` &middot; <span class="hook-text">${iv.tune}</span>` : '';
+		registerC.innerHTML = `
+			<span class="line">${base}${hook}</span>
+			<button class="hookBtn" id="hookBtn" aria-pressed="${hookOn}" type="button">${hookOn ? 'Hide tune' : 'Sounds like&hellip;'}</button>
+		`;
+		document.getElementById('hookBtn').addEventListener('click', () => {
+			hookOn = !hookOn;
+			renderC();
+		});
+	}
+
+	INTERVALS.forEach(iv => {
+		const b = document.createElement('button');
+		b.textContent = iv.code;
+		b.dataset.code = iv.code;
+		b.setAttribute('aria-pressed', String(iv.code === selected));
+		b.style.setProperty('background', 'var(--color-paper-bright)');
+		b.addEventListener('click', () => {
+			selected = iv.code;
+			hookOn = false;
+			renderC();
+		});
+		pickerC.appendChild(b);
+	});
+	renderC();
+
+	// ---------- Tabs ----------
+	document.querySelectorAll('.tab').forEach(tab => {
+		tab.onclick = () => {
+			const id = tab.dataset.tab;
+			document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t === tab)));
+			document.querySelectorAll('.panel').forEach(p => p.setAttribute('data-active', String(p.dataset.tab === id)));
+		};
+	});
+</script>

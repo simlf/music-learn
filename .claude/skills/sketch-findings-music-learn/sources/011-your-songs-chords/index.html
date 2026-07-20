@@ -1,0 +1,352 @@
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../themes/default.css" />
+<style>
+	* { box-sizing: border-box; }
+	body {
+		margin: 0;
+		background: var(--color-paper);
+		color: var(--color-ink);
+		font-family: var(--font-sans);
+		padding: var(--space-6);
+	}
+	h1 { font-size: var(--text-heading); margin: 0 0 var(--space-1); }
+	.sub { color: var(--color-muted); margin: 0 0 var(--space-6); font-size: var(--text-body); max-width: 52em; }
+
+	.reg { font: 700 var(--text-label)/1.4 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-muted); }
+	.note-sm { font-size: 13px; color: var(--color-muted); margin-top: var(--space-2); max-width: 50em; }
+
+	/* problem framing */
+	.today { border: 2px dashed var(--color-faint); padding: var(--space-4); margin-bottom: var(--space-6); }
+	.today .songs { display: flex; gap: var(--space-1); flex-wrap: wrap; margin-top: var(--space-2); }
+
+	/* tabs */
+	.tabs { display: flex; gap: var(--space-2); margin-bottom: var(--space-4); flex-wrap: wrap; }
+	.tab {
+		font: 700 var(--text-label)/1 var(--font-mono);
+		letter-spacing: 0.12em; text-transform: uppercase;
+		padding: var(--space-2) var(--space-4); border: 2px solid var(--color-ink);
+		background: var(--color-paper-bright); cursor: pointer;
+		min-height: 44px;
+	}
+	.tab[aria-selected="true"] { background: var(--color-ink); color: var(--color-paper-bright); }
+	.panel { display: none; }
+	.panel[data-active="true"] { display: block; }
+
+	/* screen chrome shared by all variants */
+	.screen-title { font: 700 var(--text-display)/1 var(--font-serif); margin: 0 0 var(--space-4); }
+	.crumb { font: 700 11px/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-faint); margin: 0 0 var(--space-2); }
+
+	/* --- the provenance mark: a letterpress mono tag --- */
+	.prov {
+		display: inline-flex; align-items: center; gap: 5px;
+		font: 700 10px/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase;
+		border: 2px solid var(--color-ink); background: var(--color-paper);
+		color: var(--color-ink); padding: 3px 6px;
+		white-space: nowrap;
+	}
+	.prov .note { font-size: 11px; }
+	.prov.mult { border-style: double; }
+
+	/* chord name in serif */
+	.chord { font-family: var(--font-serif); font-weight: 700; }
+
+	/* --- drill prompt card (A + C reuse) --- */
+	.prompt {
+		border: 2px solid var(--color-ink); background: var(--color-paper-bright);
+		padding: var(--space-6); text-align: center;
+	}
+	.prompt .q { font: 700 var(--text-display)/1 var(--font-serif); margin: 0; }
+	.prompt .ask { font-size: var(--text-body); color: var(--color-muted); margin: var(--space-2) 0 0; }
+	.prompt .provrow { margin-top: var(--space-4); display: flex; justify-content: center; }
+	.prompt .keys { margin-top: var(--space-4); font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.1em; color: var(--color-faint); text-transform: uppercase; }
+
+	/* ===== Variant A: provenance mark + filter ===== */
+	.filterbar {
+		border: 2px solid var(--color-ink); background: var(--color-paper-bright);
+		padding: var(--space-2) var(--space-4); margin-bottom: var(--space-4);
+		display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap;
+	}
+	.filterbar .lbl { font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; }
+	.toggle {
+		font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase;
+		border: 2px solid var(--color-ink); background: var(--color-paper); color: var(--color-ink);
+		padding: var(--space-2) var(--space-4); cursor: pointer; min-height: 44px;
+		display: inline-flex; align-items: center; gap: var(--space-2);
+	}
+	.toggle[aria-pressed="true"] { background: var(--color-vermilion); color: #fff; border-color: var(--color-ink); }
+	.toggle .box { width: 14px; height: 14px; border: 2px solid currentColor; display: inline-block; }
+	.toggle[aria-pressed="true"] .box { background: #fff; }
+	.pool-note { font-size: 13px; color: var(--color-muted); margin: 0 0 var(--space-4); }
+
+	.lookup-result {
+		border: 2px solid var(--color-ink); background: var(--color-paper-bright); padding: var(--space-4);
+		margin-top: var(--space-6);
+	}
+	.lookup-result .head { display: flex; align-items: baseline; gap: var(--space-4); flex-wrap: wrap; }
+	.lookup-result .name { font: 700 40px/1 var(--font-serif); }
+	.lookup-result .spell { font-size: var(--text-body); color: var(--color-ink); margin: var(--space-2) 0 0; }
+	.lookup-result .spell b { font-family: var(--font-mono); }
+
+	/* ===== Variant B: song-first practice lane ===== */
+	.lane { border: 2px solid var(--color-ink); background: var(--color-paper-bright); margin-bottom: var(--space-6); }
+	.lane-head { padding: var(--space-4); border-bottom: 2px solid var(--color-ink); background: var(--color-ink); color: var(--color-paper-bright); }
+	.lane-head .eyebrow { font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase; }
+	.song-row {
+		width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer;
+		border: none; border-bottom: 2px solid var(--color-faint); background: var(--color-paper-bright);
+		padding: var(--space-4); display: flex; align-items: center; justify-content: space-between; gap: var(--space-4);
+		min-height: 44px;
+	}
+	.song-row:last-child { border-bottom: none; }
+	.song-row .title { font: 700 var(--text-heading)/1.1 var(--font-serif); }
+	.song-row .meta { font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-muted); margin-top: 3px; }
+	.song-row .caret { font-family: var(--font-mono); font-weight: 700; }
+	.song-row[aria-expanded="true"] { background: var(--color-mustard); }
+	.deck { padding: var(--space-4); border-bottom: 2px solid var(--color-faint); background: var(--color-paper); }
+	.deck .chips { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-4); }
+	.deck-chip { font: 700 var(--text-heading)/1 var(--font-serif); border: 2px solid var(--color-ink); background: var(--color-paper-bright); padding: var(--space-2) var(--space-4); }
+	.start-btn {
+		font: 700 var(--text-body)/1 var(--font-mono); letter-spacing: 0.04em; text-transform: uppercase;
+		background: var(--color-vermilion); color: #fff; border: 2px solid var(--color-ink);
+		padding: var(--space-4) var(--space-6); cursor: pointer; min-height: 44px;
+	}
+	.generic-note { border: 2px dashed var(--color-faint); padding: var(--space-4); }
+	.generic-note .reg { margin: 0 0 var(--space-2); }
+
+	/* ===== Variant C: ambient prioritization ===== */
+	.provline { font-size: var(--text-body); color: var(--color-verdigris); font-style: italic; margin: 0; }
+	.stepper { display: flex; gap: var(--space-1); margin-bottom: var(--space-4); }
+	.stepper button {
+		font: 700 var(--text-label)/1 var(--font-mono); min-width: 44px; min-height: 44px;
+		border: 2px solid var(--color-ink); background: var(--color-paper-bright); cursor: pointer;
+	}
+	.stepper button[aria-pressed="true"] { background: var(--color-ink); color: var(--color-paper-bright); }
+	.why-btn {
+		font: 700 11px/1 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase;
+		background: none; border: none; color: var(--color-faint); text-decoration: underline;
+		cursor: pointer; padding: var(--space-2); min-height: 44px;
+	}
+	.why-panel { border: 2px solid var(--color-ink); background: var(--color-paper-bright); padding: var(--space-4); margin-top: var(--space-2); }
+	.why-panel[hidden] { display: none; }
+	.why-panel .reg { margin: 0 0 var(--space-2); }
+	.why-panel .weights { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-2); }
+	.wbar { display: flex; align-items: center; gap: var(--space-4); }
+	.wbar .lab { font: 700 12px/1 var(--font-mono); width: 12em; flex-shrink: 0; }
+	.wbar .track { flex: 1; height: 14px; border: 2px solid var(--color-ink); background: var(--color-paper); }
+	.wbar .fill { height: 100%; background: var(--color-verdigris); }
+	.wbar.dim .fill { background: var(--color-faint); }
+</style>
+
+<h1>Sketch 011 &middot; Your songs&rsquo; chords, app-wide</h1>
+<p class="sub">The user is a beginner learning specific songs. Drilling chords that aren&rsquo;t in their songs is wasted effort. They&rsquo;ve added songs on <b>/songs</b>. How should &ldquo;this chord is in one of your songs&rdquo; surface and get prioritized across Drills, Recall, and Chord Lookup, so app practice reinforces the exact chords they must play at the piano?</p>
+
+<div class="today">
+	<p class="reg">Your songs (added on /songs)</p>
+	<div class="songs">
+		<span class="prov"><span class="note">&#9834;</span> Autumn Leaves</span>
+		<span class="prov"><span class="note">&#9834;</span> Fly Me to the Moon</span>
+	</div>
+	<p class="note-sm">Today these songs live only on /songs. Their chords never follow you into practice. Three ways to change that below.</p>
+</div>
+
+<div class="tabs" role="tablist">
+	<button class="tab" role="tab" aria-selected="true" data-tab="A">A &middot; Mark + filter &#9733;</button>
+	<button class="tab" role="tab" aria-selected="false" data-tab="B">B &middot; Song-first lane</button>
+	<button class="tab" role="tab" aria-selected="false" data-tab="C">C &middot; Ambient priority</button>
+</div>
+
+<!-- ===================== Variant A ===================== -->
+<div class="panel" data-tab="A" data-active="true">
+	<p class="crumb">/drills</p>
+	<h2 class="screen-title">Drills</h2>
+
+	<div class="filterbar">
+		<span class="lbl">Practice pool</span>
+		<button class="toggle" id="filterA" type="button" aria-pressed="false">
+			<span class="box"></span> From my songs
+		</button>
+	</div>
+	<p class="pool-note" id="poolNoteA"></p>
+
+	<div class="prompt">
+		<p class="q chord">A&oslash;7</p>
+		<p class="ask">What notes? Play them in your left hand.</p>
+		<div class="provrow"><span class="prov"><span class="note">&#9834;</span> Autumn Leaves</span></div>
+		<p class="keys">Awaiting MIDI &middot; or tap the keyboard</p>
+	</div>
+
+	<p class="note-sm">Every chord chip and card app-wide that appears in a song you added carries the same letterpress mark. The mark travels; the filter focuses. Below: the exact same tag on a Chord Lookup result.</p>
+
+	<div class="lookup-result">
+		<p class="crumb" style="margin-bottom:var(--space-4)">/ &middot; chord lookup</p>
+		<div class="head">
+			<span class="name chord">A&oslash;7</span>
+			<span class="prov"><span class="note">&#9834;</span> Autumn Leaves</span>
+		</div>
+		<p class="spell">A half-diminished seventh. Left hand: <b>A &middot; C &middot; E&flat; &middot; G</b>.</p>
+	</div>
+</div>
+
+<!-- ===================== Variant B ===================== -->
+<div class="panel" data-tab="B" data-active="false">
+	<p class="crumb">/drills</p>
+	<h2 class="screen-title">Drills</h2>
+
+	<div class="lane">
+		<div class="lane-head">
+			<span class="eyebrow">&#9834; Practice your songs</span>
+		</div>
+		<div id="songListB"></div>
+	</div>
+
+	<div class="generic-note">
+		<p class="reg">Below: the generic drill pool</p>
+		<p class="note-sm" style="margin-top:0">The rest of Drills stays exactly as it is. The lane is an express entrance, not a replacement. Tap a song to expand its chords into a ready-made deck.</p>
+	</div>
+</div>
+
+<!-- ===================== Variant C ===================== -->
+<div class="panel" data-tab="C" data-active="false">
+	<p class="crumb">/drills</p>
+	<h2 class="screen-title">Drills</h2>
+
+	<div class="stepper" id="stepperC" aria-label="drill sequence"></div>
+
+	<div class="prompt">
+		<p class="q chord" id="cQ">Cm7</p>
+		<p class="ask">What notes? Play them in your left hand.</p>
+		<p class="keys">Awaiting MIDI &middot; or tap the keyboard</p>
+	</div>
+
+	<p class="provline" id="cProv" style="margin-top:var(--space-4)"></p>
+
+	<button class="why-btn" id="whyBtn" type="button" aria-expanded="false">Why am I seeing this?</button>
+	<div class="why-panel" id="whyPanel" hidden>
+		<p class="reg">How this queue is chosen</p>
+		<p class="note-sm" style="margin-top:0">No new screens or filters. The scheduler still picks what&rsquo;s due, but silently weights toward chords in songs you added, so your review time lands on the notes you actually have to play.</p>
+		<div class="weights">
+			<div class="wbar"><span class="lab">In your songs</span><span class="track"><span class="fill" style="width:78%"></span></span></div>
+			<div class="wbar dim"><span class="lab">Everything else</span><span class="track"><span class="fill" style="width:22%"></span></span></div>
+		</div>
+	</div>
+
+	<p class="note-sm">Each served drill carries one subtle motivational line tying it back to a song. Step through the sequence to see the line change with the chord. No badge, no toggle, no lane. The prioritization is felt, not managed.</p>
+</div>
+
+<script>
+	// ---- shared song data (mirrors /songs page state) ----
+	const SONGS = [
+		{ title: 'Autumn Leaves', chords: ['Cm7', 'F7', 'B♭maj7', 'E♭maj7', 'Aø7', 'D7', 'Gm'] },
+		{ title: 'Fly Me to the Moon', chords: ['Am7', 'Dm7', 'G7', 'Cmaj7'] }
+	];
+	// chord -> array of song titles it appears in
+	const provenance = {};
+	SONGS.forEach((s) => s.chords.forEach((c) => {
+		(provenance[c] = provenance[c] || []).push(s.title);
+	}));
+
+	function provTag(chord) {
+		const songs = provenance[chord];
+		if (!songs) return '';
+		const mult = songs.length > 1;
+		const label = mult ? songs.length + ' songs' : songs[0];
+		return `<span class="prov${mult ? ' mult' : ''}"><span class="note">&#9834;</span> ${label}</span>`;
+	}
+
+	// ================= Variant A: filter toggle =================
+	const filterA = document.getElementById('filterA');
+	const poolNoteA = document.getElementById('poolNoteA');
+	function renderPoolNote() {
+		const on = filterA.getAttribute('aria-pressed') === 'true';
+		if (on) {
+			const uniqueChords = Object.keys(provenance).length;
+			poolNoteA.innerHTML = `Filter <b>on</b>: drilling the <b>${uniqueChords} chords</b> from your 2 songs only. Everything else is set aside.`;
+		} else {
+			poolNoteA.innerHTML = `Filter <b>off</b>: full chord library. Chords from your songs still wear their mark so you spot them.`;
+		}
+	}
+	filterA.onclick = () => {
+		const on = filterA.getAttribute('aria-pressed') === 'true';
+		filterA.setAttribute('aria-pressed', String(!on));
+		renderPoolNote();
+	};
+	renderPoolNote();
+
+	// ================= Variant B: song lane =================
+	const songListB = document.getElementById('songListB');
+	let expanded = 'Autumn Leaves'; // one song shown expanded per the brief
+	function renderLane() {
+		songListB.innerHTML = '';
+		SONGS.forEach((s) => {
+			const isOpen = expanded === s.title;
+			const row = document.createElement('button');
+			row.className = 'song-row';
+			row.type = 'button';
+			row.setAttribute('aria-expanded', String(isOpen));
+			row.innerHTML = `
+				<span>
+					<span class="title chord">${s.title}</span>
+					<span class="meta">${s.chords.length} chords</span>
+				</span>
+				<span class="caret">${isOpen ? '&minus;' : '+'}</span>`;
+			row.onclick = () => { expanded = isOpen ? null : s.title; renderLane(); };
+			songListB.appendChild(row);
+
+			if (isOpen) {
+				const deck = document.createElement('div');
+				deck.className = 'deck';
+				deck.innerHTML = `
+					<div class="chips">${s.chords.map((c) => `<span class="deck-chip">${c}</span>`).join('')}</div>
+					<button class="start-btn" type="button">${s.title} &middot; ${s.chords.length} chords &middot; Start &rarr;</button>`;
+				songListB.appendChild(deck);
+			}
+		});
+	}
+	renderLane();
+
+	// ================= Variant C: ambient sequence =================
+	const CSEQ = [
+		{ chord: 'Cm7', line: 'This one opens Autumn Leaves.' },
+		{ chord: 'G7', line: 'This one shows up in Fly Me to the Moon.' },
+		{ chord: 'Aø7', line: 'The color chord in the Autumn Leaves turnaround.' },
+		{ chord: 'Dm7', line: 'You play this early in Fly Me to the Moon.' }
+	];
+	let cStep = 0;
+	const stepperC = document.getElementById('stepperC');
+	const cQ = document.getElementById('cQ');
+	const cProv = document.getElementById('cProv');
+	function renderStepper() {
+		stepperC.innerHTML = '';
+		CSEQ.forEach((_, i) => {
+			const b = document.createElement('button');
+			b.type = 'button';
+			b.textContent = i + 1;
+			b.setAttribute('aria-pressed', String(i === cStep));
+			b.onclick = () => { cStep = i; renderC(); };
+			stepperC.appendChild(b);
+		});
+	}
+	function renderC() {
+		renderStepper();
+		const cur = CSEQ[cStep];
+		cQ.textContent = cur.chord;
+		cProv.textContent = cur.line;
+	}
+	const whyBtn = document.getElementById('whyBtn');
+	const whyPanel = document.getElementById('whyPanel');
+	whyBtn.onclick = () => {
+		const open = whyBtn.getAttribute('aria-expanded') === 'true';
+		whyBtn.setAttribute('aria-expanded', String(!open));
+		whyPanel.hidden = open;
+	};
+	renderC();
+
+	// ================= tabs =================
+	document.querySelectorAll('.tab').forEach((tab) => {
+		tab.onclick = () => {
+			const id = tab.dataset.tab;
+			document.querySelectorAll('.tab').forEach((t) => t.setAttribute('aria-selected', String(t === tab)));
+			document.querySelectorAll('.panel').forEach((p) => p.setAttribute('data-active', String(p.dataset.tab === id)));
+		};
+	});
+</script>

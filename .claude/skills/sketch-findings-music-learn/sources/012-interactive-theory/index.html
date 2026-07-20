@@ -1,0 +1,570 @@
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../themes/default.css" />
+<style>
+	* { box-sizing: border-box; }
+	body {
+		margin: 0;
+		background: var(--color-paper);
+		color: var(--color-ink);
+		font-family: var(--font-sans);
+		padding: var(--space-6);
+	}
+	h1 { font-size: var(--text-heading); margin: 0 0 var(--space-1); }
+	.sub { color: var(--color-muted); margin: 0 0 var(--space-6); font-size: var(--text-body); max-width: 60ch; }
+
+	/* today / problem framing */
+	.today { border: 2px dashed var(--color-faint); padding: var(--space-4); margin-bottom: var(--space-6); }
+	.today .reg { color: var(--color-vermilion); margin: 0 0 var(--space-2); }
+	.note-sm { font-size: 13px; color: var(--color-muted); margin-top: var(--space-2); }
+	.reg { font: 700 var(--text-label)/1.4 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-muted); }
+
+	/* tabs */
+	.tabs { display: flex; gap: var(--space-2); margin-bottom: var(--space-6); flex-wrap: wrap; }
+	.tab {
+		font: 700 var(--text-label)/1 var(--font-mono);
+		letter-spacing: 0.12em; text-transform: uppercase;
+		padding: var(--space-2) var(--space-4); border: 2px solid var(--color-ink);
+		background: var(--color-paper-bright); cursor: pointer; min-height: 44px;
+	}
+	.tab[aria-selected="true"] { background: var(--color-ink); color: var(--color-paper-bright); }
+	.panel { display: none; }
+	.panel[data-active="true"] { display: block; }
+	.panel > .lead { font-size: 14px; color: var(--color-muted); margin: 0 0 var(--space-4); max-width: 60ch; }
+
+	/* ---------- shared mini keyboard ---------- */
+	.kb { position: relative; height: 128px; width: 100%; max-width: 460px; margin: var(--space-4) 0; user-select: none; }
+	.kb .key {
+		position: absolute; top: 0; padding: 0; cursor: pointer;
+		display: flex; align-items: flex-end; justify-content: center;
+	}
+	.kb .white { height: 100%; background: var(--color-paper-bright); border: 2px solid var(--color-ink); z-index: 1; }
+	.kb .black { height: 62%; background: var(--color-ink); border: 2px solid var(--color-ink); z-index: 2; }
+	.kb .key:active { filter: brightness(0.94); }
+	.kb .key .tag { font: 700 11px/1 var(--font-mono); padding-bottom: 8px; pointer-events: none; letter-spacing: 0.04em; }
+	.kb .white .tag { color: var(--color-muted); }
+	.kb .black .tag { color: var(--color-paper-bright); }
+
+	/* lit states */
+	.kb .key.lit-root { background: var(--color-root); border-color: var(--color-ink); }
+	.kb .key.lit-third { background: var(--color-third); border-color: var(--color-ink); }
+	.kb .key.lit-third .tag, .kb .key.lit-root .tag { color: #fff; }
+	.kb .key.lit-anchor { background: var(--color-ink); }
+	.kb .key.lit-anchor .tag { color: var(--color-paper-bright); }
+	.kb .white.lit-anchor { background: var(--color-ink); }
+	.kb .key.lit-wrong { background: var(--color-wrong); border-color: var(--color-wrong-deep); }
+	.kb .black.lit-wrong { background: var(--color-wrong-deep); }
+	.kb .key.pulse { animation: pulse 0.5s ease-out; }
+	@keyframes pulse { 0% { box-shadow: inset 0 0 0 0 var(--color-seventh); } 40% { box-shadow: inset 0 0 0 10px var(--color-seventh); } 100% { box-shadow: inset 0 0 0 0 var(--color-seventh); } }
+
+	/* generic UI bits */
+	.card { border: 2px solid var(--color-ink); background: var(--color-paper-bright); padding: var(--space-6); }
+	.prompt { font-size: var(--text-body); margin: 0 0 var(--space-2); }
+	.prompt strong { font-weight: 700; }
+	.say { font-family: var(--font-serif); }
+	.check-line { display: flex; align-items: center; gap: var(--space-2); min-height: 28px; font-size: 14px; margin-top: var(--space-2); }
+	.check-line .mk { font: 700 16px/1 var(--font-mono); width: 20px; text-align: center; }
+	.check-line.ok { color: var(--color-verdigris); }
+	.check-line.retry { color: var(--color-vermilion); }
+	.btn {
+		font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase;
+		border: 2px solid var(--color-ink); background: var(--color-paper-bright); color: var(--color-ink);
+		padding: var(--space-4) var(--space-6); cursor: pointer; min-height: 44px; margin-top: var(--space-2);
+	}
+	.btn.primary { background: var(--color-vermilion); color: #fff; }
+	.btn.ghost { background: var(--color-paper-bright); }
+	.btn:disabled { opacity: 0.35; cursor: default; }
+	.hearbtn { display: inline-flex; align-items: center; gap: var(--space-2); }
+
+	/* ---------- Variant A: guided steps ---------- */
+	.steps { display: flex; flex-direction: column; gap: var(--space-4); }
+	.step {
+		border: 2px solid var(--color-ink); background: var(--color-paper-bright);
+		padding: var(--space-4) var(--space-6);
+	}
+	.step[data-state="locked"] { opacity: 0.4; }
+	.step[data-state="done"] { border-left: 8px solid var(--color-verdigris); }
+	.step[data-state="active"] { border-left: 8px solid var(--color-vermilion); }
+	.step-head { display: flex; align-items: baseline; gap: var(--space-2); margin-bottom: var(--space-2); }
+	.step-num { font: 700 var(--text-label)/1 var(--font-mono); border: 2px solid var(--color-ink); padding: 3px 7px; letter-spacing: 0.08em; }
+	.step[data-state="done"] .step-num { background: var(--color-verdigris); color: #fff; border-color: var(--color-ink); }
+	.step-title { font: 700 var(--text-body)/1.2 var(--font-serif); }
+	.step-body { font-size: var(--text-body); line-height: 1.45; }
+	.step-body .hl { color: var(--color-third); font-weight: 700; }
+	.done-chip { font: 700 11px/1 var(--font-mono); color: var(--color-verdigris); letter-spacing: 0.08em; text-transform: uppercase; margin-left: auto; }
+
+	/* ---------- Variant B: lesson map ---------- */
+	.map { display: flex; flex-direction: column; gap: 3px; margin-bottom: var(--space-6); }
+	.unit-head { font: 700 var(--text-label)/1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-muted); margin: var(--space-4) 0 var(--space-1); }
+	.lesson-row {
+		display: flex; align-items: center; gap: var(--space-4); width: 100%; text-align: left;
+		border: 2px solid var(--color-ink); background: var(--color-paper-bright);
+		padding: var(--space-4); cursor: pointer; min-height: 44px; font: inherit; color: inherit;
+	}
+	.lesson-row .mk { font: 700 15px/1 var(--font-mono); width: 24px; text-align: center; flex-shrink: 0; }
+	.lesson-row .lname { font: 700 var(--text-body)/1.15 var(--font-serif); }
+	.lesson-row[data-state="done"] .mk { color: var(--color-verdigris); }
+	.lesson-row[data-state="current"] { background: var(--color-mustard); }
+	.lesson-row[data-state="locked"] { opacity: 0.4; border-style: dashed; cursor: default; }
+	.lesson-row[data-state="locked"] .lname { font-style: italic; }
+	.lesson-row[aria-expanded="true"] { border-bottom-width: 0; }
+	.lesson-open { border: 2px solid var(--color-ink); border-top: 2px dashed var(--color-faint); background: var(--color-paper-bright); padding: var(--space-6); }
+
+	/* ---------- Variant C: play-first ---------- */
+	.nugget {
+		border: 2px solid var(--color-ink); background: var(--color-paper-bright);
+		padding: var(--space-4) var(--space-6); margin-top: var(--space-4);
+		border-left: 8px solid var(--color-third);
+	}
+	.nugget.minor { border-left-color: var(--color-vermilion); }
+	.nugget .big { font: 700 var(--text-heading)/1.1 var(--font-serif); display: block; margin-bottom: var(--space-1); }
+	.nugget .big.min { color: var(--color-vermilion); }
+	.nugget .big.maj { color: var(--color-third); }
+	.nugget .exp { font-size: 14px; color: var(--color-ink); }
+	.discovery-prompt { font-size: var(--text-body); margin: 0 0 var(--space-2); }
+	.discovery-prompt .cnt { font: 700 var(--text-label)/1 var(--font-mono); color: var(--color-muted); }
+
+	/* ---------- shared drill handoff ---------- */
+	.handoff {
+		margin-top: var(--space-6); border: 2px solid var(--color-ink);
+		background: var(--color-ink); color: var(--color-paper-bright); padding: var(--space-6);
+	}
+	.handoff .reg { color: var(--color-mustard); margin: 0 0 var(--space-2); }
+	.handoff h3 { font: 700 var(--text-heading)/1.2 var(--font-serif); margin: 0 0 var(--space-2); }
+	.handoff p { font-size: 14px; margin: 0 0 var(--space-4); color: var(--color-paper); opacity: 0.85; }
+	.handoff .chip { font: 700 24px/1 var(--font-serif); }
+	.handoff .btn { background: var(--color-mustard); color: var(--color-ink); border-color: var(--color-mustard); }
+	.handoff.hidden { display: none; }
+</style>
+
+<h1>Sketch 012 &middot; Interactive theory lessons</h1>
+<p class="sub">The /theory page is static reading. A returning classical pianist with beginner theory needs interactive lessons that build understanding and hand off cleanly into their first drill. How should a lesson look and flow? Worked example across all three: <strong>the major third vs the minor third</strong> &mdash; the interval that makes a chord happy or sad.</p>
+
+<div class="today">
+	<p class="reg">Today (the problem)</p>
+	<p class="note-sm">The /theory route renders prose and a static IntervalScaffold diagram. You read that a major third is four half-steps, nod, and nothing checks whether your hands know it. There is no bridge from "I read this" to "I can find it," and no path into the beginner course on /drills.</p>
+</div>
+
+<div class="tabs" role="tablist">
+	<button class="tab" role="tab" aria-selected="true" data-tab="A">A &middot; Guided steps &#9733;</button>
+	<button class="tab" role="tab" aria-selected="false" data-tab="B">B &middot; Lesson map + card</button>
+	<button class="tab" role="tab" aria-selected="false" data-tab="C">C &middot; Play-first</button>
+</div>
+
+<!-- ============ VARIANT A ============ -->
+<div class="panel" data-tab="A" data-active="true">
+	<p class="lead">The lesson is a vertical stack of tiny steps. Each pairs one plain sentence with one thing to do on the keyboard. Do it right and the step locks green and the next opens. Ends by handing you into a drill.</p>
+	<div class="steps" id="stepsA"></div>
+	<div class="handoff hidden" id="handoffA">
+		<p class="reg">You just learned this</p>
+		<h3>Now make it stick</h3>
+		<p>The beginner course on /drills will show you chords like this one and ask for the notes. The third you just found is the middle note of every triad.</p>
+		<p class="chip">C&nbsp;&nbsp;E&nbsp;&nbsp;G</p>
+		<button class="btn">Try this in a drill &rarr;</button>
+	</div>
+</div>
+
+<!-- ============ VARIANT B ============ -->
+<div class="panel" data-tab="B" data-active="false">
+	<p class="lead">A letterpress curriculum index. Short lesson cards with done / current / locked marks. Tap the current one and it opens in place as a single focused interactive lesson. Finish it and it marks done, unlocks the next, then offers the drill.</p>
+	<div class="map" id="mapB"></div>
+	<div id="openB"></div>
+</div>
+
+<!-- ============ VARIANT C ============ -->
+<div class="panel" data-tab="C" data-active="false">
+	<p class="lead">Almost no instruction. Start at the keyboard with one nudge. Theory shows up as short nuggets only after you act, so the name lands on a sound your hands already made. Discovery, not lecture.</p>
+	<div class="card">
+		<p class="discovery-prompt" id="promptC">Play <strong>C</strong>. <span class="cnt" id="cntC"></span></p>
+		<div class="kb" id="kbC"></div>
+		<div id="nuggetsC"></div>
+	</div>
+	<div class="handoff hidden" id="handoffC">
+		<p class="reg">You discovered it</p>
+		<h3>Two thirds, two moods</h3>
+		<p>Major third: bright. Minor third: darker. That one key of difference is the whole game. The beginner course on /drills builds chords out of exactly these.</p>
+		<p class="chip">Cm vs C</p>
+		<button class="btn">Try this in a drill &rarr;</button>
+	</div>
+</div>
+
+<script>
+	// ---- semitone geometry for a one-octave C..C keyboard ----
+	// white keys C D E F G A B C, black keys between them
+	const WHITE = [
+		{ semi: 0, letter: 'C' }, { semi: 2, letter: 'D' }, { semi: 4, letter: 'E' },
+		{ semi: 5, letter: 'F' }, { semi: 7, letter: 'G' }, { semi: 9, letter: 'A' },
+		{ semi: 11, letter: 'B' }, { semi: 12, letter: 'C' }
+	];
+	// black key: semitone + index of the white key it sits after
+	const BLACK = [
+		{ semi: 1, after: 0, letter: 'C♯' }, { semi: 3, after: 1, letter: 'D♯' },
+		{ semi: 6, after: 3, letter: 'F♯' }, { semi: 8, after: 4, letter: 'G♯' },
+		{ semi: 10, after: 5, letter: 'A♯' }
+	];
+
+	// Build a keyboard into `el`. opts: onTap(semi), showTags(bool)
+	function buildKeyboard(el, opts) {
+		opts = opts || {};
+		el.innerHTML = '';
+		const w = 100 / WHITE.length;
+		const bw = w * 0.62;
+		WHITE.forEach((k, i) => {
+			const d = document.createElement('button');
+			d.type = 'button';
+			d.className = 'key white';
+			d.style.left = (i * w) + '%';
+			d.style.width = w + '%';
+			d.dataset.semi = k.semi;
+			d.dataset.pos = i;
+			if (opts.showTags) d.innerHTML = '<span class="tag">' + k.letter + '</span>';
+			if (opts.onTap) d.onclick = () => opts.onTap(k.semi, d);
+			el.appendChild(d);
+		});
+		BLACK.forEach((k) => {
+			const d = document.createElement('button');
+			d.type = 'button';
+			d.className = 'key black';
+			d.style.left = ((k.after + 1) * w - bw / 2) + '%';
+			d.style.width = bw + '%';
+			d.dataset.semi = k.semi;
+			if (opts.showTags) d.innerHTML = '<span class="tag">' + k.letter + '</span>';
+			if (opts.onTap) d.onclick = () => opts.onTap(k.semi, d);
+			el.appendChild(d);
+		});
+		return el;
+	}
+	function keyBySemi(el, semi) {
+		return el.querySelector('.key[data-semi="' + semi + '"]');
+	}
+	function clearLit(el) {
+		el.querySelectorAll('.key').forEach((k) =>
+			k.classList.remove('lit-root', 'lit-third', 'lit-anchor', 'lit-wrong', 'pulse'));
+	}
+	function pulse(k) {
+		if (!k) return;
+		k.classList.remove('pulse');
+		void k.offsetWidth;
+		k.classList.add('pulse');
+	}
+
+	// =================== VARIANT A: guided steps ===================
+	const A_STEPS = [
+		{
+			title: 'The bottom note',
+			body: 'Every third starts from a home note. Tap <span class="hl">C</span> to set your anchor.',
+			target: 0, lit: 'lit-anchor', hear: false
+		},
+		{
+			title: 'A major third is 4 keys up',
+			body: 'Count 4 keys to the right, counting black keys too. That lands on <span class="hl">E</span>. Tap it.',
+			target: 4, lit: 'lit-third', hear: true, keepAnchor: true
+		},
+		{
+			title: 'Hear the bright one',
+			body: 'C and E together. That is a <span class="hl">major third</span> &mdash; open, bright, the happy sound.',
+			target: null, hear: true, auto: true
+		},
+		{
+			title: 'Now the sad one: 3 keys up',
+			body: 'Move the top note down one key, to just <span class="hl">3</span> keys above C. That black key is a <span class="hl">minor third</span> &mdash; darker.',
+			target: 3, lit: 'lit-third', hear: true, keepAnchor: true
+		}
+	];
+	let aStepIdx = 0;
+
+	function renderA() {
+		const wrap = document.getElementById('stepsA');
+		wrap.innerHTML = '';
+		A_STEPS.forEach((s, i) => {
+			const state = i < aStepIdx ? 'done' : i === aStepIdx ? 'active' : 'locked';
+			const step = document.createElement('div');
+			step.className = 'step';
+			step.dataset.state = state;
+			let inner = '<div class="step-head">' +
+				'<span class="step-num">' + (i + 1) + '</span>' +
+				'<span class="step-title">' + s.title + '</span>' +
+				(state === 'done' ? '<span class="done-chip">&#10003; done</span>' : '') +
+				'</div>' +
+				'<div class="step-body">' + s.body + '</div>';
+			step.innerHTML = inner;
+
+			if (state === 'active') {
+				const kb = document.createElement('div');
+				kb.className = 'kb';
+				step.appendChild(kb);
+				const showTags = true;
+				buildKeyboard(kb, {
+					showTags,
+					onTap: (semi, d) => handleAtap(s, semi, kb, step)
+				});
+				if (s.keepAnchor) {
+					const a = keyBySemi(kb, 0);
+					if (a) a.classList.add('lit-anchor');
+				}
+				const cl = document.createElement('div');
+				cl.className = 'check-line';
+				cl.id = 'checkA';
+				step.appendChild(cl);
+
+				if (s.auto) {
+					// "hear it" step: no keyboard tap needed, just a play + continue
+					kb.querySelectorAll('.key[data-semi="0"], .key[data-semi="4"]').forEach((k) => k.classList.add('lit-third'));
+					keyBySemi(kb, 0).classList.remove('lit-third');
+					keyBySemi(kb, 0).classList.add('lit-anchor');
+					const hb = document.createElement('button');
+					hb.className = 'btn ghost hearbtn';
+					hb.innerHTML = '&#9835; Hear the major third';
+					hb.onclick = () => { pulse(keyBySemi(kb, 0)); pulse(keyBySemi(kb, 4)); };
+					step.appendChild(hb);
+					const cont = document.createElement('button');
+					cont.className = 'btn primary';
+					cont.textContent = 'Continue →';
+					cont.style.marginLeft = '8px';
+					cont.onclick = () => { aStepIdx++; renderA(); };
+					step.appendChild(cont);
+				}
+			}
+			wrap.appendChild(step);
+		});
+
+		document.getElementById('handoffA').classList.toggle('hidden', aStepIdx < A_STEPS.length);
+	}
+
+	function handleAtap(step, semi, kb, stepEl) {
+		const cl = stepEl.querySelector('#checkA');
+		if (semi === step.target) {
+			clearLit(kb);
+			if (step.keepAnchor) { const a = keyBySemi(kb, 0); if (a) a.classList.add('lit-anchor'); }
+			const k = keyBySemi(kb, semi);
+			k.classList.add(step.lit || 'lit-third');
+			pulse(k);
+			cl.className = 'check-line ok';
+			cl.innerHTML = '<span class="mk">&#10003;</span> That’s it. Nicely found.';
+			// reveal continue
+			if (!stepEl.querySelector('.contA')) {
+				const row = document.createElement('div');
+				row.style.marginTop = '8px';
+				if (step.hear) {
+					const hb = document.createElement('button');
+					hb.className = 'btn ghost hearbtn';
+					hb.innerHTML = '&#9835; Hear it';
+					hb.onclick = () => { if (step.keepAnchor) pulse(keyBySemi(kb, 0)); pulse(k); };
+					row.appendChild(hb);
+				}
+				const cont = document.createElement('button');
+				cont.className = 'btn primary contA';
+				cont.textContent = 'Continue →';
+				cont.style.marginLeft = step.hear ? '8px' : '0';
+				cont.onclick = () => { aStepIdx++; renderA(); };
+				row.appendChild(cont);
+				stepEl.appendChild(row);
+			}
+		} else {
+			const k = keyBySemi(kb, semi);
+			k.classList.add('lit-wrong');
+			setTimeout(() => k.classList.remove('lit-wrong'), 450);
+			cl.className = 'check-line retry';
+			const dist = semi - 0;
+			cl.innerHTML = '<span class="mk">↺</span> Close &mdash; that’s ' + dist + ' up. Try again, count ' + (step.target) + '.';
+		}
+	}
+
+	// =================== VARIANT B: lesson map ===================
+	const B_UNITS = [
+		{ name: 'Intervals', lessons: [
+			{ id: 'i1', name: 'Half-steps and whole-steps', done: true },
+			{ id: 'i2', name: 'Major third vs minor third', done: false, current: true, interactive: true },
+			{ id: 'i3', name: 'The perfect fifth', done: false }
+		]},
+		{ name: 'Triads', lessons: [
+			{ id: 't1', name: 'Stacking two thirds', done: false, locked: true },
+			{ id: 't2', name: 'Major vs minor triads', done: false, locked: true }
+		]},
+		{ name: '7th chords', lessons: [
+			{ id: 's1', name: 'Adding the seventh', done: false, locked: true }
+		]}
+	];
+	let bOpen = null;      // id currently expanded
+	let bStep = 0;         // progress inside the opened lesson (0 = anchor, 1 = major done, 2 = minor done)
+	let bDoneI2 = false;
+
+	function renderB() {
+		const map = document.getElementById('mapB');
+		map.innerHTML = '';
+		B_UNITS.forEach((u) => {
+			const h = document.createElement('p');
+			h.className = 'unit-head';
+			h.textContent = u.name;
+			map.appendChild(h);
+			u.lessons.forEach((l) => {
+				let state = 'future';
+				if (l.locked) state = 'locked';
+				else if (l.done || (l.id === 'i2' && bDoneI2)) state = 'done';
+				else if (l.current && !bDoneI2) state = 'current';
+				const row = document.createElement('button');
+				row.type = 'button';
+				row.className = 'lesson-row';
+				row.dataset.state = state;
+				row.setAttribute('aria-expanded', String(bOpen === l.id));
+				const mk = state === 'done' ? '&#10003;' : state === 'current' ? '&#9679;' : state === 'locked' ? '&#128274;' : '&#9675;';
+				row.innerHTML = '<span class="mk">' + mk + '</span><span class="lname">' + l.name + '</span>';
+				if (l.interactive && state !== 'locked') {
+					row.onclick = () => { bOpen = bOpen === l.id ? null : l.id; renderB(); };
+				}
+				map.appendChild(row);
+			});
+		});
+		renderOpenB();
+	}
+
+	function renderOpenB() {
+		const host = document.getElementById('openB');
+		if (bOpen !== 'i2') { host.innerHTML = ''; return; }
+		host.innerHTML = '<div class="lesson-open" id="lessonOpenB"></div>';
+		const box = document.getElementById('lessonOpenB');
+		const majDone = bStep >= 1;
+		const minDone = bStep >= 2;
+		box.innerHTML =
+			'<p class="reg" style="margin:0 0 8px;">Intervals &middot; Lesson 2</p>' +
+			'<p class="prompt say" style="font-size:var(--text-heading);margin:0 0 12px;">Major third vs minor third</p>' +
+			'<p class="prompt">' + (!majDone
+				? 'Anchor on <strong>C</strong>, then tap the note <strong>4 keys up</strong> (that’s E). Four keys = the <span style="color:var(--color-third);font-weight:700;">major</span>, happy third.'
+				: !minDone
+					? 'Good. Now the darker one: tap only <strong>3 keys up</strong> from C. Three keys = the <span style="color:var(--color-vermilion);font-weight:700;">minor</span>, sad third.'
+					: 'That’s both. One key of difference flips a chord from bright to dark.') + '</p>';
+		const kb = document.createElement('div');
+		kb.className = 'kb';
+		box.appendChild(kb);
+		buildKeyboard(kb, { showTags: true, onTap: (semi, d) => handleBtap(semi, kb) });
+		// persistent anchor + any earned thirds
+		const anchor = keyBySemi(kb, 0); if (anchor) anchor.classList.add('lit-anchor');
+		if (majDone) keyBySemi(kb, 4).classList.add('lit-third');
+		if (minDone) keyBySemi(kb, 3).classList.add('lit-third');
+		const cl = document.createElement('div');
+		cl.className = 'check-line';
+		cl.id = 'checkB';
+		box.appendChild(cl);
+		if (minDone) {
+			cl.className = 'check-line ok';
+			cl.innerHTML = '<span class="mk">&#10003;</span> Lesson complete.';
+			const done = document.createElement('button');
+			done.className = 'btn primary';
+			done.textContent = 'Mark done & unlock next →';
+			done.onclick = () => {
+				bDoneI2 = true;
+				B_UNITS[1].lessons.forEach((l) => l.locked = false);
+				bOpen = null;
+				renderB();
+				document.getElementById('handoffBholder').classList.remove('hidden');
+			};
+			box.appendChild(done);
+		}
+		// handoff appears after completion, below the map
+		if (!document.getElementById('handoffBholder')) {
+			const ho = document.createElement('div');
+			ho.id = 'handoffBholder';
+			ho.className = 'handoff hidden';
+			ho.innerHTML = '<p class="reg">Lesson done &middot; next unlocked</p>' +
+				'<h3>Ready to build chords</h3>' +
+				'<p>You just unlocked <em>Triads</em>. But first, lock the third in with a few reps. The beginner course on /drills asks you to spell chords like this.</p>' +
+				'<p class="chip">Cm &middot; what notes?</p>' +
+				'<button class="btn">Try this in a drill →</button>';
+			document.querySelector('.panel[data-tab="B"]').appendChild(ho);
+		}
+	}
+
+	function handleBtap(semi, kb) {
+		const cl = document.getElementById('checkB');
+		const want = bStep === 0 ? 4 : bStep === 1 ? 3 : null;
+		if (want === null) return;
+		if (semi === want) {
+			const k = keyBySemi(kb, semi);
+			k.classList.add('lit-third');
+			pulse(keyBySemi(kb, 0)); pulse(k);
+			bStep++;
+			renderOpenB();
+		} else if (semi === 0) {
+			// tapping anchor just replays
+			pulse(kb.querySelector('.key[data-semi="0"]'));
+		} else {
+			const k = keyBySemi(kb, semi);
+			k.classList.add('lit-wrong');
+			setTimeout(() => k.classList.remove('lit-wrong'), 450);
+			cl.className = 'check-line retry';
+			cl.innerHTML = '<span class="mk">↺</span> Not quite. Count keys up from C &mdash; you need ' + want + '.';
+		}
+	}
+
+	// =================== VARIANT C: play-first ===================
+	// stage 0: play C ; 1: play 4 up (major) ; 2: play 3 up (minor) ; 3: done
+	let cStage = 0;
+	function renderC() {
+		const kb = document.getElementById('kbC');
+		buildKeyboard(kb, { showTags: false, onTap: (semi, d) => handleCtap(semi, kb) });
+		paintC(kb);
+		updatePromptC();
+	}
+	function paintC(kb) {
+		clearLit(kb);
+		if (cStage >= 1) keyBySemi(kb, 0).classList.add('lit-anchor');
+		if (cStage >= 2) keyBySemi(kb, 4).classList.add('lit-third');
+		if (cStage >= 3) keyBySemi(kb, 3).classList.add('lit-third');
+	}
+	function updatePromptC() {
+		const p = document.getElementById('promptC');
+		const cnt = document.getElementById('cntC');
+		if (cStage === 0) { p.innerHTML = 'Play <strong>C</strong>. <span class="cnt" id="cntC"></span>'; }
+		else if (cStage === 1) { p.innerHTML = 'Good. Now play the note <strong>4 keys to the right</strong>. <span class="cnt">count black keys too</span>'; }
+		else if (cStage === 2) { p.innerHTML = 'Now play only <strong>3 keys up</strong> from C instead. <span class="cnt">one key lower than before</span>'; }
+		else { p.innerHTML = 'You just played both thirds. <span class="cnt">feel the difference?</span>'; }
+	}
+	function addNuggetC(kind) {
+		const host = document.getElementById('nuggetsC');
+		const n = document.createElement('div');
+		n.className = 'nugget' + (kind === 'minor' ? ' minor' : '');
+		if (kind === 'major') {
+			n.innerHTML = '<span class="big maj">That’s a MAJOR THIRD</span>' +
+				'<span class="exp">Four keys apart, C to E. Bright, open, happy. This is the middle note of a major chord.</span>';
+		} else {
+			n.innerHTML = '<span class="big min">That’s a MINOR THIRD</span>' +
+				'<span class="exp">Three keys, C to E-flat. One key lower and the whole thing turns sad. That single key is what separates a major chord from a minor one.</span>';
+		}
+		host.appendChild(n);
+	}
+	function handleCtap(semi, kb) {
+		if (cStage === 0) {
+			if (semi === 0) { cStage = 1; paintC(kb); updatePromptC(); pulse(keyBySemi(kb, 0)); }
+			else wrongFlashC(kb, semi);
+		} else if (cStage === 1) {
+			if (semi === 4) { cStage = 2; paintC(kb); pulse(keyBySemi(kb, 4)); addNuggetC('major'); updatePromptC(); }
+			else wrongFlashC(kb, semi);
+		} else if (cStage === 2) {
+			if (semi === 3) {
+				cStage = 3; paintC(kb); pulse(keyBySemi(kb, 3)); addNuggetC('minor'); updatePromptC();
+				document.getElementById('handoffC').classList.remove('hidden');
+			} else wrongFlashC(kb, semi);
+		} else {
+			// replay
+			pulse(keyBySemi(kb, semi));
+		}
+	}
+	function wrongFlashC(kb, semi) {
+		const k = keyBySemi(kb, semi);
+		if (!k) return;
+		k.classList.add('lit-wrong');
+		setTimeout(() => { k.classList.remove('lit-wrong'); paintC(kb); }, 400);
+	}
+
+	// =================== tabs ===================
+	document.querySelectorAll('.tab').forEach((tab) => {
+		tab.onclick = () => {
+			const id = tab.dataset.tab;
+			document.querySelectorAll('.tab').forEach((t) => t.setAttribute('aria-selected', String(t === tab)));
+			document.querySelectorAll('.panel').forEach((p) => p.setAttribute('data-active', String(p.dataset.tab === id)));
+		};
+	});
+
+	renderA();
+	renderB();
+	renderC();
+</script>

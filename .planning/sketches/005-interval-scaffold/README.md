@@ -2,7 +2,7 @@
 sketch: 005
 name: interval-scaffold
 question: "How should an always-on interval scaffold appear DURING a chord drill (while answering, not just on reveal), and how does it fade as the user levels up?"
-winner: null
+winner: "A"
 tags: [drills, intervals, scaffold, learning]
 ---
 

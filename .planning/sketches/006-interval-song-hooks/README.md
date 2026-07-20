@@ -2,7 +2,7 @@
 sketch: 006
 name: interval-song-hooks
 question: "How should the optional famous-tune interval hook appear, opt-in per interval (tap to reveal), tasteful and not cheesy?"
-winner: null
+winner: "A"
 tags: [intervals, mnemonics, ear-training, learning]
 ---
 

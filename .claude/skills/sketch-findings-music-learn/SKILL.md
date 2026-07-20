@@ -10,13 +10,13 @@ Print Shop identity (locked by 01-UI-SPEC): letterpress paper/ink palette, zero 
 
 Reference points: the app itself (src/routes/drills, PianoKeyboard.svelte) — sketches evolve existing surfaces.
 
-Sketch sessions wrapped: 2026-07-13
+Sketch sessions wrapped: 2026-07-13, 2026-07-20
 </context>
 
 <design_direction>
 ## Overall Direction
 
-Wrong-answer drill feedback collapses to ONE keyboard that transforms in place: interval colors stamp the correct chord, the user's wrong extras go gray with ✕ tags. Simplest read wins over richer diff grammars. All treatments must survive the one-octave phone keyboard (Phase 9 responsive-octaves rule) and reuse the existing stamp-in beat.
+Print Shop, phone-first. Locked house references: serif `ChordGlyph` (`--font-serif`/`--text-display`) + the 240ms `stamp-in` reveal animation reused across all reveal surfaces. House rule from sessions 4–5: **docked actions** — anything the user must tap to advance (keyboard, Révéler/grade buttons) lives in a dock pinned above the phone tab bar, never in scrolling content. Escalating help follows the **fold-into-deepest-rung** pattern: hint ladders whose richest content (dossier, side-by-side comparison) is the last rung, never shown first. Wrong-answer feedback stays one keyboard transforming in place (interval colors + gray ✕ extras).
 </design_direction>
 
 <findings_index>
@@ -24,7 +24,12 @@ Wrong-answer drill feedback collapses to ONE keyboard that transforms in place: 
 
 | Area | Reference | Key Decision |
 |------|-----------|--------------|
-| Drill Feedback | references/drill-feedback.md | Merged in-place feedback keyboard: interval colors for the chord, gray + ✕ for extras, no played-vs-missed distinction |
+| Drill Feedback | references/drill-feedback.md | Merged in-place feedback keyboard: interval colors for the chord, gray + ✕ for extras |
+| Scales & Interval Keyboard | references/scales-interval-keyboard.md | Tonic-anchored degree strip (002-B), floating/corner interval badges (003-C), degree-ladder ascending drill (004-A) |
+| Drill Scaffolding & Onboarding | references/drill-scaffolding-onboarding.md | Formula strip fading with level (005-A), inline tap-to-reveal song hooks (006-A), course stepper with tier names + ghosted advanced tiers (007-A) |
+| Global Layout & Mobile Nav | references/global-layout-mobile-nav.md | Docked keyboard (008-A), header EN\|FR toggle (013-A), review action dock (014-A), icon + micro-label 56px tab bar (015-B) |
+| Teaching & Hints | references/teaching-hints.md | Hint ladder with dossier as deepest rung (010-A), guided lesson steps (012-A), lookup disambiguation chips + "Pourquoi ces notes ?" panel (016 A+B) |
+| Audio & Song Provenance | references/audio-song-provenance.md | Auto-play + pulse on reveal, arpeggio study mode (009-A), provenance mark + "From my songs" filter (011-A) |
 
 ## Theme
 
@@ -39,4 +44,19 @@ Original sketch HTML files are preserved in `sources/` for complete reference.
 ## Processed Sketches
 
 - 001-merged-feedback-keyboard
+- 002-scale-tonic-anchored
+- 003-interval-distance-badge
+- 004-scale-drill-ascending
+- 005-interval-scaffold
+- 006-interval-song-hooks
+- 007-beginner-onramp
+- 008-keyboard-everywhere
+- 009-hear-the-chord
+- 010-chord-explainer
+- 011-your-songs-chords
+- 012-interactive-theory
+- 013-french-fit-test
+- 014-mobile-review-flow
+- 015-icon-tab-bar
+- 016-lookup-why-panel
 </metadata>
