@@ -97,6 +97,62 @@
   <button class="variant-tab active" onclick="showVariant('a', event)">A: Voicing selector</button>
   <button class="variant-tab" onclick="showVariant('b', event)">B: Teach by subtraction</button>
   <button class="variant-tab" onclick="showVariant('c', event)">C: Lookup compare</button>
+  <button class="variant-tab" onclick="showVariant('s', event)">Synthesis: staged mix</button>
+</div>
+
+<!-- ============ SYNTHESIS: C INTRO → B TEACH → A DRILL, STAGED BY CARD STATE ============ -->
+<div id="variant-s" class="variant">
+  <div class="phone">
+    <div class="masthead"><span class="brand">Music Learn</span><span class="reg">BUILD · VOICINGS</span></div>
+    <div class="content">
+      <div class="steps">
+        <span class="st" id="ss1">1 Meet</span><span class="st" id="ss2">2 Subtract</span><span class="st" id="ss3">3 Drill</span>
+      </div>
+
+      <!-- Stage 1: compare card (C) -->
+      <div id="stage1S">
+        <div class="glyph stamp" style="font-size:40px">Dm7</div>
+        <div class="prompt-line">First time in shell mode. Two ways to voice the same chord:</div>
+        <div class="compare">
+          <div class="vcard">
+            <h4>Root position <span class="use">what you know</span></h4>
+            <div class="piano mini" id="pianoS1a"></div>
+          </div>
+          <div class="vcard">
+            <h4>Shell <span class="use">what players use</span></h4>
+            <div class="piano mini" id="pianoS1b"></div>
+            <p>Just 3rd + 7th. The bass or the symbol covers the rest.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stage 2: subtraction (B) -->
+      <div id="stage2S" style="display:none">
+        <div class="glyph stamp" style="font-size:40px">Dm7</div>
+        <div class="prompt-line">Drop what the symbol already tells you.</div>
+        <div class="piano" id="pianoS2"></div>
+        <div class="teach shown">
+          <span class="fn">The subtraction rule</span>
+          <b class="strike">D root</b>: named by the symbol. <b class="strike">A fifth</b>: no color.
+          Keep <b>F</b> (minor 3rd) and <b>C</b> (flat 7).
+        </div>
+      </div>
+
+      <!-- Stage 3: drill (A) -->
+      <div id="stage3S" style="display:none">
+        <div class="voicing-row">
+          <button class="vchip" onclick="voicingA(this)">Root<span class="cnt">4 notes</span></button>
+          <button class="vchip on" onclick="voicingA(this)">Shell<span class="cnt">3rd + 7th</span></button>
+          <button class="vchip" onclick="voicingA(this)">Rootless A<span class="cnt">4 notes</span></button>
+        </div>
+        <div class="glyph stamp">Gm7</div>
+        <div class="prompt-line">New chord, same rule. Play the <b>shell</b>.</div>
+        <div class="piano" id="pianoS3"></div>
+      </div>
+    </div>
+    <div class="dock"><button class="btn primary" id="dockS" onclick="nextStageS()">Got it, show me how</button></div>
+  </div>
+  <div class="note">Synthesis: all three, staged by card state. NEW shell card = C's compare intro (once). LEARNING = B's subtraction with the full stack draining. REVIEW = A's selector drill, cold. Mirrors the 005 fading-scaffold rule: rich help first, bare drill once mature.</div>
 </div>
 
 <!-- ============ VARIANT A: VOICING SELECTOR IN THE DRILL ============ -->
@@ -212,7 +268,54 @@ function buildPiano(el) {
     el.appendChild(k);
   });
 }
-['pianoA','pianoB','pianoC1','pianoC2','pianoC3'].forEach(id => buildPiano(document.getElementById(id)));
+['pianoA','pianoB','pianoC1','pianoC2','pianoC3','pianoS1a','pianoS1b','pianoS2','pianoS3'].forEach(id => buildPiano(document.getElementById(id)));
+
+// Synthesis stages
+let stageS = 1;
+(function initS() {
+  // Stage 1 compare: Dm7 root position (D F A C) vs shell (F C)
+  const a = document.getElementById('pianoS1a');
+  wk(a,1).classList.add('k-root'); wk(a,3).classList.add('k-third');
+  wk(a,5).classList.add('k-fifth'); wk(a,7).classList.add('k-seventh');
+  const b = document.getElementById('pianoS1b');
+  wk(b,3).classList.add('k-third'); wk(b,7).classList.add('k-seventh');
+  // Stage 2 full stack ready to subtract
+  const p2 = document.getElementById('pianoS2');
+  wk(p2,1).classList.add('k-root'); wk(p2,3).classList.add('k-third');
+  wk(p2,5).classList.add('k-fifth'); wk(p2,7).classList.add('k-seventh');
+})();
+function nextStageS() {
+  const d = document.getElementById('dockS');
+  if (stageS === 1) {
+    stageS = 2;
+    document.getElementById('stage1S').style.display = 'none';
+    document.getElementById('stage2S').style.display = 'block';
+    document.getElementById('ss1').classList.remove('now'); document.getElementById('ss2').classList.add('now');
+    d.textContent = 'Subtract root + fifth';
+  } else if (stageS === 2) {
+    const p2 = document.getElementById('pianoS2');
+    if (!p2.dataset.subtracted) {
+      p2.dataset.subtracted = '1';
+      wk(p2,1).classList.remove('k-root'); wk(p2,1).classList.add('k-ghost'); wk(p2,1).dataset.ghost = 'R';
+      wk(p2,5).classList.remove('k-fifth'); wk(p2,5).classList.add('k-ghost'); wk(p2,5).dataset.ghost = '5';
+      d.textContent = 'Drill it cold';
+    } else {
+      stageS = 3;
+      document.getElementById('stage2S').style.display = 'none';
+      document.getElementById('stage3S').style.display = 'block';
+      document.getElementById('ss2').classList.remove('now'); document.getElementById('ss3').classList.add('now');
+      d.textContent = 'Check';
+    }
+  } else {
+    // Gm7 shell: Bb(3rd, black key) + F(7th)
+    const p3 = document.getElementById('pianoS3');
+    bk(p3,4).classList.add('k-third');
+    wk(p3,3).classList.add('k-seventh');
+    wk(p3,4).classList.add('k-ghost'); wk(p3,4).dataset.ghost = 'R';
+    wk(p3,8).classList.add('k-ghost'); wk(p3,8).dataset.ghost = '5';
+  }
+}
+document.getElementById('ss1').classList.add('now');
 
 function wk(el, i) { return el.querySelectorAll('.wk')[i]; }
 function bk(el, i) { return el.querySelectorAll('.bk')[i]; }
@@ -251,12 +354,12 @@ function subtractB(btn) {
 (function initC() {
   const c1 = document.getElementById('pianoC1');
   wk(c1,0).classList.add('k-root'); bk(c1,1).classList.add('k-third');
-  wk(c1,4).classList.add('k-fifth'); bk(c1,6).classList.add('k-seventh');
+  wk(c1,4).classList.add('k-fifth'); bk(c1,4).classList.add('k-seventh');
   const c2 = document.getElementById('pianoC2');
-  bk(c2,1).classList.add('k-third'); bk(c2,6).classList.add('k-seventh');
+  bk(c2,1).classList.add('k-third'); bk(c2,4).classList.add('k-seventh');
   const c3 = document.getElementById('pianoC3');
   bk(c3,1).classList.add('k-third'); wk(c3,4).classList.add('k-fifth');
-  bk(c3,6).classList.add('k-seventh'); wk(c3,8).style.background = 'var(--color-second)';
+  bk(c3,4).classList.add('k-seventh'); wk(c3,8).style.background = 'var(--color-second)';
 })();
 </script>
 </body>

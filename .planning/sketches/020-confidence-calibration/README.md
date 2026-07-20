@@ -2,7 +2,7 @@
 sketch: 020
 name: confidence-calibration
 question: "Where does the pre-reveal 'how sure?' prompt sit, and how does confidence-vs-correctness render on stats?"
-winner: null
+winner: "B"
 tags: [recall, metacognition, stats, learning]
 ---
 

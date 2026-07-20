@@ -21,6 +21,7 @@ open .planning/sketches/019-shell-voicings/index.html
 - **A: Voicing selector** — 3-position selector (Root / Shell / Rootless A) above the drill prompt; shell reveal colors 3rd + 7th, renders root + fifth as hatched "optional" ghosts with a why-only-two teach panel.
 - **B: Teach by subtraction** — guided-steps lesson (012-A pattern): show the full stack, then visibly drain root + fifth to ghost hatch on tap ("drop what the symbol already tells you"), keep the tritone.
 - **C: Lookup compare** — voicings enter through lookup: every result gets 3 stacked cards (root / shell / rootless A) with when-to-use labels. No drill changes.
+- **Synthesis: staged mix** — all three staged by FSRS card state: NEW shell card gets C's compare intro (once), LEARNING gets B's subtraction drain, REVIEW gets A's cold selector drill. Mirrors the 005 fading-scaffold rule.
 
 ## What to Look For
 

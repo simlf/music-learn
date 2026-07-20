@@ -21,6 +21,7 @@ open .planning/sketches/017-progression-drill/index.html
 - **A: Progression rail** — persistent 3-slot rail (done / current / masked upcoming) above the standard glyph + keyboard drill; functional reveal panel after each check.
 - **B: Roman-first** — two-step: derive the symbol from the roman numeral via multiple choice, then play it. Trains numeral-to-symbol mapping explicitly.
 - **C: Lead-sheet strip** — the drill is the song: a real lead-sheet measure grid (Autumn Leaves, provenance mark) with a moving bar cursor; play in reading order.
+- **Synthesis: C sheet + B derive** — C's lead-sheet grid as container (symbols hidden until earned, numerals visible), each cursor bar runs B's two-step: name from numeral, then play. Sheet fills in as you go.
 
 ## What to Look For
 

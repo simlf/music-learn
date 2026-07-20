@@ -146,6 +146,45 @@
   <button class="variant-tab active" onclick="showVariant('a', event)">A: Progression rail</button>
   <button class="variant-tab" onclick="showVariant('b', event)">B: Roman-first</button>
   <button class="variant-tab" onclick="showVariant('c', event)">C: Lead-sheet strip</button>
+  <button class="variant-tab" onclick="showVariant('s', event)">Synthesis: C sheet + B derive</button>
+</div>
+
+<!-- ============ SYNTHESIS: LEAD-SHEET CONTAINER + ROMAN-FIRST STEP ============ -->
+<div id="variant-s" class="variant">
+  <div class="phone">
+    <div class="masthead"><span class="brand">Music Learn</span><span class="reg">READ-THROUGH</span></div>
+    <div class="content">
+      <div class="sheet">
+        <div class="sheet-title">Autumn Leaves <span class="prov">◈ from my songs</span></div>
+        <div class="measures">
+          <div class="measure played"><div class="msym">Cm7</div><div class="mrn">ii</div></div>
+          <div class="measure cursor"><div class="msym" id="cursym">?</div><div class="mrn">V</div></div>
+          <div class="measure future"><div class="msym">?</div><div class="mrn">I</div></div>
+          <div class="measure future"><div class="msym">?</div><div class="mrn">IV</div></div>
+        </div>
+      </div>
+
+      <div class="key-banner"><span>KEY: <b>B♭ MAJOR</b></span><span id="stepS">STEP 1: NAME THE V</span></div>
+
+      <div class="rn-big stamp" id="rnS" style="font-size:56px">V</div>
+      <div class="prompt-line" id="promptS">The cursor bar is the <b>V</b> of B♭. Which chord?</div>
+
+      <div class="derive-chips" id="chipsS">
+        <button class="chip" onclick="pickS(this, false)">B♭7</button>
+        <button class="chip" onclick="pickS(this, true)">F7</button>
+        <button class="chip" onclick="pickS(this, false)">C7</button>
+        <button class="chip" onclick="pickS(this, false)">Fm7</button>
+      </div>
+
+      <div class="piano" id="pianoS" style="display:none"></div>
+      <div class="function-reveal" id="revealS">
+        <span class="fn">Step 2: play F7</span>
+        Right: F7 is the V of B♭. Now play it. When you land it, the bar fills in on the sheet.
+      </div>
+    </div>
+    <div class="dock"><button class="btn primary" id="dockS" onclick="checkS()" style="opacity:.45" disabled>Name it first</button></div>
+  </div>
+  <div class="note">Synthesis: C's lead-sheet grid is the container (symbols hidden until earned, numerals always visible), and each cursor bar runs B's two-step: name the chord from the numeral, then play it. Sheet fills in as you progress through the song.</div>
 </div>
 
 <!-- ============ VARIANT A: PROGRESSION RAIL ============ -->
@@ -271,6 +310,27 @@ function buildPiano(el) {
 buildPiano(document.getElementById('pianoA'));
 buildPiano(document.getElementById('pianoB'));
 buildPiano(document.getElementById('pianoC'));
+buildPiano(document.getElementById('pianoS'));
+
+function pickS(chip, right) {
+  chip.classList.add(right ? 'right' : 'wrong');
+  if (right) {
+    document.getElementById('cursym').textContent = 'F7';
+    document.getElementById('stepS').textContent = 'STEP 2: PLAY IT';
+    document.getElementById('rnS').style.display = 'none';
+    document.getElementById('chipsS').style.display = 'none';
+    document.getElementById('promptS').innerHTML = 'Now play <b>F7</b> on the keyboard.';
+    document.getElementById('pianoS').style.display = 'flex';
+    document.getElementById('revealS').classList.add('shown');
+    const d = document.getElementById('dockS');
+    d.textContent = 'Check'; d.disabled = false; d.style.opacity = 1;
+  }
+}
+function checkS() {
+  colorChord(document.getElementById('pianoS'), {0:'k-root',2:'k-third',4:'k-fifth'}); // F A C
+  document.querySelector('#variant-s .measure.cursor').classList.add('played');
+  document.getElementById('stepS').textContent = 'BAR 2 DONE · NEXT: I';
+}
 
 function colorChord(el, map) { // map: {noteIdx: roleClass}
   el.querySelectorAll('.wk').forEach((k,i) => {
