@@ -46,7 +46,7 @@ describe('WhyTheseNotes', () => {
 		expect(within(panel).getByText(/minor third/)).toBeInTheDocument();
 		expect(within(panel).getByText(/3 semitones/)).toBeInTheDocument();
 		// Root/third note letters render verbatim (immune), embedded in the panel.
-		expect(within(panel).getByText('C')).toBeInTheDocument();
+		expect(within(panel).getByText('C', { selector: 'b' })).toBeInTheDocument();
 		expect(within(panel).getByText(/does not impose accidentals/)).toBeInTheDocument();
 	});
 
@@ -56,15 +56,16 @@ describe('WhyTheseNotes', () => {
 		await fireEvent.click(screen.getByTestId('why-toggle'));
 		const duo = screen.getByTestId('why-duo');
 
-		// Both glyphs present.
-		expect(within(duo).getByText('Am7')).toBeInTheDocument();
-		expect(within(duo).getByText('Amaj7')).toBeInTheDocument();
+		// Both readings' symbols present.
+		expect(screen.getByTestId('why-duo-minor-symbol')).toHaveTextContent('Am7');
+		expect(screen.getByTestId('why-duo-major-symbol')).toHaveTextContent('Amaj7');
 		// Differing third.
-		expect(within(duo).getByText('C')).toBeInTheDocument();
-		expect(within(duo).getByText('C♯')).toBeInTheDocument();
+		expect(within(screen.getByTestId('why-duo-minor')).getByText('C')).toBeInTheDocument();
+		expect(within(screen.getByTestId('why-duo-major')).getByText('C♯')).toBeInTheDocument();
 		// Differing seventh.
-		expect(within(duo).getByText('G')).toBeInTheDocument();
-		expect(within(duo).getByText('G♯')).toBeInTheDocument();
+		expect(within(screen.getByTestId('why-duo-minor')).getByText('G')).toBeInTheDocument();
+		expect(within(screen.getByTestId('why-duo-major')).getByText('G♯')).toBeInTheDocument();
+		expect(duo).toBeInTheDocument();
 	});
 
 	it('the duo is prop-driven, not hardcoded: feeding a different counterpart updates the render', async () => {
@@ -73,12 +74,11 @@ describe('WhyTheseNotes', () => {
 		render(WhyTheseNotes, { chord: cm7, counterpart: cmaj7, counterpartSymbol: 'Cmaj7' });
 
 		await fireEvent.click(screen.getByTestId('why-toggle'));
-		const duo = screen.getByTestId('why-duo');
 
-		expect(within(duo).getByText('Cm7')).toBeInTheDocument();
-		expect(within(duo).getByText('Cmaj7')).toBeInTheDocument();
-		expect(within(duo).getByText('E♭')).toBeInTheDocument();
-		expect(within(duo).getByText('E')).toBeInTheDocument();
+		expect(screen.getByTestId('why-duo-minor-symbol')).toHaveTextContent('Cm7');
+		expect(screen.getByTestId('why-duo-major-symbol')).toHaveTextContent('Cmaj7');
+		expect(within(screen.getByTestId('why-duo-minor')).getByText('E♭')).toBeInTheDocument();
+		expect(within(screen.getByTestId('why-duo-major')).getByText('E')).toBeInTheDocument();
 	});
 
 	it('an escape-hatch control emits onLookupCounterpart with the counterpart symbol', async () => {
@@ -125,9 +125,9 @@ describe('WhyTheseNotes: FR locale', () => {
 		expect(within(panel).getByText(/tierce mineure/)).toBeInTheDocument();
 		expect(within(panel).getByText("n'impose rien ici", { exact: false })).toBeInTheDocument();
 		// Symbols/note letters immune.
-		expect(within(panel).getByText('C')).toBeInTheDocument();
-		const duo = screen.getByTestId('why-duo');
-		expect(within(duo).getByText('Am7')).toBeInTheDocument();
-		expect(within(duo).getByText('Amaj7')).toBeInTheDocument();
+		expect(within(panel).getByText('C', { selector: 'b' })).toBeInTheDocument();
+		expect(screen.getByTestId('why-duo')).toBeInTheDocument();
+		expect(screen.getByTestId('why-duo-minor-symbol')).toHaveTextContent('Am7');
+		expect(screen.getByTestId('why-duo-major-symbol')).toHaveTextContent('Amaj7');
 	});
 });
