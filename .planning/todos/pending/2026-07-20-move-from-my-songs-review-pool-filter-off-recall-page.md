@@ -15,4 +15,16 @@ Current wiring: the filter toggle drives RecallSession's applySongFilter() draw 
 
 ## Solution
 
-TBD — discuss first. Options: (a) move the toggle to the Songs page (e.g. a "practice from these songs" control near the song list), (b) put it in a settings surface (the More sheet has room), (c) both with shared persisted state. The recall page would then just read the persisted preference. Watch the phone-first constraint from Phase 23/24 (bottom tab bar, folded chrome) and keep drawFromSymbols/drawFromPool seam untouched (Phase 18-02 decision).
+Decided 2026-07-20 via /gsd-explore:
+
+**Finding:** the toggle is duplicated per-surface today — it renders on BOTH /recall and /drills (`src/routes/recall/+page.svelte` and `src/routes/drills/+page.svelte`, including the drills phone-strip sheet), each with its own localStorage key (`RECALL_SONG_FILTER_KEY` vs `music-learn:drills-song-filter`). So the "preference" can currently diverge between surfaces.
+
+**Decision:** treat it as ONE global "practice from my songs" preference.
+
+- Single localStorage key; migrate by OR-ing the two old keys on first read, then remove them.
+- Control lives on the **Songs page** (not settings): a "Practice pool: my songs" control near the song list, so the songs feeding the pool are visible when flipping it.
+- Remove `SongFilterToggle` usage from /recall and /drills (both desktop placement and the phone-strip sheet); those pages just read the persisted preference.
+- Keep the `drawFromSymbols`/`drawFromPool` seam untouched (Phase 18-02 decision) — only the source of `songFilterOn` changes.
+- Keep the empty-provenance fallback behavior (`songFallbackActive`) working on both consumers.
+- Phone-first constraint from Phase 23/24 applies to the new Songs-page control (bottom tab bar, folded chrome).
+- Update/relocate the existing tests: `songFilterToggle.test.ts`, `recallSongFilter.test.ts`, `drillsSongFilter.test.ts`, plus phone-strip test expectations.
