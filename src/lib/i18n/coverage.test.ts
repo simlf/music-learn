@@ -329,13 +329,19 @@ describe('Recall + RecallMap FR wiring (I18N-02) + grade-grid fit rule (I18N-03)
 		render(RecallPage);
 		await waitFor(() => screen.getByTestId('recall-prompt'));
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Voir la réponse' }));
+		// Phase 24-01 (Sketch 014-A action dock): the Show Answer/grade actions
+		// now render in both the phone-only recall-action-dock and the desktop
+		// in-flow slot (jsdom never evaluates the hiding media query), so scope
+		// to the dock - the one unambiguous location - as this file's own
+		// masthead/tab-bar tests already do for the 23-04 dual-render.
+		const dock = within(screen.getByTestId('recall-action-dock'));
+		await fireEvent.click(dock.getByRole('button', { name: 'Voir la réponse' }));
 
-		const grid = screen.getByTestId('recall-grade-grid');
+		const grid = dock.getByTestId('recall-grade-grid');
 		expect(grid.className).toContain('grid-cols-2');
 		expect(grid.className).toContain('sm:grid-cols-4');
-		expect(screen.getByText('À revoir')).toBeInTheDocument();
-		expect(screen.getByText('Facile')).toBeInTheDocument();
+		expect(dock.getByText('À revoir')).toBeInTheDocument();
+		expect(dock.getByText('Facile')).toBeInTheDocument();
 	});
 });
 

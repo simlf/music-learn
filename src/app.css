@@ -107,6 +107,15 @@ body {
 	 * than a hand-copied calc per +page.svelte.
 	 */
 	--tab-bar-clearance: calc(64px + env(safe-area-inset-bottom));
+
+	/*
+	 * Phone-only review-page action dock clearance (Phase 24 Plan 01, Sketch
+	 * 014-A, issue #14 point 1). Stacks on top of --tab-bar-clearance (the
+	 * dock is pinned directly above the bottom tab bar, not in place of it).
+	 * ~60px covers one docked button row's content height plus its
+	 * top border and padding (RecallSession.svelte's .review-action-dock).
+	 */
+	--review-dock-clearance: 60px;
 }
 
 /*
@@ -118,6 +127,19 @@ body {
 @media (max-width: 639.98px) {
 	main {
 		padding-bottom: var(--tab-bar-clearance);
+	}
+}
+
+/*
+ * Review page (/recall) only: extra phone bottom clearance so the review
+ * card's last content row (reveal prose, keyboard) isn't hidden behind the
+ * fixed .review-action-dock, which sits on top of the shared tab-bar
+ * clearance above. Scoped to the recall route's own main via a data
+ * attribute set on that page, so no other route's padding changes.
+ */
+@media (max-width: 639.98px) {
+	main[data-review-dock] {
+		padding-bottom: calc(var(--tab-bar-clearance) + var(--review-dock-clearance));
 	}
 }
 

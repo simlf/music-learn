@@ -49,7 +49,10 @@
 	}
 </script>
 
-<main class="bg-paper text-ink min-h-screen px-2 py-8 font-sans sm:px-8">
+<main
+	class="bg-paper text-ink min-h-screen px-2 py-8 font-sans sm:px-8"
+	data-review-dock={mode === 'review' ? '' : undefined}
+>
 	<h1 class="text-heading mt-2 font-bold">{t('recall.page.title')}</h1>
 	<p class="text-muted mt-2">
 		{t('recall.page.subtitle')}
