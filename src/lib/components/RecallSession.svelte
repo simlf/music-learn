@@ -618,6 +618,33 @@
 	each mode's block below. Mode C ('formula-build') renders nothing here;
 	the embedded BuildSession owns its own keyboard.
 -->
+{#snippet formulaActions()}
+	{#if !revealed}
+		<div class="review-action-dock__row">
+			<Button type="button" variant="primary" onclick={handleReveal}
+				>{t('recall.cta.show-answer')}</Button
+			>
+		</div>
+	{:else}
+		<div class="grid grid-cols-2 gap-2 sm:grid-cols-4" data-testid="recall-grade-grid">
+			{#each GRADES as grade (grade.rating)}
+				<Button
+					type="button"
+					variant="ghost"
+					style={gradeButtonStyle(grade.rating)}
+					data-testid={`recall-grade-${grade.label.toLowerCase()}`}
+					onclick={() => handleGrade(grade.rating)}
+				>
+					<span class="flex flex-col items-center gap-1">
+						<span class="text-heading font-bold">{grade.label}</span>
+						<span class="text-label font-mono">{intervalTag(grade.rating)}</span>
+					</span>
+				</Button>
+			{/each}
+		</div>
+	{/if}
+{/snippet}
+
 {#snippet modeKeyboard()}
 	{#if currentItem?.mode === 'see-play' && currentFact?.factKind === 'chord-formula'}
 		{@const target = spellChord(currentFact.symbol)}
@@ -709,6 +736,23 @@
 		{MODE_LABELS[currentItem.mode as Mode]}
 	</p>
 
+	<!--
+		Phone-only fixed action dock (Sketch 014-A, issue #14 point 1): pinned
+		above the bottom tab bar via the shared --tab-bar-clearance token, so
+		every review mode's primary advance action is reachable without
+		scrolling on a 390px phone. Hidden on desktop (>=640px) by the
+		self-contained media query below - the in-flow copies render there
+		instead. formula-build (Mode C) renders no dock action; the embedded
+		BuildSession owns its own actions/keyboard.
+	-->
+	<div class="review-action-dock" data-testid="recall-action-dock">
+		<div class="review-action-dock__inner">
+			{#if currentItem.mode === 'formula' && currentFact}
+				{@render formulaActions()}
+			{/if}
+		</div>
+	</div>
+
 	{#if currentItem.mode === 'formula-build'}
 		{@const embedTarget = embedTargetFor(currentItem.factId)}
 		{#if embedTarget}
@@ -769,13 +813,7 @@
 				</div>
 			{/if}
 
-			{#if !revealed}
-				<div class="mt-6">
-					<Button type="button" variant="primary" onclick={handleReveal}
-						>{t('recall.cta.show-answer')}</Button
-					>
-				</div>
-			{:else}
+			{#if revealed}
 				<div class="stamp mt-6" data-testid="recall-reveal">
 					{#if currentFact.factKind === 'chord-formula'}
 						{@const chord = spellChord(currentFact.symbol)}
@@ -808,24 +846,19 @@
 						{/if}
 					{/if}
 				</div>
-
-				<div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4" data-testid="recall-grade-grid">
-					{#each GRADES as grade (grade.rating)}
-						<Button
-							type="button"
-							variant="ghost"
-							style={gradeButtonStyle(grade.rating)}
-							data-testid={`recall-grade-${grade.label.toLowerCase()}`}
-							onclick={() => handleGrade(grade.rating)}
-						>
-							<span class="flex flex-col items-center gap-1">
-								<span class="text-heading font-bold">{grade.label}</span>
-								<span class="text-label font-mono">{intervalTag(grade.rating)}</span>
-							</span>
-						</Button>
-					{/each}
-				</div>
 			{/if}
+
+			<!--
+				Phone-only fixed action dock (Sketch 014-A, issue #14 point 1): the
+				Révéler/grade actions render ONCE via {@render formulaActions()} and
+				are placed EITHER here (desktop, in normal flow) OR in the dock below
+				(phone) - never both, so the reveal/grade buttons can never diverge
+				between the two placements. `.review-inflow-actions` is hidden on
+				phone by the self-contained media query in this component's <style>.
+			-->
+			<div class="review-inflow-actions mt-6">
+				{@render formulaActions()}
+			</div>
 		</div>
 	{:else if currentItem.mode === 'see-play' && currentFact.factKind === 'chord-formula'}
 		{@const target = spellChord(currentFact.symbol)}
@@ -1026,5 +1059,65 @@
 	.mode-a-controls__primary :global(.ps-button),
 	.mode-a-controls__secondary :global(.ps-button) {
 		width: 100%;
+	}
+
+	/*
+	 * Phone-only review action dock (Sketch 014-A, issue #14 point 1): pinned
+	 * above the existing bottom tab bar via the shared --tab-bar-clearance
+	 * token (no second hardcoded bar height), below the tab bar's z-index 50
+	 * and below BottomSheet's 100/101, above page content.
+	 *
+	 * Mirrors +layout.svelte's own documented cascade-layers hazard fix
+	 * (CR-01, 23-REVIEW): Tailwind v4 emits its utilities inside
+	 * `@layer utilities`, while a Svelte component's own scoped `<style>`
+	 * output is unlayered, so an unlayered normal-priority rule always beats
+	 * a layered one regardless of specificity/source order - a `sm:hidden`
+	 * utility class could never actually hide this element. The fix is the
+	 * same: an explicit, unlayered `@media (min-width: 640px)` rule turns the
+	 * dock off, matching Tailwind's `sm:` breakpoint exactly, with no
+	 * reliance on a utility class to do the hiding.
+	 */
+	.review-action-dock {
+		display: block;
+	}
+
+	@media (min-width: 640px) {
+		.review-action-dock {
+			display: none;
+		}
+	}
+
+	@media (max-width: 639.98px) {
+		.review-action-dock {
+			position: fixed;
+			left: 0;
+			right: 0;
+			bottom: var(--tab-bar-clearance);
+			z-index: 45;
+			border-top: 2px solid var(--color-ink);
+			background: var(--color-paper-bright);
+			padding: var(--spacing-sm);
+			padding-bottom: 0;
+		}
+	}
+
+	.review-action-dock__row {
+		display: flex;
+	}
+
+	.review-action-dock__row :global(.ps-button) {
+		width: 100%;
+	}
+
+	/*
+	 * Desktop-in-flow copy of the same dock-driven actions (formulaActions
+	 * snippet), hidden on phone since the dock above renders the same content
+	 * there - the snippet is rendered exactly once per placement, never
+	 * forked, so the two placements can never diverge.
+	 */
+	@media (max-width: 639.98px) {
+		.review-inflow-actions {
+			display: none;
+		}
 	}
 </style>
