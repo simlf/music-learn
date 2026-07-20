@@ -4,13 +4,14 @@ import { saveSong } from '$lib/practice/songs';
 import { setLocale } from '$lib/i18n/locale.svelte';
 
 /**
- * SONG-01/SONG-02 wiring test for Drills (Phase 18, Plan 02): the SongMark
- * renders on a song chord prompt regardless of filter state, and the
- * PRACTICE POOL filter toggle persists per-surface and genuinely restricts
- * the draw (with the locked no-active-songs fallback). `$lib/practice/songs`
- * is left UNMOCKED so songProvenance's real
- * `listSongs()`/`activeSongChordSymbols()` read the real (jsdom) localStorage
- * seeded below via `saveSong`.
+ * SONG-01 wiring test for Drills (Phase 18, Plan 02), updated by quick task
+ * 260720-v9u: the SongMark renders on a song chord prompt regardless of
+ * filter state, and Drills now READS the shared global "From my songs"
+ * preference (`music-learn:song-filter`, set from /songs) rather than
+ * rendering its own toggle - the pref genuinely restricts the draw (with the
+ * locked no-active-songs fallback). `$lib/practice/songs` is left UNMOCKED
+ * so songProvenance's real `listSongs()`/`activeSongChordSymbols()` read the
+ * real (jsdom) localStorage seeded below via `saveSong`.
  */
 
 const flushQueueMock = vi.fn();
@@ -97,7 +98,7 @@ vi.mock('$lib/audio/audio', () => ({
 
 const { default: DrillsPage } = await import('./drills/+page.svelte');
 
-const FILTER_KEY = 'music-learn:drills-song-filter';
+const FILTER_KEY = 'music-learn:song-filter';
 
 function renderPage() {
 	return render(DrillsPage);
@@ -187,115 +188,54 @@ describe('SongMark on the Drills prompt (SONG-01)', () => {
 	});
 });
 
-describe('PRACTICE POOL filter toggle (SONG-02)', () => {
-	it('renders labelled PRACTICE POOL, defaulting to aria-pressed=false', () => {
-		forceConstruction();
-		renderPage();
-
-		expect(screen.getByText('PRACTICE POOL')).toBeInTheDocument();
-		const toggle = screen.getByRole('button', { name: /From my songs/i });
-		expect(toggle).toHaveAttribute('aria-pressed', 'false');
-	});
-
-	it('persists "true" under music-learn:drills-song-filter on click', async () => {
-		forceConstruction();
-		renderPage();
-
-		const toggle = screen.getByRole('button', { name: /From my songs/i });
-		await fireEvent.click(toggle);
-
-		expect(localStorage.getItem(FILTER_KEY)).toBe('true');
-		expect(toggle).toHaveAttribute('aria-pressed', 'true');
-	});
-
-	it('with a drillable song chord, turning the filter on restricts the draw to drawFromSymbols and shows the filter-on note (not the fallback)', async () => {
+describe('reads the persisted global filter (SONG-02, quick task 260720-v9u)', () => {
+	it('with the pref true and one drillable song chord seeded, restricts the draw to drawFromSymbols', () => {
+		localStorage.setItem(FILTER_KEY, 'true');
 		seedActiveSong(['Bbmaj7']);
 		forceConstruction();
-		renderPage();
 
-		const toggle = screen.getByRole('button', { name: /From my songs/i });
-		await fireEvent.click(toggle);
+		renderPage();
 
 		expect(drawFromSymbolsMock).toHaveBeenCalled();
 		const [restrictedSymbols] = drawFromSymbolsMock.mock.calls.at(-1) as [string[]];
 		expect(restrictedSymbols).toEqual(['Bbmaj7']);
-		expect(screen.getByTestId('song-filter-note')).toHaveTextContent(
-			'Filter on: practicing the 1 chords from your active songs only.'
-		);
 	});
 
-	it('with no drillable song chords, turning the filter on shows the fallback note and stays visually on', async () => {
-		forceConstruction();
-		renderPage();
-
-		const toggle = screen.getByRole('button', { name: /From my songs/i });
-		await fireEvent.click(toggle);
-
-		expect(toggle).toHaveAttribute('aria-pressed', 'true');
-		expect(screen.getByTestId('song-filter-note')).toHaveTextContent(
-			'No active songs yet, so showing the full library instead.'
-		);
-	});
-
-	it('defaults to the filter-off explanatory note when the filter has never been toggled on', () => {
-		forceConstruction();
-		renderPage();
-
-		expect(screen.getByTestId('song-filter-note')).toHaveTextContent(
-			'Filter off: full chord library. Chords from your songs still carry their mark.'
-		);
-	});
-
-	it('with drillable song chords, turning the filter on shows the filter-on note with the drillable chord count', async () => {
-		seedActiveSong(['Bbmaj7', 'F7']);
-		forceConstruction();
-		renderPage();
-
-		const toggle = screen.getByRole('button', { name: /From my songs/i });
-		await fireEvent.click(toggle);
-
-		expect(screen.getByTestId('song-filter-note')).toHaveTextContent(
-			'Filter on: practicing the 2 chords from your active songs only.'
-		);
-	});
-});
-
-describe('toggleSongFilter mirrors setMode guards (HI-01 regression)', () => {
-	it('does not swap out an in-flight non-pool (seeded) question, and does not corrupt its assisted/hint state', async () => {
-		// Session-sourced question: consumeDrillSeeds populates the seed queue,
-		// so drawNextQuestion() pulls from session.seedQueue (source 'seeded')
-		// rather than drawing from the pool at all.
-		consumeDrillSeedsMock.mockImplementation((): string[] => ['Cmaj7']);
-		scaffoldStageForSymbolMock.mockReturnValueOnce('hinted');
+	it('with the pref unset, draws from the pool and never restricts', () => {
 		forceConstruction();
 
 		renderPage();
 
-		expect(screen.getByTestId('question-source-tag')).toHaveTextContent('FROM YOUR WEAK LIST');
-
-		// Take the hint on the CURRENT (seeded) question.
-		await fireEvent.click(screen.getByRole('button', { name: 'Show formula' }));
-		expect(screen.getByTestId('hint-formula')).toBeInTheDocument();
-
-		drawFromPoolMock.mockClear();
-		drawFromSymbolsMock.mockClear();
-
-		const toggle = screen.getByRole('button', { name: /From my songs/i });
-		await fireEvent.click(toggle);
-
-		// The filter flag itself still flips and persists...
-		expect(localStorage.getItem(FILTER_KEY)).toBe('true');
-		expect(toggle).toHaveAttribute('aria-pressed', 'true');
-		// ...but per setMode's own guard (questionSource !== 'pool'), the
-		// in-flight seeded question is left completely untouched: no fresh
-		// draw happens (drawFromPool/drawFromSymbols are never called), the
-		// source tag is unchanged, and the hint that was already taken for
-		// THIS chord is still shown for THIS chord - never silently reset or
-		// re-revealed for a different, freshly-drawn one.
-		expect(drawFromPoolMock).not.toHaveBeenCalled();
+		expect(drawFromPoolMock).toHaveBeenCalled();
 		expect(drawFromSymbolsMock).not.toHaveBeenCalled();
-		expect(screen.getByTestId('question-source-tag')).toHaveTextContent('FROM YOUR WEAK LIST');
-		expect(screen.getByTestId('hint-formula')).toBeInTheDocument();
+	});
+
+	it('with the pref false, draws from the pool and never restricts', () => {
+		localStorage.setItem(FILTER_KEY, 'false');
+		forceConstruction();
+
+		renderPage();
+
+		expect(drawFromPoolMock).toHaveBeenCalled();
+		expect(drawFromSymbolsMock).not.toHaveBeenCalled();
+	});
+
+	it('with the pref true and no drillable song chords, falls back to the pool (no dead-end) and renders a question', () => {
+		localStorage.setItem(FILTER_KEY, 'true');
+		forceConstruction();
+
+		renderPage();
+
+		expect(drawFromPoolMock).toHaveBeenCalled();
+		expect(screen.getByText(/Click the notes for/)).toBeInTheDocument();
+	});
+
+	it('renders no From my songs button - Drills reads the pref, it never owns a control', () => {
+		forceConstruction();
+
+		renderPage();
+
+		expect(screen.queryByRole('button', { name: /From my songs/i })).not.toBeInTheDocument();
 	});
 });
 

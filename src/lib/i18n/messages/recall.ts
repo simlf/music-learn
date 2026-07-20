@@ -4,7 +4,9 @@ import type { LocaleDict } from './index';
  * Recall domain dictionary (I18N-02/I18N-03, Phase 20 Plan 02): grade
  * labels, the mode-signal chip, RecallSession's prompt/reveal/feedback
  * prose, RecallMap's column/legend/kind-filter labels, and the recall
- * page's title/subtitle/mode-toggle/pool-filter copy.
+ * page's title/subtitle/mode-toggle copy. (The From-my-songs pool-filter's
+ * poolLabel/note props moved to songs.ts as the single global control on
+ * /songs, quick task 260720-v9u.)
  *
  * IMMUNITY (never keyed here, per 20-UI-SPEC "Chord Glyph & Symbol
  * Immunity"): chord symbols, the serif ChordGlyph, interval shorthand
@@ -128,13 +130,7 @@ export const recall = {
 		'recall.page.subtitle': "The stack that's earning its keep. Every fact, every way you've met it.",
 		'recall.page.aria.mode-toggle': 'Recall mode',
 		'recall.page.mode.review': 'Review',
-		'recall.page.mode.map': 'Map',
-		'recall.page.pool-label': 'REVIEW POOL',
-		'recall.page.note.fallback': 'No active songs yet, so showing the full library instead.',
-		'recall.page.note.on-prefix': 'Filter on: practicing the',
-		'recall.page.note.on-suffix': 'chords from your active songs only.',
-		'recall.page.note.off':
-			'Filter off: full chord library. Chords from your songs still carry their mark.'
+		'recall.page.mode.map': 'Map'
 	},
 	fr: {
 		'recall.grade.again': 'À revoir',
@@ -233,13 +229,6 @@ export const recall = {
 		'recall.page.subtitle': 'La pile qui fait ses preuves. Chaque fait, sous toutes ses formes.',
 		'recall.page.aria.mode-toggle': 'Mode de révision',
 		'recall.page.mode.review': 'Réviser',
-		'recall.page.mode.map': 'Carte',
-		'recall.page.pool-label': 'BASSIN DE RÉVISION',
-		'recall.page.note.fallback':
-			'Aucun morceau actif pour le moment, la bibliothèque complète est donc affichée à la place.',
-		'recall.page.note.on-prefix': 'Filtre activé : pratique des',
-		'recall.page.note.on-suffix': 'accords de tes morceaux actifs uniquement.',
-		'recall.page.note.off':
-			"Filtre désactivé : bibliothèque d'accords complète. Les accords de tes morceaux gardent leur repère."
+		'recall.page.mode.map': 'Carte'
 	}
 } satisfies LocaleDict;

@@ -3,14 +3,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { saveSong } from '$lib/practice/songs';
 
 /**
- * SONG-02 wiring test for the Recall page (Phase 18, Plan 03): the REVIEW
- * POOL filter toggle renders on the Review surface only, defaults off,
- * persists per-surface under `music-learn:recall-song-filter` (independent of
- * Drills' own key), and is absent on the Map surface. `$lib/srs/deck` is
- * mocked (mirroring recallSession.test.ts's own harness) so RecallSession
- * resolves to a deterministic empty state without touching real Dexie;
- * `deriveCellState` is kept real (importOriginal) since RecallMap calls it
- * directly when Map mode mounts.
+ * Quick task 260720-v9u wiring test for the Recall page: the "From my
+ * songs" filter control that used to render here is GONE - Recall now only
+ * reads the shared global preference (`music-learn:song-filter`) at init
+ * and passes it straight through to RecallSession. The functional filter
+ * behavior itself (restriction + empty-active-songs fallback) is covered by
+ * recallSession.test.ts's own songFilterOn prop cases, not here.
+ *
+ * `$lib/srs/deck` is mocked (mirroring recallSession.test.ts's own harness)
+ * so RecallSession resolves to a deterministic empty state without touching
+ * real Dexie; `deriveCellState` is kept real (importOriginal) since
+ * RecallMap calls it directly when Map mode mounts.
  */
 
 const introduceNewCardsMock = vi.fn();
@@ -41,8 +44,6 @@ vi.mock('$lib/audio/audio', () => ({
 }));
 
 const { default: RecallPage } = await import('./recall/+page.svelte');
-
-const FILTER_KEY = 'music-learn:recall-song-filter';
 
 function renderPage() {
 	return render(RecallPage);
@@ -78,29 +79,16 @@ afterEach(() => {
 	vi.restoreAllMocks();
 });
 
-describe('Recall page REVIEW POOL filter toggle (SONG-02)', () => {
-	it('renders labelled REVIEW POOL on the Review surface, defaulting to aria-pressed=false', () => {
+describe('Recall page reads the persisted global filter (quick task 260720-v9u)', () => {
+	it('renders no REVIEW POOL text and no From my songs button on the Review surface', () => {
 		renderPage();
 
-		expect(screen.getByText('REVIEW POOL')).toBeInTheDocument();
-		const toggle = screen.getByRole('button', { name: /From my songs/i });
-		expect(toggle).toHaveAttribute('aria-pressed', 'false');
+		expect(screen.queryByText('REVIEW POOL')).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: /From my songs/i })).not.toBeInTheDocument();
 	});
 
-	it('persists "true" under music-learn:recall-song-filter on click', async () => {
+	it('still renders no toggle after switching to Map', async () => {
 		renderPage();
-
-		const toggle = screen.getByRole('button', { name: /From my songs/i });
-		await fireEvent.click(toggle);
-
-		expect(localStorage.getItem(FILTER_KEY)).toBe('true');
-		expect(toggle).toHaveAttribute('aria-pressed', 'true');
-	});
-
-	it('is absent on the Map surface', async () => {
-		renderPage();
-
-		expect(screen.getByText('REVIEW POOL')).toBeInTheDocument();
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Map' }));
 
@@ -108,35 +96,13 @@ describe('Recall page REVIEW POOL filter toggle (SONG-02)', () => {
 		expect(screen.queryByRole('button', { name: /From my songs/i })).not.toBeInTheDocument();
 	});
 
-	it('defaults to the filter-off explanatory note when the filter has never been toggled on', () => {
-		renderPage();
-
-		expect(screen.getByTestId('song-filter-note')).toHaveTextContent(
-			'Filter off: full chord library. Chords from your songs still carry their mark.'
-		);
-	});
-
-	it('with no active songs, turning the filter on shows the fallback note rather than the filter-on note', async () => {
-		renderPage();
-
-		const toggle = screen.getByRole('button', { name: /From my songs/i });
-		await fireEvent.click(toggle);
-
-		expect(toggle).toHaveAttribute('aria-pressed', 'true');
-		expect(screen.getByTestId('song-filter-note')).toHaveTextContent(
-			'No active songs yet, so showing the full library instead.'
-		);
-	});
-
-	it('with active-song chords, turning the filter on shows the filter-on note with the song chord count', async () => {
+	it('with the global pref set true and an active song seeded, renders the Review surface without a toggle', () => {
+		localStorage.setItem('music-learn:song-filter', 'true');
 		seedActiveSong(['Bbmaj7', 'F7']);
+
 		renderPage();
 
-		const toggle = screen.getByRole('button', { name: /From my songs/i });
-		await fireEvent.click(toggle);
-
-		expect(screen.getByTestId('song-filter-note')).toHaveTextContent(
-			'Filter on: practicing the 2 chords from your active songs only.'
-		);
+		expect(screen.getByRole('button', { name: 'Review' })).toHaveAttribute('aria-pressed', 'true');
+		expect(screen.queryByRole('button', { name: /From my songs/i })).not.toBeInTheDocument();
 	});
 });

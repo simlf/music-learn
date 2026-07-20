@@ -11,6 +11,9 @@
 	import { spellChord } from '$lib/theory/chord';
 	import { didYouMean } from '$lib/theory/didYouMean';
 	import Button from '$lib/components/Button.svelte';
+	import SongFilterToggle from '$lib/components/SongFilterToggle.svelte';
+	import { readSongFilter, writeSongFilter } from '$lib/practice/songFilterPref';
+	import { drillableSongSymbols } from '$lib/practice/songProvenance';
 	import { t, type MessageKey } from '$lib/i18n/locale.svelte';
 
 	/**
@@ -31,6 +34,26 @@
 		createdAt: string | null;
 	}
 	let draft = $state<Draft | null>(null);
+
+	/**
+	 * Quick task 260720-v9u: the ONE global "From my songs" practice-pool
+	 * filter control, set here and read by Drills + Recall. The count is a
+	 * `$derived.by` over `songs` (not a one-shot snapshot) so toggling a song
+	 * active/inactive live-updates the note's {N} without a page reload.
+	 */
+	let songFilterOn = $state(readSongFilter());
+	const drillableSongCount = $derived.by(() => {
+		// Referencing `songs` here keeps this recomputing whenever the song
+		// list (including active/inactive flips) changes.
+		void songs;
+		return drillableSongSymbols().length;
+	});
+	const songFallbackActive = $derived(songFilterOn && drillableSongCount === 0);
+
+	function toggleSongFilter(): void {
+		songFilterOn = !songFilterOn;
+		writeSongFilter(songFilterOn);
+	}
 
 	/** Chord-entry state, reset whenever the form opens or closes. */
 	let entry = $state('');
@@ -239,6 +262,17 @@
 		<p class="text-muted mt-2">
 			{t('songs.page.subtitle')}
 		</p>
+
+		<div class="mt-8">
+			<SongFilterToggle
+				poolLabel={t('songs.filter.poolLabel')}
+				on={songFilterOn}
+				onToggle={toggleSongFilter}
+				note={songFallbackActive ? t('songs.filter.noteFallback') : undefined}
+				noteOn={`${t('songs.filter.noteOnPrefix')} ${drillableSongCount} ${t('songs.filter.noteOnSuffix')}`}
+				noteOff={t('songs.filter.noteOff')}
+			/>
+		</div>
 
 		{#if songs.length === 0}
 			<div class="mt-8" data-testid="empty-state">

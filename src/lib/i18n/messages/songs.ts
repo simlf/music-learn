@@ -32,6 +32,16 @@ export const songs = {
 		// stay caller-supplied props (drills.ts/recall.ts own those strings).
 		'songs.filter.button': 'From my songs',
 
+		// SongFilterToggle (shared): the ONE global control now lives on this
+		// page (quick task 260720-v9u). poolLabel/note/noteOn/noteOff for the
+		// /songs page's own control.
+		'songs.filter.poolLabel': 'PRACTICE POOL',
+		'songs.filter.noteOnPrefix': 'Filter on: practicing the',
+		'songs.filter.noteOnSuffix': 'chords from your active songs across Drills and Recall.',
+		'songs.filter.noteOff':
+			'Filter off: full chord library. Chords from your songs still carry their mark.',
+		'songs.filter.noteFallback': 'No active songs yet, so showing the full library instead.',
+
 		// SongHook (shared, Drills interval scaffold).
 		'songs.hook.soundsLike': 'Sounds like…',
 		'songs.hook.hideTune': 'Hide tune',
@@ -105,6 +115,15 @@ export const songs = {
 		'songs.mark.count': '{N} MORCEAUX',
 
 		'songs.filter.button': 'Depuis mes morceaux',
+
+		'songs.filter.poolLabel': 'BASSIN DE PRATIQUE',
+		'songs.filter.noteOnPrefix': 'Filtre activé : pratique des',
+		'songs.filter.noteOnSuffix':
+			'accords de tes morceaux actifs dans les exercices et la révision.',
+		'songs.filter.noteOff':
+			"Filtre désactivé : bibliothèque d'accords complète. Les accords de tes morceaux gardent leur repère.",
+		'songs.filter.noteFallback':
+			'Aucun morceau actif pour le moment, la bibliothèque complète est donc affichée à la place.',
 
 		'songs.hook.soundsLike': 'Ça sonne comme…',
 		'songs.hook.hideTune': "Masquer l'air",

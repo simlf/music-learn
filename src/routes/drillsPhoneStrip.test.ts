@@ -3,12 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setLocale } from '$lib/i18n/locale.svelte';
 
 /**
- * Phone-mode tests for the Phase 23 1B compact strip + BottomSheet (Task 3).
+ * Phone-mode tests for the Phase 23 1B compact strip + BottomSheet.
  * Copies the mock scaffold from drillsSongFilter.test.ts so DrillsPage renders
  * in isolation, then stubs window.matchMedia so the
  * `(max-width: 639.98px)` query reports matches:true, forcing the phone
  * branch (isPhone=true) instead of the desktop default that jsdom otherwise
- * resolves to.
+ * resolves to. The sheet held a SongFilterToggle bar before quick task
+ * 260720-v9u removed Drills' own filter control; the sheet now holds only
+ * the LevelPicker and mode tabs.
  */
 
 const flushQueueMock = vi.fn();
@@ -179,7 +181,7 @@ describe('Drills phone compact strip (Phase 23 1B, Task 3)', () => {
 		expect(screen.queryByTestId('score-register')).not.toBeInTheDocument();
 	});
 
-	it('opens the sheet on strip tap with LevelPicker, mode tabs, SongFilterToggle (discrete=false), and rotate hint', async () => {
+	it('opens the sheet on strip tap with LevelPicker and mode tabs', async () => {
 		forceConstruction();
 
 		renderPage();
@@ -195,8 +197,7 @@ describe('Drills phone compact strip (Phase 23 1B, Task 3)', () => {
 		expect(sheet).toBeInTheDocument();
 		expect(screen.getByTestId('level-picker')).toBeInTheDocument();
 		expect(screen.getByTestId('drill-mode-row')).toBeInTheDocument();
-		const filterBar = screen.getByTestId('song-filter-toggle-bar');
-		expect(filterBar).toHaveAttribute('data-discrete', 'false');
+		expect(screen.queryByTestId('song-filter-toggle-bar')).not.toBeInTheDocument();
 	});
 
 	it('closes the sheet via the Close control and returns aria-expanded to false', async () => {
