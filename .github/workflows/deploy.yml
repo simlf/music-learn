@@ -3,6 +3,10 @@ name: deploy
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "**.md"
+      - ".planning/**"
+      - "docs/**"
   workflow_dispatch:
 
 permissions:
