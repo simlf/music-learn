@@ -2,7 +2,7 @@
 sketch: 017
 name: progression-drill
 question: "How does a ii-V-I context drill present: key context, roman numerals, chord-by-chord flow, functional reveal?"
-winner: null
+winner: "Synthesis (C+B)"
 tags: [progressions, drills, harmony, learning]
 ---
 

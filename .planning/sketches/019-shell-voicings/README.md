@@ -2,7 +2,7 @@
 sketch: 019
 name: shell-voicings
 question: "How does voicing-style choice (root/shell/rootless) surface, and how does the keyboard show a 2-note shell as correct?"
-winner: null
+winner: "Synthesis (staged C→B→A)"
 tags: [voicings, drills, keyboard, jazz]
 ---
 

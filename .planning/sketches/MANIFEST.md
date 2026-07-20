@@ -60,11 +60,13 @@ Frontier pass from the v2.1 improvement backlog (research-derived). User picked 
 
 | # | Name | Design Question | Winner | Tags |
 |---|------|----------------|--------|------|
-| 017 | progression-drill | How does a ii-V-I context drill present: key context, roman numerals, chord-by-chord flow, functional reveal? | Synthesis: C sheet + B derive (proposed) | progressions, drills, harmony, learning |
-| 019 | shell-voicings | How does voicing-style choice (root/shell/rootless) surface, and how does the keyboard show a 2-note shell as correct? | Synthesis: staged C→B→A by card state (proposed) | voicings, drills, keyboard, jazz |
+| 017 | progression-drill | How does a ii-V-I context drill present: key context, roman numerals, chord-by-chord flow, functional reveal? | Synthesis: C sheet + B derive (locked) | progressions, drills, harmony, learning |
+| 019 | shell-voicings | How does voicing-style choice (root/shell/rootless) surface, and how does the keyboard show a 2-note shell as correct? | Synthesis: staged C→B→A by card state (locked) | voicings, drills, keyboard, jazz |
 | 020 | confidence-calibration | Where does the pre-reveal "how sure?" prompt sit, and how does confidence-vs-correctness render on stats? | B: Inline dots (locked) | recall, metacognition, stats, learning |
 
 **Session 6 round 2 (2026-07-20):** user picked B-or-C on 017 and wanted all three of 019 mixed into the drill; synthesis variants built for both. 020-B inline dots locked for capture (optional, never blocks Reveal, skip logs "unrated"); 020-C stats view remains the companion payoff surface, bar-chart vs 3x2-matrix choice still open.
+
+**Session 6 winners locked (2026-07-20):** 017 synthesis (lead-sheet grid as container, symbols hidden until earned, numerals visible; each cursor bar = name-from-numeral then play; sheet fills verdigris). 019 synthesis, flagged "very good for beginners": voicing help staged by FSRS card state — NEW gets C compare intro once, LEARNING gets B subtraction drain, REVIEW gets A cold selector drill (extends the 005 fading-scaffold rule to voicings). 020-B inline ? ~ ! dots. Open: 020 stats display bar-chart vs 3x2 matrix; 018 tempo-fluency (I-03) unsketched in backlog.
 
 **Session 5 winners locked (2026-07-20):** 014-A action dock — structural guarantee like 008-A docked keyboard; C's auto-scroll acceptable as day-one micro-fix only. 015-B icon + 9px micro-label at 56px bar (from 64px), stable across FR/EN. 016 composes: B disambiguation chips at input (ambiguous casing only), A "Pourquoi ces notes ?" expandable on every result, C's side-by-side duo folded into A's panel as the deepest m-vs-maj content (same pattern as 010's dossier-in-deepest-rung).
 
