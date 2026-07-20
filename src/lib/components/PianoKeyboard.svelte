@@ -157,6 +157,21 @@
 		 * even if listed here. Omitting it leaves rendering byte-identical.
 		 */
 		pendingKeys?: { letter: string; octave: number }[];
+		/**
+		 * { letter, octave, marker } entries for "optional but allowed" notes
+		 * (Phase 25, sketch 019 synthesis, SK-019): the sketch-019 shell-voicing
+		 * subtraction stage's root/fifth droppable notes. A matching key gets an
+		 * ink-hatch-at-low-opacity treatment plus a tiny mono marker ("R"/"5"),
+		 * deliberately distinct from `wrongLetters`' gray ✕ (which reads as an
+		 * error) — a ghost key means "allowed but not required," not "wrong."
+		 * Role-gated like `selectedClass`/`pendingClass` (never applies to a key
+		 * that already carries an interval-role fill) and octave-specific like
+		 * `flashWrongKey`/`pendingKeys` (a same-letter duplicate key at a
+		 * different octave is unaffected). Omitting it leaves rendering
+		 * byte-identical (no `.piano-keyboard__key--ghost` class or `data-ghost`
+		 * attribute is ever applied).
+		 */
+		ghostKeys?: { letter: string; octave: number; marker: string }[];
 	}
 
 	let {
@@ -174,7 +189,8 @@
 		onConstructTap,
 		flashWrongKey,
 		pulseToken,
-		pendingKeys
+		pendingKeys,
+		ghostKeys
 	}: Props = $props();
 
 	/** Interval-from-root short label for a highlighted note (sketch 003). "R" for the root. */
@@ -549,6 +565,27 @@
 			? 'piano-keyboard__key--pending'
 			: '';
 	}
+
+	/**
+	 * Ghost-hatch "optional note" treatment (Phase 25, sketch 019 synthesis,
+	 * SK-019): mirrors `pendingClass`'s exact letter+octave equality check but
+	 * INVERTED on the role guard — applies only when there is NO role (like
+	 * `selectedClass`'s `!role` guard), since a ghost key is "allowed but not
+	 * required" and never fights with the four reserved interval-color fills.
+	 * Octave-specific like `flashWrongClass`/`pendingClass`, so a same-letter
+	 * duplicate key at a different octave is unaffected unless its own
+	 * { letter, octave } is listed.
+	 */
+	function ghostClass(letter: string, octave: number, role: IntervalRole | undefined): string {
+		return !role && ghostKeys?.some((k) => k.letter === letter && k.octave === octave)
+			? 'piano-keyboard__key--ghost'
+			: '';
+	}
+
+	/** The matching ghostKeys entry's tiny mono marker ("R"/"5"), or undefined when this key has none. */
+	function ghostMarker(letter: string, octave: number): string | undefined {
+		return ghostKeys?.find((k) => k.letter === letter && k.octave === octave)?.marker;
+	}
 </script>
 
 <div
@@ -576,12 +613,17 @@
 				key.note?.letter ?? key.letter,
 				octaveForWhiteIndex(key.index),
 				key.note?.role
+			)} {ghostClass(
+				key.note?.letter ?? key.letter,
+				octaveForWhiteIndex(key.index),
+				key.note?.role
 			)}"
 			style="left: {key.leftPct}%; width: {whiteKeyWidthPct}%;"
 			role={keysActive ? 'button' : undefined}
 			tabindex={keysActive ? 0 : undefined}
 			aria-pressed={interactive ? (selected?.has(key.letter) ?? false) : undefined}
 			aria-label={keysActive ? keyAriaLabel(key.letter) : undefined}
+			data-ghost={ghostMarker(key.note?.letter ?? key.letter, octaveForWhiteIndex(key.index))}
 			onclick={keysActive ? () => activateWhiteKey(key) : undefined}
 			onkeydown={keysActive
 				? (event: KeyboardEvent) => handleKeydown(event, () => activateWhiteKey(key))
@@ -628,12 +670,20 @@
 				key.note?.letter ?? key.sharpLetter,
 				octaveForBlackAfterWhiteIndex(key.position - 1),
 				key.note?.role
+			)} {ghostClass(
+				key.note?.letter ?? key.sharpLetter,
+				octaveForBlackAfterWhiteIndex(key.position - 1),
+				key.note?.role
 			)}"
 			style="left: {key.leftPct}%; width: {blackKeyWidthPct}%;"
 			role={keysActive ? 'button' : undefined}
 			tabindex={keysActive ? 0 : undefined}
 			aria-pressed={interactive ? (selected?.has(key.sharpLetter) ?? false) : undefined}
 			aria-label={keysActive ? keyAriaLabel(key.sharpLetter) : undefined}
+			data-ghost={ghostMarker(
+				key.note?.letter ?? key.sharpLetter,
+				octaveForBlackAfterWhiteIndex(key.position - 1)
+			)}
 			onclick={keysActive ? () => activateBlackKey(key) : undefined}
 			onkeydown={keysActive
 				? (event: KeyboardEvent) => handleKeydown(event, () => activateBlackKey(key))
@@ -850,6 +900,52 @@
 	 */
 	.piano-keyboard__key--pending {
 		opacity: 0.28;
+	}
+
+	/*
+	 * Ghost-hatch "optional note" (Phase 25, sketch 019 synthesis, SK-019):
+	 * a diagonal ink hatch at low opacity plus a tiny mono marker ("R"/"5"),
+	 * deliberately NOT the gray `--wrong` fill (that treatment reads as an
+	 * error) — a ghost key means "allowed but not required." Mutually
+	 * exclusive with the four reserved interval-color fills (`ghostClass`'s
+	 * `!role` guard, mirroring `.piano-keyboard__key--selected` above).
+	 */
+	.piano-keyboard__key--ghost {
+		position: relative;
+		background-image: repeating-linear-gradient(
+			45deg,
+			transparent,
+			transparent 3px,
+			color-mix(in srgb, var(--color-ink) 15%, transparent) 3px,
+			color-mix(in srgb, var(--color-ink) 15%, transparent) 5px
+		);
+	}
+
+	.piano-keyboard__key--ghost::after {
+		content: attr(data-ghost);
+		position: absolute;
+		top: 6px;
+		left: 50%;
+		transform: translateX(-50%);
+		font-family: var(--font-mono);
+		font-size: 8px;
+		line-height: 1;
+		color: var(--color-faint);
+	}
+
+	/* Black-key ghost stays legible over the dark key (mirrors `--selected`'s own black-key override). */
+	.piano-keyboard__key--black.piano-keyboard__key--ghost {
+		background-image: repeating-linear-gradient(
+			45deg,
+			transparent,
+			transparent 3px,
+			color-mix(in srgb, var(--color-paper-bright) 25%, transparent) 3px,
+			color-mix(in srgb, var(--color-paper-bright) 25%, transparent) 5px
+		);
+	}
+
+	.piano-keyboard__key--black.piano-keyboard__key--ghost::after {
+		color: var(--color-paper-bright);
 	}
 
 	/*
