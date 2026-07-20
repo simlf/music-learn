@@ -162,6 +162,7 @@ Full suite: 1284 tests green; svelte-check 0 errors.
 - Phase 22 added: Installable PWA — native SvelteKit service worker for offline app-shell caching, mobile installability (Android + iOS add-to-home-screen polish), and a new-version update prompt. Samples excluded from install precache.
 - Phase 23 added: Phase-First UX for Phone — bottom tab bar nav (1A), Drills question-first reflow with folded chrome (1B), glanceable+actionable Progress with 7-day strip and inline accuracy bars (1C). Phone-first; desktop mostly unchanged. Source spec: UX Improvements.dc.html.
 - Phase 24 added: Mobile UX fixes from issue #14 (sketches 014-016 winners)
+- Phase 25 added: Contextual learning from session 6 sketches (017 earn-the-symbol progression drill, 019 staged shell voicings, 020-B confidence dots + progress payoff)
 
 ### Decisions
 

@@ -667,3 +667,14 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 - [x] 24-02-PLAN.md — Icon + 9px micro-label bottom tab bar at 56px, stable FR/EN height, clearance token updated 64→56 (sketch 015-B)
 - [x] 24-03-PLAN.md — Lookup casing-disambiguation chips + "Pourquoi ces notes ?" why-panel with folded m-vs-maj duo (sketch 016 A+B)
 - [x] 24-04-PLAN.md — Gap closure (UAT Test 3): add `var(--spacing-md)` breathing room to shared `--tab-bar-clearance` so page bottoms (why-panel escape hatch) clear the tab bar at 390px
+
+### Phase 25: Contextual learning from session 6 sketches — progression drill with earn-the-symbol lead sheet (sketch 017 synthesis), shell voicings with staged-by-card-state scaffold (sketch 019 synthesis), confidence calibration dots + progress payoff view (sketch 020-B)
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 24
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 25 to break down)
