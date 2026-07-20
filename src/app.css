@@ -104,12 +104,15 @@ body {
 	 * micro-label). 56px matches the fixed bar's content-row height
 	 * (src/routes/+layout.svelte); the safe-area addend covers the iOS
 	 * home-indicator inset on this installed PWA (Phase 22) - resolves to 0
-	 * without app.html's viewport-fit=cover. One shared token so every
-	 * page's `main` AND Phase 24 Plan 01's review-action-dock bottom offset
-	 * (RecallSession.svelte) get the same clearance rather than a
-	 * hand-copied calc per consumer.
+	 * without app.html's viewport-fit=cover. The --spacing-md addend
+	 * (Phase 24 Plan 04, gap closure of 24-UAT Test 3) adds 16px of
+	 * breathing room above the bar height so the last element on every
+	 * page clears the bar instead of sitting flush against it. One shared
+	 * token so every page's `main` AND Phase 24 Plan 01's
+	 * review-action-dock bottom offset (RecallSession.svelte) get the same
+	 * clearance rather than a hand-copied calc per consumer.
 	 */
-	--tab-bar-clearance: calc(56px + env(safe-area-inset-bottom));
+	--tab-bar-clearance: calc(56px + env(safe-area-inset-bottom) + var(--spacing-md));
 
 	/*
 	 * Phone-only review-page action dock clearance (Phase 24 Plan 01, Sketch
