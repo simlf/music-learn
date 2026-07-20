@@ -7,6 +7,7 @@ import { theory } from './theory';
 import { scales } from './scales';
 import { progress } from './progress';
 import { home } from './home';
+import { progressions } from './progressions';
 
 /**
  * Shared shape for every per-domain (and the merged) locale dictionary:
@@ -35,7 +36,8 @@ export const messages = {
 		...theory.en,
 		...scales.en,
 		...progress.en,
-		...home.en
+		...home.en,
+		...progressions.en
 	},
 	fr: {
 		...chrome.fr,
@@ -46,6 +48,7 @@ export const messages = {
 		...theory.fr,
 		...scales.fr,
 		...progress.fr,
-		...home.fr
+		...home.fr,
+		...progressions.fr
 	}
 } satisfies LocaleDict;
