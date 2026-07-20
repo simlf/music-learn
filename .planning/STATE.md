@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Playability & Comprehension
-current_phase: 24
+current_phase: 25
+current_phase_name: contextual-learning-from-session-6-sketches-progression-dril
 status: executing
 stopped_at: Completed 23-04-PLAN.md
-last_updated: "2026-07-20T22:06:17.392Z"
+last_updated: "2026-07-20T22:20:28.751Z"
 last_activity: 2026-07-20
-last_activity_desc: "Completed quick task 260720-v9u: global song-filter preference on Songs page"
+last_activity_desc: Phase 25 execution started
 progress:
-  total_phases: 23
+  total_phases: 24
   completed_phases: 19
-  total_plans: 90
-  completed_plans: 90
-  percent: 83
-current_phase_name: mobile-ux-fixes-from-issue-14-review-action-dock-sketch-014-
+  total_plans: 98
+  completed_plans: 91
+  percent: 79
 ---
 
 # Project State
@@ -24,14 +24,14 @@ current_phase_name: mobile-ux-fixes-from-issue-14-review-action-dock-sketch-014-
 See: .planning/PROJECT.md (updated 2026-07-14)
 
 **Core value:** See a jazz chord symbol and know instantly what to play with the left hand.
-**Current focus:** Phase 24 — mobile-ux-fixes-from-issue-14-review-action-dock-sketch-014-
+**Current focus:** Phase 25 — contextual-learning-from-session-6-sketches-progression-dril
 
 ## Current Position
 
-Phase: 24
-Plan: Not started
+Phase: 25 (contextual-learning-from-session-6-sketches-progression-dril) — EXECUTING
+Plan: 2 of 8
 Status: Ready to execute
-Last activity: 2026-07-20 — Completed quick task 260720-v9u: global song-filter preference on Songs page
+Last activity: 2026-07-20 — Phase 25 execution started
 Full suite: 1284 tests green; svelte-check 0 errors.
 
 **v2.0 Learning Upgrade (Phases 10-13): COMPLETE (shipped 2026-07-15).**
@@ -153,6 +153,7 @@ Full suite: 1284 tests green; svelte-check 0 errors.
 | Phase 23 P02 | 6min | 2 tasks | 3 files |
 | Phase 23 P03 | 9min | 2 tasks | 5 files |
 | Phase 23 P04 | 24min | 3 tasks | 7 files |
+| Phase 25 P01 | 25min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -308,6 +309,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 23-03]: progress.weakest.drillOne/drillOneAria i18n keys added a task early (Task 1, not Task 2) since MessageKey's keyof-derived type would fail svelte-check if PracticeItemRow referenced an unadded key — Task 1's own acceptance criteria require npm run check clean; the two keys were needed immediately for type-safety, not deferred
 - [Phase ?]: [Phase 23-04]: bottomTabLinks/moreLinks derived via Array.filter over the single navLinks source array (not second literal arrays), so the desktop masthead, phone tab bar, and More sheet can never list different routes
 - [Phase ?]: [Phase 23-04]: layout-rendering tests scope desktop-nav/LocaleToggle queries via within(getByTestId('masthead')), since jsdom dual-renders the desktop masthead and the new phone-only bottom-tab-bar (no media-query evaluation)
+- [Phase ?]: nameChoices computes the major-scale diatonic-seventh pool regardless of template mode; minor-mode templates use natural-minor degree intervals only for root placement, roman-numeral quality comes from the template's own quality field
 
 ### Pending Todos
 
@@ -344,7 +346,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-19T20:03:48.099Z
+Last session: 2026-07-20T22:18:32.164Z
 Stopped at: Completed 23-04-PLAN.md
 Resume file: 
 None
