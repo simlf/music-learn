@@ -2,7 +2,7 @@
 sketch: 014
 name: mobile-review-flow
 question: "On phone, how does the review 'next step' action stay reachable without scrolling?"
-winner: null
+winner: "A"
 tags: [recall, mobile, layout, actions]
 ---
 

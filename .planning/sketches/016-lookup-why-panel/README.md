@@ -2,7 +2,7 @@
 sketch: 016
 name: lookup-why-panel
 question: "On lookup, how does 'why these notes?' teaching appear — including the Am7 vs Amaj7 casing trap?"
-winner: null
+winner: "A+B (C folded into A's panel as the m-vs-maj deep content)"
 tags: [lookup, teaching, beginner, theory, i18n]
 ---
 

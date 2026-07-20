@@ -2,7 +2,7 @@
 sketch: 015
 name: icon-tab-bar
 question: "How does the phone tab bar shrink when full French labels overflow and eat vertical space?"
-winner: null
+winner: "B"
 tags: [i18n, french, mobile, navigation, layout]
 ---
 
