@@ -1,14 +1,14 @@
 ---
-status: diagnosed
+status: resolved
 phase: 24-mobile-ux-fixes-from-issue-14-review-action-dock-sketch-014-
 source: [24-VERIFICATION.md]
 started: 2026-07-20T15:45:00Z
-updated: 2026-07-20T15:45:00Z
+updated: 2026-07-20T17:20:00Z
 ---
 
 ## Current Test
 
-[testing complete]
+[testing complete — gap closed by plan 24-04, human-verified]
 
 ## Tests
 
@@ -22,15 +22,15 @@ result: pass
 
 ### 3. Lookup disambiguation chips + why-panel comprehension (HV-24-03-01)
 expected: Typing AM7/am7 shows the vermilion disambiguation prompt with two chips and NO result until a chip is tapped — minor chip renders Am7 (A-C-E-G), major chip renders Amaj7 (A-C♯-E-G♯). "Pourquoi ces notes ?" expands with a beginner-comprehensible minor-third teaching sentence and key-signature clarification (especially in French), and the folded Am7/Amaj7 duo shows the differing third/seventh. "Voir Amaj7" re-runs the lookup. Unambiguous chords (Cm7, Fmaj7, G7) render directly with no prompt. Legible at 390px.
-result: issue
-reported: "it works well but the 'see Cmaj7' should probably have more space between the footer"
+result: pass
+reported: "Original report: 'it works well but the see Cmaj7 should probably have more space between the footer' — resolved by plan 24-04 (--tab-bar-clearance now includes var(--spacing-md) breathing room). Re-verified by user at 390px: lookup escape-hatch breathing room OK. A related deviation (review-dock-clearance not accounting for the taller grade-grid state, clipping reveal content) was discovered and fixed in the same plan; also re-verified by user at 390px: recall grade-grid no longer clips reveal content."
 severity: cosmetic
 
 ## Summary
 
 total: 3
-passed: 2
-issues: 1
+passed: 3
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0
@@ -38,7 +38,7 @@ blocked: 0
 ## Gaps
 
 - truth: "Why-panel content (including 'See Cmaj7' button) is fully legible and clears the bottom tab bar at 390px"
-  status: failed
+  status: resolved
   reason: "User reported: it works well but the 'see Cmaj7' should probably have more space between the footer"
   severity: cosmetic
   test: 3
@@ -50,4 +50,9 @@ blocked: 0
       issue: ".why-escape-hatch button (lines 120-127, styles 243-257) is terminal element with no bottom margin"
   missing:
     - "Add breathing room to shared token: --tab-bar-clearance: calc(56px + env(safe-area-inset-bottom) + var(--spacing-md))"
+  resolution:
+    plan: "24-04"
+    commits: ["7b0b06f", "723565c"]
+    verified: "Human checkpoint approved at 390px (two rounds — round 1 surfaced a related dock-height clipping deviation, round 2 approved after the fix)"
+    resolved_at: "2026-07-20T17:08:00Z"
   debug_session: ""
