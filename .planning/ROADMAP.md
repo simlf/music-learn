@@ -659,10 +659,10 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 **Goal:** Close the three GitHub issue #14 mobile-UX complaints using the Session 5 sketch winners. On phone, the Review (/recall) page gains a structural action dock (sketch 014-A) that pins Révéler + grade actions above the tab bar so the review loop is always completable without scrolling. The phone bottom tab bar shrinks to 56px with an icon + 9px micro-label per slot (sketch 015-B) so long French labels stop eating vertical space and the bar height is stable across FR/EN. The Lookup page gains input-time disambiguation chips for casing-ambiguous symbols (Am7 vs Amaj7) plus an expandable "Pourquoi ces notes ?" teaching panel on every result, with a folded minor-vs-major duo as the deepest content (sketch 016 A+B, C folded into A), turning the Am7/AM7 confusion into a teaching moment. (Issue #14's recall-hint wish reuses the already-shipped 010-A ladder and is out of this phase's scope.)
 **Requirements**: none mapped (issue-#14 UX fixes; must-haves derived per-plan from the three sketch winners)
 **Depends on:** Phase 23
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 **Wave 1** *(parallel: disjoint file sets)*
 
-- [ ] 24-01-PLAN.md — Review action dock: phone-only fixed dock above the tab bar hosting each review mode's primary advance action (sketch 014-A)
-- [ ] 24-02-PLAN.md — Icon + 9px micro-label bottom tab bar at 56px, stable FR/EN height, clearance token updated 64→56 (sketch 015-B)
-- [ ] 24-03-PLAN.md — Lookup casing-disambiguation chips + "Pourquoi ces notes ?" why-panel with folded m-vs-maj duo (sketch 016 A+B)
+- [x] 24-01-PLAN.md — Review action dock: phone-only fixed dock above the tab bar hosting each review mode's primary advance action (sketch 014-A)
+- [x] 24-02-PLAN.md — Icon + 9px micro-label bottom tab bar at 56px, stable FR/EN height, clearance token updated 64→56 (sketch 015-B)
+- [x] 24-03-PLAN.md — Lookup casing-disambiguation chips + "Pourquoi ces notes ?" why-panel with folded m-vs-maj duo (sketch 016 A+B)

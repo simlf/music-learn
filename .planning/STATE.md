@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Playability & Comprehension
-current_phase: 23
-current_phase_name: Phase-First UX for Phone
+current_phase: 24
+current_phase_name: mobile-ux-fixes-from-issue-14-review-action-dock-sketch-014-
 status: executing
 stopped_at: Completed 23-04-PLAN.md
-last_updated: "2026-07-20T11:46:46.720Z"
-last_activity: 2026-07-19
-last_activity_desc: Phase 23 execution started
+last_updated: "2026-07-20T11:53:15.845Z"
+last_activity: 2026-07-20
+last_activity_desc: Phase 24 execution started
 progress:
   total_phases: 23
   completed_phases: 18
-  total_plans: 86
+  total_plans: 89
   completed_plans: 86
   percent: 78
 ---
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-14)
 
 **Core value:** See a jazz chord symbol and know instantly what to play with the left hand.
-**Current focus:** Phase 23 — Phase-First UX for Phone
+**Current focus:** Phase 24 — mobile-ux-fixes-from-issue-14-review-action-dock-sketch-014-
 
 ## Current Position
 
-Phase: 23 (Phase-First UX for Phone) — EXECUTING
-Plan: 4 of 4
-Status: Ready to execute
-Last activity: 2026-07-19 — Phase 23 execution started
+Phase: 24 (mobile-ux-fixes-from-issue-14-review-action-dock-sketch-014-) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 24
+Last activity: 2026-07-20 — Phase 24 execution started
 Full suite: 1284 tests green; svelte-check 0 errors.
 
 **v2.0 Learning Upgrade (Phases 10-13): COMPLETE (shipped 2026-07-15).**
