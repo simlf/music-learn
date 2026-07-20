@@ -4,17 +4,17 @@ milestone: v2.1
 milestone_name: Playability & Comprehension
 current_phase: 23
 current_phase_name: Phase-First UX for Phone
-status: verifying
+status: executing
 stopped_at: Completed 23-04-PLAN.md
-last_updated: "2026-07-19T20:03:48.109Z"
+last_updated: "2026-07-20T11:46:46.720Z"
 last_activity: 2026-07-19
 last_activity_desc: Phase 23 execution started
 progress:
-  total_phases: 22
+  total_phases: 23
   completed_phases: 18
   total_plans: 86
   completed_plans: 86
-  percent: 82
+  percent: 78
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 
 Phase: 23 (Phase-First UX for Phone) — EXECUTING
 Plan: 4 of 4
-Status: Phase complete — ready for verification
+Status: Ready to execute
 Last activity: 2026-07-19 — Phase 23 execution started
 Full suite: 1284 tests green; svelte-check 0 errors.
 
@@ -160,6 +160,7 @@ Full suite: 1284 tests green; svelte-check 0 errors.
 - Phase 21 added: Drills Polish — prevent duplicate song selection; make practice-pool container discrete (desktop hover reveal) + persist enabled state; replay played chord as a full chord for memorization.
 - Phase 22 added: Installable PWA — native SvelteKit service worker for offline app-shell caching, mobile installability (Android + iOS add-to-home-screen polish), and a new-version update prompt. Samples excluded from install precache.
 - Phase 23 added: Phase-First UX for Phone — bottom tab bar nav (1A), Drills question-first reflow with folded chrome (1B), glanceable+actionable Progress with 7-day strip and inline accuracy bars (1C). Phone-first; desktop mostly unchanged. Source spec: UX Improvements.dc.html.
+- Phase 24 added: Mobile UX fixes from issue #14 (sketches 014-016 winners)
 
 ### Decisions
 
