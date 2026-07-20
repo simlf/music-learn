@@ -6,14 +6,14 @@ current_phase: 25
 current_phase_name: contextual-learning-from-session-6-sketches-progression-dril
 status: executing
 stopped_at: Completed 23-04-PLAN.md
-last_updated: "2026-07-20T22:39:22.280Z"
+last_updated: "2026-07-20T22:46:53.389Z"
 last_activity: 2026-07-20
 last_activity_desc: Phase 25 execution started
 progress:
   total_phases: 24
   completed_phases: 19
   total_plans: 98
-  completed_plans: 93
+  completed_plans: 94
   percent: 79
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 ## Current Position
 
 Phase: 25 (contextual-learning-from-session-6-sketches-progression-dril) — EXECUTING
-Plan: 4 of 8
+Plan: 5 of 8
 Status: Ready to execute
 Last activity: 2026-07-20 — Phase 25 execution started
 Full suite: 1284 tests green; svelte-check 0 errors.
@@ -156,6 +156,7 @@ Full suite: 1284 tests green; svelte-check 0 errors.
 | Phase 25 P01 | 25min | 2 tasks | 2 files |
 | Phase 25 P02 | 5min | 2 tasks | 2 files |
 | Phase 25 P03 | 12min | 2 tasks | 2 files |
+| Phase 25 P04 | 20min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -314,6 +315,8 @@ Recent decisions affecting current work:
 - [Phase ?]: nameChoices computes the major-scale diatonic-seventh pool regardless of template mode; minor-mode templates use natural-minor degree intervals only for root placement, roman-numeral quality comes from the template's own quality field
 - [Phase 25-02]: voicingStageForChord treats 'drill' as winning over 'subtract'/'meet' even in a mixed-maturity card set; seventhChordSymbols derives its symbol list from the shared facts.ts catalog rather than re-deriving its own root x quality matrix
 - [Phase ?]: [Phase 25-03]: ghostClass/ghostMarker mirror pendingClass/flashWrongClass's letter+octave-keyed, role-gated helper shape; marker renders via a data-ghost attribute + ::after (sketch 019's .k-ghost pattern), purely additive to PianoKeyboard
+- [Phase 25-04]: localStorage over Dexie for the confidence log: small single-user record volume, matches the lightweight-log convention, avoids a Dexie schema-version bump on the critical cards store
+- [Phase 25-04]: calibration()'s miscalibrated flag requires both certain and somewhat levels to have >=1 sample (divide-by-zero guard) rather than treating a 0/0 comparison as miscalibrated
 
 ### Pending Todos
 
@@ -350,7 +353,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-20T22:38:16.898Z
+Last session: 2026-07-20T22:46:03.505Z
 Stopped at: Completed 23-04-PLAN.md
 Resume file: 
 None
