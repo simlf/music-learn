@@ -25,9 +25,35 @@ jobs:
   gate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      checks: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Decide whether gate tests can be skipped
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          skip=false
+          if git rev-parse -q --verify 'HEAD^2' >/dev/null; then
+            merge_tree=$(git rev-parse 'HEAD^{tree}')
+            pr_head_tree=$(git rev-parse 'HEAD^2^{tree}')
+            if [ "$merge_tree" = "$pr_head_tree" ]; then
+              pr_head_sha=$(git rev-parse HEAD^2)
+              conclusion=$(gh api "repos/$REPO/commits/$pr_head_sha/check-runs" --jq '[.check_runs[] | select(.name == "test") | .conclusion] | first')
+              if [ "$conclusion" = "success" ]; then
+                skip=true
+              fi
+            fi
+          fi
+          echo "skip=$skip" >> "$GITHUB_OUTPUT"
+          echo "Gate skip decision: $skip"
       - uses: actions/setup-node@v4
+        if: steps.decide.outputs.skip != 'true'
         with:
           node-version: 22
           cache: npm
@@ -35,12 +61,17 @@ jobs:
             package-lock.json
             server/package-lock.json
       - run: npm ci
+        if: steps.decide.outputs.skip != 'true'
       - run: npm run test
+        if: steps.decide.outputs.skip != 'true'
       - run: npm run check
+        if: steps.decide.outputs.skip != 'true'
       - working-directory: server
         run: npm ci
+        if: steps.decide.outputs.skip != 'true'
       - working-directory: server
         run: npm run test
+        if: steps.decide.outputs.skip != 'true'
 
   build-push:
     needs: gate
