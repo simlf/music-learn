@@ -26,6 +26,33 @@
 	];
 
 	/**
+	 * Phone bottom-tab icon set (24-02, sketch 015 winner B: icon +
+	 * micro-label). Hardcoded module-level SVG string constants, keyed by
+	 * href so they stay in sync with the single `navLinks` source array
+	 * (never a second literal href list that could drift). Every string
+	 * here is an in-repo constant, never sourced from user input, storage,
+	 * or the network - safe to inject via `{@html}` (T-24-02-01). If this
+	 * file is ever edited to source icon markup from anywhere else, that
+	 * invariant must be re-verified before reusing {@html}.
+	 *
+	 * Shapes match sketch 015-B's ICONS map exactly: viewBox 0 0 24 24,
+	 * stroke: currentColor (so the existing active-tab ink-fill/paper-text
+	 * treatment recolors the icon for free), fill: none, stroke-width: 2.
+	 */
+	const TAB_ICONS: Record<string, string> = {
+		'/': '<svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="2" aria-hidden="true"><circle cx="10" cy="10" r="6"/><line x1="15" y1="15" x2="21" y2="21"/></svg>',
+		'/drills':
+			'<svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="2" aria-hidden="true"><rect x="3" y="6" width="18" height="12"/><line x1="8" y1="6" x2="8" y2="14"/><line x1="13" y1="6" x2="13" y2="14"/><line x1="18" y1="6" x2="18" y2="14"/></svg>',
+		'/recall':
+			'<svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="2" aria-hidden="true"><rect x="4" y="5" width="13" height="16"/><rect x="8" y="3" width="13" height="16"/></svg>',
+		'/songs':
+			'<svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="2" aria-hidden="true"><circle cx="7" cy="18" r="3"/><path d="M10 18V5l9-2v12"/><circle cx="16" cy="15" r="3"/></svg>'
+	};
+
+	const MORE_ICON =
+		'<svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="2" aria-hidden="true"><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>';
+
+	/**
 	 * Phone-only bottom tab bar (1A, UX-1A): the 4 primary destinations, in
 	 * the same order the desktop masthead already lists them. Derived by
 	 * filtering `navLinks` (not a second literal array) so the two never
@@ -101,22 +128,28 @@
 	{#each bottomTabLinks as link (link.href)}
 		<a
 			href={link.href}
-			class="bottom-tab-bar__item text-label font-mono uppercase"
+			class="bottom-tab-bar__item font-mono"
 			class:bottom-tab-bar__item--active={$page.url.pathname === link.href}
-			style="letter-spacing: 0.08em;"
+			aria-label={t(link.labelKey)}
 		>
-			{t(link.labelKey)}
+			<span class="bottom-tab-bar__icon">{@html TAB_ICONS[link.href]}</span>
+			<span class="bottom-tab-bar__label uppercase" style="letter-spacing: 0.06em;"
+				>{t(link.labelKey)}</span
+			>
 		</a>
 	{/each}
 	<button
 		type="button"
-		class="bottom-tab-bar__item text-label font-mono uppercase"
-		style="letter-spacing: 0.08em;"
+		class="bottom-tab-bar__item font-mono"
 		aria-haspopup="dialog"
 		aria-expanded={moreOpen}
+		aria-label={t('nav.more')}
 		onclick={() => (moreOpen = true)}
 	>
-		{t('nav.more')}
+		<span class="bottom-tab-bar__icon">{@html MORE_ICON}</span>
+		<span class="bottom-tab-bar__label uppercase" style="letter-spacing: 0.06em;"
+			>{t('nav.more')}</span
+		>
 	</button>
 </nav>
 
@@ -206,13 +239,23 @@
 		}
 	}
 
+	/*
+	 * Icon + 9px micro-label tab slots (24-02, sketch 015 winner B). 56px
+	 * (down from 64px) is language-independent: the icon carries meaning,
+	 * the tiny label teaches/reinforces it and may ellipsis-truncate in
+	 * French without changing the bar's height. min-height:44px keeps the
+	 * touch target floor from Phase 9's responsive-octaves rule.
+	 */
 	.bottom-tab-bar__item {
 		flex: 1;
 		display: flex;
+		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		height: 64px;
+		gap: 3px;
+		height: 56px;
 		min-height: 44px;
+		padding: 0 2px;
 		color: var(--color-muted);
 		text-decoration: none;
 		text-align: center;
@@ -232,6 +275,27 @@
 	.bottom-tab-bar__item--active {
 		background: var(--color-ink);
 		color: var(--color-paper);
+	}
+
+	/* Icon uses `stroke: currentColor` (sketch 015-B), so it recolors for
+	   free with the active/inactive text color above - no separate active
+	   icon rule needed. `:global` reaches into the {@html}-injected <svg>,
+	   which Svelte's scoped-style compiler cannot otherwise see. */
+	.bottom-tab-bar__icon {
+		display: flex;
+		line-height: 0;
+	}
+
+	.bottom-tab-bar__icon :global(svg) {
+		display: block;
+	}
+
+	.bottom-tab-bar__label {
+		font-size: 9px;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		max-width: 100%;
 	}
 
 	/* More sheet contents (1A): plain nav rows + a divider before LocaleToggle. */

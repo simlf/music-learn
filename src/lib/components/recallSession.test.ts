@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { render, screen, within, fireEvent, waitFor } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import RecallSession from './RecallSession.svelte';
 import { gradeCard, newCard, previewGrades, Rating, State } from '$lib/srs/scheduler';
@@ -22,7 +22,30 @@ import { setLocale } from '$lib/i18n/locale.svelte';
  * render puts the keyboard content in the same `document.body` that `screen`
  * queries. Mode C ('formula-build') embeds a BuildSession whose constructable
  * keyboard also renders in flow.
+ *
+ * Plan 24-01 (Sketch 014-A action dock): the formula/see-play/hear-name
+ * primary advance actions (Show Answer/grade buttons, Check/Next, Continue)
+ * now render TWICE in jsdom - once inside the phone-only
+ * `recall-action-dock` and once in the desktop in-flow slot - since jsdom
+ * never evaluates the component's media queries (mirrors Phase 23's
+ * masthead/bottom-tab-bar dual-render precedent). `dockButton`/`queryDockButton`
+ * scope every such query to the dock, the one unambiguous location that
+ * always contains exactly the current mode's actions (or nothing, for
+ * formula-build). BuildSession's own "Next" button (Mode C completion) is
+ * NOT inside this dock and is queried unscoped as before.
  */
+
+function dockButton(name: string | RegExp): HTMLElement {
+	return within(screen.getByTestId('recall-action-dock')).getByRole('button', { name });
+}
+
+function queryDockButton(name: string | RegExp): HTMLElement | null {
+	return within(screen.getByTestId('recall-action-dock')).queryByRole('button', { name });
+}
+
+function dockTestId(testId: string): HTMLElement {
+	return within(screen.getByTestId('recall-action-dock')).getByTestId(testId);
+}
 
 function renderRecallSession(
 	props: {
@@ -168,18 +191,18 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 		expect(screen.getByTestId('recall-mode-chip')).toHaveTextContent('SYMBOL → FORMULA');
 		expect(screen.getByText("What's the formula?")).toBeInTheDocument();
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
+		await fireEvent.click(dockButton('Show Answer'));
 
 		expect(screen.getByText("Here's the formula:")).toBeInTheDocument();
 		// Fixed FSRS day-scale intervals for a brand-new card (D-02): the four
 		// tags are all visible the instant the reveal renders, never computed
 		// lazily on click.
-		expect(screen.getByTestId('recall-grade-again')).toHaveTextContent('1d');
-		expect(screen.getByTestId('recall-grade-hard')).toHaveTextContent('2d');
-		expect(screen.getByTestId('recall-grade-good')).toHaveTextContent('3d');
-		expect(screen.getByTestId('recall-grade-easy')).toHaveTextContent('8d');
+		expect(dockTestId('recall-grade-again')).toHaveTextContent('1d');
+		expect(dockTestId('recall-grade-hard')).toHaveTextContent('2d');
+		expect(dockTestId('recall-grade-good')).toHaveTextContent('3d');
+		expect(dockTestId('recall-grade-easy')).toHaveTextContent('8d');
 
-		await fireEvent.click(screen.getByTestId('recall-grade-good'));
+		await fireEvent.click(dockTestId('recall-grade-good'));
 
 		expect(recordGradeMock).toHaveBeenCalledWith(card, Rating.Good, expect.any(Date));
 		await waitFor(() => screen.getByTestId('recall-complete'));
@@ -200,7 +223,7 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 		expect(screen.getByText(`C to ${targetLetter}`)).toBeInTheDocument();
 		expect(screen.getByText("What's the interval?")).toBeInTheDocument();
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
+		await fireEvent.click(dockButton('Show Answer'));
 
 		expect(screen.getByText("Here's the interval:")).toBeInTheDocument();
 		expect(screen.getByText('m3')).toBeInTheDocument();
@@ -218,7 +241,7 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 		expect(screen.getByText('Degree 3 of G major')).toBeInTheDocument();
 		expect(screen.getByText('Which note?')).toBeInTheDocument();
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
+		await fireEvent.click(dockButton('Show Answer'));
 
 		expect(screen.getByText("Here's the note:")).toBeInTheDocument();
 		const degreeNote = majorScaleNotes('G')[2];
@@ -235,8 +258,8 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-prompt'));
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
-		await fireEvent.click(screen.getByTestId('recall-grade-good'));
+		await fireEvent.click(dockButton('Show Answer'));
+		await fireEvent.click(dockTestId('recall-grade-good'));
 
 		await waitFor(() => screen.getByTestId('recall-error'));
 		expect(screen.getByText(/Couldn't open the practice ledger\./)).toBeInTheDocument();
@@ -255,7 +278,7 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 		const liveRegion = prompt.closest('[aria-live="polite"]');
 		expect(liveRegion).not.toBeNull();
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
+		await fireEvent.click(dockButton('Show Answer'));
 
 		// The revealed answer content renders inside the same live region, so
 		// its appearance is announced too.
@@ -293,12 +316,12 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 
 		// Grade Again: real FSRS fields change (New -> Review, per D-02); the
 		// only card in the queue is re-enqueued behind itself and shows again.
-		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
-		await fireEvent.click(screen.getByTestId('recall-grade-again'));
-		await waitFor(() => screen.getByRole('button', { name: 'Show Answer' }));
+		await fireEvent.click(dockButton('Show Answer'));
+		await fireEvent.click(dockTestId('recall-grade-again'));
+		await waitFor(() => dockButton('Show Answer'));
 		expect(updatedCard).toBeDefined();
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
+		await fireEvent.click(dockButton('Show Answer'));
 
 		const expectedPreviews = previewGrades(updatedCard!, new Date());
 		const expectedEasy = formatDayInterval(
@@ -309,7 +332,7 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 		// Review-state card previews Easy at a different value (4d given this
 		// app's FSRS config), so this only matches the real graded record.
 		expect(expectedEasy).not.toBe('8d');
-		expect(screen.getByTestId('recall-grade-easy')).toHaveTextContent(expectedEasy);
+		expect(dockTestId('recall-grade-easy')).toHaveTextContent(expectedEasy);
 	});
 
 	it('re-enqueues an Again grade without decrementing the register, then completes after grading the rest', async () => {
@@ -324,22 +347,22 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 		expect(screen.getByTestId('recall-register')).toHaveTextContent('2 LEFT TODAY');
 		expect(screen.getByText("What's the formula?")).toBeInTheDocument();
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
-		await fireEvent.click(screen.getByTestId('recall-grade-again'));
+		await fireEvent.click(dockButton('Show Answer'));
+		await fireEvent.click(dockTestId('recall-grade-again'));
 
 		expect(recordGradeMock).toHaveBeenCalledWith(cardA, Rating.Again, expect.any(Date));
 		await waitFor(() => expect(screen.getByText("What's the interval?")).toBeInTheDocument());
 		expect(screen.getByTestId('recall-register')).toHaveTextContent('2 LEFT TODAY');
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
-		await fireEvent.click(screen.getByTestId('recall-grade-good'));
+		await fireEvent.click(dockButton('Show Answer'));
+		await fireEvent.click(dockTestId('recall-grade-good'));
 
 		expect(recordGradeMock).toHaveBeenCalledWith(cardB, Rating.Good, expect.any(Date));
 		await waitFor(() => expect(screen.getByText("What's the formula?")).toBeInTheDocument());
 		expect(screen.getByTestId('recall-register')).toHaveTextContent('1 LEFT TODAY');
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
-		await fireEvent.click(screen.getByTestId('recall-grade-easy'));
+		await fireEvent.click(dockButton('Show Answer'));
+		await fireEvent.click(dockTestId('recall-grade-easy'));
 
 		await waitFor(() => screen.getByTestId('recall-complete'));
 		expect(screen.getByTestId('recall-reviewed-count')).toHaveTextContent('3 REVIEWED TODAY');
@@ -372,10 +395,10 @@ describe('RecallSession Mode A (see-play: see symbol, play notes, chroma-graded)
 
 		expect(screen.getByTestId('recall-mode-chip')).toHaveTextContent('SYMBOL → PLAY');
 		expect(screen.getByText('Play it on the keyboard.')).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: 'Check' })).toBeDisabled();
+		expect(dockButton('Check')).toBeDisabled();
 
 		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
-		expect(screen.getByRole('button', { name: 'Check' })).toBeEnabled();
+		expect(dockButton('Check')).toBeEnabled();
 	});
 
 	it('a correct Check leaves the keyboard untransformed, shows a CORRECT_VARIANTS confirmation, records Rating.Good, and Next completes the session', async () => {
@@ -393,7 +416,7 @@ describe('RecallSession Mode A (see-play: see symbol, play notes, chroma-graded)
 		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
 		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+		await fireEvent.click(dockButton('Check'));
 
 		expect(recordGradeMock).toHaveBeenCalledWith(card, Rating.Good, expect.any(Date));
 		// No transform-on-wrong feedback: the legend only ever renders on a miss.
@@ -401,7 +424,7 @@ describe('RecallSession Mode A (see-play: see symbol, play notes, chroma-graded)
 		const feedback = screen.getByTestId('recall-mode-a-feedback').textContent?.trim();
 		expect(CORRECT_VARIANTS).toContain(feedback);
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+		await fireEvent.click(dockButton('Next'));
 
 		await waitFor(() => screen.getByTestId('recall-complete'));
 		expect(screen.getByTestId('recall-reviewed-count')).toHaveTextContent('1 REVIEWED TODAY');
@@ -422,7 +445,7 @@ describe('RecallSession Mode A (see-play: see symbol, play notes, chroma-graded)
 		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
 		await fireEvent.click(screen.getAllByRole('button', { name: 'D key' })[0]);
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+		await fireEvent.click(dockButton('Check'));
 
 		expect(recordGradeMock).toHaveBeenCalledWith(card, Rating.Again, expect.any(Date));
 		expect(screen.getByTestId('recall-mode-a-legend')).toBeInTheDocument();
@@ -432,11 +455,11 @@ describe('RecallSession Mode A (see-play: see symbol, play notes, chroma-graded)
 		const feedback = screen.getByTestId('recall-mode-a-feedback').textContent ?? '';
 		expect(WRONG_VARIANTS.some((variant) => feedback.includes(variant))).toBe(true);
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+		await fireEvent.click(dockButton('Next'));
 
 		// Re-enqueued (Rating.Again): the session is still 1 LEFT TODAY and the
 		// see-play prompt shows again, fully reset (Check disabled again).
-		await waitFor(() => expect(screen.getByRole('button', { name: 'Check' })).toBeDisabled());
+		await waitFor(() => expect(dockButton('Check')).toBeDisabled());
 		expect(screen.getByTestId('recall-register')).toHaveTextContent('1 LEFT TODAY');
 		expect(screen.getByText('Play it on the keyboard.')).toBeInTheDocument();
 	});
@@ -651,7 +674,7 @@ describe('RecallSession Mode B post-answer hints (HINT-01/HINT-02: ladder gated 
 		expect(recordGradeMock).toHaveBeenCalledTimes(1);
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Need a hint?' }));
-		expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument();
+		expect(dockButton('Continue')).toBeInTheDocument();
 
 		// Wait well past the 650ms auto-advance window: the card must NOT have
 		// advanced (the choice grid's feedback is still on screen, still the
@@ -663,7 +686,7 @@ describe('RecallSession Mode B post-answer hints (HINT-01/HINT-02: ladder gated 
 		// Opening the hint never fired a second grade write (D-04).
 		expect(recordGradeMock).toHaveBeenCalledTimes(1);
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+		await fireEvent.click(dockButton('Continue'));
 
 		await waitFor(() => screen.getByTestId('recall-complete'));
 		expect(screen.getByTestId('recall-reviewed-count')).toHaveTextContent('1 REVIEWED TODAY');
@@ -688,7 +711,7 @@ describe('RecallSession Mode B post-answer hints (HINT-01/HINT-02: ladder gated 
 		expect(recordGradeMock).toHaveBeenCalledTimes(1);
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Need a hint?' }));
-		await fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+		await fireEvent.click(dockButton('Continue'));
 
 		await waitFor(() => expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument());
 		expect(screen.getByTestId('recall-register')).toHaveTextContent('1 LEFT TODAY');
@@ -806,20 +829,20 @@ describe('RecallSession hint ladder wiring (17-03: see-play + formula-build)', (
 		await waitFor(() => screen.getByTestId('recall-prompt'));
 
 		expect(screen.getByTestId('hint-cta')).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: 'Check' })).toBeInTheDocument();
+		expect(dockButton('Check')).toBeInTheDocument();
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Need a hint?' }));
 
 		const familyLayer = screen.getByTestId('hint-layer');
 		expect(familyLayer).toHaveAttribute('data-layer', 'family');
-		expect(screen.getByRole('button', { name: 'Check' })).toBeInTheDocument();
+		expect(dockButton('Check')).toBeInTheDocument();
 
 		// Cm7's exact chroma set: C (root), D♯/E♭ (third), G (fifth), A♯/B♭ (seventh).
 		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
 		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
 		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
 		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
-		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+		await fireEvent.click(dockButton('Check'));
 
 		expect(recordGradeMock).toHaveBeenCalledWith(card, Rating.Good, expect.any(Date));
 		expect(screen.queryByTestId('hint-cta')).not.toBeInTheDocument();
@@ -869,11 +892,11 @@ describe('RecallSession hint ladder wiring (17-03: see-play + formula-build)', (
 		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
 		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
 		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
-		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+		await fireEvent.click(dockButton('Check'));
 
 		expect(recordGradeMock).toHaveBeenCalledWith(card, Rating.Again, expect.any(Date));
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+		await fireEvent.click(dockButton('Next'));
 
 		await waitFor(() => expect(screen.getByText('Play it on the keyboard.')).toBeInTheDocument());
 		expect(screen.getByRole('button', { name: 'Need a hint?' })).toBeInTheDocument();
@@ -993,8 +1016,8 @@ describe('RecallSession queue composition via selectReviewCards (RECALL-03 rotat
 		expect(screen.getByTestId('recall-mode-chip')).toHaveTextContent('SYMBOL → FORMULA');
 
 		// Card 1 (formula): reveal, then grade Good.
-		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
-		await fireEvent.click(screen.getByTestId('recall-grade-good'));
+		await fireEvent.click(dockButton('Show Answer'));
+		await fireEvent.click(dockTestId('recall-grade-good'));
 
 		// Card 2 (see-play): a correct Check, then Next - none of the teach
 		// cluster's cards were capped out by the fact-level cap.
@@ -1005,8 +1028,8 @@ describe('RecallSession queue composition via selectReviewCards (RECALL-03 rotat
 		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
 		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
 		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
-		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
-		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+		await fireEvent.click(dockButton('Check'));
+		await fireEvent.click(dockButton('Next'));
 
 		// Card 3 (formula-build): the embedded BuildSession runs to completion,
 		// then Next.
@@ -1062,15 +1085,15 @@ describe('RecallSession queue composition via selectReviewCards (RECALL-03 rotat
 		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
 		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
 		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
-		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
-		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+		await fireEvent.click(dockButton('Check'));
+		await fireEvent.click(dockButton('Next'));
 
 		await waitFor(() =>
 			expect(screen.getByTestId('recall-mode-chip')).toHaveTextContent('SYMBOL → FORMULA')
 		);
 		expect(screen.queryByText('Listen. Name the chord.')).not.toBeInTheDocument();
-		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
-		await fireEvent.click(screen.getByTestId('recall-grade-good'));
+		await fireEvent.click(dockButton('Show Answer'));
+		await fireEvent.click(dockTestId('recall-grade-good'));
 
 		// The session completes at 2, having never encountered the hear-name
 		// card - the cap held for the whole session, not just its first item.
@@ -1124,8 +1147,8 @@ describe('RecallSession queue composition via selectReviewCards (RECALL-03 rotat
 
 		// Card 1 (formula, interval-size:m3): reveal + grade buttons.
 		expect(screen.getByTestId('recall-mode-chip')).toHaveTextContent('SYMBOL → FORMULA');
-		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
-		await fireEvent.click(screen.getByTestId('recall-grade-good'));
+		await fireEvent.click(dockButton('Show Answer'));
+		await fireEvent.click(dockTestId('recall-grade-good'));
 
 		// Card 2 (see-play, chord-formula:Dm7): Check + Next.
 		await waitFor(() =>
@@ -1135,8 +1158,8 @@ describe('RecallSession queue composition via selectReviewCards (RECALL-03 rotat
 		await fireEvent.click(screen.getAllByRole('button', { name: 'F key' })[0]);
 		await fireEvent.click(screen.getAllByRole('button', { name: 'A key' })[0]);
 		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
-		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
-		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+		await fireEvent.click(dockButton('Check'));
+		await fireEvent.click(dockButton('Next'));
 
 		// Card 3 (hear-name, chord-formula:G7): choice-tap + timer-advance
 		// (never a manual Next).
@@ -1193,8 +1216,8 @@ describe('RecallSession inline keyboard (KBD-01/KBD-03)', () => {
 		await waitFor(() => screen.getByTestId('recall-prompt'));
 		expect(screen.getByRole('img', { name: /piano keyboard/i })).toBeInTheDocument();
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
-		await fireEvent.click(screen.getByTestId('recall-grade-good'));
+		await fireEvent.click(dockButton('Show Answer'));
+		await fireEvent.click(dockTestId('recall-grade-good'));
 
 		await waitFor(() => screen.getByTestId('recall-complete'));
 		expect(screen.queryByRole('img', { name: /piano keyboard/i })).not.toBeInTheDocument();
@@ -1270,7 +1293,7 @@ describe('RecallSession inline keyboard (KBD-01/KBD-03)', () => {
 		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
 		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
 		await fireEvent.click(screen.getAllByRole('button', { name: 'D key' })[0]);
-		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+		await fireEvent.click(dockButton('Check'));
 
 		const keyboards = screen.getAllByRole('img', { name: /piano keyboard/i });
 		expect(keyboards).toHaveLength(1);
@@ -1317,7 +1340,7 @@ describe('RecallSession inline keyboard (KBD-01/KBD-03)', () => {
 		expect(beforeKeyboards).toHaveLength(1);
 		expect(beforeKeyboards[0].querySelectorAll('.piano-keyboard__key--root')).toHaveLength(0);
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
+		await fireEvent.click(dockButton('Show Answer'));
 
 		const afterKeyboards = screen.getAllByRole('img', { name: /piano keyboard/i });
 		expect(afterKeyboards).toHaveLength(1);
@@ -1351,8 +1374,8 @@ describe('RecallSession song-filter queue restriction (SONG-02, 18-03)', () => {
 		expect(screen.getByTestId('recall-register')).toHaveTextContent('1 LEFT TODAY');
 		expect(screen.getByText("What's the formula?")).toBeInTheDocument();
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Show Answer' }));
-		await fireEvent.click(screen.getByTestId('recall-grade-good'));
+		await fireEvent.click(dockButton('Show Answer'));
+		await fireEvent.click(dockTestId('recall-grade-good'));
 
 		await waitFor(() => screen.getByTestId('recall-complete'));
 		expect(screen.getByTestId('recall-reviewed-count')).toHaveTextContent('1 REVIEWED TODAY');
@@ -1504,15 +1527,159 @@ describe('RecallSession French grade-button fit (I18N-03)', () => {
 		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-prompt'));
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Voir la réponse' }));
+		await fireEvent.click(dockButton('Voir la réponse'));
 
-		const grid = screen.getByTestId('recall-grade-grid');
+		const dock = within(screen.getByTestId('recall-action-dock'));
+		const grid = dock.getByTestId('recall-grade-grid');
 		expect(grid.className).toContain('grid-cols-2');
 		expect(grid.className).toContain('sm:grid-cols-4');
 
-		expect(screen.getByText('À revoir')).toBeInTheDocument();
-		expect(screen.getByText('Difficile')).toBeInTheDocument();
-		expect(screen.getByText('Correct')).toBeInTheDocument();
-		expect(screen.getByText('Facile')).toBeInTheDocument();
+		expect(dock.getByText('À revoir')).toBeInTheDocument();
+		expect(dock.getByText('Difficile')).toBeInTheDocument();
+		expect(dock.getByText('Correct')).toBeInTheDocument();
+		expect(dock.getByText('Facile')).toBeInTheDocument();
+	});
+});
+
+/**
+ * Phone-only review action dock coverage (Phase 24 Plan 01, Sketch 014-A,
+ * issue #14 point 1): proves the dock exists, hosts each mode's primary
+ * advance action wired to the SAME pre-existing handlers as before this
+ * plan (no new grading/reveal logic), and stays empty for formula-build
+ * (Mode C, which owns its own embedded BuildSession actions/keyboard).
+ */
+describe('RecallSession action dock (Sketch 014-A, issue #14 point 1)', () => {
+	it('formula mode: the dock hosts Show Answer before reveal, then the 4 grade buttons after reveal', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		const dock = screen.getByTestId('recall-action-dock');
+		expect(within(dock).getByRole('button', { name: 'Show Answer' })).toBeInTheDocument();
+
+		await fireEvent.click(dockButton('Show Answer'));
+
+		expect(within(dock).getByTestId('recall-grade-again')).toBeInTheDocument();
+		expect(within(dock).getByTestId('recall-grade-hard')).toBeInTheDocument();
+		expect(within(dock).getByTestId('recall-grade-good')).toBeInTheDocument();
+		expect(within(dock).getByTestId('recall-grade-easy')).toBeInTheDocument();
+	});
+
+	it('formula mode: clicking a docked grade button advances the queue via the real handleGrade (reviewedCount increments, session completes)', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		await fireEvent.click(dockButton('Show Answer'));
+		await fireEvent.click(dockTestId('recall-grade-good'));
+
+		// A docked grade click reuses handleGrade verbatim: it records the FSRS
+		// rating, advances the queue, and completes the session exactly as the
+		// pre-plan in-flow grade button did.
+		expect(recordGradeMock).toHaveBeenCalledWith(card, Rating.Good, expect.any(Date));
+		await waitFor(() => screen.getByTestId('recall-complete'));
+		expect(screen.getByTestId('recall-reviewed-count')).toHaveTextContent('1 REVIEWED TODAY');
+	});
+
+	it('see-play mode: the dock hosts Check (unanswered, wired to handleModeACheck) then Next (answered, wired to handleModeANext)', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'see-play');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		const dock = screen.getByTestId('recall-action-dock');
+		expect(within(dock).getByRole('button', { name: 'Check' })).toBeDisabled();
+
+		// Cm7's exact chroma set: C (root), D♯/E♭ (third), G (fifth), A♯/B♭ (seventh).
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+
+		expect(within(dock).getByRole('button', { name: 'Check' })).toBeEnabled();
+		await fireEvent.click(dockButton('Check'));
+
+		expect(recordGradeMock).toHaveBeenCalledWith(card, Rating.Good, expect.any(Date));
+		expect(within(dock).getByRole('button', { name: 'Next' })).toBeInTheDocument();
+		expect(within(dock).queryByRole('button', { name: 'Check' })).not.toBeInTheDocument();
+
+		await fireEvent.click(dockButton('Next'));
+
+		await waitFor(() => screen.getByTestId('recall-complete'));
+		expect(screen.getByTestId('recall-reviewed-count')).toHaveTextContent('1 REVIEWED TODAY');
+	});
+
+	it('hear-name mode: the dock is empty until a post-answer hint is opened, then hosts Continue wired to advanceHearName with the committed rating', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'hear-name');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		const dock = screen.getByTestId('recall-action-dock');
+		// Nothing docked yet: hear-name's choice grid is the answer surface,
+		// not a dock action, and no hint has been opened.
+		expect(dock.textContent?.trim()).toBe('');
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Answer: Cm7' }));
+		expect(queryDockButton('Continue')).not.toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Need a hint?' }));
+		expect(dockButton('Continue')).toBeInTheDocument();
+
+		await fireEvent.click(dockButton('Continue'));
+
+		await waitFor(() => screen.getByTestId('recall-complete'));
+		expect(screen.getByTestId('recall-reviewed-count')).toHaveTextContent('1 REVIEWED TODAY');
+	});
+
+	it('formula-build mode: the dock renders no action (the embedded BuildSession owns its own actions/keyboard)', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'formula-build');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-mode-chip'));
+
+		const dock = screen.getByTestId('recall-action-dock');
+		expect(dock.textContent?.trim()).toBe('');
+		expect(screen.getByTestId('build-session')).toBeInTheDocument();
+	});
+
+	it('desktop parity: the dock and the desktop in-flow slot are both present in the DOM and share the same handler wiring - the self-contained min-width:640px media query (not a Tailwind sm: utility) decides which one is visible', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		// jsdom never evaluates media queries (mirrors Phase 23's
+		// masthead/bottom-tab-bar dual-render precedent), so BOTH placements
+		// exist simultaneously here: the dock (phone) and the in-flow slot
+		// (desktop). Two "Show Answer" buttons prove the dual-render; clicking
+		// either one calls the exact same handleReveal, so both flip to the
+		// SAME 4-grade-button state afterward (proving one snippet, no fork).
+		const showAnswerButtons = screen.getAllByRole('button', { name: 'Show Answer' });
+		expect(showAnswerButtons).toHaveLength(2);
+
+		await fireEvent.click(showAnswerButtons[0]);
+
+		expect(screen.getAllByTestId('recall-grade-good')).toHaveLength(2);
 	});
 });

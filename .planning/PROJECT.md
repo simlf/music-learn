@@ -100,4 +100,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-16 — v2.0 Learning Upgrade shipped; milestone v2.1 Playability & Comprehension active (Phase 15 complete)*
+*Last updated: 2026-07-20 — Phase 24 complete (issue #14 mobile UX: review action dock with live-measured clearance, icon+micro-label tab bar, Am7/AM7 disambiguation + why-these-notes panel); all roadmap phases done*

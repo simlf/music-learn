@@ -128,6 +128,42 @@
 
 	let { onViewMap, songFilterOn = false, provenanceIndex }: Props = $props();
 
+	/**
+	 * Gap closure (Plan 04 checkpoint deviation, 24-UAT Test 3 follow-up):
+	 * `.review-action-dock`'s rendered height varies by mode/state (a single
+	 * Reveal button row vs. the 2x2 grade grid, which is roughly 4x taller),
+	 * but `--review-dock-clearance` in app.css was a static 60px sized only
+	 * for the one-row state - the grade grid overflowed it and clipped the
+	 * reveal content above with no way to scroll further. Self-measure the
+	 * dock's actual height (mirrors PianoKeyboard's bind:this + guarded
+	 * ResizeObserver convention, T-09-01) and push it onto the ancestor
+	 * `main[data-review-dock]` as an inline custom-property override -
+	 * CSS custom properties only cascade downward, and the padding-bottom
+	 * consumer lives on `main` (an ancestor of this component, which renders
+	 * no wrapping root element of its own), so the value must be written via
+	 * the DOM rather than passed down through markup nesting.
+	 */
+	let dockEl: HTMLDivElement | undefined = $state();
+
+	$effect(() => {
+		if (!dockEl || typeof ResizeObserver === 'undefined') return;
+		const mainEl = dockEl.closest<HTMLElement>('main[data-review-dock]');
+		if (!mainEl) return;
+
+		const observer = new ResizeObserver((entries) => {
+			const entry = entries[0];
+			if (entry) {
+				mainEl.style.setProperty('--review-dock-clearance', `${entry.contentRect.height}px`);
+			}
+		});
+		observer.observe(dockEl);
+
+		return () => {
+			observer.disconnect();
+			mainEl.style.removeProperty('--review-dock-clearance');
+		};
+	});
+
 	type PageState =
 		| 'loading'
 		| 'empty-no-deck'
@@ -618,6 +654,83 @@
 	each mode's block below. Mode C ('formula-build') renders nothing here;
 	the embedded BuildSession owns its own keyboard.
 -->
+{#snippet formulaActions()}
+	{#if !revealed}
+		<div class="review-action-dock__row">
+			<Button type="button" variant="primary" onclick={handleReveal}
+				>{t('recall.cta.show-answer')}</Button
+			>
+		</div>
+	{:else}
+		<div class="grid grid-cols-2 gap-2 sm:grid-cols-4" data-testid="recall-grade-grid">
+			{#each GRADES as grade (grade.rating)}
+				<Button
+					type="button"
+					variant="ghost"
+					style={gradeButtonStyle(grade.rating)}
+					data-testid={`recall-grade-${grade.label.toLowerCase()}`}
+					onclick={() => handleGrade(grade.rating)}
+				>
+					<span class="flex flex-col items-center gap-1">
+						<span class="text-heading font-bold">{grade.label}</span>
+						<span class="text-label font-mono">{intervalTag(grade.rating)}</span>
+					</span>
+				</Button>
+			{/each}
+		</div>
+	{/if}
+{/snippet}
+
+<!--
+	see-play mode's docked primary advance action (Task 2, issue #14): Check
+	(unanswered) is the load-bearing dock action; Clear stays a secondary that
+	rides alongside it. Once answered, Next replaces both - the single action
+	that advances. Reused verbatim in-flow (desktop) and in the dock (phone).
+-->
+{#snippet seePlayActions()}
+	{#if !modeAAnswered}
+		<div class="mode-a-controls">
+			<div class="mode-a-controls__primary">
+				<Button type="button" variant="primary" disabled={selected.size === 0} onclick={handleModeACheck}>
+					{t('recall.cta.check')}
+				</Button>
+			</div>
+			<div class="mode-a-controls__secondary">
+				<Button type="button" variant="ghost" onclick={() => (selected = new Set())}>
+					{t('recall.cta.clear')}
+				</Button>
+			</div>
+		</div>
+	{:else}
+		<div class="review-action-dock__row">
+			<Button type="button" variant="primary" onclick={handleModeANext}
+				>{t('recall.cta.next')}</Button
+			>
+		</div>
+	{/if}
+{/snippet}
+
+<!--
+	hear-name mode's docked primary advance action (Task 2, issue #14): the
+	post-hint Continue button only exists once hearNameHintOpen is true (the
+	choice grid auto-advances otherwise, per D-04's never-gates contract) - so
+	this snippet renders nothing when the hint hasn't been opened, and the
+	dock is simply empty for hear-name until then.
+-->
+{#snippet hearNameActions()}
+	{#if hearNameHintOpen}
+		<div class="review-action-dock__row">
+			<Button
+				type="button"
+				variant="ghost"
+				onclick={() => advanceHearName(hearNameCommittedRating ?? Rating.Again)}
+			>
+				{t('recall.cta.continue')}
+			</Button>
+		</div>
+	{/if}
+{/snippet}
+
 {#snippet modeKeyboard()}
 	{#if currentItem?.mode === 'see-play' && currentFact?.factKind === 'chord-formula'}
 		{@const target = spellChord(currentFact.symbol)}
@@ -709,6 +822,27 @@
 		{MODE_LABELS[currentItem.mode as Mode]}
 	</p>
 
+	<!--
+		Phone-only fixed action dock (Sketch 014-A, issue #14 point 1): pinned
+		above the bottom tab bar via the shared --tab-bar-clearance token, so
+		every review mode's primary advance action is reachable without
+		scrolling on a 390px phone. Hidden on desktop (>=640px) by the
+		self-contained media query below - the in-flow copies render there
+		instead. formula-build (Mode C) renders no dock action; the embedded
+		BuildSession owns its own actions/keyboard.
+	-->
+	<div class="review-action-dock" data-testid="recall-action-dock" bind:this={dockEl}>
+		<div class="review-action-dock__inner">
+			{#if currentItem.mode === 'formula' && currentFact}
+				{@render formulaActions()}
+			{:else if currentItem.mode === 'see-play' && currentFact?.factKind === 'chord-formula'}
+				{@render seePlayActions()}
+			{:else if currentItem.mode === 'hear-name' && currentFact?.factKind === 'chord-formula'}
+				{@render hearNameActions()}
+			{/if}
+		</div>
+	</div>
+
 	{#if currentItem.mode === 'formula-build'}
 		{@const embedTarget = embedTargetFor(currentItem.factId)}
 		{#if embedTarget}
@@ -769,13 +903,7 @@
 				</div>
 			{/if}
 
-			{#if !revealed}
-				<div class="mt-6">
-					<Button type="button" variant="primary" onclick={handleReveal}
-						>{t('recall.cta.show-answer')}</Button
-					>
-				</div>
-			{:else}
+			{#if revealed}
 				<div class="stamp mt-6" data-testid="recall-reveal">
 					{#if currentFact.factKind === 'chord-formula'}
 						{@const chord = spellChord(currentFact.symbol)}
@@ -808,24 +936,19 @@
 						{/if}
 					{/if}
 				</div>
-
-				<div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4" data-testid="recall-grade-grid">
-					{#each GRADES as grade (grade.rating)}
-						<Button
-							type="button"
-							variant="ghost"
-							style={gradeButtonStyle(grade.rating)}
-							data-testid={`recall-grade-${grade.label.toLowerCase()}`}
-							onclick={() => handleGrade(grade.rating)}
-						>
-							<span class="flex flex-col items-center gap-1">
-								<span class="text-heading font-bold">{grade.label}</span>
-								<span class="text-label font-mono">{intervalTag(grade.rating)}</span>
-							</span>
-						</Button>
-					{/each}
-				</div>
 			{/if}
+
+			<!--
+				Phone-only fixed action dock (Sketch 014-A, issue #14 point 1): the
+				Révéler/grade actions render ONCE via {@render formulaActions()} and
+				are placed EITHER here (desktop, in normal flow) OR in the dock below
+				(phone) - never both, so the reveal/grade buttons can never diverge
+				between the two placements. `.review-inflow-actions` is hidden on
+				phone by the self-contained media query in this component's <style>.
+			-->
+			<div class="review-inflow-actions mt-6">
+				{@render formulaActions()}
+			</div>
 		</div>
 	{:else if currentItem.mode === 'see-play' && currentFact.factKind === 'chord-formula'}
 		{@const target = spellChord(currentFact.symbol)}
@@ -848,24 +971,6 @@
 						<HintLadder symbol={currentFact.symbol} layers={hintLayersFor('see-play')} />
 					</div>
 				{/key}
-
-				<div class="mode-a-controls mt-4">
-					<div class="mode-a-controls__primary">
-						<Button
-							type="button"
-							variant="primary"
-							disabled={selected.size === 0}
-							onclick={handleModeACheck}
-						>
-							{t('recall.cta.check')}
-						</Button>
-					</div>
-					<div class="mode-a-controls__secondary">
-						<Button type="button" variant="ghost" onclick={() => (selected = new Set())}>
-							{t('recall.cta.clear')}
-						</Button>
-					</div>
-				</div>
 			{:else}
 				<div class="stamp mt-6" data-testid="recall-mode-a-feedback">
 					{#if modeAResult?.correct}
@@ -894,13 +999,17 @@
 						</p>
 					{/if}
 				</div>
-
-				<div class="mt-6">
-					<Button type="button" variant="primary" onclick={handleModeANext}
-						>{t('recall.cta.next')}</Button
-					>
-				</div>
 			{/if}
+
+			<!--
+				Phone-only fixed action dock (Task 2, issue #14): seePlayActions
+				renders ONCE and is placed EITHER here (desktop, in normal flow) OR
+				in the dock (phone) - see the formula-mode comment above for the
+				same discipline.
+			-->
+			<div class="review-inflow-actions mt-4">
+				{@render seePlayActions()}
+			</div>
 		</div>
 	{:else if currentItem.mode === 'hear-name' && currentFact.factKind === 'chord-formula'}
 		{@const chord = spellChord(currentFact.symbol)}
@@ -963,17 +1072,15 @@
 					</div>
 				{/key}
 
-				{#if hearNameHintOpen}
-					<div class="mt-4">
-						<Button
-							type="button"
-							variant="ghost"
-							onclick={() => advanceHearName(hearNameCommittedRating ?? Rating.Again)}
-						>
-							{t('recall.cta.continue')}
-						</Button>
-					</div>
-				{/if}
+				<!--
+					Phone-only fixed action dock (Task 2, issue #14): hearNameActions
+					renders ONCE (Continue, only once hearNameHintOpen) and is placed
+					EITHER here (desktop, in normal flow) OR in the dock (phone) - same
+					discipline as formula/see-play above.
+				-->
+				<div class="review-inflow-actions mt-4">
+					{@render hearNameActions()}
+				</div>
 			{/if}
 		</div>
 	{:else}
@@ -1026,5 +1133,65 @@
 	.mode-a-controls__primary :global(.ps-button),
 	.mode-a-controls__secondary :global(.ps-button) {
 		width: 100%;
+	}
+
+	/*
+	 * Phone-only review action dock (Sketch 014-A, issue #14 point 1): pinned
+	 * above the existing bottom tab bar via the shared --tab-bar-clearance
+	 * token (no second hardcoded bar height), below the tab bar's z-index 50
+	 * and below BottomSheet's 100/101, above page content.
+	 *
+	 * Mirrors +layout.svelte's own documented cascade-layers hazard fix
+	 * (CR-01, 23-REVIEW): Tailwind v4 emits its utilities inside
+	 * `@layer utilities`, while a Svelte component's own scoped `<style>`
+	 * output is unlayered, so an unlayered normal-priority rule always beats
+	 * a layered one regardless of specificity/source order - a `sm:hidden`
+	 * utility class could never actually hide this element. The fix is the
+	 * same: an explicit, unlayered `@media (min-width: 640px)` rule turns the
+	 * dock off, matching Tailwind's `sm:` breakpoint exactly, with no
+	 * reliance on a utility class to do the hiding.
+	 */
+	.review-action-dock {
+		display: block;
+	}
+
+	@media (min-width: 640px) {
+		.review-action-dock {
+			display: none;
+		}
+	}
+
+	@media (max-width: 639.98px) {
+		.review-action-dock {
+			position: fixed;
+			left: 0;
+			right: 0;
+			bottom: var(--tab-bar-clearance);
+			z-index: 45;
+			border-top: 2px solid var(--color-ink);
+			background: var(--color-paper-bright);
+			padding: var(--spacing-sm);
+			padding-bottom: 0;
+		}
+	}
+
+	.review-action-dock__row {
+		display: flex;
+	}
+
+	.review-action-dock__row :global(.ps-button) {
+		width: 100%;
+	}
+
+	/*
+	 * Desktop-in-flow copy of the same dock-driven actions (formulaActions
+	 * snippet), hidden on phone since the dock above renders the same content
+	 * there - the snippet is rendered exactly once per placement, never
+	 * forked, so the two placements can never diverge.
+	 */
+	@media (max-width: 639.98px) {
+		.review-inflow-actions {
+			display: none;
+		}
 	}
 </style>

@@ -1,0 +1,264 @@
+<script lang="ts">
+	import type { ChordResult } from '$lib/theory/types';
+	import { intervalBetween } from '$lib/theory/interval';
+	import { t } from '$lib/i18n/locale.svelte';
+	import ChordGlyph from './ChordGlyph.svelte';
+
+	/**
+	 * Sketch 016 composed: an expandable "Pourquoi ces notes ?" teaching panel
+	 * (016-A) on EVERY recognized lookup result, with 016-C's minor-vs-major
+	 * duo folded in as the deepest content. Mirrors HintLadder's "component
+	 * owns derivation, host only passes data through" convention, but this
+	 * component owns only its own open/closed state - the caller derives
+	 * `counterpart`/`counterpartSymbol` (via casingAmbiguity + spellChord)
+	 * since this component never hardcodes a note list.
+	 */
+	interface Props {
+		/** The resolved chord being explained. */
+		chord: ChordResult;
+		/**
+		 * The chord's m/maj counterpart (e.g. Amaj7 for Am7), computed by the
+		 * caller. Omit when no meaningful counterpart exists (e.g. a dominant
+		 * seventh) - the duo and escape hatch are gracefully omitted.
+		 */
+		counterpart?: ChordResult;
+		/** The counterpart's chord symbol, e.g. "Amaj7" - passed to onLookupCounterpart. */
+		counterpartSymbol?: string;
+		/** Fires when the "Voir {counterpartSymbol}" escape hatch is tapped. */
+		onLookupCounterpart?: (symbol: string) => void;
+	}
+
+	let { chord, counterpart, counterpartSymbol, onLookupCounterpart }: Props = $props();
+
+	let open = $state(false);
+
+	function toggle() {
+		open = !open;
+	}
+
+	/** The chord's third, whose quality (minor/major) drives the teaching sentence. */
+	const third = $derived(chord.notes.find((note) => note.role === 'third'));
+
+	/**
+	 * The third's IntervalInfo (short "m3"/"M3", semitone count, quality),
+	 * derived from the SAME intervalBetween helper chordPresentation.formulaFor
+	 * uses for the result card above this panel - so the colors, spellings,
+	 * and semitone count this panel teaches always match the keyboard/formula
+	 * readout exactly, for ANY chord (never hardcoded to "A -> C").
+	 */
+	const thirdInterval = $derived(third ? intervalBetween(chord.root, third.letter) : null);
+	const isMinorThird = $derived(thirdInterval?.quality === 'm');
+
+	/** The counterpart's third: gates the duo render (both readings must be present to compare). */
+	const counterpartThird = $derived(counterpart?.notes.find((note) => note.role === 'third'));
+
+	/** Quality suffix rendered as ChordGlyph's superscript, e.g. "m7", "maj7". */
+	function qualitySuffixFor(c: ChordResult): string {
+		const asciiRoot = c.root.replace(/♯/g, '#').replace(/♭/g, 'b');
+		return c.symbol.startsWith(asciiRoot) ? c.symbol.slice(asciiRoot.length) : '';
+	}
+</script>
+
+<div class="why-these-notes">
+	<button type="button" class="why-toggle" data-testid="why-toggle" onclick={toggle}>
+		{t('home.why.toggle')}
+	</button>
+
+	{#if open}
+		<div class="why-panel stamp" data-testid="why-panel">
+			{#if third && thirdInterval}
+				<p class="step">
+					<b>{thirdInterval.short}</b>
+					{isMinorThird ? t('home.why.third-step') : t('home.why.third-step-major')}
+					<span class="note-callout" style="color: var(--color-third)"
+						>&rarr; <b>{third.letter}</b></span
+					>
+				</p>
+			{/if}
+
+			<p class="step">
+				<b>{chord.symbol}</b>
+				{t('home.why.key-signature')}
+			</p>
+
+			{#if counterpart && counterpartSymbol && counterpartThird}
+				<div class="why-duo" data-testid="why-duo">
+					<p class="duo-heading">{t('home.why.duo-heading')}</p>
+					<div class="duo-grid">
+						<div class="duo-card" data-testid="why-duo-minor">
+							<p class="duo-label">{t('home.why.duo-minor-label')}</p>
+							<span class="sr-only" data-testid="why-duo-minor-symbol">{chord.symbol}</span>
+							<ChordGlyph root={chord.root} quality={qualitySuffixFor(chord)} />
+							<div class="duo-notes">
+								{#each chord.notes as note (note.role + note.letter)}
+									<span
+										class="duo-note"
+										style={`background-color: var(--color-${note.role}); color: var(--color-on-${note.role});`}
+										>{note.letter}</span
+									>
+								{/each}
+							</div>
+						</div>
+						<div class="duo-card" data-testid="why-duo-major">
+							<p class="duo-label">{t('home.why.duo-major-label')}</p>
+							<span class="sr-only" data-testid="why-duo-major-symbol">{counterpart.symbol}</span>
+							<ChordGlyph root={counterpart.root} quality={qualitySuffixFor(counterpart)} />
+							<div class="duo-notes">
+								{#each counterpart.notes as note (note.role + note.letter)}
+									<span
+										class="duo-note"
+										style={`background-color: var(--color-${note.role}); color: var(--color-on-${note.role});`}
+										>{note.letter}</span
+									>
+								{/each}
+							</div>
+						</div>
+					</div>
+					<p class="duo-closing">{t('home.why.duo-closing')}</p>
+				</div>
+
+				<button
+					type="button"
+					class="why-escape-hatch"
+					data-testid="why-escape-hatch"
+					onclick={() => onLookupCounterpart?.(counterpartSymbol!)}
+				>
+					{t('home.why.escape-hatch-prefix')} {counterpartSymbol}
+				</button>
+			{/if}
+		</div>
+	{/if}
+</div>
+
+<style>
+	/* @keyframes stamp-in lives in app.css (shared reveal beat), reused verbatim. */
+	.stamp {
+		animation: stamp-in 240ms ease-out;
+	}
+
+	.why-these-notes {
+		margin-top: var(--spacing-md);
+	}
+
+	.why-toggle {
+		display: block;
+		width: 100%;
+		font-family: var(--font-mono);
+		font-size: var(--text-label);
+		text-transform: uppercase;
+		letter-spacing: var(--text-label--letter-spacing);
+		border: 2px solid var(--color-ink);
+		background: none;
+		padding: var(--spacing-sm);
+		cursor: pointer;
+		color: var(--color-ink);
+		min-height: 44px;
+		transition:
+			background-color 150ms ease-out,
+			color 150ms ease-out;
+	}
+
+	.why-toggle:hover,
+	.why-toggle:focus-visible {
+		background-color: var(--color-ink);
+		color: var(--color-paper);
+	}
+
+	.why-panel {
+		border-top: 2px dashed var(--color-ink);
+		margin-top: var(--spacing-sm);
+		padding-top: var(--spacing-sm);
+		font-size: var(--text-body);
+		line-height: 1.5;
+	}
+
+	.step {
+		margin: 0 0 var(--spacing-sm);
+	}
+
+	.step b {
+		font-family: var(--font-mono);
+	}
+
+	.note-callout {
+		font-weight: 700;
+	}
+
+	.why-duo {
+		margin-top: var(--spacing-md);
+	}
+
+	.duo-heading {
+		font-family: var(--font-mono);
+		font-size: var(--text-label);
+		text-transform: uppercase;
+		letter-spacing: var(--text-label--letter-spacing);
+		color: var(--color-muted);
+		margin: 0 0 var(--spacing-sm);
+	}
+
+	.duo-grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: var(--spacing-sm);
+	}
+
+	.duo-card {
+		border: 2px solid var(--color-ink);
+		background: var(--color-paper-bright);
+		padding: var(--spacing-sm);
+		text-align: center;
+	}
+
+	.duo-label {
+		font-family: var(--font-mono);
+		font-size: 11px;
+		text-transform: uppercase;
+		letter-spacing: var(--text-label--letter-spacing);
+		color: var(--color-muted);
+		margin: 0 0 var(--spacing-xs);
+	}
+
+	.duo-notes {
+		display: flex;
+		justify-content: center;
+		flex-wrap: wrap;
+		gap: var(--spacing-xs);
+		margin-top: var(--spacing-xs);
+	}
+
+	.duo-note {
+		font-family: var(--font-mono);
+		font-size: 11px;
+		padding: 2px 6px;
+		border: 1px solid var(--color-ink);
+	}
+
+	.duo-closing {
+		color: var(--color-muted);
+		font-style: italic;
+		margin-top: var(--spacing-sm);
+	}
+
+	.why-escape-hatch {
+		display: inline-block;
+		font-family: var(--font-mono);
+		font-size: 12px;
+		border: 2px solid var(--color-ink);
+		padding: var(--spacing-xs) var(--spacing-sm);
+		margin-top: var(--spacing-sm);
+		cursor: pointer;
+		background: var(--color-paper);
+		color: var(--color-ink);
+		min-height: 44px;
+		transition:
+			background-color 150ms ease-out,
+			color 150ms ease-out;
+	}
+
+	.why-escape-hatch:hover,
+	.why-escape-hatch:focus-visible {
+		background-color: var(--color-ink);
+		color: var(--color-paper);
+	}
+</style>
