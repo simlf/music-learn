@@ -5,9 +5,9 @@ milestone_name: Playability & Comprehension
 current_phase: 24
 status: executing
 stopped_at: Completed 23-04-PLAN.md
-last_updated: "2026-07-20T15:45:06.693Z"
+last_updated: "2026-07-20T22:06:17.392Z"
 last_activity: 2026-07-20
-last_activity_desc: Phase 24 complete
+last_activity_desc: "Completed quick task 260720-v9u: global song-filter preference on Songs page"
 progress:
   total_phases: 23
   completed_phases: 19
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 
 Phase: 24
 Plan: Not started
-Status: Executing Phase 24
+Status: Ready to execute
 Last activity: 2026-07-20 — Completed quick task 260720-v9u: global song-filter preference on Songs page
 Full suite: 1284 tests green; svelte-check 0 errors.
 
@@ -312,6 +312,7 @@ Recent decisions affecting current work:
 ### Pending Todos
 
 2 pending:
+
 - Verify PWA install and haptics after HTTPS deploy (mobile, 2026-07-14)
 - Move From-my-songs review pool filter off Recall page — to Songs page or settings (ui, 2026-07-20)
 
