@@ -73,7 +73,7 @@
 	import RevealInsight from '$lib/components/RevealInsight.svelte';
 	import SongHook from '$lib/components/SongHook.svelte';
 	import SongMark from '$lib/components/SongMark.svelte';
-	import SongFilterToggle from '$lib/components/SongFilterToggle.svelte';
+	import { readSongFilter } from '$lib/practice/songFilterPref';
 	import Button from '$lib/components/Button.svelte';
 	import BottomSheet from '$lib/components/BottomSheet.svelte';
 	import LevelPicker from '$lib/components/LevelPicker.svelte';
@@ -173,57 +173,11 @@
 	let provenanceIndex = $state(buildProvenanceIndex());
 
 	/**
-	 * SONG-02: distinct active-song chord symbols the "From my songs" filter
-	 * restricts fresh draws to, for the explanatory pool-note's {N}
-	 * interpolation. Read once at mount (mirrors provenanceIndex's own
-	 * snapshot-at-init pattern above) since song data isn't tracked as
-	 * reactive state elsewhere on this page.
+	 * Quick task 260720-v9u: Drills no longer owns its own filter toggle. It
+	 * simply reads the shared global preference at init; freshPoolQuestion
+	 * keeps its existing restriction/fallback logic below unchanged.
 	 */
-	const songChordCount = drillableSongSymbols().length;
-
-	/** Reads the persisted "From my songs" filter flag, degrading to off on any storage failure (mirrors songs.ts). */
-	function readDrillsSongFilter(): boolean {
-		try {
-			return localStorage.getItem('music-learn:drills-song-filter') === 'true';
-		} catch {
-			return false;
-		}
-	}
-
-	/** SONG-02 filter state: restricts fresh chord draws to active-song chords when on. Persists per-surface, defaults off. */
-	let songFilterOn = $state(readDrillsSongFilter());
-	/** True only when the filter is ON but no song chords are derivable (locked fallback edge case). */
-	let songFallbackActive = $state(false);
-
-	/**
-	 * Flips the filter, persists it, and re-draws the next question so the
-	 * restriction takes effect immediately. Mirrors setMode's exact guard and
-	 * resets: a fresh pool draw only replaces an unanswered POOL-sourced
-	 * question. An in-flight warmup/retry/seeded item is left untouched (it
-	 * was already popped from the session's own queue, so silently swapping
-	 * it out would corrupt session bookkeeping), and hintTaken/questionShownAt
-	 * are reset alongside the swap so a stale taken hint can never
-	 * auto-reveal the new chord's formula or corrupt the assisted/duration_ms
-	 * telemetry (HI-01).
-	 */
-	function toggleSongFilter() {
-		songFilterOn = !songFilterOn;
-		try {
-			localStorage.setItem('music-learn:drills-song-filter', String(songFilterOn));
-		} catch {
-			// Swallow quota/disabled-storage errors (matches songs.ts pattern).
-		}
-		if (answered || questionSource !== 'pool') return;
-		hintTaken = false;
-		questionShownAt = Date.now();
-		question = freshPoolQuestion();
-		selected = new Set();
-		feedback = null;
-		playedLetters = [];
-		givenSymbol = undefined;
-		tappedLetter = null;
-		drillInspect = null;
-	}
+	let songFilterOn = $state(readSongFilter());
 
 	function poolContext(): PoolContext {
 		return {
@@ -264,8 +218,8 @@
 
 		// SONG-02: with the filter ON, restrict the draw to active-song chords
 		// (a genuine restriction, not just a weight). Falls back to the full
-		// library (and flags songFallbackActive) when filtered ON but nothing
-		// is derivable, per the locked no-active-songs edge case. This never
+		// library when filtered ON but nothing is derivable, per the locked
+		// no-active-songs edge case (no dead-end). This never
 		// touches poolContext().songSymbols, which stays the existing 60%
 		// song-bucket weighting seam for the filter-OFF case.
 		//
@@ -280,9 +234,7 @@
 		let symbol: string;
 		if (restricted && restricted.length > 0) {
 			symbol = drawFromSymbols(restricted, poolContext()) ?? drawFromPool(poolContext()).symbol;
-			songFallbackActive = false;
 		} else {
-			songFallbackActive = songFilterOn;
 			symbol = drawFromPool(poolContext()).symbol;
 		}
 
@@ -427,7 +379,7 @@
 			: false
 	);
 
-	/** Drives the phone-only strip's sheet (LevelPicker + mode tabs + SongFilterToggle + rotate hint). */
+	/** Drives the phone-only strip's sheet (LevelPicker + mode tabs + rotate hint). */
 	let sheetOpen = $state(false);
 
 	// Drain any answers queued from a previous offline session (PROG-01).
@@ -852,8 +804,9 @@
 	{#if isPhone}
 		<!--
 			Phase 23 1B: phone-portrait compact strip. Replaces the LevelPicker
-			card, the mode-tabs/score row, and the SongFilterToggle bar with one
-			line; tapping it opens a sheet holding all four unmodified.
+			card and the mode-tabs/score row with one line; tapping it opens a
+			sheet holding both unmodified (the SongFilterToggle bar that used to
+			live here was removed by quick task 260720-v9u).
 		-->
 		<div class="drill-strip mt-6" data-testid="drill-strip">
 			<button
@@ -898,18 +851,6 @@
 			</div>
 
 			{#if !showEndCard}
-				<div class="mt-6">
-					<SongFilterToggle
-						poolLabel={t('drills.filter.poolLabel')}
-						on={songFilterOn}
-						onToggle={toggleSongFilter}
-						note={songFallbackActive ? t('drills.filter.noteFallback') : undefined}
-						noteOn={`${t('drills.filter.noteOnPrefix')} ${songChordCount} ${t('drills.filter.noteOnSuffix')}`}
-						noteOff={t('drills.filter.noteOff')}
-						discrete={false}
-					/>
-				</div>
-
 				{#if !hintDismissed}
 					<p
 						class="text-label border-ink mt-6 flex items-center justify-between gap-4 border-2 px-3 py-2 font-mono uppercase"
@@ -1027,19 +968,6 @@
 			</div>
 		</div>
 	{:else}
-	{#if !isPhone}
-		<div class="mt-8">
-			<SongFilterToggle
-				poolLabel={t('drills.filter.poolLabel')}
-				on={songFilterOn}
-				onToggle={toggleSongFilter}
-				note={songFallbackActive ? t('drills.filter.noteFallback') : undefined}
-				noteOn={`${t('drills.filter.noteOnPrefix')} ${songChordCount} ${t('drills.filter.noteOnSuffix')}`}
-				noteOff={t('drills.filter.noteOff')}
-				discrete
-			/>
-		</div>
-	{/if}
 	<div
 		class="drill-layout border-ink bg-paper-bright mt-4 border-2 px-2 py-6 sm:px-6"
 		data-testid="drill-card"
@@ -1462,8 +1390,8 @@
 	}
 
 	/*
-	 * Phase 23 1B: the compact phone strip replacing LevelPicker + mode row +
-	 * SongFilterToggle. Uses `@media (max-width: 639.98px)` (not a literal
+	 * Phase 23 1B: the compact phone strip replacing LevelPicker + mode row.
+	 * Uses `@media (max-width: 639.98px)` (not a literal
 	 * 640px) to avoid a 1px overlap with Tailwind's `sm:` boundary (UI-SPEC
 	 * "Breakpoint precision") - matched below by the grid-reflow query on the
 	 * same threshold.

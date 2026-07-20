@@ -2,8 +2,8 @@
 	import RecallSession from '$lib/components/RecallSession.svelte';
 	import RecallMap from '$lib/components/RecallMap.svelte';
 	import Button from '$lib/components/Button.svelte';
-	import SongFilterToggle from '$lib/components/SongFilterToggle.svelte';
 	import { buildProvenanceIndex } from '$lib/practice/songProvenance';
+	import { readSongFilter } from '$lib/practice/songFilterPref';
 	import { t } from '$lib/i18n/locale.svelte';
 
 	/**
@@ -17,36 +17,13 @@
 	let mode = $state<Mode>('review');
 
 	/**
-	 * SONG-02: the "From my songs" Review-pool filter, independent of Drills'
-	 * own `music-learn:drills-song-filter` key. Review-surface only (never
-	 * rendered on Map, which visualizes the whole fact set regardless of
-	 * filter). `provenanceIndex` is built once here and passed down so
-	 * RecallSession and the fallback-note derivation share the same read.
+	 * Quick task 260720-v9u: Recall no longer owns its own filter toggle. It
+	 * simply reads the shared global preference at init; RecallSession still
+	 * owns the queue restriction and the empty-active-songs fallback (its own
+	 * applySongFilter), so that behavior is unchanged here.
 	 */
-	const RECALL_SONG_FILTER_KEY = 'music-learn:recall-song-filter';
-
-	function readRecallSongFilter(): boolean {
-		try {
-			return localStorage.getItem(RECALL_SONG_FILTER_KEY) === 'true';
-		} catch {
-			return false;
-		}
-	}
-
 	const provenanceIndex = buildProvenanceIndex();
-	let songFilterOn = $state(readRecallSongFilter());
-	const songFallbackActive = $derived(songFilterOn && provenanceIndex.size === 0);
-	/** SONG-02: distinct active-song chords available to the Review pool, for the explanatory pool-note's {N} interpolation. */
-	const songChordCount = provenanceIndex.size;
-
-	function toggleSongFilter(): void {
-		songFilterOn = !songFilterOn;
-		try {
-			localStorage.setItem(RECALL_SONG_FILTER_KEY, String(songFilterOn));
-		} catch {
-			// Best-effort persistence only; the in-memory toggle still works.
-		}
-	}
+	let songFilterOn = $state(readSongFilter());
 </script>
 
 <main
@@ -81,19 +58,6 @@
 			{t('recall.page.mode.map')}
 		</Button>
 	</div>
-
-	{#if mode === 'review'}
-		<div class="mt-4">
-			<SongFilterToggle
-				poolLabel={t('recall.page.pool-label')}
-				on={songFilterOn}
-				onToggle={toggleSongFilter}
-				note={songFallbackActive ? t('recall.page.note.fallback') : undefined}
-				noteOn={`${t('recall.page.note.on-prefix')} ${songChordCount} ${t('recall.page.note.on-suffix')}`}
-				noteOff={t('recall.page.note.off')}
-			/>
-		</div>
-	{/if}
 
 	<div class="border-ink bg-paper-bright mt-4 border-2 px-2 py-6 sm:px-6">
 		{#if mode === 'review'}

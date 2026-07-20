@@ -4,11 +4,12 @@ import type { LocaleDict } from './index';
  * Drills domain dictionary (I18N-02, Phase 20 Plan 04): every literal the
  * drills page, IntervalScaffold, and LevelPicker render - mode row, score
  * register, rotate hint, question-source tags (including the Phase 19
- * FROM YOUR LESSON -> DE TA LEÇON handoff tag), the From-my-songs filter's
- * poolLabel/note props, construction/identification/interval prompts,
- * scaffold/hint copy, feedback prose, the confirm/wrong variant pools, the
- * end-of-round card, the unlock-suggestion card, and the beginner on-ramp
- * (LevelPicker) captions.
+ * FROM YOUR LESSON -> DE TA LEÇON handoff tag),
+ * construction/identification/interval prompts, scaffold/hint copy, feedback
+ * prose, the confirm/wrong variant pools, the end-of-round card, the
+ * unlock-suggestion card, and the beginner on-ramp (LevelPicker) captions.
+ * (The From-my-songs filter's poolLabel/note props moved to songs.ts as the
+ * single global control, quick task 260720-v9u.)
  *
  * IMMUNITY (never keyed here, per 20-UI-SPEC "Chord Glyph & Symbol
  * Immunity"): chord symbols, the serif ChordGlyph, interval shorthand
@@ -44,14 +45,6 @@ export const drills = {
 		'drills.source.retry': 'ONE MORE TIME',
 		'drills.source.weakList': 'FROM YOUR WEAK LIST',
 		'drills.source.lesson': 'FROM YOUR LESSON',
-
-		// From-my-songs filter (SONG-02) props passed to SongFilterToggle.
-		'drills.filter.poolLabel': 'PRACTICE POOL',
-		'drills.filter.noteFallback': 'No active songs yet, so showing the full library instead.',
-		'drills.filter.noteOnPrefix': 'Filter on: practicing the',
-		'drills.filter.noteOnSuffix': 'chords from your active songs only.',
-		'drills.filter.noteOff':
-			'Filter off: full chord library. Chords from your songs still carry their mark.',
 
 		// Construction prompt + scaffolding.
 		'drills.prompt.clickNotesFor': 'Click the notes for',
@@ -144,14 +137,6 @@ export const drills = {
 		'drills.source.retry': 'ENCORE UNE FOIS',
 		'drills.source.weakList': 'DE TA LISTE FAIBLE',
 		'drills.source.lesson': 'DE TA LEÇON',
-
-		'drills.filter.poolLabel': 'BASSIN DE PRATIQUE',
-		'drills.filter.noteFallback':
-			'Aucun morceau actif pour le moment, la bibliothèque complète est donc affichée à la place.',
-		'drills.filter.noteOnPrefix': 'Filtre activé : pratique des',
-		'drills.filter.noteOnSuffix': 'accords de tes morceaux actifs uniquement.',
-		'drills.filter.noteOff':
-			"Filtre désactivé : bibliothèque d'accords complète. Les accords de tes morceaux gardent leur repère.",
 
 		'drills.prompt.clickNotesFor': 'Clique sur les notes de',
 		'drills.scaffold.newChord': "NOUVEL ACCORD. FORMULE D'ABORD.",
