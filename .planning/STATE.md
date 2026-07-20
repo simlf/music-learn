@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 Phase: 24
 Plan: Not started
 Status: Executing Phase 24
-Last activity: 2026-07-20 — Phase 24 complete
+Last activity: 2026-07-20 — Completed quick task 260720-v9u: global song-filter preference on Songs page
 Full suite: 1284 tests green; svelte-check 0 errors.
 
 **v2.0 Learning Upgrade (Phases 10-13): COMPLETE (shipped 2026-07-15).**
@@ -329,6 +329,7 @@ Recent decisions affecting current work:
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260718-iyj | Remove collapsible keyboard dock, restore inline keyboards | 2026-07-18 | 9108219 | [260718-iyj-remove-collapsible-keyboard-dock-restore](./quick/260718-iyj-remove-collapsible-keyboard-dock-restore/) |
+| 260720-v9u | Move "From my songs" filter to Songs page as single global preference | 2026-07-20 | eec9db4 | [260720-v9u-move-the-from-my-songs-review-pool-filte](./quick/260720-v9u-move-the-from-my-songs-review-pool-filte/) |
 
 ## Deferred Items
 
