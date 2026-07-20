@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 24-mobile-ux-fixes-from-issue-14-review-action-dock-sketch-014-
 source: [24-VERIFICATION.md]
 started: 2026-07-20T15:45:00Z
@@ -42,7 +42,12 @@ blocked: 0
   reason: "User reported: it works well but the 'see Cmaj7' should probably have more space between the footer"
   severity: cosmetic
   test: 3
-  root_cause: ""
-  artifacts: []
-  missing: []
+  root_cause: "--tab-bar-clearance token in src/app.css:112 equals exactly the tab bar height (56px + safe-area) with zero breathing room, so the last element on every page sits flush against the fixed tab bar; most visible on lookup where the why-panel's 'See Cmaj7' escape-hatch button is the terminal element"
+  artifacts:
+    - path: "src/app.css"
+      issue: "--tab-bar-clearance (line 112) has no extra spacing above bar height; global main padding-bottom (lines 130-134) inherits the flush value"
+    - path: "src/lib/components/WhyTheseNotes.svelte"
+      issue: ".why-escape-hatch button (lines 120-127, styles 243-257) is terminal element with no bottom margin"
+  missing:
+    - "Add breathing room to shared token: --tab-bar-clearance: calc(56px + env(safe-area-inset-bottom) + var(--spacing-md))"
   debug_session: ""
