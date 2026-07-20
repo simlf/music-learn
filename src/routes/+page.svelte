@@ -2,6 +2,7 @@
 	import { spellChord } from '$lib/theory/chord';
 	import { pickHint, pickSuggestionHint } from '$lib/copy/hints';
 	import { didYouMean } from '$lib/theory/didYouMean';
+	import { detectCasingAmbiguity, type CasingAmbiguity } from '$lib/lookup/casingAmbiguity';
 	import { ensureAudioReady, playChord, playNote } from '$lib/audio/audio';
 	import { intervalFromRoot, toAsciiAccidentals } from '$lib/theory/interval';
 	import { formulaFor, aliasLine, type FormulaEntry } from '$lib/lookup/chordPresentation';
@@ -15,6 +16,7 @@
 	import SongMark from '$lib/components/SongMark.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import RecentChipRow from '$lib/components/RecentChipRow.svelte';
+	import WhyTheseNotes from '$lib/components/WhyTheseNotes.svelte';
 	import { buildProvenanceIndex, songsForSymbol } from '$lib/practice/songProvenance';
 	import { t } from '$lib/i18n/locale.svelte';
 
@@ -35,6 +37,13 @@
 	let suggestion = $state<string | null>(null);
 	let recent = $state<string[]>(getRecentLookups());
 	let inputEl: HTMLInputElement | undefined = $state();
+
+	/**
+	 * Sketch 016-B: the pending casing-disambiguation prompt, set BEFORE a
+	 * result commits when the input is genuinely ambiguous (e.g. "am7"/"AM7").
+	 * Rendered in place of the result until a chip is picked.
+	 */
+	let ambiguity = $state<CasingAmbiguity | null>(null);
 
 	/** Placeholder token substituted with the didYouMean candidate in suggestion copy. */
 	const SYMBOL_PLACEHOLDER = '{SYMBOL}';
@@ -78,6 +87,20 @@
 		// Trim once at the entry point: mobile keyboards routinely append a
 		// trailing space via autocomplete, and tonal rejects "Cm7 " outright.
 		const cleaned = input.trim();
+
+		// Sketch 016-B: intercept BEFORE committing a result when the input's
+		// m/maj casing is genuinely ambiguous (e.g. "am7"/"AM7") - the
+		// disambiguation prompt renders in place of the result until a chip is
+		// picked. A non-null ambiguity always clears any prior hint/suggestion.
+		const detected = detectCasingAmbiguity(cleaned);
+		if (detected) {
+			ambiguity = detected;
+			hint = '';
+			suggestion = null;
+			return;
+		}
+		ambiguity = null;
+
 		const spelled = spellChord(cleaned);
 		if (spelled.recognized) {
 			// Non-blocking success: replace the rendered result and clear any hint.
@@ -102,10 +125,42 @@
 		}
 	}
 
+	/** Sketch 016-B: a disambiguation chip resolves to its candidate symbol and clears the prompt. */
+	function pickAmbiguityCandidate(candidateSymbol: string) {
+		ambiguity = null;
+		showChordFromSymbol(candidateSymbol);
+	}
+
 	function showChordFromSymbol(input: string) {
 		symbol = input;
 		showChord(input);
 	}
+
+	/**
+	 * Sketch 016-A: the m/maj counterpart symbol for the why-panel's folded
+	 * duo, derived (never hardcoded) by swapping only a minor-seventh/minor-
+	 * triad quality for its major reading or vice versa. Every other quality
+	 * (dominant 7, dim, ø, sus, altered...) has no meaningful m/maj
+	 * counterpart, so this returns null and the panel gracefully omits the
+	 * duo/escape hatch (WhyTheseNotes's own contract).
+	 */
+	function counterpartSymbolFor(chord: ChordResult): string | null {
+		const asciiRoot = toAsciiAccidentals(chord.root);
+		const suffix = chord.symbol.startsWith(asciiRoot) ? chord.symbol.slice(asciiRoot.length) : '';
+		if (suffix === 'm7') return `${chord.root}maj7`;
+		if (suffix === 'm') return `${chord.root}maj`;
+		if (suffix === 'maj7') return `${chord.root}m7`;
+		if (suffix === 'maj') return `${chord.root}m`;
+		return null;
+	}
+
+	/** The resolved counterpart ChordResult for the why-panel's duo, or undefined when none exists. */
+	const whyCounterpartSymbol = $derived(result ? counterpartSymbolFor(result) : null);
+	const whyCounterpart = $derived.by(() => {
+		if (!whyCounterpartSymbol) return undefined;
+		const spelled = spellChord(whyCounterpartSymbol);
+		return spelled.recognized ? spelled : undefined;
+	});
 
 	/**
 	 * Plays the rendered chord through the app audio engine (D-11, Track A):
@@ -195,7 +250,36 @@
 		</p>
 	{/if}
 
-	{#if !result}
+	{#if ambiguity}
+		<div class="disambig mt-8" data-testid="disambig-prompt">
+			<p class="text-label font-mono uppercase" style="color: var(--color-vermilion)">
+				{t('home.disambig.heading-prefix')}{symbol}{t('home.disambig.heading-suffix')}
+			</p>
+			<p class="mt-2">{t('home.disambig.body')}</p>
+			<div class="mt-2 flex flex-wrap gap-2">
+				<button
+					type="button"
+					class="disambig-chip"
+					data-testid="disambig-chip-minor"
+					onclick={() => pickAmbiguityCandidate(ambiguity!.minorSymbol)}
+				>
+					{ambiguity.minorSymbol}
+					{t('home.disambig.chip-minor-prefix')}{t('home.disambig.chip-minor-suffix')}
+				</button>
+				<button
+					type="button"
+					class="disambig-chip"
+					data-testid="disambig-chip-major"
+					onclick={() => pickAmbiguityCandidate(ambiguity!.majorSymbol)}
+				>
+					{ambiguity.majorSymbol}
+					{t('home.disambig.chip-major-prefix')}{t('home.disambig.chip-major-suffix')}
+				</button>
+			</div>
+		</div>
+	{/if}
+
+	{#if !result && !ambiguity}
 		<div class="mt-8">
 			<p class="text-heading font-bold">{t('home.empty.title')}</p>
 			<p class="text-muted mt-2">
@@ -216,7 +300,7 @@
 		</div>
 	{/if}
 
-	{#if result?.recognized}
+	{#if result?.recognized && !ambiguity}
 		<div class="stamp mt-8" data-testid="chord-result">
 			<div class="flex items-start gap-4">
 				<ChordGlyph root={result.root} quality={result.symbol.slice(result.root.length)} />
@@ -257,6 +341,13 @@
 					</button>
 				{/each}
 			</div>
+
+			<WhyTheseNotes
+				chord={result}
+				counterpart={whyCounterpart}
+				counterpartSymbol={whyCounterpartSymbol ?? undefined}
+				onLookupCounterpart={showChordFromSymbol}
+			/>
 		</div>
 	{/if}
 </main>
@@ -292,6 +383,34 @@
 
 	.stamp {
 		animation: stamp-in 240ms ease-out;
+	}
+
+	/* Sketch 016-B: the disambiguation prompt, vermilion-bordered so it reads
+	   as a distinct "pay attention" state from the ordinary result card. */
+	.disambig {
+		border: 2px solid var(--color-vermilion);
+		background: var(--color-paper-bright);
+		padding: var(--spacing-md);
+	}
+
+	.disambig-chip {
+		font-family: var(--font-mono);
+		font-size: var(--text-label);
+		border: 2px solid var(--color-ink);
+		padding: var(--spacing-sm);
+		cursor: pointer;
+		background: var(--color-paper);
+		color: var(--color-ink);
+		min-height: 44px;
+		transition:
+			background-color 150ms ease-out,
+			color 150ms ease-out;
+	}
+
+	.disambig-chip:hover,
+	.disambig-chip:focus-visible {
+		background-color: var(--color-ink);
+		color: var(--color-paper);
 	}
 
 	@keyframes stamp-in {
