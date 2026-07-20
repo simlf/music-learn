@@ -118,8 +118,17 @@ body {
 	 * Phone-only review-page action dock clearance (Phase 24 Plan 01, Sketch
 	 * 014-A, issue #14 point 1). Stacks on top of --tab-bar-clearance (the
 	 * dock is pinned directly above the bottom tab bar, not in place of it).
-	 * ~60px covers one docked button row's content height plus its
-	 * top border and padding (RecallSession.svelte's .review-action-dock).
+	 * 60px is a static fallback covering one docked button row's content
+	 * height plus its top border and padding (RecallSession.svelte's
+	 * .review-action-dock) - used before JS measures, or if ResizeObserver
+	 * is unavailable. Gap closure (Plan 04 checkpoint deviation, 24-UAT Test
+	 * 3 follow-up): the dock's actual height varies a lot by state (a single
+	 * Reveal row vs. the ~4x-taller 2x2 grade grid), so RecallSession.svelte
+	 * self-measures the rendered dock (bind:this + guarded ResizeObserver,
+	 * mirroring PianoKeyboard's convention) and overrides this variable
+	 * inline on the ancestor `main[data-review-dock]` with the live pixel
+	 * height, so the scrollable area under the dock is always correct
+	 * instead of clipping the reveal content in the taller grade-grid state.
 	 */
 	--review-dock-clearance: 60px;
 }

@@ -128,6 +128,42 @@
 
 	let { onViewMap, songFilterOn = false, provenanceIndex }: Props = $props();
 
+	/**
+	 * Gap closure (Plan 04 checkpoint deviation, 24-UAT Test 3 follow-up):
+	 * `.review-action-dock`'s rendered height varies by mode/state (a single
+	 * Reveal button row vs. the 2x2 grade grid, which is roughly 4x taller),
+	 * but `--review-dock-clearance` in app.css was a static 60px sized only
+	 * for the one-row state - the grade grid overflowed it and clipped the
+	 * reveal content above with no way to scroll further. Self-measure the
+	 * dock's actual height (mirrors PianoKeyboard's bind:this + guarded
+	 * ResizeObserver convention, T-09-01) and push it onto the ancestor
+	 * `main[data-review-dock]` as an inline custom-property override -
+	 * CSS custom properties only cascade downward, and the padding-bottom
+	 * consumer lives on `main` (an ancestor of this component, which renders
+	 * no wrapping root element of its own), so the value must be written via
+	 * the DOM rather than passed down through markup nesting.
+	 */
+	let dockEl: HTMLDivElement | undefined = $state();
+
+	$effect(() => {
+		if (!dockEl || typeof ResizeObserver === 'undefined') return;
+		const mainEl = dockEl.closest<HTMLElement>('main[data-review-dock]');
+		if (!mainEl) return;
+
+		const observer = new ResizeObserver((entries) => {
+			const entry = entries[0];
+			if (entry) {
+				mainEl.style.setProperty('--review-dock-clearance', `${entry.contentRect.height}px`);
+			}
+		});
+		observer.observe(dockEl);
+
+		return () => {
+			observer.disconnect();
+			mainEl.style.removeProperty('--review-dock-clearance');
+		};
+	});
+
 	type PageState =
 		| 'loading'
 		| 'empty-no-deck'
@@ -795,7 +831,7 @@
 		instead. formula-build (Mode C) renders no dock action; the embedded
 		BuildSession owns its own actions/keyboard.
 	-->
-	<div class="review-action-dock" data-testid="recall-action-dock">
+	<div class="review-action-dock" data-testid="recall-action-dock" bind:this={dockEl}>
 		<div class="review-action-dock__inner">
 			{#if currentItem.mode === 'formula' && currentFact}
 				{@render formulaActions()}
