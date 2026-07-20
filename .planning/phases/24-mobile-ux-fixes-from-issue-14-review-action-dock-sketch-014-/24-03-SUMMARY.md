@@ -173,3 +173,7 @@ Task 4 (`checkpoint:human-verify`, `gate="blocking"`) requires a human to walk t
 ---
 *Phase: 24-mobile-ux-fixes-from-issue-14-review-action-dock-sketch-014-*
 *Completed: 2026-07-20 (3/4 tasks code-complete and committed; Task 4 checkpoint:human-verify PENDING)*
+
+## Self-Check: PASSED
+
+All created files verified present on disk (`casingAmbiguity.ts`/`.test.ts`, `WhyTheseNotes.svelte`/`whyTheseNotes.test.ts`, `lookupWhyPanel.test.ts`, this SUMMARY.md). All task commits verified present in `git log` (`4dfd04c`, `14adc29`, `7b60636`, `e319d58`, `d64d6f9`, `0b4a470`).
