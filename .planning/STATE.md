@@ -310,7 +310,9 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-None yet.
+2 pending:
+- Verify PWA install and haptics after HTTPS deploy (mobile, 2026-07-14)
+- Move From-my-songs review pool filter off Recall page — to Songs page or settings (ui, 2026-07-20)
 
 ### Blockers/Concerns
 
