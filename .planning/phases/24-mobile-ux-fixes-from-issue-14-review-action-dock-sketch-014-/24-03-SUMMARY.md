@@ -70,7 +70,7 @@ coverage:
     description: "The beginner explanation actually lands: does 'the key signature does not impose accidentals here' read clearly to a French-speaking beginner on a real 390px phone, in both EN and FR?"
     verification: []
     human_judgment: true
-    rationale: "Copy comprehension and visual/layout legibility on a real device are judgment calls jsdom's non-rendering DOM cannot verify. This is exactly Task 4's checkpoint:human-verify, which is PENDING — no human response was available to this parallel wave executor. See 'Checkpoint: Task 4 Pending' below."
+    rationale: "Copy comprehension and visual/layout legibility on a real device are judgment calls jsdom's non-rendering DOM cannot verify. The user deferred this manual walkthrough to a later /gsd-verify-work session rather than performing it at this checkpoint. Tracked as HV-24-03-01. See 'Checkpoint: Task 4 Resolved by Deferral' below."
 
 # Metrics
 duration: 62min
@@ -78,9 +78,9 @@ completed: 2026-07-20
 status: complete
 human_verification:
   - id: HV-24-03-01
-    description: "On-device (or dev-server) walkthrough: type AM7/am7 and confirm the disambiguation prompt + correct chip resolutions; open the why-panel on Am7 and confirm the minor-third teaching sentence, key-signature clarification, and folded Am7/Amaj7 duo read clearly (ideally checked in French, the issue reporter's locale); confirm unambiguous chords (Cm7, Fmaj7, G7) show no prompt; confirm legibility at 390px viewport"
+    description: "On-device (or dev-server) walkthrough: type AM7/am7 and confirm the disambiguation prompt + correct chip resolutions; open the why-panel on Am7 and confirm the minor-third teaching sentence, key-signature clarification, and folded Am7/Amaj7 duo read clearly (ideally checked in French, the issue reporter's locale); confirm the 'Voir Amaj7' escape hatch works; confirm unambiguous chords (Cm7, Fmaj7, G7) show no prompt; confirm legibility at 390px viewport"
     status: pending
-    reason: "Task 4 (checkpoint:human-verify, gate=blocking) requires a live human response. This parallel wave executor has no interactive user available; workflow.human_verify_mode/auto_advance were not active for this run, so the checkpoint was not auto-approved. The plan pauses here per standard protocol — see 'Checkpoint: Task 4 Pending' below."
+    reason: "Task 4 (checkpoint:human-verify, gate=blocking) was presented to the user, who chose to defer the manual walkthrough ('Defer testing, continue') rather than verify now, trusting the green automated suite (1358/1358 tests, svelte-check 0 errors/0 warnings) in the interim. The checkpoint is resolved-by-deferral, not abandoned: HV-24-03-01 remains open and should be surfaced by a future /gsd-verify-work session before this teaching flow is considered fully validated."
 ---
 
 # Phase 24 Plan 03: Lookup Casing-Trap Disambiguation + Why-Panel Summary
@@ -91,8 +91,8 @@ human_verification:
 
 - **Duration:** 62 min
 - **Started:** 2026-07-20T11:53:00Z
-- **Completed:** 2026-07-20T12:55:00Z (Tasks 1-3 code-complete; Task 4 checkpoint pending)
-- **Tasks:** 3 of 4 (Tasks 1-3 auto/TDD, completed and committed; Task 4 is a `checkpoint:human-verify` awaiting a live human response)
+- **Completed:** 2026-07-20T12:55:00Z (Tasks 1-3 code-complete; Task 4 checkpoint resolved by user deferral)
+- **Tasks:** 4 of 4 (Tasks 1-3 auto/TDD, completed and committed; Task 4's `checkpoint:human-verify` was presented to the user, who chose to defer the manual walkthrough — resolved-by-deferral, tracked as HV-24-03-01)
 - **Files modified:** 7
 
 ## Accomplishments
@@ -109,7 +109,7 @@ Each task was committed atomically (TDD RED-then-GREEN per task):
 1. **Task 1: Pure casing-ambiguity detector (TDD)** - `4dfd04c` (test, RED+GREEN combined — see Deviations) implementing `src/lib/lookup/casingAmbiguity.ts`
 2. **Task 2: WhyTheseNotes teaching panel component with the folded minor-vs-major duo (TDD)** - `14adc29` (test, RED) then `7b60636` (feat, GREEN)
 3. **Task 3: Wire the disambiguation chips and why-panel into the Lookup page** - `e319d58` (test, RED) then `d64d6f9` (feat, GREEN)
-4. **Task 4: Human verify the disambiguation chips and why-panel on the Lookup page** - PENDING (checkpoint:human-verify, gate="blocking"; see Checkpoint section below)
+4. **Task 4: Human verify the disambiguation chips and why-panel on the Lookup page** - RESOLVED BY DEFERRAL (checkpoint:human-verify, gate="blocking"; user chose "Defer testing, continue"; see Checkpoint section below)
 
 **Plan metadata:** the final `docs({phase}-{plan}): complete` commit and STATE.md/ROADMAP.md updates are owned by the orchestrator after all wave agents complete (or after Task 4 resolves, per this project's Plan 24-02 precedent).
 
@@ -152,9 +152,9 @@ Each task was committed atomically (TDD RED-then-GREEN per task):
 
 None - no external service configuration required.
 
-## Checkpoint: Task 4 Pending
+## Checkpoint: Task 4 Resolved by Deferral
 
-Task 4 (`checkpoint:human-verify`, `gate="blocking"`) requires a human to walk through the disambiguation flow and the why-panel's teaching content on the actual running app (ideally in French, the issue reporter's locale), per the plan's `how-to-verify` steps:
+Task 4 (`checkpoint:human-verify`, `gate="blocking"`) asked a human to walk through the disambiguation flow and the why-panel's teaching content on the actual running app (ideally in French, the issue reporter's locale), per the plan's `how-to-verify` steps:
 
 1. Type `AM7`/`am7`, confirm the vermilion disambiguation prompt with both chips, no result until a chip is picked
 2. Confirm the minor chip resolves to Am7 (A-C-E-G) and the major chip to Amaj7 (A-C♯-E-G♯)
@@ -163,16 +163,16 @@ Task 4 (`checkpoint:human-verify`, `gate="blocking"`) requires a human to walk t
 5. Confirm unambiguous chords (Cm7, Fmaj7, G7) show no disambiguation prompt
 6. Confirm legibility at a 390px phone viewport
 
-**Status: NOT resolved.** This parallel wave executor (`worktree-agent-a701842a6301f9207`) has no interactive user session available to respond to a live checkpoint, and `workflow._auto_chain_active`/`workflow.auto_advance` were both `false` for this run — so auto-approval does not apply per the standard checkpoint protocol (auto-approval is explicitly reserved for genuine auto-mode runs, and a package-legitimacy-style forced stop is not this case, but neither is silent self-approval appropriate for a comprehension/clarity check that the plan itself flags as needing a human, especially in French). All code (Tasks 1-3) is committed and the automated suite is fully green; Task 4 is tracked as `HV-24-03-01` in the frontmatter for follow-up in a `/gsd-verify-work` session or a live checkpoint response, mirroring this phase's own Plan 24-02 precedent for a pending human-verification item.
+**Status: Resolved by deferral.** The checkpoint was presented to the user, who responded "Defer testing, continue" — an explicit choice to skip the manual walkthrough now and trust the green automated suite (1358/1358 tests, `svelte-check` 0 errors/0 warnings) in the interim, rather than block plan completion on a live device check. This is not silent self-approval: it is the user's own decision, made in response to the checkpoint. All code (Tasks 1-3) is committed and the automated suite is fully green; the deferred manual check is tracked as `HV-24-03-01` in the frontmatter so a future `/gsd-verify-work` session surfaces it as a pending outstanding item before this teaching flow is considered fully validated.
 
 ## Next Phase Readiness
-- Tasks 1-3 are code-complete, tested (27 new tests across 3 new test files, full 1358-test suite green), and committed on this worktree branch
-- Task 4's human-verify checkpoint is PENDING — no live human response was available; the beginner-comprehension check (does the French copy land?) remains outstanding
+- Tasks 1-4 are complete: Tasks 1-3 are code-complete, tested (27 new tests across 3 new test files, full 1358-test suite green), and committed on this worktree branch; Task 4's checkpoint was resolved by the user's explicit deferral
+- The on-device/beginner-comprehension check (does the French copy land?) remains an OPEN item, tracked as `HV-24-03-01`, for a future `/gsd-verify-work` session
 - No blockers for other Phase 24 plans; this plan only touches the Lookup page (`src/routes/+page.svelte`) and new `casingAmbiguity`/`WhyTheseNotes` modules, no shared surfaces with Plans 01-02
 
 ---
 *Phase: 24-mobile-ux-fixes-from-issue-14-review-action-dock-sketch-014-*
-*Completed: 2026-07-20 (3/4 tasks code-complete and committed; Task 4 checkpoint:human-verify PENDING)*
+*Completed: 2026-07-20 (4/4 tasks complete; Task 4 checkpoint:human-verify resolved by user deferral, HV-24-03-01 tracked as pending for /gsd-verify-work)*
 
 ## Self-Check: PASSED
 
