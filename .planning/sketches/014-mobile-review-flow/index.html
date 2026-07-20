@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sketch 014 — Mobile Review Flow</title>
+<link rel="stylesheet" href="../themes/default.css">
+<style>
+  body { margin:0; background:#ddd8ca; font-family:var(--font-sans); color:var(--color-ink); padding-top:56px; }
+  #variant-nav { position:fixed; top:0; left:0; right:0; z-index:9998; background:var(--color-paper-bright); border-bottom:2px solid var(--color-ink); padding:8px 16px; display:flex; gap:8px; }
+  .variant-tab { font-family:var(--font-mono); font-size:12px; text-transform:uppercase; letter-spacing:.08em; background:none; border:2px solid var(--color-ink); padding:6px 10px; cursor:pointer; color:var(--color-ink); transition:all .15s ease; }
+  .variant-tab.active { background:var(--color-ink); color:var(--color-paper); }
+  .variant { display:none; justify-content:center; padding:24px 0; }
+  .variant.active { display:flex; }
+
+  /* Phone frame: 390x720, tab bar included — the issue is about what fits above it */
+  .phone { width:390px; height:720px; background:var(--color-paper); border:3px solid var(--color-ink); position:relative; overflow:hidden; display:flex; flex-direction:column; }
+  .phone-scroll { flex:1; overflow-y:auto; padding:12px 12px 0; }
+  .tabbar { height:56px; flex:none; background:var(--color-paper-bright); border-top:2px solid var(--color-ink); display:flex; }
+  .tabbar span { flex:1; display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:var(--color-muted); border-right:2px solid var(--color-ink); }
+  .tabbar span:last-child { border-right:none; }
+  .tabbar .active { background:var(--color-ink); color:var(--color-paper); }
+
+  h1.page { font-size:var(--text-heading); margin:4px 0 2px; }
+  .sub { color:var(--color-muted); font-size:13px; margin:0 0 10px; }
+  .card { border:2px solid var(--color-ink); background:var(--color-paper-bright); padding:12px; }
+  .glyph { font-family:var(--font-serif); font-size:44px; text-align:center; margin:4px 0; }
+  .register { font-family:var(--font-mono); font-size:var(--text-label); text-transform:uppercase; letter-spacing:.08em; color:var(--color-muted); }
+
+  .kbd { display:flex; position:relative; height:88px; margin-top:10px; }
+  .kbd .w { flex:1; border:1px solid var(--color-ink); background:#fff; }
+  .kbd .b { position:absolute; top:0; width:8%; height:55%; background:var(--color-ink); }
+  .note-a { background:var(--color-root)!important; } .note-c { background:var(--color-third)!important; }
+  .note-e { background:var(--color-fifth)!important; } .note-g { background:var(--color-seventh)!important; }
+
+  .btn { font-family:var(--font-mono); font-size:13px; text-transform:uppercase; letter-spacing:.08em; border:2px solid var(--color-ink); background:var(--color-paper-bright); padding:12px 8px; cursor:pointer; transition:all .15s ease; flex:1; min-height:48px; color:var(--color-ink); }
+  .btn:hover { background:var(--color-ink); color:var(--color-paper); }
+  .btn.primary { background:var(--color-ink); color:var(--color-paper); }
+  .btn.primary:hover { background:var(--color-vermilion); border-color:var(--color-vermilion); }
+
+  /* A: sticky action bar pinned above tab bar, content scrolls under it */
+  .action-dock { flex:none; border-top:2px solid var(--color-ink); background:var(--color-paper-bright); padding:8px; display:flex; gap:8px; }
+
+  /* B: compact card — everything sized to fit, no scroll at all */
+  .compact .glyph { font-size:38px; margin:0; }
+  .compact .kbd { height:64px; }
+  .compact .card { padding:8px; }
+
+  .filler { color:var(--color-faint); font-size:13px; border:1px dashed var(--color-faint); padding:10px; margin-top:12px; }
+  .toast { position:absolute; left:12px; right:12px; bottom:70px; background:var(--color-ink); color:var(--color-paper); font-family:var(--font-mono); font-size:12px; padding:8px 12px; opacity:0; transition:opacity .2s; text-align:center; z-index:5; }
+  .toast.show { opacity:1; }
+  @keyframes stampIn { from { transform:scale(1.15); opacity:0; } to { transform:scale(1); opacity:1; } }
+  .stamp { animation:stampIn 240ms ease-out; }
+</style>
+</head>
+<body>
+
+<div id="variant-nav">
+  <button class="variant-tab active" onclick="showVariant('a', this)">A: Action dock</button>
+  <button class="variant-tab" onclick="showVariant('b', this)">B: Fit-in-viewport</button>
+  <button class="variant-tab" onclick="showVariant('c', this)">C: Auto-scroll</button>
+</div>
+
+<!-- A: grade/next actions live in a dock pinned above the tab bar. Content scrolls; actions never leave. -->
+<div id="variant-a" class="variant active">
+  <div class="phone">
+    <div class="phone-scroll">
+      <h1 class="page">Révision</h1>
+      <p class="sub">Rappelez-vous, puis révélez.</p>
+      <div class="card">
+        <div class="register">Accord — épeler</div>
+        <div class="glyph">Am7</div>
+        <div class="reveal-zone" data-hidden="true" style="text-align:center;color:var(--color-faint);font-family:var(--font-mono);font-size:13px;padding:8px 0;">· · · ·</div>
+        <div class="kbd" style="display:none;">
+          <div class="w note-a"></div><div class="w"></div><div class="w note-c"></div><div class="w"></div><div class="w note-e"></div><div class="w"></div><div class="w note-g"></div>
+        </div>
+      </div>
+      <div class="filler">Contenu long simulé (indices, provenance morceau, note du pool…). Faites défiler : les boutons restent en bas.</div>
+      <div class="filler" style="height:220px;">…</div>
+    </div>
+    <div class="action-dock" data-stage="reveal">
+      <button class="btn primary" onclick="revealA(this)">Révéler</button>
+    </div>
+    <div class="tabbar"><span>Recherche</span><span>Exercices</span><span class="active">Révision</span><span>Morceaux</span><span>Plus</span></div>
+    <div class="toast"></div>
+  </div>
+</div>
+
+<!-- B: no scrolling at all — card + keyboard + grades all sized to fit one phone viewport. -->
+<div id="variant-b" class="variant">
+  <div class="phone compact">
+    <div class="phone-scroll" style="overflow:hidden;display:flex;flex-direction:column;">
+      <h1 class="page" style="font-size:16px;">Révision</h1>
+      <div class="card" style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+        <div class="register">Accord — épeler</div>
+        <div class="glyph">F♯ø7</div>
+        <div class="kbd" id="kbd-b" style="visibility:hidden;">
+          <div class="w note-a"></div><div class="w"></div><div class="w note-c"></div><div class="w"></div><div class="w note-e"></div><div class="w"></div><div class="w note-g"></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;padding:8px 0;" id="grades-b">
+        <button class="btn primary" style="flex:2;" onclick="revealB()">Révéler</button>
+      </div>
+    </div>
+    <div class="tabbar"><span>Recherche</span><span>Exercices</span><span class="active">Révision</span><span>Morceaux</span><span>Plus</span></div>
+  </div>
+</div>
+
+<!-- C: layout unchanged, but reveal auto-scrolls the action row into view. Cheapest fix. -->
+<div id="variant-c" class="variant">
+  <div class="phone">
+    <div class="phone-scroll" id="scroll-c">
+      <h1 class="page">Révision</h1>
+      <p class="sub">Rappelez-vous, puis révélez.</p>
+      <div class="card">
+        <div class="register">Accord — épeler</div>
+        <div class="glyph">Cdim</div>
+        <div class="kbd" id="kbd-c" style="display:none;">
+          <div class="w note-a"></div><div class="w"></div><div class="w note-c"></div><div class="w"></div><div class="w note-e"></div><div class="w"></div><div class="w note-g"></div>
+        </div>
+      </div>
+      <div class="filler" style="height:180px;">Contenu long simulé — dans l'app actuelle, les boutons de note passent sous le pli ici.</div>
+      <div style="display:flex;gap:8px;margin:12px 0 16px;" id="grades-c">
+        <button class="btn primary" onclick="revealC()">Révéler</button>
+      </div>
+    </div>
+    <div class="tabbar"><span>Recherche</span><span>Exercices</span><span class="active">Révision</span><span>Morceaux</span><span>Plus</span></div>
+  </div>
+</div>
+
+<div id="sketch-tools" style="position:fixed;bottom:12px;right:12px;z-index:9999;font-family:system-ui;font-size:12px;background:rgba(0,0,0,.7);color:#fff;padding:8px 12px;border-radius:8px;opacity:.4;transition:opacity .2s;" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='.4'">
+  Sketch 014 · phone frame 390px
+</div>
+
+<script>
+function showVariant(id, tab) {
+  document.querySelectorAll('.variant').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.variant-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('variant-' + id).classList.add('active');
+  tab.classList.add('active');
+}
+function gradeButtons(cb) {
+  return ['Encore','Difficile','Bien','Facile'].map(l => {
+    const b = document.createElement('button');
+    b.className = 'btn'; b.textContent = l;
+    b.onclick = cb; return b;
+  });
+}
+function revealA(btn) {
+  const v = document.getElementById('variant-a');
+  v.querySelector('.reveal-zone').style.display = 'none';
+  const k = v.querySelector('.kbd'); k.style.display = 'flex'; k.classList.add('stamp');
+  const dock = v.querySelector('.action-dock'); dock.innerHTML = '';
+  gradeButtons(() => toastA('Carte suivante — sans jamais défiler')).forEach(b => dock.appendChild(b));
+}
+function toastA(msg) {
+  const t = document.querySelector('#variant-a .toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1400);
+}
+function revealB() {
+  const k = document.getElementById('kbd-b'); k.style.visibility = 'visible'; k.classList.add('stamp');
+  const g = document.getElementById('grades-b'); g.innerHTML = '';
+  gradeButtons(() => { k.style.visibility='hidden'; g.innerHTML='<button class="btn primary" style="flex:2;" onclick="revealB()">Révéler</button>'; }).forEach(b => g.appendChild(b));
+}
+function revealC() {
+  const k = document.getElementById('kbd-c'); k.style.display = 'flex'; k.classList.add('stamp');
+  const g = document.getElementById('grades-c'); g.innerHTML = '';
+  gradeButtons(() => {}).forEach(b => g.appendChild(b));
+  g.scrollIntoView({ behavior:'smooth', block:'end' });
+}
+</script>
+</body>
+</html>
