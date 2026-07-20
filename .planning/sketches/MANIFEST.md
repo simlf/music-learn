@@ -54,6 +54,16 @@ Driven by GitHub issue #14 (mobile review blocked, French tab bar too tall, begi
 | 015 | icon-tab-bar | How does the phone tab bar shrink when French labels overflow? | B: Icon + micro-label | i18n, french, mobile, navigation |
 | 016 | lookup-why-panel | How does "why these notes?" teaching appear on lookup (Am7 vs Amaj7)? | A+B (C folded into A) | lookup, teaching, beginner, theory |
 
+## Session 6 (2026-07-20): learning frontier — progressions, voicings, metacognition
+
+Frontier pass from the v2.1 improvement backlog (research-derived). User picked 3 of 4 proposals; 018 tempo-fluency (I-03) proposed but not sketched, stays in backlog.
+
+| # | Name | Design Question | Winner | Tags |
+|---|------|----------------|--------|------|
+| 017 | progression-drill | How does a ii-V-I context drill present: key context, roman numerals, chord-by-chord flow, functional reveal? | null | progressions, drills, harmony, learning |
+| 019 | shell-voicings | How does voicing-style choice (root/shell/rootless) surface, and how does the keyboard show a 2-note shell as correct? | null | voicings, drills, keyboard, jazz |
+| 020 | confidence-calibration | Where does the pre-reveal "how sure?" prompt sit, and how does confidence-vs-correctness render on stats? | null | recall, metacognition, stats, learning |
+
 **Session 5 winners locked (2026-07-20):** 014-A action dock — structural guarantee like 008-A docked keyboard; C's auto-scroll acceptable as day-one micro-fix only. 015-B icon + 9px micro-label at 56px bar (from 64px), stable across FR/EN. 016 composes: B disambiguation chips at input (ambiguous casing only), A "Pourquoi ces notes ?" expandable on every result, C's side-by-side duo folded into A's panel as the deepest m-vs-maj content (same pattern as 010's dossier-in-deepest-rung).
 
 **Session 4 winners locked (2026-07-15):** all Variant A. Notes: 008-A docked keyboard is the only treatment that structurally guarantees playability on every keyboard page (drills/recall/scales/theory/lookup). 009 keeps C's arpeggio-then-block as an optional "study" mode. 010 folds C's dossier content into the deepest hint rung. 011 provenance mark travels app-wide + opt-in "From my songs" filter. 012-A guided steps is the first-drill bridge; B lesson-map becomes the container once lessons multiply. 013 ships the EN|FR toggle in the header; C's stress panel is the deliverable audit — register slots must abbreviate long French (FONDAMENTALE, MORCEAUX) or widen. Captured constraint: serif ChordGlyph + stamp-in reveal reused across 008/009/010/011 — locked house reference.

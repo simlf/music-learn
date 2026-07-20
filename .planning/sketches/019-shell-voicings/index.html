@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sketch 019: Shell Voicings</title>
+<link rel="stylesheet" href="../themes/default.css">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: var(--font-sans); background: var(--color-paper); color: var(--color-ink); padding-top: 52px; }
+  .variant-tab { font-family: var(--font-mono); font-size: 12px; padding: 6px 10px;
+    background: var(--color-paper-bright); border: 1px solid var(--color-ink); cursor: pointer; border-radius: 0; }
+  .variant-tab.active { background: var(--color-ink); color: var(--color-paper-bright); }
+  .variant { display: none; }
+  .variant.active { display: block; }
+
+  .phone { max-width: 390px; margin: 24px auto; border: 2px solid var(--color-ink);
+    background: var(--color-paper); min-height: 700px; position: relative; display: flex; flex-direction: column; }
+  .masthead { border-bottom: 2px solid var(--color-ink); padding: 10px 14px;
+    display: flex; justify-content: space-between; align-items: baseline; }
+  .masthead .brand { font-family: var(--font-serif); font-size: 18px; font-weight: bold; }
+  .masthead .reg { font-family: var(--font-mono); font-size: 11px; color: var(--color-muted); letter-spacing: 1px; }
+  .content { flex: 1; padding: 14px; overflow-y: auto; }
+
+  .glyph { font-family: var(--font-serif); font-size: var(--text-display); text-align: center; margin: 8px 0 4px; line-height: 1; }
+  @keyframes stamp-in { 0% { transform: scale(1.35); opacity: 0; } 60% { transform: scale(0.96); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+  .stamp { animation: stamp-in 240ms ease-out both; }
+  .prompt-line { text-align: center; font-size: 14px; color: var(--color-muted); margin-bottom: 10px; }
+
+  /* Voicing selector chips */
+  .voicing-row { display: flex; gap: 0; margin-bottom: 14px; border: 1px solid var(--color-ink); }
+  .vchip { flex: 1; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase;
+    padding: 9px 2px; text-align: center; cursor: pointer; background: var(--color-paper-bright);
+    border-right: 1px solid var(--color-ink); border-radius: 0; border-top:0;border-bottom:0;border-left:0; }
+  .vchip:last-child { border-right: none; }
+  .vchip.on { background: var(--color-ink); color: var(--color-paper-bright); }
+  .vchip .cnt { display: block; font-size: 9px; color: var(--color-faint); margin-top: 2px; }
+  .vchip.on .cnt { color: var(--color-tan); }
+
+  /* Piano */
+  .piano { position: relative; height: 130px; display: flex; border: 1px solid var(--color-ink);
+    background: var(--color-paper-bright); margin: 8px 0; }
+  .wk { flex: 1; border-right: 1px solid var(--color-ink); position: relative; cursor: pointer;
+    display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px;
+    font-family: var(--font-mono); font-size: 9px; color: var(--color-faint); }
+  .wk:last-child { border-right: none; }
+  .bk { position: absolute; top: 0; width: 6%; height: 62%; background: var(--color-ink); z-index: 2; cursor: pointer; }
+  .k-root { background: var(--color-root) !important; color: var(--color-on-root); }
+  .k-third { background: var(--color-third) !important; color: var(--color-on-third); }
+  .k-fifth { background: var(--color-fifth) !important; color: var(--color-on-fifth); }
+  .k-seventh { background: var(--color-seventh) !important; color: var(--color-on-seventh); }
+  .k-ghost { background-image: repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(34,30,23,0.15) 3px, rgba(34,30,23,0.15) 5px); }
+  .k-ghost::after { content: attr(data-ghost); position: absolute; top: 6px; left: 50%; transform: translateX(-50%);
+    font-size: 8px; color: var(--color-faint); font-family: var(--font-mono); }
+
+  .legend { display: flex; gap: 12px; justify-content: center; font-family: var(--font-mono); font-size: 10px;
+    color: var(--color-muted); margin: 6px 0 10px; flex-wrap: wrap; }
+  .legend .sw { display: inline-block; width: 10px; height: 10px; vertical-align: -1px; margin-right: 4px; }
+
+  .teach { border: 1px solid var(--color-ink); background: var(--color-paper-bright); padding: 10px 12px;
+    font-size: 14px; margin: 12px 0; }
+  .teach .fn { font-family: var(--font-mono); font-size: 12px; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--color-vermilion); display: block; margin-bottom: 4px; }
+  .teach.hidden { display: none; }
+  .teach.shown { display: block; animation: stamp-in 240ms ease-out both; }
+
+  .dock { border-top: 2px solid var(--color-ink); padding: 10px 14px; background: var(--color-paper-bright); }
+  .btn { font-family: var(--font-mono); font-size: 13px; letter-spacing: 1px; text-transform: uppercase;
+    border: 2px solid var(--color-ink); background: var(--color-paper-bright); padding: 10px 18px;
+    cursor: pointer; width: 100%; border-radius: 0; }
+  .btn.primary { background: var(--color-ink); color: var(--color-paper-bright); }
+
+  /* B: subtraction steps */
+  .steps { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--color-muted); display: flex; gap: 6px; justify-content: center; margin-bottom: 10px; }
+  .steps .st { padding: 4px 8px; border: 1px solid var(--color-tan); }
+  .steps .st.now { border-color: var(--color-ink); background: var(--color-ink); color: var(--color-paper-bright); }
+  .strike { text-decoration: line-through; color: var(--color-faint); }
+
+  /* C: lookup compare */
+  .compare { display: flex; flex-direction: column; gap: 14px; }
+  .vcard { border: 1px solid var(--color-ink); background: var(--color-paper-bright); padding: 10px 12px; }
+  .vcard h4 { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+    display: flex; justify-content: space-between; margin-bottom: 6px; }
+  .vcard h4 .use { color: var(--color-muted); font-weight: normal; }
+  .mini { height: 74px; }
+  .mini .wk { font-size: 8px; }
+  .vcard p { font-size: 12px; color: var(--color-muted); margin-top: 6px; }
+
+  .note { max-width: 390px; margin: 0 auto 24px; font-size: 12px; color: var(--color-muted);
+    font-family: var(--font-mono); padding: 0 8px; }
+</style>
+</head>
+<body>
+
+<div id="variant-nav" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:var(--color-paper-bright);border-bottom:1px solid var(--color-ink);padding:8px 16px;display:flex;gap:8px;">
+  <button class="variant-tab active" onclick="showVariant('a', event)">A: Voicing selector</button>
+  <button class="variant-tab" onclick="showVariant('b', event)">B: Teach by subtraction</button>
+  <button class="variant-tab" onclick="showVariant('c', event)">C: Lookup compare</button>
+</div>
+
+<!-- ============ VARIANT A: VOICING SELECTOR IN THE DRILL ============ -->
+<div id="variant-a" class="variant active">
+  <div class="phone">
+    <div class="masthead"><span class="brand">Music Learn</span><span class="reg">BUILD</span></div>
+    <div class="content">
+      <div class="voicing-row">
+        <button class="vchip" onclick="voicingA(this,'root')">Root<span class="cnt">4 notes</span></button>
+        <button class="vchip on" onclick="voicingA(this,'shell')">Shell<span class="cnt">3rd + 7th</span></button>
+        <button class="vchip" onclick="voicingA(this,'rootless')">Rootless A<span class="cnt">4 notes</span></button>
+      </div>
+
+      <div class="glyph stamp">Dm7</div>
+      <div class="prompt-line">Play the <b>shell</b>: just the notes that define the sound.</div>
+
+      <div class="piano" id="pianoA"></div>
+      <div class="legend">
+        <span><span class="sw" style="background:var(--color-third)"></span>3rd</span>
+        <span><span class="sw" style="background:var(--color-seventh)"></span>7th</span>
+        <span><span class="sw k-ghost" style="border:1px solid var(--color-tan)"></span>optional (bass covers it)</span>
+      </div>
+
+      <div class="teach hidden" id="teachA">
+        <span class="fn">Why only two notes?</span>
+        F (the 3rd) says minor. C (the 7th) says seventh chord. D and A add nothing you need: the bass player, or your reading of the symbol, already knows the root.
+      </div>
+    </div>
+    <div class="dock"><button class="btn primary" onclick="checkA()">Check</button></div>
+  </div>
+  <div class="note">A: voicing style is a first-class drill parameter, a 3-position selector above the prompt. Correct answer = the 2-note shell; root and fifth render as hatched ghosts marked optional. Same FSRS card family, new voicing dimension.</div>
+</div>
+
+<!-- ============ VARIANT B: TEACH BY SUBTRACTION ============ -->
+<div id="variant-b" class="variant">
+  <div class="phone">
+    <div class="masthead"><span class="brand">Music Learn</span><span class="reg">LESSON</span></div>
+    <div class="content">
+      <div class="steps">
+        <span class="st">1 Full</span><span class="st now">2 Subtract</span><span class="st">3 You play</span>
+      </div>
+
+      <div class="glyph stamp" style="font-size:40px">G7</div>
+      <div class="prompt-line">Full stack: G, B, D, F. Now <b>drop what the symbol already tells you</b>.</div>
+
+      <div class="piano" id="pianoB"></div>
+
+      <div class="teach shown">
+        <span class="fn">The subtraction rule</span>
+        <b class="strike">G root</b>: the symbol names it. <b class="strike">D fifth</b>: perfect fifths add no color.
+        Keep <b>B</b> (major 3rd) and <b>F</b> (flat 7): the tritone that makes it a dominant chord.
+      </div>
+    </div>
+    <div class="dock"><button class="btn primary" onclick="subtractB(this)">Subtract root + fifth</button></div>
+  </div>
+  <div class="note">B: guided-steps lesson (012-A pattern) that TEACHES the shell before drilling it. Tap the dock button: root and fifth visibly drain to ghost hatch, 3rd and 7th stay colored. Hands off to variant-A style drilling as step 3.</div>
+</div>
+
+<!-- ============ VARIANT C: LOOKUP COMPARE ============ -->
+<div id="variant-c" class="variant">
+  <div class="phone">
+    <div class="masthead"><span class="brand">Music Learn</span><span class="reg">LOOKUP</span></div>
+    <div class="content">
+      <div class="glyph stamp" style="font-size:40px; margin-bottom:10px">Cm7</div>
+      <div class="compare">
+        <div class="vcard">
+          <h4>Root position <span class="use">learning the spelling</span></h4>
+          <div class="piano mini" id="pianoC1"></div>
+          <p>C, E♭, G, B♭. All four notes, root on the bottom.</p>
+        </div>
+        <div class="vcard">
+          <h4>Shell <span class="use">reading in a band</span></h4>
+          <div class="piano mini" id="pianoC2"></div>
+          <p>E♭ + B♭ only. The 3rd and 7th: smallest thing that still sounds like Cm7.</p>
+        </div>
+        <div class="vcard">
+          <h4>Rootless A <span class="use">solo comping</span></h4>
+          <div class="piano mini" id="pianoC3"></div>
+          <p>E♭, G, B♭, D. Shell plus color (5th and 9th), no root.</p>
+        </div>
+      </div>
+    </div>
+    <div class="dock"><button class="btn">Drill this chord</button></div>
+  </div>
+  <div class="note">C: voicings enter through LOOKUP, not the drill. Every chord result gets a 3-card vertical compare (root / shell / rootless A) with when-to-use labels. Zero drill changes; teaches the concept passively first.</div>
+</div>
+
+<div id="sketch-tools" style="position:fixed;bottom:12px;right:12px;z-index:9999;font-family:system-ui;font-size:12px;background:rgba(0,0,0,0.7);color:white;padding:8px 12px;border-radius:8px;opacity:0.4;" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.4'">
+  sketch 019
+</div>
+
+<script>
+function showVariant(id, ev) {
+  document.querySelectorAll('.variant').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.variant-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('variant-' + id).classList.add('active');
+  ev.target.classList.add('active');
+}
+
+const WHITE = ['C','D','E','F','G','A','B','C','D','E'];
+const BLACKS = [{after:0},{after:1},{after:3},{after:4},{after:5},{after:7},{after:8}];
+function buildPiano(el) {
+  WHITE.forEach((n) => {
+    const k = document.createElement('div');
+    k.className = 'wk'; k.textContent = n;
+    k.onclick = () => k.classList.toggle('k-sel');
+    el.appendChild(k);
+  });
+  BLACKS.forEach(b => {
+    const k = document.createElement('div');
+    k.className = 'bk';
+    k.style.left = ((b.after + 1) * 10 - 3) + '%';
+    el.appendChild(k);
+  });
+}
+['pianoA','pianoB','pianoC1','pianoC2','pianoC3'].forEach(id => buildPiano(document.getElementById(id)));
+
+function wk(el, i) { return el.querySelectorAll('.wk')[i]; }
+function bk(el, i) { return el.querySelectorAll('.bk')[i]; }
+
+// A: Dm7 shell = F(3rd), C(7th); ghosts D + A
+function checkA() {
+  const p = document.getElementById('pianoA');
+  wk(p,3).classList.add('k-third');           // F
+  wk(p,7).classList.add('k-seventh');          // C (upper)
+  wk(p,1).classList.add('k-ghost'); wk(p,1).dataset.ghost = 'R';   // D
+  wk(p,5).classList.add('k-ghost'); wk(p,5).dataset.ghost = '5';   // A
+  document.getElementById('teachA').classList.remove('hidden');
+  document.getElementById('teachA').classList.add('shown');
+}
+function voicingA(chip) {
+  document.querySelectorAll('#variant-a .vchip').forEach(c => c.classList.remove('on'));
+  chip.classList.add('on');
+}
+
+// B: G7 full stack shown at load; subtract on tap
+(function initB() {
+  const p = document.getElementById('pianoB');
+  wk(p,4).classList.add('k-root');     // G
+  wk(p,6).classList.add('k-third');    // B
+  wk(p,8).classList.add('k-fifth');    // D
+  wk(p,3).classList.add('k-seventh');  // F... F is below G; use upper F index? keep simple: idx 3
+})();
+function subtractB(btn) {
+  const p = document.getElementById('pianoB');
+  wk(p,4).classList.remove('k-root'); wk(p,4).classList.add('k-ghost'); wk(p,4).dataset.ghost = 'R';
+  wk(p,8).classList.remove('k-fifth'); wk(p,8).classList.add('k-ghost'); wk(p,8).dataset.ghost = '5';
+  btn.textContent = 'Now you play it';
+}
+
+// C cards: Cm7 root position / shell / rootless A (Eb, Bb are black keys 1 and 6)
+(function initC() {
+  const c1 = document.getElementById('pianoC1');
+  wk(c1,0).classList.add('k-root'); bk(c1,1).classList.add('k-third');
+  wk(c1,4).classList.add('k-fifth'); bk(c1,6).classList.add('k-seventh');
+  const c2 = document.getElementById('pianoC2');
+  bk(c2,1).classList.add('k-third'); bk(c2,6).classList.add('k-seventh');
+  const c3 = document.getElementById('pianoC3');
+  bk(c3,1).classList.add('k-third'); wk(c3,4).classList.add('k-fifth');
+  bk(c3,6).classList.add('k-seventh'); wk(c3,8).style.background = 'var(--color-second)';
+})();
+</script>
+</body>
+</html>
