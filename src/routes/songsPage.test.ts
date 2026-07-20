@@ -100,3 +100,74 @@ describe('Preset shelf dedupe (DPOL-01)', () => {
 		expect(presetCards[0]).not.toHaveTextContent('Added');
 	});
 });
+
+/**
+ * Quick task 260720-v9u: the ONE global "From my songs" practice-pool
+ * filter control now lives on /songs (Drills and Recall no longer render
+ * their own toggle - they just read the persisted `music-learn:song-filter`
+ * pref). Mirrors recallSongFilter.test.ts's seedActiveSong helper.
+ */
+function seedActiveSong(symbols: string[]) {
+	saveSong({
+		id: 'song-1',
+		name: 'My Tune',
+		chordSymbols: symbols,
+		createdAt: '2026-07-20T00:00:00.000Z',
+		source: 'custom',
+		active: true
+	});
+}
+
+describe('Global "From my songs" practice-pool filter (quick task 260720-v9u)', () => {
+	it('renders labelled PRACTICE POOL and a From my songs button defaulting to aria-pressed=false with the filter-off note', () => {
+		renderPage();
+
+		expect(screen.getByText('PRACTICE POOL')).toBeInTheDocument();
+		const toggle = screen.getByRole('button', { name: /From my songs/i });
+		expect(toggle).toHaveAttribute('aria-pressed', 'false');
+		expect(screen.getByTestId('song-filter-note')).toHaveTextContent(
+			'Filter off: full chord library. Chords from your songs still carry their mark.'
+		);
+	});
+
+	it('clicking the button sets aria-pressed=true and persists true under music-learn:song-filter', async () => {
+		renderPage();
+
+		const toggle = screen.getByRole('button', { name: /From my songs/i });
+		await fireEvent.click(toggle);
+
+		expect(toggle).toHaveAttribute('aria-pressed', 'true');
+		expect(localStorage.getItem('music-learn:song-filter')).toBe('true');
+	});
+
+	it('with an active song of two recognized chords, turning it on shows the filter-on note containing 2', async () => {
+		seedActiveSong(['Bbmaj7', 'F7']);
+		renderPage();
+
+		const toggle = screen.getByRole('button', { name: /From my songs/i });
+		await fireEvent.click(toggle);
+
+		expect(screen.getByTestId('song-filter-note')).toHaveTextContent(
+			'Filter on: practicing the 2 chords from your active songs across Drills and Recall.'
+		);
+	});
+
+	it('with no active songs, turning it on shows the fallback note', async () => {
+		renderPage();
+
+		const toggle = screen.getByRole('button', { name: /From my songs/i });
+		await fireEvent.click(toggle);
+
+		expect(screen.getByTestId('song-filter-note')).toHaveTextContent(
+			'No active songs yet, so showing the full library instead.'
+		);
+	});
+
+	it('under fr, the poolLabel and button copy resolve to French', () => {
+		setLocale('fr');
+		renderPage();
+
+		expect(screen.getByText('BASSIN DE PRATIQUE')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Depuis mes morceaux' })).toBeInTheDocument();
+	});
+});
