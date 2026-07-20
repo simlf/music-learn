@@ -645,6 +645,56 @@
 	{/if}
 {/snippet}
 
+<!--
+	see-play mode's docked primary advance action (Task 2, issue #14): Check
+	(unanswered) is the load-bearing dock action; Clear stays a secondary that
+	rides alongside it. Once answered, Next replaces both - the single action
+	that advances. Reused verbatim in-flow (desktop) and in the dock (phone).
+-->
+{#snippet seePlayActions()}
+	{#if !modeAAnswered}
+		<div class="mode-a-controls">
+			<div class="mode-a-controls__primary">
+				<Button type="button" variant="primary" disabled={selected.size === 0} onclick={handleModeACheck}>
+					{t('recall.cta.check')}
+				</Button>
+			</div>
+			<div class="mode-a-controls__secondary">
+				<Button type="button" variant="ghost" onclick={() => (selected = new Set())}>
+					{t('recall.cta.clear')}
+				</Button>
+			</div>
+		</div>
+	{:else}
+		<div class="review-action-dock__row">
+			<Button type="button" variant="primary" onclick={handleModeANext}
+				>{t('recall.cta.next')}</Button
+			>
+		</div>
+	{/if}
+{/snippet}
+
+<!--
+	hear-name mode's docked primary advance action (Task 2, issue #14): the
+	post-hint Continue button only exists once hearNameHintOpen is true (the
+	choice grid auto-advances otherwise, per D-04's never-gates contract) - so
+	this snippet renders nothing when the hint hasn't been opened, and the
+	dock is simply empty for hear-name until then.
+-->
+{#snippet hearNameActions()}
+	{#if hearNameHintOpen}
+		<div class="review-action-dock__row">
+			<Button
+				type="button"
+				variant="ghost"
+				onclick={() => advanceHearName(hearNameCommittedRating ?? Rating.Again)}
+			>
+				{t('recall.cta.continue')}
+			</Button>
+		</div>
+	{/if}
+{/snippet}
+
 {#snippet modeKeyboard()}
 	{#if currentItem?.mode === 'see-play' && currentFact?.factKind === 'chord-formula'}
 		{@const target = spellChord(currentFact.symbol)}
@@ -749,6 +799,10 @@
 		<div class="review-action-dock__inner">
 			{#if currentItem.mode === 'formula' && currentFact}
 				{@render formulaActions()}
+			{:else if currentItem.mode === 'see-play' && currentFact?.factKind === 'chord-formula'}
+				{@render seePlayActions()}
+			{:else if currentItem.mode === 'hear-name' && currentFact?.factKind === 'chord-formula'}
+				{@render hearNameActions()}
 			{/if}
 		</div>
 	</div>
@@ -881,24 +935,6 @@
 						<HintLadder symbol={currentFact.symbol} layers={hintLayersFor('see-play')} />
 					</div>
 				{/key}
-
-				<div class="mode-a-controls mt-4">
-					<div class="mode-a-controls__primary">
-						<Button
-							type="button"
-							variant="primary"
-							disabled={selected.size === 0}
-							onclick={handleModeACheck}
-						>
-							{t('recall.cta.check')}
-						</Button>
-					</div>
-					<div class="mode-a-controls__secondary">
-						<Button type="button" variant="ghost" onclick={() => (selected = new Set())}>
-							{t('recall.cta.clear')}
-						</Button>
-					</div>
-				</div>
 			{:else}
 				<div class="stamp mt-6" data-testid="recall-mode-a-feedback">
 					{#if modeAResult?.correct}
@@ -927,13 +963,17 @@
 						</p>
 					{/if}
 				</div>
-
-				<div class="mt-6">
-					<Button type="button" variant="primary" onclick={handleModeANext}
-						>{t('recall.cta.next')}</Button
-					>
-				</div>
 			{/if}
+
+			<!--
+				Phone-only fixed action dock (Task 2, issue #14): seePlayActions
+				renders ONCE and is placed EITHER here (desktop, in normal flow) OR
+				in the dock (phone) - see the formula-mode comment above for the
+				same discipline.
+			-->
+			<div class="review-inflow-actions mt-4">
+				{@render seePlayActions()}
+			</div>
 		</div>
 	{:else if currentItem.mode === 'hear-name' && currentFact.factKind === 'chord-formula'}
 		{@const chord = spellChord(currentFact.symbol)}
@@ -996,17 +1036,15 @@
 					</div>
 				{/key}
 
-				{#if hearNameHintOpen}
-					<div class="mt-4">
-						<Button
-							type="button"
-							variant="ghost"
-							onclick={() => advanceHearName(hearNameCommittedRating ?? Rating.Again)}
-						>
-							{t('recall.cta.continue')}
-						</Button>
-					</div>
-				{/if}
+				<!--
+					Phone-only fixed action dock (Task 2, issue #14): hearNameActions
+					renders ONCE (Continue, only once hearNameHintOpen) and is placed
+					EITHER here (desktop, in normal flow) OR in the dock (phone) - same
+					discipline as formula/see-play above.
+				-->
+				<div class="review-inflow-actions mt-4">
+					{@render hearNameActions()}
+				</div>
 			{/if}
 		</div>
 	{:else}
