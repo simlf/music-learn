@@ -329,6 +329,7 @@ Recent decisions affecting current work:
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260718-iyj | Remove collapsible keyboard dock, restore inline keyboards | 2026-07-18 | 9108219 | [260718-iyj-remove-collapsible-keyboard-dock-restore](./quick/260718-iyj-remove-collapsible-keyboard-dock-restore/) |
+| 260720-vm6 | Deploy CI: skip on doc-only pushes, skip gate tests on already-tested merges | 2026-07-20 | 9845fca | [260720-vm6-deploy-ci-md-filter-and-test-skip](./quick/260720-vm6-deploy-ci-md-filter-and-test-skip/) |
 | 260720-v9u | Move "From my songs" filter to Songs page as single global preference | 2026-07-20 | eec9db4 | [260720-v9u-move-the-from-my-songs-review-pool-filte](./quick/260720-v9u-move-the-from-my-songs-review-pool-filte/) |
 
 ## Deferred Items
