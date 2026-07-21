@@ -4,17 +4,17 @@ milestone: v2.1
 milestone_name: Playability & Comprehension
 current_phase: 25
 current_phase_name: contextual-learning-from-session-6-sketches-progression-dril
-status: executing
-stopped_at: Completed 23-04-PLAN.md
-last_updated: "2026-07-21T16:36:33.310Z"
+status: verifying
+stopped_at: Completed 25-07-PLAN.md
+last_updated: "2026-07-21T17:02:55.818Z"
 last_activity: 2026-07-20
 last_activity_desc: Phase 25 execution started
 progress:
   total_phases: 24
-  completed_phases: 19
+  completed_phases: 20
   total_plans: 98
-  completed_plans: 97
-  percent: 79
+  completed_plans: 98
+  percent: 83
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 
 Phase: 25 (contextual-learning-from-session-6-sketches-progression-dril) — EXECUTING
 Plan: 8 of 8
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-20 — Phase 25 execution started
 Full suite: 1284 tests green; svelte-check 0 errors.
 
@@ -160,6 +160,7 @@ Full suite: 1284 tests green; svelte-check 0 errors.
 | Phase 25 P05 | 65min | 3 tasks | 8 files |
 | Phase 25 P06 | 20min | 2 tasks | 3 files |
 | Phase 25 P08 | 15min | 2 tasks | 3 files |
+| Phase 25 P07 | 13min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -327,6 +328,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 25-08]: 3-bar calibration chart chosen over the denser 3x2 matrix - glanceable on a phone, reuses the streak-strip bar aesthetic, states miscalibration directly via the flag
 - [Phase ?]: [Phase 25-08]: Calibration section renders outside the pageState machine (like Practice Settings), gated only on confidenceEntries.length > 0 - never depends on the backend stats/streak fetch
 - [Phase ?]: [Phase 25-08]: dangerCardLabel resolves any factKind for display, but the drill CTA only seeds chord-formula symbols (the only kind /drills' seeding path accepts) and hides when zero chord-formula danger cards exist
+- [Phase ?]: [Phase 25-07]: voicingMet mirrors songFilterPref/confidenceLog's total localStorage pattern; a single interactive PianoKeyboard serves as both the ghost-hatch teaching display and the graded play region (ghostKeys is orthogonal to interactive/selected/notes)
 
 ### Pending Todos
 
@@ -363,7 +365,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-21T16:36:14.976Z
-Stopped at: Completed 23-04-PLAN.md
+Last session: 2026-07-21T17:02:55.809Z
+Stopped at: Completed 25-07-PLAN.md
 Resume file: 
 None

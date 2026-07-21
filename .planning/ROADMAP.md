@@ -674,7 +674,7 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 **Requirements**: none mapped (sketch-driven; must-haves derived per-plan from session-6 sketch winners 017/019/020-B)
 **Depends on:** Phase 24
 **Design reference:** `.claude/skills/sketch-findings-music-learn/references/contextual-learning-metacognition.md` (session 6 locked winners); `.planning/sketches/WRAP-UP-SUMMARY.md`
-**Plans:** 7/8 plans executed
+**Plans:** 8/8 plans complete
 
 **Wave 1** *(parallel: disjoint file sets — four pure/primitive foundations)*
 
@@ -691,4 +691,4 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 
 **Wave 3** *(blocked on Wave 2: shares +layout.svelte / i18n index / chrome nav with 25-05)*
 
-- [ ] 25-07-PLAN.md — ShellVoicingDrill + /voicings route + nav + i18n: staged meet/subtract/drill by card maturity, ghost-hatch shell (sketch 019) [depends 25-02, 25-03, 25-05]
+- [x] 25-07-PLAN.md — ShellVoicingDrill + /voicings route + nav + i18n: staged meet/subtract/drill by card maturity, ghost-hatch shell (sketch 019) [depends 25-02, 25-03, 25-05]
