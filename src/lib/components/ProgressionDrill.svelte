@@ -62,9 +62,12 @@
 
 	const currentBar = $derived(progression.bars[cursor] as ProgressionBar | undefined);
 	const complete = $derived(progression.bars.length > 0 && earned.every((bar) => bar));
-	const currentChoices = $derived(currentBar ? nameChoices(currentBar, progression.key) : []);
 	const currentTemplate = $derived(
 		PROGRESSION_TEMPLATES.find((template) => template.id === progression.templateId)
+	);
+	/** Mode-aware (WR-04): a minor bar's distractor chips draw from the MINOR key's sevenths, never the parallel major's. */
+	const currentChoices = $derived(
+		currentBar ? nameChoices(currentBar, progression.key, currentTemplate?.mode ?? 'major') : []
 	);
 	const keyModeWord = $derived(
 		currentTemplate?.mode === 'minor' ? t('progressions.key.minor') : t('progressions.key.major')

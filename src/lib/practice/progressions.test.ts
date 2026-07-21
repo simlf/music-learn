@@ -66,6 +66,43 @@ describe('nameChoices', () => {
 		vi.restoreAllMocks();
 	});
 
+	it('minor mode: every choice for a minor-ii-V-i bar is diatonic to the MINOR key, never the parallel major (WR-04)', () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.3);
+		const bars = buildProgression('minor-ii-V-i', 'A');
+		const iiBar = bars[0];
+		expect(iiBar.symbol).toBe('Bm7b5');
+
+		const choices = nameChoices(iiBar, 'A', 'minor');
+		expect(choices).toHaveLength(4);
+		expect(new Set(choices).size).toBe(4);
+		expect(choices).toContain('Bm7b5');
+
+		// A minor's diatonic sevenths (dominant-V convention, matching the
+		// template's own V7): never an A-MAJOR symbol like Amaj7 or C♯m7.
+		const aMinorDiatonicSevenths = ['Am7', 'Bm7b5', 'Cmaj7', 'Dm7', 'E7', 'Fmaj7', 'G7'];
+		for (const choice of choices) {
+			expect(aMinorDiatonicSevenths).toContain(choice);
+		}
+		vi.restoreAllMocks();
+	});
+
+	it('minor mode: every key yields 4 distinct recognized choices for every minor bar (pool survives the defensive spelling drops)', () => {
+		const minorTemplate = PROGRESSION_TEMPLATES.find((t) => t.id === 'minor-ii-V-i');
+		expect(minorTemplate).toBeDefined();
+		for (const key of PROGRESSION_KEYS) {
+			const bars = buildProgression('minor-ii-V-i', key);
+			for (const bar of bars) {
+				const choices = nameChoices(bar, key, 'minor');
+				expect(choices, `${key} minor / ${bar.symbol}`).toHaveLength(4);
+				expect(new Set(choices).size).toBe(4);
+				expect(choices).toContain(bar.symbol);
+				for (const choice of choices) {
+					expect(spellChord(choice).recognized, `${key} minor: ${choice}`).toBe(true);
+				}
+			}
+		}
+	});
+
 	it('is deterministic given a seeded Math.random (same mocked draw -> same set)', () => {
 		vi.spyOn(Math, 'random').mockReturnValue(0.6);
 		const bars = buildProgression('major-ii-V-I', 'C');

@@ -83,6 +83,24 @@ const MAJOR_DIATONIC_QUALITIES: Record<number, string> = {
 	7: 'm7b5'
 };
 
+/**
+ * Diatonic seventh-chord quality suffix per natural-minor degree, with the
+ * jazz convention this drill's own minor template already uses: a DOMINANT V7
+ * (harmonic-minor borrowing) rather than natural minor's diatonic v m7, and
+ * the tonic as i m7 (matching the minor-ii-V-i template's own 'm7' tonic).
+ * Degrees pair with MINOR_DEGREE_INTERVALS (i m7, iiø m7b5, bIII maj7, iv m7,
+ * V 7, bVI maj7, bVII 7).
+ */
+const MINOR_DIATONIC_QUALITIES: Record<number, string> = {
+	1: 'm7',
+	2: 'm7b5',
+	3: 'maj7',
+	4: 'm7',
+	5: '7',
+	6: 'maj7',
+	7: '7'
+};
+
 /** The progression templates the drill supports, keyed by id. */
 export const PROGRESSION_TEMPLATES: ProgressionTemplate[] = [
 	{
@@ -151,23 +169,42 @@ export function buildProgression(templateId: string, key: string): ProgressionBa
 	return bars;
 }
 
-/** The 7 diatonic seventh-chord symbols of `key` major, used as the same-key distractor pool. */
-function diatonicSevenths(key: string): string[] {
+/**
+ * The diatonic seventh-chord symbols of `key` in `mode`, used as the
+ * same-key/same-mode distractor pool. Mode-aware (a minor bar's distractors
+ * come from the MINOR key's sevenths, never the parallel major's). Two
+ * defensive drops keep the pool inside the app's chord vocabulary:
+ * a double-accidental root (e.g. B♭♭, natural minor's bVI of D♭) is
+ * theoretically diatonic but outside randomChord.ROOTS' single-accidental
+ * vocabulary, and any symbol spellChord fails to recognize is skipped rather
+ * than surfaced (matching buildProgression's own guard).
+ */
+function diatonicSevenths(key: string, mode: 'major' | 'minor'): string[] {
+	const intervals = mode === 'minor' ? MINOR_DEGREE_INTERVALS : MAJOR_DEGREE_INTERVALS;
+	const qualities = mode === 'minor' ? MINOR_DIATONIC_QUALITIES : MAJOR_DIATONIC_QUALITIES;
 	const symbols: string[] = [];
 	for (let degree = 1; degree <= 7; degree++) {
-		const root = transposeFrom(key, MAJOR_DEGREE_INTERVALS[degree]);
-		symbols.push(`${root}${MAJOR_DIATONIC_QUALITIES[degree]}`);
+		const root = transposeFrom(key, intervals[degree]);
+		const symbol = `${root}${qualities[degree]}`;
+		if (root.length > 2 || !spellChord(symbol).recognized) continue;
+		symbols.push(symbol);
 	}
 	return symbols;
 }
 
 /**
  * Same-key multiple-choice distractors for naming `bar`: the correct symbol
- * plus 3 others drawn from `key`'s 7 diatonic seventh chords, shuffled.
- * Never an out-of-key chord.
+ * plus 3 others drawn from `key`'s diatonic seventh chords IN `mode`,
+ * shuffled. Never an out-of-key chord — a minor bar's distractors are minor-
+ * key sevenths, never the parallel major's. `mode` defaults to 'major' for
+ * the pre-existing call shape.
  */
-export function nameChoices(bar: ProgressionBar, key: string): string[] {
-	const pool = diatonicSevenths(key).filter((symbol) => symbol !== bar.symbol);
+export function nameChoices(
+	bar: ProgressionBar,
+	key: string,
+	mode: 'major' | 'minor' = 'major'
+): string[] {
+	const pool = diatonicSevenths(key, mode).filter((symbol) => symbol !== bar.symbol);
 	const distractors = shuffle(pool).slice(0, 3);
 	return shuffle([bar.symbol, ...distractors]);
 }
