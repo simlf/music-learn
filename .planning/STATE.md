@@ -6,14 +6,14 @@ current_phase: 25
 current_phase_name: contextual-learning-from-session-6-sketches-progression-dril
 status: executing
 stopped_at: Completed 23-04-PLAN.md
-last_updated: "2026-07-21T16:23:41.043Z"
+last_updated: "2026-07-21T16:36:33.310Z"
 last_activity: 2026-07-20
 last_activity_desc: Phase 25 execution started
 progress:
   total_phases: 24
   completed_phases: 19
   total_plans: 98
-  completed_plans: 96
+  completed_plans: 97
   percent: 79
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 ## Current Position
 
 Phase: 25 (contextual-learning-from-session-6-sketches-progression-dril) — EXECUTING
-Plan: 7 of 8
+Plan: 8 of 8
 Status: Ready to execute
 Last activity: 2026-07-20 — Phase 25 execution started
 Full suite: 1284 tests green; svelte-check 0 errors.
@@ -159,6 +159,7 @@ Full suite: 1284 tests green; svelte-check 0 errors.
 | Phase 25 P04 | 20min | 2 tasks | 2 files |
 | Phase 25 P05 | 65min | 3 tasks | 8 files |
 | Phase 25 P06 | 20min | 2 tasks | 3 files |
+| Phase 25 P08 | 15min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -323,6 +324,9 @@ Recent decisions affecting current work:
 - [Phase ?]: Play-step PianoKeyboard shows notes=[] (no highlighting) while unanswered, mirroring drills' construction/identification interactive pattern
 - [Phase ?]: Confidence dots render for all three formula-mode factKinds (chord-formula, interval-size, scale-degree), not just chord-formula
 - [Phase ?]: logConfidence factId/mode come from currentCard (the graded record), not currentItem, so the log entry stays correct across advanceQueue mutation
+- [Phase ?]: [Phase 25-08]: 3-bar calibration chart chosen over the denser 3x2 matrix - glanceable on a phone, reuses the streak-strip bar aesthetic, states miscalibration directly via the flag
+- [Phase ?]: [Phase 25-08]: Calibration section renders outside the pageState machine (like Practice Settings), gated only on confidenceEntries.length > 0 - never depends on the backend stats/streak fetch
+- [Phase ?]: [Phase 25-08]: dangerCardLabel resolves any factKind for display, but the drill CTA only seeds chord-formula symbols (the only kind /drills' seeding path accepts) and hides when zero chord-formula danger cards exist
 
 ### Pending Todos
 
@@ -359,7 +363,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-21T16:20:22.149Z
+Last session: 2026-07-21T16:36:14.976Z
 Stopped at: Completed 23-04-PLAN.md
 Resume file: 
 None
