@@ -1,0 +1,187 @@
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/svelte';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import ShellVoicingDrill from './ShellVoicingDrill.svelte';
+import { newCard, State } from '$lib/srs/scheduler';
+import type { CardRecord } from '$lib/srs/deck';
+import { hasVoicingMet } from '$lib/practice/voicingMet';
+import { setLocale } from '$lib/i18n/locale.svelte';
+
+/**
+ * Component test for ShellVoicingDrill (Phase 25 Plan 07, sketch-019
+ * synthesis, SK-019): mocks the deck persistence seam (getAllCards) exactly
+ * like recallSession.test.ts, and Math.random (which drives
+ * seventhChordSymbols()'s draw) deterministically. A constant 0 return
+ * draws seventhChordSymbols()[0], worked out by hand from the shared fact
+ * catalog's deterministic root x quality build order (ROOTS x
+ * QUALITY_SUFFIXES, '' then 'm' then 'dim' then 'maj7' first for root C) -
+ * that first seventh-bearing symbol is 'Cmaj7' (root C, third E, fifth G,
+ * seventh B; shell = E + B).
+ */
+
+const now0 = new Date('2026-07-20T00:00:00.000Z');
+
+function makeCard(state: State): CardRecord {
+	return {
+		...newCard(now0),
+		factId: 'chord-formula:Cmaj7',
+		factKind: 'chord-formula',
+		mode: 'formula',
+		lastRating: null,
+		masteryDayCount: 0,
+		state
+	};
+}
+
+const getAllCardsMock = vi.fn();
+vi.mock('$lib/srs/deck', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('$lib/srs/deck')>();
+	return {
+		...actual,
+		getAllCards: (...args: unknown[]) => getAllCardsMock(...args)
+	};
+});
+
+/** First occurrence of a natural-letter key by its accessible name (mirrors progressionDrill.test.ts's clickKey convention). */
+function clickKey(letter: string) {
+	const keys = screen.getAllByRole('button', { name: `${letter} key` });
+	fireEvent.click(keys[0]);
+}
+
+beforeEach(() => {
+	localStorage.clear();
+	getAllCardsMock.mockReset();
+	vi.spyOn(Math, 'random').mockReturnValue(0);
+});
+
+afterEach(() => {
+	cleanup();
+	setLocale('en');
+	vi.restoreAllMocks();
+});
+
+describe('ShellVoicingDrill: stage derived from card maturity', () => {
+	it('shows the compare (meet) stage when the deck has no cards for the chord', async () => {
+		getAllCardsMock.mockResolvedValue([]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-meet'));
+		expect(screen.getByTestId('compare-know')).toBeInTheDocument();
+		expect(screen.getByTestId('compare-use')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Got it' })).toBeInTheDocument();
+	});
+
+	it('shows the compare (meet) stage when every card is State.New', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.New)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-meet'));
+	});
+
+	it('shows the subtract stage (with ghost-hatched root + fifth) for a Learning card', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);
+
+		const { container } = render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-subtract'));
+		expect(screen.getByTestId('teach-panel')).toBeInTheDocument();
+		expect(container.querySelectorAll('[data-ghost="R"]')).toHaveLength(1);
+		expect(container.querySelectorAll('[data-ghost="5"]')).toHaveLength(1);
+		expect(screen.queryByTestId('voicing-selector')).not.toBeInTheDocument();
+	});
+
+	it('shows the drill stage (voicing selector, no teach panel) for any Review card', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Learning), makeCard(State.Review)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-drill'));
+		expect(screen.getByTestId('voicing-selector')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'ROOT' })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'SHELL' })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'ROOTLESS' })).toBeInTheDocument();
+		expect(screen.queryByTestId('teach-panel')).not.toBeInTheDocument();
+	});
+});
+
+describe('ShellVoicingDrill: step indicator', () => {
+	it('always renders the 1 Meet / 2 Subtract / 3 Drill chips, with the current stage inverted', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-subtract'));
+		expect(screen.getByTestId('step-meet')).toHaveTextContent('1 MEET');
+		expect(screen.getByTestId('step-subtract')).toHaveTextContent('2 SUBTRACT');
+		expect(screen.getByTestId('step-drill')).toHaveTextContent('3 DRILL');
+		expect(screen.getByTestId('step-subtract')).toHaveClass('step--active');
+		expect(screen.getByTestId('step-meet')).not.toHaveClass('step--active');
+	});
+});
+
+describe('ShellVoicingDrill: Got it advances the meet stage', () => {
+	it('marks the chord met and advances from meet to subtract', async () => {
+		getAllCardsMock.mockResolvedValue([]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-meet'));
+		await fireEvent.click(screen.getByRole('button', { name: 'Got it' }));
+
+		expect(hasVoicingMet('Cmaj7')).toBe(true);
+		expect(screen.getByTestId('stage-subtract')).toBeInTheDocument();
+	});
+});
+
+describe('ShellVoicingDrill: grading + advance', () => {
+	it('a correct shell chroma play in the subtract stage advances (Next resets to a fresh unanswered question)', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-subtract'));
+
+		clickKey('E');
+		clickKey('B');
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Check' })).not.toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+		expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Check' })).toBeInTheDocument();
+	});
+
+	it('a wrong play in the subtract stage never gates: a gentle retry, still on the same question', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-subtract'));
+
+		clickKey('C');
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(screen.getByTestId('retry')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Check' })).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
+	});
+
+	it('grades the drill stage against the selected voicing style (shell = 2 notes)', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Review)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-drill'));
+		await fireEvent.click(screen.getByRole('button', { name: 'SHELL' }));
+
+		clickKey('E');
+		clickKey('B');
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
+	});
+});
