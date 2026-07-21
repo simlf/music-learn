@@ -197,7 +197,14 @@ export function interleaveQueue(
 			const wouldExtendRootRunTo3 =
 				leadRoot !== null && leadRoot === trailingRoot && trailingRootRun >= 2;
 			if (wouldExtendRootRunTo3) continue;
-			const score = leadRoot !== null ? (remainingRootCounts.get(leadRoot) ?? 0) : 0;
+			// A non-chord fact (null root) imposes no root constraint at all, so
+			// it must never be treated as systematically lower-priority than a
+			// chord fact - scored as a neutral 1 (same as a rare, once-remaining
+			// chord root) rather than 0, which would otherwise always push every
+			// interval-size/scale-degree card to the back of the queue whenever
+			// any chord-formula card is present (caught empirically alongside
+			// the same-root fix above).
+			const score = leadRoot !== null ? (remainingRootCounts.get(leadRoot) ?? 0) : 1;
 			if (score > bestScore) {
 				bestScore = score;
 				bestIndex = i;

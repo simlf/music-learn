@@ -9,7 +9,8 @@
 		type CardRecord,
 		type Mode
 	} from '$lib/srs/deck';
-	import { selectReviewCards } from '$lib/srs/rotation';
+	import { selectReviewCards, interleaveQueue } from '$lib/srs/rotation';
+	import { remainingIntroBudget, consumeIntroBudget } from '$lib/srs/introBudget';
 	import { previewGrades, Rating } from '$lib/srs/scheduler';
 	import { factById } from '$lib/srs/facts';
 	import {
@@ -30,6 +31,7 @@
 	import { toPitch } from '$lib/audio/voicing';
 	import { symbolHasProvenance, songsForSymbol } from '$lib/practice/songProvenance';
 	import { logConfidence, type Confidence } from '$lib/practice/confidenceLog';
+	import { recordPracticeAnswer } from '$lib/practice/answerTelemetry';
 	import { t } from '$lib/i18n/locale.svelte';
 	import ChordGlyph from './ChordGlyph.svelte';
 	import IntervalChip from './IntervalChip.svelte';
@@ -188,6 +190,15 @@
 	let selectedConfidence = $state<Confidence | undefined>(undefined);
 	/** MD-02: how many real due cards the song filter is currently hiding, for the filter-aware empty message. */
 	let filteredHiddenCount = $state(0);
+	/**
+	 * Recall telemetry's per-card clock (260722-0ex, BACKLOG-2): a plain,
+	 * non-reactive variable (mirrors hearNameAdvanceTimer's own "not reactive
+	 * state" discipline - it drives no rendering, only a fire-and-forget
+	 * durationMs computation at grade time). Set once when a card becomes
+	 * current: at the point load() enters the 'reviewing' state, and again
+	 * inside resetPerCardState() (which already runs after every advance).
+	 */
+	let questionShownAt = Date.now();
 
 	// ---- Mode A ('see-play') per-card state --------------------------------
 	// See the symbol, play it on the keyboard, grade by chroma set equality
@@ -265,20 +276,43 @@
 		return ['family', 'formula', 'keyboard', 'spelling'];
 	}
 
+	/**
+	 * Daily new-card intro budget + due-backlog gate (260722-0ex, BACKLOG-1):
+	 * getDueCards() runs FIRST so the backlog gate can inspect the PRE-
+	 * introduction due count. A backlog over 20 cards means zero new facts are
+	 * introduced this mount, no matter how much of today's budget remains -
+	 * the deck's job right now is clearing the backlog, not growing it
+	 * further. Otherwise, up to the remaining daily budget is introduced
+	 * (introduceNewCards returns a FACT count per the 13-01 convention, which
+	 * is exactly what the budget consumes) and due cards are RE-FETCHED so
+	 * any freshly-introduced New cards (due = now) enter this session.
+	 */
+	const DUE_BACKLOG_GATE = 20;
+
 	async function load(): Promise<void> {
 		pageState = 'loading';
 		try {
-			await introduceNewCards();
-			const rawDue = await getDueCards();
-			const due = applySongFilter(rawDue);
+			const preDue = await getDueCards();
+			let dueBase: CardRecord[];
+			if (preDue.length > DUE_BACKLOG_GATE) {
+				dueBase = preDue;
+			} else {
+				const remaining = remainingIntroBudget(new Date());
+				if (remaining > 0) {
+					const introduced = await introduceNewCards(remaining);
+					if (introduced > 0) consumeIntroBudget(introduced, new Date());
+				}
+				dueBase = await getDueCards();
+			}
+			const due = applySongFilter(dueBase);
 			if (due.length === 0) {
 				// MD-02: distinguish "the filter hid everything" from "truly
-				// nothing due" - rawDue is only non-empty here when
+				// nothing due" - dueBase is only non-empty here when
 				// applySongFilter actually restricted the set (filter ON with a
 				// non-empty provenance index), so real due cards exist but are
 				// hidden, never genuinely absent.
-				if (rawDue.length > 0) {
-					filteredHiddenCount = rawDue.length;
+				if (dueBase.length > 0) {
+					filteredHiddenCount = dueBase.length;
 					pageState = 'empty-filtered-none-due';
 					return;
 				}
@@ -290,9 +324,15 @@
 			cardsByKey = new Map(
 				selectedCards.map((card) => [cardKey(card.factId, card.mode), card])
 			);
-			queue = buildQueue(selectedCards.map((card) => ({ factId: card.factId, mode: card.mode })));
+			// RECALL-03/BACKLOG-12: interleave the selected review cards so the
+			// same fact (outside a State.New teach cluster) and the same chord
+			// root never repeat too closely - cardsByKey stays keyed off
+			// selectedCards (order-independent).
+			const orderedCards = interleaveQueue(selectedCards, Math.random);
+			queue = buildQueue(orderedCards.map((card) => ({ factId: card.factId, mode: card.mode })));
 			revealed = false;
 			reviewedCount = 0;
+			questionShownAt = Date.now();
 			pageState = 'reviewing';
 		} catch {
 			pageState = 'error';
@@ -339,6 +379,7 @@
 	 */
 	function resetPerCardState(): void {
 		revealed = false;
+		questionShownAt = Date.now();
 		selectedConfidence = undefined;
 		selected = new Set();
 		modeAAnswered = false;
@@ -402,6 +443,15 @@
 			headlineText = text;
 			wrongIndex = index;
 		}
+
+		// 260722-0ex (BACKLOG-2): recall telemetry, fire-and-forget, exactly
+		// once per grade path.
+		recordPracticeAnswer({
+			item: currentFact.symbol,
+			kind: 'chord',
+			correct: result.correct,
+			durationMs: Date.now() - questionShownAt
+		});
 
 		const cardToGrade = currentCard;
 		const key = currentItem ? cardKey(currentItem.factId, currentItem.mode) : undefined;
@@ -489,11 +539,22 @@
 	}
 
 	/**
-	 * Tapping a choice IS the complete answer (D-05): grades immediately,
-	 * writes the FSRS rating fire-and-forget (never blocks the advance), and
-	 * always auto-advances after HEAR_NAME_ADVANCE_MS regardless of
-	 * correctness - Mode B's D-04 "never gates" mandate applies to a wrong
-	 * answer exactly as much as a correct one.
+	 * Tapping a choice IS the complete answer (D-05): grades immediately and
+	 * writes the FSRS rating fire-and-forget (never blocks the advance).
+	 *
+	 * 260722-0ex (BACKLOG-7) deliberately revises D-04's "always auto-advance,
+	 * never gates" mandate: a CORRECT choice still auto-advances after
+	 * HEAR_NAME_ADVANCE_MS (the snappy path, unchanged). A WRONG choice no
+	 * longer schedules that timer at all - instead it surfaces the existing
+	 * Continue button immediately (the same `hearNameHintOpen` flag the
+	 * hint-ladder's own onOpen path already uses to cancel the timer and show
+	 * Continue), so the correction headline + RevealInsight + SongMark stay
+	 * on screen until the user reads them and taps Continue themselves.
+	 * Errors are exactly the cards that need study; the prior 650ms auto-
+	 * advance let a wrong answer's own correction vanish before it could be
+	 * read. Continue still calls advanceHearName(hearNameCommittedRating),
+	 * so the queue-advance/re-enqueue contract is unchanged - only the
+	 * TIMING of that advance differs for a wrong choice.
 	 */
 	function handleHearNameChoice(choice: string): void {
 		if (hearNameAnswered || !currentFact || currentFact.factKind !== 'chord-formula') return;
@@ -503,6 +564,7 @@
 
 		const rating = choice === currentFact.symbol ? Rating.Good : Rating.Again;
 		hearNameCommittedRating = rating;
+		const durationMs = Date.now() - questionShownAt;
 
 		if (rating === Rating.Good) {
 			const [text, index] = pickVariant(CORRECT_VARIANTS, confirmationIndex);
@@ -514,6 +576,15 @@
 			wrongIndex = index;
 		}
 
+		// 260722-0ex (BACKLOG-2): recall telemetry, fire-and-forget, exactly
+		// once per grade path.
+		recordPracticeAnswer({
+			item: currentFact.symbol,
+			kind: 'chord',
+			correct: rating === Rating.Good,
+			durationMs
+		});
+
 		const cardToGrade = currentCard;
 		const key = currentItem ? cardKey(currentItem.factId, currentItem.mode) : undefined;
 		if (cardToGrade && key) {
@@ -523,14 +594,18 @@
 				})
 				.catch(() => {
 					// Best-effort write (D-04 auto-rating): never blocks Mode B's
-					// never-gates auto-advance.
+					// advance.
 				});
 		}
 
-		clearTimeout(hearNameAdvanceTimer);
-		hearNameAdvanceTimer = setTimeout(() => {
-			advanceHearName(rating);
-		}, HEAR_NAME_ADVANCE_MS);
+		if (rating === Rating.Good) {
+			clearTimeout(hearNameAdvanceTimer);
+			hearNameAdvanceTimer = setTimeout(() => {
+				advanceHearName(rating);
+			}, HEAR_NAME_ADVANCE_MS);
+		} else {
+			hearNameHintOpen = true;
+		}
 	}
 
 	onDestroy(() => {
@@ -561,16 +636,17 @@
 
 	/**
 	 * Advances the recall queue after an embedded BuildSession instance
-	 * completes (Mode C, Scope Decision 7). Construction's own rating
-	 * (BuildSession's ratingForWrongTaps) is never Again, so any non-Again
-	 * rating advances the queue identically - Rating.Good is passed purely to
-	 * satisfy advanceQueue's signature, not to imply a specific grade was
-	 * given. The FSRS write itself already happened inside BuildSession's own
-	 * unchanged recordConstructionOutcome; this handler only advances the
-	 * LOCAL in-memory queue, mirroring Mode A/B's own advance shape.
+	 * completes (Mode C, Scope Decision 7). 260722-0ex (BACKLOG-6): threads
+	 * BuildSession's own computed rating through to advanceQueue - a
+	 * wrong-heavy construction (>= 2x its step count) now grades Again, so it
+	 * re-enqueues exactly like Mode A/B, rather than the prior design's
+	 * floor at Hard (which could never lapse). The FSRS write itself already
+	 * happened inside BuildSession's own unchanged recordConstructionOutcome;
+	 * this handler only advances the LOCAL in-memory queue, mirroring Mode
+	 * A/B's own advance shape.
 	 */
-	function handleModeCNext(): void {
-		queue = advanceQueue(queue, Rating.Good);
+	function handleModeCNext(rating: Rating): void {
+		queue = advanceQueue(queue, rating);
 		resetPerCardState();
 		reviewedCount += 1;
 		if (isSessionComplete(queue)) pageState = 'complete';
@@ -620,6 +696,25 @@
 	}
 
 	/**
+	 * Recall telemetry's item/kind pair for a fact (260722-0ex, BACKLOG-2),
+	 * verified against AnswerEvent's `kind: 'chord' | 'scale' | 'interval'`
+	 * union in progress.ts - no new kind is ever introduced here. Returns
+	 * undefined for a missing/unrecognized fact (a scale-formula factId never
+	 * resolves via factById, mirroring embedTargetFor's own independence from
+	 * the shared catalog) so the caller can skip the telemetry call rather
+	 * than throw.
+	 */
+	function telemetryDescriptor(
+		fact: ReturnType<typeof factById>
+	): { item: string; kind: 'chord' | 'interval' | 'scale' } | undefined {
+		if (!fact) return undefined;
+		if (fact.factKind === 'chord-formula') return { item: fact.symbol, kind: 'chord' };
+		if (fact.factKind === 'interval-size') return { item: fact.short, kind: 'interval' };
+		if (fact.factKind === 'scale-degree') return { item: `${fact.tonic} major`, kind: 'scale' };
+		return undefined;
+	}
+
+	/**
 	 * Commits a grade and advances the queue in the same action (no separate
 	 * Next tap, per the UI-SPEC's "tapping a choice IS the complete answer"
 	 * precedent). Again-graded cards are re-enqueued (D-10): the register never
@@ -627,6 +722,11 @@
 	 */
 	async function handleGrade(rating: Rating): Promise<void> {
 		if (!currentCard) return;
+		// Snapshotted before any await, mirroring logConfidence's own
+		// currentCard-derived (never currentItem's) factId discipline below -
+		// advanceQueue may reshuffle the queue once this resolves.
+		const gradedFactId = currentCard.factId;
+		const durationMs = Date.now() - questionShownAt;
 		try {
 			// Sketch 020-B: log the (picked or 'unrated') confidence pick paired
 			// with correctness BEFORE the grade commits, using the card's own
@@ -653,6 +753,15 @@
 			}
 			const updated = await recordGrade(currentCard, rating, new Date());
 			cardsByKey = new Map(cardsByKey).set(cardKey(updated.factId, updated.mode), updated);
+
+			// 260722-0ex (BACKLOG-2): recall telemetry, fire-and-forget, exactly
+			// once per grade path. Mirrors logConfidence's correctness semantics
+			// (Hard is a pass, only Again is a lapse).
+			const descriptor = telemetryDescriptor(factById(gradedFactId));
+			if (descriptor) {
+				recordPracticeAnswer({ ...descriptor, correct: rating !== Rating.Again, durationMs });
+			}
+
 			queue = advanceQueue(queue, rating);
 			resetPerCardState();
 			reviewedCount += 1;
