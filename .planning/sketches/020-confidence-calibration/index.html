@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sketch 020: Confidence Calibration</title>
+<link rel="stylesheet" href="../themes/default.css">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: var(--font-sans); background: var(--color-paper); color: var(--color-ink); padding-top: 52px; }
+  .variant-tab { font-family: var(--font-mono); font-size: 12px; padding: 6px 10px;
+    background: var(--color-paper-bright); border: 1px solid var(--color-ink); cursor: pointer; border-radius: 0; }
+  .variant-tab.active { background: var(--color-ink); color: var(--color-paper-bright); }
+  .variant { display: none; }
+  .variant.active { display: block; }
+
+  .phone { max-width: 390px; margin: 24px auto; border: 2px solid var(--color-ink);
+    background: var(--color-paper); min-height: 700px; position: relative; display: flex; flex-direction: column; }
+  .masthead { border-bottom: 2px solid var(--color-ink); padding: 10px 14px;
+    display: flex; justify-content: space-between; align-items: baseline; }
+  .masthead .brand { font-family: var(--font-serif); font-size: 18px; font-weight: bold; }
+  .masthead .reg { font-family: var(--font-mono); font-size: 11px; color: var(--color-muted); letter-spacing: 1px; }
+  .content { flex: 1; padding: 14px; overflow-y: auto; }
+
+  .glyph { font-family: var(--font-serif); font-size: var(--text-display); text-align: center; margin: 18px 0 6px; line-height: 1; }
+  @keyframes stamp-in { 0% { transform: scale(1.35); opacity: 0; } 60% { transform: scale(0.96); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+  .stamp { animation: stamp-in 240ms ease-out both; }
+  .prompt-line { text-align: center; font-size: 14px; color: var(--color-muted); margin-bottom: 14px; }
+
+  .dock { border-top: 2px solid var(--color-ink); padding: 10px 14px; background: var(--color-paper-bright); }
+  .btn { font-family: var(--font-mono); font-size: 13px; letter-spacing: 1px; text-transform: uppercase;
+    border: 2px solid var(--color-ink); background: var(--color-paper-bright); padding: 10px 12px;
+    cursor: pointer; border-radius: 0; }
+  .btn.primary { background: var(--color-ink); color: var(--color-paper-bright); }
+
+  /* A: confidence strip in the dock */
+  .conf-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--color-muted); margin-bottom: 6px; text-align: center; }
+  .conf-strip { display: flex; border: 1px solid var(--color-ink); margin-bottom: 8px; }
+  .conf-btn { flex: 1; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase;
+    padding: 10px 4px; text-align: center; cursor: pointer; background: var(--color-paper-bright);
+    border: 0; border-right: 1px solid var(--color-ink); border-radius: 0; }
+  .conf-btn:last-child { border-right: none; }
+  .conf-btn.picked { background: var(--color-ink); color: var(--color-paper-bright); }
+  .reveal-btn-wrap { position: relative; }
+  .locked-hint { font-family: var(--font-mono); font-size: 10px; color: var(--color-faint);
+    text-align: center; margin-top: 6px; }
+
+  /* B: inline chips above glyph */
+  .conf-inline { display: flex; gap: 8px; justify-content: center; margin: 10px 0 4px; }
+  .conf-dot { width: 44px; height: 44px; border: 1px solid var(--color-ink); background: var(--color-paper-bright);
+    cursor: pointer; font-family: var(--font-serif); font-size: 20px; border-radius: 0; }
+  .conf-dot.picked { background: var(--color-ink); color: var(--color-paper-bright); }
+
+  /* Calibration chart */
+  .chart-card { border: 1px solid var(--color-ink); background: var(--color-paper-bright); padding: 12px; margin-bottom: 14px; }
+  .chart-card h4 { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px; }
+  .cal-grid { display: grid; grid-template-columns: 70px 1fr 44px; gap: 8px 10px; align-items: center; }
+  .cal-lab { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; color: var(--color-muted); }
+  .cal-bar { height: 18px; background: var(--color-paper); border: 1px solid var(--color-tan); position: relative; }
+  .cal-fill { height: 100%; }
+  .cal-pct { font-family: var(--font-mono); font-size: 11px; text-align: right; }
+  .flagline { display: flex; align-items: baseline; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--color-tan); }
+  .flag { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; background: var(--color-vermilion); color: #fff; padding: 2px 6px; }
+  .flagtext { font-size: 12px; color: var(--color-muted); }
+
+  /* danger list */
+  .danger-list { border: 1px solid var(--color-ink); background: var(--color-paper-bright); }
+  .danger-list h4 { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+    padding: 10px 12px; border-bottom: 1px solid var(--color-tan); }
+  .drow { display: flex; justify-content: space-between; align-items: baseline; padding: 9px 12px; border-bottom: 1px solid var(--color-paper); }
+  .drow:last-child { border-bottom: none; }
+  .drow .dsym { font-family: var(--font-serif); font-size: 19px; }
+  .drow .dmeta { font-family: var(--font-mono); font-size: 10px; color: var(--color-muted); text-align: right; }
+  .drow .dmeta b { color: var(--color-vermilion); }
+
+  /* 3x2 matrix (variant C chart alt) */
+  .matrix { display: grid; grid-template-columns: 60px repeat(3, 1fr); gap: 4px; }
+  .mhead { font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; color: var(--color-muted);
+    text-align: center; align-self: end; padding-bottom: 2px; }
+  .mrow-lab { font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; color: var(--color-muted); align-self: center; }
+  .mcell { border: 1px solid var(--color-ink); text-align: center; padding: 10px 2px; font-family: var(--font-mono); }
+  .mcell .n { font-size: 18px; display: block; }
+  .mcell .cap { font-size: 8px; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-top: 2px; }
+
+  .note { max-width: 390px; margin: 0 auto 24px; font-size: 12px; color: var(--color-muted);
+    font-family: var(--font-mono); padding: 0 8px; }
+</style>
+</head>
+<body>
+
+<div id="variant-nav" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:var(--color-paper-bright);border-bottom:1px solid var(--color-ink);padding:8px 16px;display:flex;gap:8px;">
+  <button class="variant-tab active" onclick="showVariant('a', event)">A: Dock strip capture</button>
+  <button class="variant-tab" onclick="showVariant('b', event)">B: Inline dots capture ★ Selected</button>
+  <button class="variant-tab" onclick="showVariant('c', event)">C: Stats calibration view</button>
+</div>
+
+<!-- ============ VARIANT A: CONFIDENCE STRIP IN ACTION DOCK ============ -->
+<div id="variant-a" class="variant active">
+  <div class="phone">
+    <div class="masthead"><span class="brand">Music Learn</span><span class="reg">RECALL · 4 DUE</span></div>
+    <div class="content">
+      <div class="glyph stamp">F♯ø7</div>
+      <div class="prompt-line">Which notes? Think first, then rate how sure you are.</div>
+    </div>
+    <div class="dock">
+      <div class="conf-label">How sure are you?</div>
+      <div class="conf-strip" id="stripA">
+        <button class="conf-btn" onclick="pickConf(this,'a')">Not sure</button>
+        <button class="conf-btn" onclick="pickConf(this,'a')">Somewhat</button>
+        <button class="conf-btn" onclick="pickConf(this,'a')">Certain</button>
+      </div>
+      <button class="btn primary" id="revealA" style="width:100%;opacity:.45" disabled>Reveal</button>
+      <div class="locked-hint" id="hintA">Rate confidence to unlock Reveal</div>
+    </div>
+  </div>
+  <div class="note">A: capture lives in the action dock (014-A house pattern), stacked directly above Reveal. Reveal stays locked until a rating is picked: one extra tap per card, zero layout change elsewhere. Grade buttons replace the strip after reveal.</div>
+</div>
+
+<!-- ============ VARIANT B: INLINE DOTS ============ -->
+<div id="variant-b" class="variant">
+  <div class="phone">
+    <div class="masthead"><span class="brand">Music Learn</span><span class="reg">RECALL · 4 DUE</span></div>
+    <div class="content">
+      <div class="glyph stamp">F♯ø7</div>
+      <div class="prompt-line">Which notes?</div>
+      <div class="conf-inline">
+        <button class="conf-dot" onclick="pickConf(this,'b')" title="Not sure">?</button>
+        <button class="conf-dot" onclick="pickConf(this,'b')" title="Somewhat">~</button>
+        <button class="conf-dot" onclick="pickConf(this,'b')" title="Certain">!</button>
+      </div>
+      <div class="locked-hint">? not sure&nbsp;&nbsp;·&nbsp;&nbsp;~ somewhat&nbsp;&nbsp;·&nbsp;&nbsp;! certain</div>
+    </div>
+    <div class="dock">
+      <button class="btn primary" style="width:100%">Reveal</button>
+    </div>
+  </div>
+  <div class="note">B: three serif glyph dots (? ~ !) under the chord glyph, in content flow. Optional, never locks Reveal: skipping logs "unrated". Lighter friction, but competes with the glyph and is scroll-losable, which 014 was built to prevent.</div>
+</div>
+
+<!-- ============ VARIANT C: STATS CALIBRATION VIEW ============ -->
+<div id="variant-c" class="variant">
+  <div class="phone">
+    <div class="masthead"><span class="brand">Music Learn</span><span class="reg">PROGRESS</span></div>
+    <div class="content">
+      <div class="chart-card">
+        <h4>Confidence vs. correctness · last 30 days</h4>
+        <div class="cal-grid">
+          <span class="cal-lab">Certain</span>
+          <div class="cal-bar"><div class="cal-fill" style="width:72%;background:var(--color-vermilion)"></div></div>
+          <span class="cal-pct">72%</span>
+          <span class="cal-lab">Somewhat</span>
+          <div class="cal-bar"><div class="cal-fill" style="width:81%;background:var(--color-verdigris)"></div></div>
+          <span class="cal-pct">81%</span>
+          <span class="cal-lab">Not sure</span>
+          <div class="cal-bar"><div class="cal-fill" style="width:64%;background:var(--color-tan)"></div></div>
+          <span class="cal-pct">64%</span>
+        </div>
+        <div class="flagline">
+          <span class="flag">MISCALIBRATED</span>
+          <span class="flagtext">When you feel certain you are right only 72% of the time. These cards fail cold at the piano.</span>
+        </div>
+      </div>
+
+      <div class="danger-list" style="margin-bottom:14px">
+        <h4>Confident but wrong · drill these first</h4>
+        <div class="drow"><span class="dsym">F♯ø7</span><span class="dmeta">certain <b>3× wrong</b> · see-play</span></div>
+        <div class="drow"><span class="dsym">A♭maj7</span><span class="dmeta">certain <b>2× wrong</b> · formula-build</span></div>
+        <div class="drow"><span class="dsym">B°7</span><span class="dmeta">certain <b>2× wrong</b> · see-play</span></div>
+      </div>
+
+      <div class="chart-card">
+        <h4>Alt: full matrix (denser, more honest)</h4>
+        <div class="matrix">
+          <span></span><span class="mhead">Not sure</span><span class="mhead">Somewhat</span><span class="mhead">Certain</span>
+          <span class="mrow-lab">Right</span>
+          <div class="mcell"><span class="n">21</span><span class="cap">lucky?</span></div>
+          <div class="mcell"><span class="n">38</span><span class="cap">learning</span></div>
+          <div class="mcell" style="background:rgba(62,125,107,.15)"><span class="n">86</span><span class="cap">solid</span></div>
+          <span class="mrow-lab">Wrong</span>
+          <div class="mcell"><span class="n">12</span><span class="cap">aware</span></div>
+          <div class="mcell"><span class="n">9</span><span class="cap">learning</span></div>
+          <div class="mcell" style="background:rgba(200,80,46,.15)"><span class="n">7</span><span class="cap">danger</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="dock"><button class="btn primary" style="width:100%">Drill the danger cards</button></div>
+  </div>
+  <div class="note">C: the payoff view on /progress. Top: 3-bar calibration chart with a MISCALIBRATED flag when certain &lt; somewhat. Middle: confident-but-wrong card list with a direct drill CTA. Bottom: denser 3x2 matrix alternative: pick bar or matrix, not both.</div>
+</div>
+
+<div id="sketch-tools" style="position:fixed;bottom:12px;right:12px;z-index:9999;font-family:system-ui;font-size:12px;background:rgba(0,0,0,0.7);color:white;padding:8px 12px;border-radius:8px;opacity:0.4;" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.4'">
+  sketch 020
+</div>
+
+<script>
+function showVariant(id, ev) {
+  document.querySelectorAll('.variant').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.variant-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('variant-' + id).classList.add('active');
+  ev.target.classList.add('active');
+}
+function pickConf(btn, variant) {
+  btn.parentElement.querySelectorAll('.conf-btn, .conf-dot').forEach(b => b.classList.remove('picked'));
+  btn.classList.add('picked');
+  if (variant === 'a') {
+    const r = document.getElementById('revealA');
+    r.disabled = false; r.style.opacity = 1;
+    document.getElementById('hintA').textContent = 'Logged. Reveal when ready.';
+  }
+}
+</script>
+</body>
+</html>

@@ -667,3 +667,28 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 - [x] 24-02-PLAN.md — Icon + 9px micro-label bottom tab bar at 56px, stable FR/EN height, clearance token updated 64→56 (sketch 015-B)
 - [x] 24-03-PLAN.md — Lookup casing-disambiguation chips + "Pourquoi ces notes ?" why-panel with folded m-vs-maj duo (sketch 016 A+B)
 - [x] 24-04-PLAN.md — Gap closure (UAT Test 3): add `var(--spacing-md)` breathing room to shared `--tab-bar-clearance` so page bottoms (why-panel escape hatch) clear the tab bar at 390px
+
+### Phase 25: Contextual learning from session 6 sketches — progression drill with earn-the-symbol lead sheet (sketch 017 synthesis), shell voicings with staged-by-card-state scaffold (sketch 019 synthesis), confidence calibration dots + progress payoff view (sketch 020-B)
+
+**Goal:** A returning classical pianist can practice music in real context: naming and playing chords bar-by-bar through ii-V-I progressions on an earn-the-symbol lead sheet (symbols hidden until derived, then filled verdigris), learning shell voicings through help that fades with each chord's FSRS card maturity (meet → subtract → cold drill), and optionally rating pre-reveal confidence in Recall that feeds a calibration payoff view flagging over-confidence and the exact cards gotten wrong while feeling sure.
+**Requirements**: none mapped (sketch-driven; must-haves derived per-plan from session-6 sketch winners 017/019/020-B)
+**Depends on:** Phase 24
+**Design reference:** `.claude/skills/sketch-findings-music-learn/references/contextual-learning-metacognition.md` (session 6 locked winners); `.planning/sketches/WRAP-UP-SUMMARY.md`
+**Plans:** 8/8 plans complete
+
+**Wave 1** *(parallel: disjoint file sets — four pure/primitive foundations)*
+
+- [x] 25-01-PLAN.md — Pure progression engine (TDD): ii-V-I templates, roman numerals, per-bar symbols, same-key MC distractors, harmonic-function labels (sketch 017)
+- [x] 25-02-PLAN.md — Pure shell-voicing engine (TDD): shell/rootless/full note subsets, droppable root+fifth markers, meet/subtract/drill staging from FSRS card state (sketch 019)
+- [x] 25-03-PLAN.md — PianoKeyboard ghost-hatch optional-note prop (ghostKeys + R/5 markers), additive/byte-identical when omitted (sketch 019)
+- [x] 25-04-PLAN.md — Pure confidence log (TDD): capped localStorage review log + calibration/danger-card aggregation (sketch 020-B/020-C)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [x] 25-05-PLAN.md — ProgressionDrill + /progressions route + nav + i18n: earn-the-symbol lead sheet, derive-then-play two-step (sketch 017) [depends 25-01]
+- [x] 25-06-PLAN.md — Recall confidence dots: optional ? ~ ! capture in RecallSession, never blocks Reveal, logs on grade (sketch 020-B) [depends 25-04]
+- [x] 25-08-PLAN.md — Progress calibration payoff view: 3-bar calibration chart + MISCALIBRATED flag + danger-cards drill CTA (sketch 020-C) [depends 25-04]
+
+**Wave 3** *(blocked on Wave 2: shares +layout.svelte / i18n index / chrome nav with 25-05)*
+
+- [x] 25-07-PLAN.md — ShellVoicingDrill + /voicings route + nav + i18n: staged meet/subtract/drill by card maturity, ghost-hatch shell (sketch 019) [depends 25-02, 25-03, 25-05]

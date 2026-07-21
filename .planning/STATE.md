@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Playability & Comprehension
-current_phase: 24
-status: executing
-stopped_at: Completed 23-04-PLAN.md
-last_updated: "2026-07-20T15:45:06.693Z"
-last_activity: 2026-07-20
-last_activity_desc: Phase 24 complete
+current_phase: 25
+status: verifying
+stopped_at: Completed 25-07-PLAN.md
+last_updated: "2026-07-21T17:45:33.102Z"
+last_activity: 2026-07-21
+last_activity_desc: Phase 25 complete
 progress:
-  total_phases: 23
-  completed_phases: 19
-  total_plans: 90
-  completed_plans: 90
+  total_phases: 24
+  completed_phases: 20
+  total_plans: 98
+  completed_plans: 98
   percent: 83
-current_phase_name: mobile-ux-fixes-from-issue-14-review-action-dock-sketch-014-
+current_phase_name: contextual-learning-from-session-6-sketches-progression-dril
 ---
 
 # Project State
@@ -24,14 +24,14 @@ current_phase_name: mobile-ux-fixes-from-issue-14-review-action-dock-sketch-014-
 See: .planning/PROJECT.md (updated 2026-07-14)
 
 **Core value:** See a jazz chord symbol and know instantly what to play with the left hand.
-**Current focus:** Phase 24 — mobile-ux-fixes-from-issue-14-review-action-dock-sketch-014-
+**Current focus:** Phase 25 — contextual-learning-from-session-6-sketches-progression-dril
 
 ## Current Position
 
-Phase: 24
+Phase: 25
 Plan: Not started
-Status: Executing Phase 24
-Last activity: 2026-07-20 — Completed quick task 260720-v9u: global song-filter preference on Songs page
+Status: Phase complete — ready for verification
+Last activity: 2026-07-21 — Phase 25 complete
 Full suite: 1284 tests green; svelte-check 0 errors.
 
 **v2.0 Learning Upgrade (Phases 10-13): COMPLETE (shipped 2026-07-15).**
@@ -51,7 +51,7 @@ Full suite: 1284 tests green; svelte-check 0 errors.
 
 **Velocity:**
 
-- Total plans completed: 60
+- Total plans completed: 68
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -71,6 +71,7 @@ Full suite: 1284 tests green; svelte-check 0 errors.
 | 19 | 4 | - | - |
 | 20 | 10 | - | - |
 | 24 | 4 | - | - |
+| 25 | 8 | - | - |
 
 **Recent Trend:**
 
@@ -153,6 +154,14 @@ Full suite: 1284 tests green; svelte-check 0 errors.
 | Phase 23 P02 | 6min | 2 tasks | 3 files |
 | Phase 23 P03 | 9min | 2 tasks | 5 files |
 | Phase 23 P04 | 24min | 3 tasks | 7 files |
+| Phase 25 P01 | 25min | 2 tasks | 2 files |
+| Phase 25 P02 | 5min | 2 tasks | 2 files |
+| Phase 25 P03 | 12min | 2 tasks | 2 files |
+| Phase 25 P04 | 20min | 2 tasks | 2 files |
+| Phase 25 P05 | 65min | 3 tasks | 8 files |
+| Phase 25 P06 | 20min | 2 tasks | 3 files |
+| Phase 25 P08 | 15min | 2 tasks | 3 files |
+| Phase 25 P07 | 13min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -162,6 +171,7 @@ Full suite: 1284 tests green; svelte-check 0 errors.
 - Phase 22 added: Installable PWA — native SvelteKit service worker for offline app-shell caching, mobile installability (Android + iOS add-to-home-screen polish), and a new-version update prompt. Samples excluded from install precache.
 - Phase 23 added: Phase-First UX for Phone — bottom tab bar nav (1A), Drills question-first reflow with folded chrome (1B), glanceable+actionable Progress with 7-day strip and inline accuracy bars (1C). Phone-first; desktop mostly unchanged. Source spec: UX Improvements.dc.html.
 - Phase 24 added: Mobile UX fixes from issue #14 (sketches 014-016 winners)
+- Phase 25 added: Contextual learning from session 6 sketches (017 earn-the-symbol progression drill, 019 staged shell voicings, 020-B confidence dots + progress payoff)
 
 ### Decisions
 
@@ -307,10 +317,24 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 23-03]: progress.weakest.drillOne/drillOneAria i18n keys added a task early (Task 1, not Task 2) since MessageKey's keyof-derived type would fail svelte-check if PracticeItemRow referenced an unadded key — Task 1's own acceptance criteria require npm run check clean; the two keys were needed immediately for type-safety, not deferred
 - [Phase ?]: [Phase 23-04]: bottomTabLinks/moreLinks derived via Array.filter over the single navLinks source array (not second literal arrays), so the desktop masthead, phone tab bar, and More sheet can never list different routes
 - [Phase ?]: [Phase 23-04]: layout-rendering tests scope desktop-nav/LocaleToggle queries via within(getByTestId('masthead')), since jsdom dual-renders the desktop masthead and the new phone-only bottom-tab-bar (no media-query evaluation)
+- [Phase ?]: nameChoices computes the major-scale diatonic-seventh pool regardless of template mode; minor-mode templates use natural-minor degree intervals only for root placement, roman-numeral quality comes from the template's own quality field
+- [Phase 25-02]: voicingStageForChord treats 'drill' as winning over 'subtract'/'meet' even in a mixed-maturity card set; seventhChordSymbols derives its symbol list from the shared facts.ts catalog rather than re-deriving its own root x quality matrix
+- [Phase ?]: [Phase 25-03]: ghostClass/ghostMarker mirror pendingClass/flashWrongClass's letter+octave-keyed, role-gated helper shape; marker renders via a data-ghost attribute + ::after (sketch 019's .k-ghost pattern), purely additive to PianoKeyboard
+- [Phase 25-04]: localStorage over Dexie for the confidence log: small single-user record volume, matches the lightweight-log convention, avoids a Dexie schema-version bump on the critical cards store
+- [Phase 25-04]: calibration()'s miscalibrated flag requires both certain and somewhat levels to have >=1 sample (divide-by-zero guard) rather than treating a 0/0 comparison as miscalibrated
+- [Phase ?]: ProgressionDrill name-choice chips render as flat single-text-node spans (never ChordGlyph) so accessible chip text matches the raw chord symbol exactly for grading and testing
+- [Phase ?]: Play-step PianoKeyboard shows notes=[] (no highlighting) while unanswered, mirroring drills' construction/identification interactive pattern
+- [Phase ?]: Confidence dots render for all three formula-mode factKinds (chord-formula, interval-size, scale-degree), not just chord-formula
+- [Phase ?]: logConfidence factId/mode come from currentCard (the graded record), not currentItem, so the log entry stays correct across advanceQueue mutation
+- [Phase ?]: [Phase 25-08]: 3-bar calibration chart chosen over the denser 3x2 matrix - glanceable on a phone, reuses the streak-strip bar aesthetic, states miscalibration directly via the flag
+- [Phase ?]: [Phase 25-08]: Calibration section renders outside the pageState machine (like Practice Settings), gated only on confidenceEntries.length > 0 - never depends on the backend stats/streak fetch
+- [Phase ?]: [Phase 25-08]: dangerCardLabel resolves any factKind for display, but the drill CTA only seeds chord-formula symbols (the only kind /drills' seeding path accepts) and hides when zero chord-formula danger cards exist
+- [Phase ?]: [Phase 25-07]: voicingMet mirrors songFilterPref/confidenceLog's total localStorage pattern; a single interactive PianoKeyboard serves as both the ghost-hatch teaching display and the graded play region (ghostKeys is orthogonal to interactive/selected/notes)
 
 ### Pending Todos
 
 2 pending:
+
 - Verify PWA install and haptics after HTTPS deploy (mobile, 2026-07-14)
 - Move From-my-songs review pool filter off Recall page — to Songs page or settings (ui, 2026-07-20)
 
@@ -342,7 +366,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-19T20:03:48.099Z
-Stopped at: Completed 23-04-PLAN.md
+Last session: 2026-07-21T17:02:55.809Z
+Stopped at: Completed 25-07-PLAN.md
 Resume file: 
 None

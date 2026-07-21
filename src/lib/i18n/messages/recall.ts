@@ -130,7 +130,16 @@ export const recall = {
 		'recall.page.subtitle': "The stack that's earning its keep. Every fact, every way you've met it.",
 		'recall.page.aria.mode-toggle': 'Recall mode',
 		'recall.page.mode.review': 'Review',
-		'recall.page.mode.map': 'Map'
+		'recall.page.mode.map': 'Map',
+
+		// Confidence dots (sketch 020-B): optional, in-flow, never gate Reveal.
+		// IMMUNITY: the literal glyphs ? ~ ! themselves are not keyed, only
+		// their aria labels/group label/legend line.
+		'recall.confidence.group-aria': 'How sure are you? Optional.',
+		'recall.confidence.aria.unsure': 'Not sure',
+		'recall.confidence.aria.somewhat': 'Somewhat sure',
+		'recall.confidence.aria.certain': 'Certain',
+		'recall.confidence.legend': '? not sure   ~ somewhat   ! certain'
 	},
 	fr: {
 		'recall.grade.again': 'À revoir',
@@ -229,6 +238,12 @@ export const recall = {
 		'recall.page.subtitle': 'La pile qui fait ses preuves. Chaque fait, sous toutes ses formes.',
 		'recall.page.aria.mode-toggle': 'Mode de révision',
 		'recall.page.mode.review': 'Réviser',
-		'recall.page.mode.map': 'Carte'
+		'recall.page.mode.map': 'Carte',
+
+		'recall.confidence.group-aria': "Quel est ton niveau de certitude ? Facultatif.",
+		'recall.confidence.aria.unsure': 'Pas sûr',
+		'recall.confidence.aria.somewhat': 'Plutôt sûr',
+		'recall.confidence.aria.certain': 'Certain',
+		'recall.confidence.legend': '? pas sûr   ~ plutôt sûr   ! certain'
 	}
 } satisfies LocaleDict;

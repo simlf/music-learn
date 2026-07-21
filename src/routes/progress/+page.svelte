@@ -12,6 +12,14 @@
 	import { pickStreakLine } from '$lib/copy/streak';
 	import { currentLocale, t } from '$lib/i18n/locale.svelte';
 	import { setDrillSeeds } from '$lib/practice/drillSeeds';
+	import {
+		listConfidence,
+		calibration,
+		dangerCards,
+		type ConfidenceEntry,
+		type DangerCard
+	} from '$lib/practice/confidenceLog';
+	import { factById } from '$lib/srs/facts';
 	import { getLevelState, setCurrentTier } from '$lib/practice/levelState';
 	import { TIERS, type TierId } from '$lib/practice/tiers';
 	import PracticeItemRow from '$lib/components/PracticeItemRow.svelte';
@@ -41,6 +49,51 @@
 	let streak = $state(0);
 	let practicedToday = $state(false);
 	let last7 = $state<{ date: string; practiced: boolean }[]>([]);
+
+	// ---- Confidence calibration (sketch 020-C, Plan 25-08): the payoff
+	// surface for 25-06's Recall confidence dots. Device-local, read
+	// independently of the stats network round-trip above so it renders in
+	// every pageState (hidden entirely only when the log itself is empty).
+	let confidenceEntries = $state<ConfidenceEntry[]>([]);
+
+	// Design decision (resolves 020-C's OPEN sketch call): a 3-bar accuracy
+	// chart per confidence level, not the denser 3x2 right/wrong matrix -
+	// glanceable on a phone (three bars vs six captioned cells) and reuses
+	// the Print Shop bar aesthetic already established by the 7-day streak
+	// strip above. The miscalibration finding is stated directly via the
+	// MISCALIBRATED flag rather than left for the viewer to spot in a grid.
+	const calibrationResult = $derived.by(() => calibration(confidenceEntries));
+	const dangerCardList = $derived.by(() => dangerCards(confidenceEntries));
+
+	/**
+	 * Resolves a danger card's factId to a display label via the fact
+	 * catalog (chord-formula -> symbol, interval-size -> shorthand,
+	 * scale-degree -> tonic+degree); falls back to the raw factId on a
+	 * catalog miss so a corrupt/stale log entry never throws.
+	 */
+	function dangerCardLabel(card: DangerCard): string {
+		const fact = factById(card.factId);
+		if (!fact) return card.factId;
+		if (fact.factKind === 'chord-formula') return fact.symbol;
+		if (fact.factKind === 'interval-size') return fact.short;
+		return `${fact.tonic} ${fact.degree}`;
+	}
+
+	/** Chord-formula-only symbols for the "Drill the danger cards" CTA seeding path (drills only seeds chord symbols). */
+	const chordDangerSymbols = $derived.by(() => {
+		const symbols: string[] = [];
+		for (const card of dangerCardList) {
+			const fact = factById(card.factId);
+			if (fact?.factKind === 'chord-formula') symbols.push(fact.symbol);
+		}
+		return symbols;
+	});
+
+	/** Seeds the danger cards' chord symbols into a drill session (mirrors drillThese()). */
+	function drillDangerCards(): void {
+		setDrillSeeds(chordDangerSymbols);
+		void goto('/drills');
+	}
 
 	const streakLine = $derived.by(() => {
 		const kind = streak === 0 ? 'zeroStreak' : practicedToday ? 'activePracticedToday' : 'activeNudge';
@@ -81,6 +134,7 @@
 
 	onMount(() => {
 		void load();
+		confidenceEntries = listConfidence();
 	});
 
 	// ---- Practice settings (Track B): device-local, independent of the
@@ -237,6 +291,67 @@
 		</div>
 	{/if}
 
+	{#if confidenceEntries.length > 0}
+		<div
+			class="border-ink bg-paper-bright mt-8 border-2 p-6"
+			data-testid="confidence-calibration"
+		>
+			<h2 class="text-heading font-bold">{t('progress.calibration.heading')}</h2>
+			<p class="text-body mt-2">{t('progress.calibration.body')}</p>
+
+			<div class="calibration-bars mt-6">
+				{#each calibrationResult.levels as row (row.level)}
+					<div class="calibration-bar-col" data-testid="calibration-bar">
+						<div class="calibration-bar-track">
+							<div
+								class="calibration-bar-fill"
+								style={`height: ${Number.isFinite(row.accuracy) ? Math.round(row.accuracy * 100) : 0}%`}
+							></div>
+						</div>
+						<p class="text-label mt-2 font-mono uppercase">
+							{t(`progress.calibration.level.${row.level}`)}
+						</p>
+						<p class="text-label font-mono">{row.correct}/{row.total}</p>
+					</div>
+				{/each}
+			</div>
+
+			{#if calibrationResult.miscalibrated}
+				<div class="calibration-flag mt-4" data-testid="calibration-miscalibrated-flag">
+					<p class="text-label font-mono uppercase">{t('progress.calibration.miscalibrated')}</p>
+				</div>
+			{/if}
+
+			{#if dangerCardList.length > 0}
+				<div class="mt-6" data-testid="danger-cards">
+					<h3 class="text-label font-mono uppercase">
+						{t('progress.calibration.danger.heading')}
+					</h3>
+					<ul class="mt-2">
+						{#each dangerCardList as card (card.factId + '|' + card.mode)}
+							<li class="mt-2" data-testid="danger-card">
+								<span class="font-serif text-body">{dangerCardLabel(card)}</span>
+								<span class="text-label ml-2 font-mono uppercase">
+									{t('progress.calibration.danger.meta')
+										.replace('{N}', String(card.wrongCount))
+										.replace('{MODE}', card.mode)}
+								</span>
+							</li>
+						{/each}
+					</ul>
+
+					{#if chordDangerSymbols.length > 0}
+						<div class="mt-4">
+							<Button type="button" variant="primary" onclick={drillDangerCards}
+								>{t('progress.calibration.danger.cta')}</Button
+							>
+						</div>
+					{/if}
+				</div>
+			{/if}
+		</div>
+	{/if}
+
 	<div class="border-ink bg-paper-bright mt-8 border-2 p-6" data-testid="practice-settings">
 		<h2 class="text-heading font-bold">{t('progress.settings.heading')}</h2>
 
@@ -330,5 +445,44 @@
 
 	.streak-day--today {
 		border-style: dashed;
+	}
+
+	/* Confidence calibration bars (sketch 020-C): one bar per confidence
+	   level, height encodes accuracy. Track border mirrors .streak-day's
+	   ink border above; fill never reaches NaN width - the view clamps to 0
+	   when a level has zero samples (T-25-08-02). Color is never the sole
+	   signal for the MISCALIBRATED finding - that flag also renders a text
+	   label below. */
+	.calibration-bars {
+		display: flex;
+		gap: var(--spacing-md);
+		align-items: flex-end;
+	}
+
+	.calibration-bar-col {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.calibration-bar-track {
+		width: 100%;
+		height: 80px;
+		border: 2px solid var(--color-ink);
+		background: var(--color-paper);
+		display: flex;
+		align-items: flex-end;
+	}
+
+	.calibration-bar-fill {
+		width: 100%;
+		background: var(--color-verdigris);
+	}
+
+	.calibration-flag {
+		border: 2px solid var(--color-vermilion);
+		padding: var(--spacing-sm);
+		display: inline-block;
 	}
 </style>

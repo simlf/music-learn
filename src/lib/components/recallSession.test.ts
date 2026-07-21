@@ -7,6 +7,7 @@ import type { CardRecord } from '$lib/srs/deck';
 import { majorScaleNotes } from '$lib/theory/scale';
 import { transposeFrom } from '$lib/theory/interval';
 import { normalizeSymbolForMatch } from '$lib/practice/songProvenance';
+import { listConfidence } from '$lib/practice/confidenceLog';
 import { setLocale } from '$lib/i18n/locale.svelte';
 
 /**
@@ -366,6 +367,142 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 
 		await waitFor(() => screen.getByTestId('recall-complete'));
 		expect(screen.getByTestId('recall-reviewed-count')).toHaveTextContent('3 REVIEWED TODAY');
+	});
+});
+
+/**
+ * Confidence dots (sketch 020-B, Plan 25-06): the optional in-flow ? ~ !
+ * picker on the formula-mode reveal-then-grade card. Asserts against the
+ * REAL confidenceLog module (real localStorage, cleared per test) rather
+ * than a mock, matching this file's existing convention of exercising real
+ * non-deck/audio modules directly.
+ */
+describe('RecallSession confidence dots (sketch 020-B: optional, never gates, logs on grade)', () => {
+	beforeEach(() => {
+		localStorage.clear();
+	});
+
+	it('logs confidence "certain" and correct:true when grading Good after picking the ! dot', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		await fireEvent.click(screen.getByTestId('recall-confidence-certain'));
+		await fireEvent.click(dockButton('Show Answer'));
+		await fireEvent.click(dockTestId('recall-grade-good'));
+
+		expect(listConfidence()).toEqual([
+			expect.objectContaining({
+				factId: 'chord-formula:Cm7',
+				mode: 'formula',
+				confidence: 'certain',
+				correct: true
+			})
+		]);
+	});
+
+	it('logs correct:true when grading Hard: FSRS Hard is a PASSING grade, never a confident-but-wrong entry (WR-06)', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		await fireEvent.click(screen.getByTestId('recall-confidence-certain'));
+		await fireEvent.click(dockButton('Show Answer'));
+		await fireEvent.click(dockTestId('recall-grade-hard'));
+
+		expect(listConfidence()).toEqual([
+			expect.objectContaining({
+				factId: 'chord-formula:Cm7',
+				confidence: 'certain',
+				correct: true
+			})
+		]);
+	});
+
+	it('logs confidence "unrated" when grading Again (wrong) without picking any dot', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		await fireEvent.click(dockButton('Show Answer'));
+		await fireEvent.click(dockTestId('recall-grade-again'));
+
+		expect(listConfidence()).toEqual([
+			expect.objectContaining({
+				factId: 'chord-formula:Cm7',
+				mode: 'formula',
+				confidence: 'unrated',
+				correct: false
+			})
+		]);
+	});
+
+	it('never gates Reveal or grading: the dots disappear once revealed, and Reveal/grade both work whether or not a dot was picked', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		// Dots render pre-reveal, outside the action dock.
+		expect(screen.getByTestId('recall-confidence-dots')).toBeInTheDocument();
+		expect(
+			within(screen.getByTestId('recall-action-dock')).queryByTestId('recall-confidence-dots')
+		).toBeNull();
+
+		// Tapping the picked dot again clears it back to unrated (toggle-off).
+		const certainDot = screen.getByTestId('recall-confidence-certain');
+		await fireEvent.click(certainDot);
+		expect(certainDot).toHaveAttribute('aria-pressed', 'true');
+		await fireEvent.click(certainDot);
+		expect(certainDot).toHaveAttribute('aria-pressed', 'false');
+
+		// Reveal works with no dot picked, and the dot row is gone post-reveal.
+		await fireEvent.click(dockButton('Show Answer'));
+		expect(screen.queryByTestId('recall-confidence-dots')).toBeNull();
+
+		await fireEvent.click(dockTestId('recall-grade-good'));
+		expect(listConfidence()).toEqual([expect.objectContaining({ confidence: 'unrated', correct: true })]);
+	});
+
+	it('resets the confidence pick between cards: a pick on card A never leaks onto card B', async () => {
+		const cardA = makeCard('chord-formula:Cm7', 'chord-formula');
+		const cardB = makeCard('interval-size:m3', 'interval-size');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([cardA, cardB]);
+		getAllCardsMock.mockResolvedValue([cardA, cardB]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		await fireEvent.click(screen.getByTestId('recall-confidence-certain'));
+		await fireEvent.click(dockButton('Show Answer'));
+		await fireEvent.click(dockTestId('recall-grade-good'));
+
+		await waitFor(() => expect(screen.getByText("What's the interval?")).toBeInTheDocument());
+		expect(screen.getByTestId('recall-confidence-certain')).toHaveAttribute('aria-pressed', 'false');
+
+		await fireEvent.click(dockButton('Show Answer'));
+		await fireEvent.click(dockTestId('recall-grade-good'));
+
+		expect(listConfidence()).toEqual([
+			expect.objectContaining({ factId: 'chord-formula:Cm7', confidence: 'certain' }),
+			expect.objectContaining({ factId: 'interval-size:m3', confidence: 'unrated' })
+		]);
 	});
 });
 
