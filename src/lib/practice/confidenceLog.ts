@@ -31,6 +31,12 @@ export interface ConfidenceEntry {
 	factId: string;
 	mode: string;
 	confidence: Confidence;
+	/**
+	 * Whether the review PASSED. For FSRS-graded reviews the caller maps
+	 * Hard/Good/Easy to true and only Again (a lapse) to false — Hard is a
+	 * passing grade (recalled, with effort), so it never counts against
+	 * calibration accuracy or the confident-but-wrong danger list.
+	 */
 	correct: boolean;
 	/** ISO 8601. String, not Date: survives JSON round-trips. */
 	at: string;

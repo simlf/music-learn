@@ -640,7 +640,12 @@
 					factId: currentCard.factId,
 					mode: currentCard.mode,
 					confidence: selectedConfidence ?? 'unrated',
-					correct: rating === Rating.Good || rating === Rating.Easy,
+					// FSRS semantics: Hard is a PASSING grade (recalled, with
+					// effort); only Again is a lapse. Counting Hard as wrong would
+					// record an honest certain-then-Hard review as confident-but-
+					// wrong, inflating the MISCALIBRATED flag and the /progress
+					// danger list (WR-06).
+					correct: rating !== Rating.Again,
 					at: new Date().toISOString()
 				});
 			} catch {

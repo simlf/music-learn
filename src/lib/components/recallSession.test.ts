@@ -405,6 +405,28 @@ describe('RecallSession confidence dots (sketch 020-B: optional, never gates, lo
 		]);
 	});
 
+	it('logs correct:true when grading Hard: FSRS Hard is a PASSING grade, never a confident-but-wrong entry (WR-06)', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		await fireEvent.click(screen.getByTestId('recall-confidence-certain'));
+		await fireEvent.click(dockButton('Show Answer'));
+		await fireEvent.click(dockTestId('recall-grade-hard'));
+
+		expect(listConfidence()).toEqual([
+			expect.objectContaining({
+				factId: 'chord-formula:Cm7',
+				confidence: 'certain',
+				correct: true
+			})
+		]);
+	});
+
 	it('logs confidence "unrated" when grading Again (wrong) without picking any dot', async () => {
 		const card = makeCard('chord-formula:Cm7', 'chord-formula');
 		introduceNewCardsMock.mockResolvedValue(0);
