@@ -21,10 +21,10 @@ current_phase_name: contextual-learning-from-session-6-sketches-progression-dril
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-14)
+See: .planning/PROJECT.md (updated 2026-07-21)
 
 **Core value:** See a jazz chord symbol and know instantly what to play with the left hand.
-**Current focus:** Phase 25 — contextual-learning-from-session-6-sketches-progression-dril
+**Current focus:** Planning next milestone (v2.1 shipped 2026-07-21)
 
 ## Current Position
 
