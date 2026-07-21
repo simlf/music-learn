@@ -215,6 +215,58 @@ describe('ShellVoicingDrill: grading + advance', () => {
 		expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
 	});
 
+	it('subtract stage: shell + a ghost-marked optional note (root) still grades correct ("allowed but not required")', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-subtract'));
+
+		// Cmaj7 shell = E + B; C is the ghost-hatched root the UI labels
+		// "allowed but not required" - playing it must never grade wrong.
+		clickKey('C');
+		clickKey('E');
+		clickKey('B');
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
+		expect(screen.queryByTestId('retry')).not.toBeInTheDocument();
+	});
+
+	it('subtract stage: shell + a NON-optional extra note still retries (only ghost-marked notes are tolerated)', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-subtract'));
+
+		// D is neither a shell note nor a ghost-marked optional (root/fifth).
+		clickKey('E');
+		clickKey('B');
+		clickKey('D');
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(screen.getByTestId('retry')).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
+	});
+
+	it('drill stage keeps the exact-set rule: shell style + the root grades wrong (no ghost tolerance outside subtract)', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Review)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-drill'));
+		await fireEvent.click(screen.getByRole('button', { name: 'SHELL' }));
+
+		clickKey('C');
+		clickKey('E');
+		clickKey('B');
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(screen.getByTestId('retry')).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
+	});
+
 	it('grades the drill stage against the selected voicing style (shell = 2 notes)', async () => {
 		getAllCardsMock.mockResolvedValue([makeCard(State.Review)]);
 

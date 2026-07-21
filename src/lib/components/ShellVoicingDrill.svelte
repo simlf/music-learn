@@ -133,6 +133,13 @@
 	 * strings, per matchChord's contract). A correct play sets `answered`
 	 * (the reveal + Next state); a wrong play never gates - it just shows a
 	 * gentle retry and clears the selection so the learner can play again.
+	 *
+	 * Subtract stage only: the ghost-hatched root/fifth are "allowed but not
+	 * required" (PianoKeyboard's ghostKeys contract, SK-019), so playing the
+	 * shell PLUS a ghost-marked note still grades correct - the shell notes
+	 * stay required (missing any of them is still wrong), and any extra that
+	 * is NOT a ghost-marked optional note is still wrong. The drill stage
+	 * keeps matchChord's exact-set rule: the selected style IS the answer.
 	 */
 	function check() {
 		const target = { ...chord, notes: targetNotes };
@@ -140,7 +147,15 @@
 			[...selected].map((letter) => Note.chroma(toAsciiAccidentals(letter)))
 		);
 		const result = matchChord(playedChroma, target);
-		if (result.correct) {
+		let correct = result.correct;
+		if (!correct && stage === 'subtract') {
+			const optionalChroma = new Set(
+				optionalMarkers(chord).map((marker) => Note.chroma(toAsciiAccidentals(marker.letter)))
+			);
+			correct =
+				result.missing.length === 0 && result.extra.every((chroma) => optionalChroma.has(chroma));
+		}
+		if (correct) {
 			answered = true;
 			wrongRetry = false;
 			pulseToken += 1;
