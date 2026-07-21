@@ -100,4 +100,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-20 — Phase 24 complete (issue #14 mobile UX: review action dock with live-measured clearance, icon+micro-label tab bar, Am7/AM7 disambiguation + why-these-notes panel); all roadmap phases done*
+*Last updated: 2026-07-21 — Phase 25 complete (session 6 sketch winners: /progressions earn-the-symbol drill, /voicings staged shell-voicing drill, Recall confidence dots + /progress calibration payoff; 8/8 plans, verification 24/24, code review 6 warnings fixed); all roadmap phases done*
