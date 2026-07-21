@@ -58,7 +58,7 @@
 	 */
 	interface Props {
 		embedFact?: { kind: 'chord'; symbol: string } | { kind: 'scale'; tonic: string };
-		onComplete?: () => void;
+		onComplete?: (rating: Rating) => void;
 	}
 
 	let { embedFact, onComplete }: Props = $props();
@@ -91,6 +91,16 @@
 	let startedSymbol: string | undefined = $state();
 	/** Whether recordConstructionOutcome's best-effort FSRS write succeeded, driving the completion summary's "SAVED TO RECALL" status line (BUILD-04). */
 	let fsrsSaved = $state(false);
+	/**
+	 * The rating computed for the just-completed session (260722-0ex,
+	 * BACKLOG-6), set synchronously the instant construction completes (the
+	 * same fire-once point that calls recordConstructionOutcome in
+	 * handleConstructTap) so it survives even if the async FSRS write is slow
+	 * or fails. Forwarded to `onComplete` when embedded, so RecallSession's
+	 * Mode C can thread the real rating through to advanceQueue instead of a
+	 * hardcoded Rating.Good.
+	 */
+	let completionRating = $state<Rating | undefined>();
 	/** Bumped once per reveal (initial completion) and once per "Hear again" tap (HEAR-01/02): drives PianoKeyboard's and ChordGlyph's shared pulse-once retrigger. Starts at 0 (no pulse before any reveal has happened). */
 	let revealPulseToken = $state(0);
 	/** Study-mode arpeggio roll (HEAR-02): earned { letter, octave } keys still "pending" (dimmed) awaiting their turn to sound, mirroring flashWrongKey's octave-discriminating shape so a scale's duplicate-tonic octave un-dims independently. Empty outside a study-mode roll, so the complete-block PianoKeyboard renders byte-identical to a non-study reveal. */
@@ -171,6 +181,7 @@
 		wrongIndex = -1;
 		countUpRevealed = false;
 		fsrsSaved = false;
+		completionRating = undefined;
 		clearTimeout(flashTimer);
 		clearTimeout(feedbackTimer);
 		flashTimer = undefined;
@@ -395,11 +406,19 @@
 		return `${pickedTonic ?? ''} ${t('build.word.major')}: ${parts.join(', ')}.`;
 	}
 
-	/** Maps a completed session's wrongTapCount to an FSRS rating (BUILD-04): 0 -> Easy, 1-2 -> Good, 3+ -> Hard. Again is never returned - there is no give-up/reset path in this design. */
-	function ratingForWrongTaps(count: number): Rating {
+	/**
+	 * Maps a completed session's wrongTapCount to an FSRS rating, steps-aware
+	 * (260722-0ex, BACKLOG-6): 0 wrong -> Easy; 1-2 wrong -> Good; wrong < 2x
+	 * the step count -> Hard; wrong >= 2x the step count -> Again. Again CAN
+	 * now be returned - a genuinely forgotten formula (wrong taps at or beyond
+	 * 2x the step count) lapses, so it can surface as weak in deriveCellState,
+	 * rather than the prior design's floor at Hard with no give-up/reset path.
+	 */
+	function ratingForWrongTaps(count: number, steps: number): Rating {
 		if (count === 0) return Rating.Easy;
 		if (count <= 2) return Rating.Good;
-		return Rating.Hard;
+		if (count < 2 * steps) return Rating.Hard;
+		return Rating.Again;
 	}
 
 	/**
@@ -432,6 +451,7 @@
 		// Snapshot every input the async continuation needs before any `await` -
 		// nothing below this line reads live component state again.
 		const wrongTapCount = construction.wrongTapCount;
+		const stepCount = construction.steps.length;
 		const snapshotKind = kind;
 		const snapshotSymbol = startedSymbol;
 		const snapshotTonic = pickedTonic;
@@ -451,7 +471,7 @@
 				lastRating: null,
 				masteryDayCount: 0
 			};
-			await recordGrade(card, ratingForWrongTaps(wrongTapCount), now);
+			await recordGrade(card, ratingForWrongTaps(wrongTapCount, stepCount), now);
 			fsrsSaved = true;
 		} catch {
 			// Best-effort write; never let it block or alter the completion summary.
@@ -602,7 +622,11 @@
 			// WR-03: fire the FSRS write the instant the session actually
 			// completes, independent of the 650ms pacing timer below - a
 			// navigation away within that window must not drop the grade.
+			// completionRating (260722-0ex, BACKLOG-6) is set synchronously here,
+			// the same fire-once point, so the Next tap can forward the real
+			// rating even if the async FSRS write below is slow or fails.
 			if (result.state.done) {
+				completionRating = ratingForWrongTaps(result.state.wrongTapCount, result.state.steps.length);
 				void recordConstructionOutcome();
 			}
 		} else if (result.outcome === 'wrong-pitch-class') {
@@ -930,7 +954,11 @@
 			<div class="mt-6 flex flex-wrap gap-2">
 				<Button type="button" variant="ghost" onclick={hearAgain}>{t('build.button.hearAgain')}</Button>
 				{#if onComplete}
-					<Button type="button" variant="primary" onclick={onComplete}>{t('build.button.next')}</Button>
+					<Button
+						type="button"
+						variant="primary"
+						onclick={() => onComplete?.(completionRating ?? Rating.Good)}>{t('build.button.next')}</Button
+					>
 				{:else}
 					<Button type="button" variant="primary" onclick={resetPicker}
 						>{t('build.button.buildAnother')}</Button
