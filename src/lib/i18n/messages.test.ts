@@ -10,6 +10,7 @@ import { scales } from './messages/scales';
 import { progress } from './messages/progress';
 import { home } from './messages/home';
 import { progressions } from './messages/progressions';
+import { voicings } from './messages/voicings';
 import { setLocale, t } from './locale.svelte';
 
 /**
@@ -59,7 +60,8 @@ describe('domain dictionary key collisions (I18N-02)', () => {
 		['scales', scales.en],
 		['progress', progress.en],
 		['home', home.en],
-		['progressions', progressions.en]
+		['progressions', progressions.en],
+		['voicings', voicings.en]
 	];
 
 	it('has no key defined by more than one domain dictionary', () => {

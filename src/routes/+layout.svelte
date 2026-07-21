@@ -23,7 +23,8 @@
 		{ href: '/songs', labelKey: 'nav.songs' },
 		{ href: '/theory', labelKey: 'nav.theory' },
 		{ href: '/progress', labelKey: 'nav.progress' },
-		{ href: '/progressions', labelKey: 'nav.progressions' }
+		{ href: '/progressions', labelKey: 'nav.progressions' },
+		{ href: '/voicings', labelKey: 'nav.voicings' }
 	];
 
 	/**
@@ -66,7 +67,7 @@
 	 * "More" sheet contents (1A): the remaining 4 destinations, same
 	 * filter-not-duplicate-literal approach as bottomTabLinks above.
 	 */
-	const moreHrefs = ['/build', '/scales', '/theory', '/progress', '/progressions'];
+	const moreHrefs = ['/build', '/scales', '/theory', '/progress', '/progressions', '/voicings'];
 	const moreLinks = navLinks.filter((link) => moreHrefs.includes(link.href));
 
 	let moreOpen = $state(false);
