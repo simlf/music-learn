@@ -199,6 +199,18 @@
 	 * inside resetPerCardState() (which already runs after every advance).
 	 */
 	let questionShownAt = Date.now();
+	/**
+	 * Bumped on every card advance (resetPerCardState) so the Mode C
+	 * `{#key}` block below always remounts a fresh BuildSession, even when
+	 * advanceQueue's Again re-enqueue on a SOLE queue item returns the same
+	 * head object (nothing else to reorder around) - without this, an
+	 * Again-graded formula-build completion would key on an unchanged
+	 * `factId|mode` string, leaving the just-completed BuildSession instance
+	 * frozen on its own 'complete' screen forever (every further Next tap
+	 * re-firing onComplete(Again) and inflating reviewedCount without ever
+	 * showing a fresh construction).
+	 */
+	let cardEpoch = $state(0);
 
 	// ---- Mode A ('see-play') per-card state --------------------------------
 	// See the symbol, play it on the keyboard, grade by chroma set equality
@@ -380,6 +392,7 @@
 	function resetPerCardState(): void {
 		revealed = false;
 		questionShownAt = Date.now();
+		cardEpoch += 1;
 		selectedConfidence = undefined;
 		selected = new Set();
 		modeAAnswered = false;
@@ -1005,7 +1018,7 @@
 	{#if currentItem.mode === 'formula-build'}
 		{@const embedTarget = embedTargetFor(currentItem.factId)}
 		{#if embedTarget}
-			{#key `${currentItem.factId}|${currentItem.mode}`}
+			{#key `${currentItem.factId}|${currentItem.mode}|${cardEpoch}`}
 				{#if embedTarget.kind === 'chord'}
 					<div class="mt-4">
 						<HintLadder symbol={embedTarget.symbol} layers={hintLayersFor('formula-build')} />

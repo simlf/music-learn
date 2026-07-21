@@ -1132,6 +1132,23 @@ describe('RecallSession Mode C (formula-build: embeds BuildSession directly, REC
 			);
 			expect(screen.getByTestId('recall-register')).toHaveTextContent('1 LEFT TODAY');
 			expect(screen.queryByTestId('recall-complete')).not.toBeInTheDocument();
+
+			// Adversarial-review fix (cardEpoch): a re-enqueued sole item keeps
+			// the SAME factId|mode key (advanceQueue's Again path on a one-item
+			// queue returns the same head object), so without cardEpoch the
+			// embedded BuildSession would never remount and would stay frozen on
+			// its OWN 'complete' screen forever. Assert the fresh building state
+			// is actually shown, not the stale completion screen.
+			expect(screen.queryByTestId('build-complete')).not.toBeInTheDocument();
+			expect(screen.getByTestId('build-active')).toBeInTheDocument();
+			expect(screen.getByTestId('build-register')).toHaveTextContent('STEP 1 OF 3');
+
+			// A second Next tap must NOT be immediately available (the fresh
+			// BuildSession instance is back in its 'building' state, not
+			// 'complete') - if the component were still stuck, this button
+			// would still be present and clicking it would inflate
+			// reviewedCount again.
+			expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
 		},
 		10000
 	);
