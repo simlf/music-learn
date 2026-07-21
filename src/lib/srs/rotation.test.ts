@@ -300,5 +300,100 @@ describe('rotation', () => {
 			expect(output).toHaveLength(4);
 			expect(new Set(output)).toEqual(new Set(input));
 		});
+
+		/** Longest run of consecutive same-chord-root cards anywhere in `cards` (null-root cards never extend or break-and-restart a numeric run beyond resetting it to 0). */
+		function maxSameRootRun(cards: CardRecord[]): number {
+			let max = 0;
+			let current = 0;
+			let lastRoot: string | null = null;
+			for (const card of cards) {
+				const root = /^chord-formula:([A-G][#b]?)/.exec(card.factId)?.[1] ?? null;
+				current = root !== null && root === lastRoot ? current + 1 : root !== null ? 1 : 0;
+				lastRoot = root;
+				max = Math.max(max, current);
+			}
+			return max;
+		}
+
+		/**
+		 * Adversarial-review fix: a multi-card State.New teach cluster is
+		 * atomic (its own 3 cards, all sharing one factId/root, are always
+		 * emitted together - accepted/expected, mirroring the factId-cluster
+		 * exception). The bug was that the candidate filter only checked
+		 * `trailingRootRun >= 2` (as if every unit were single-card), so a
+		 * same-root cluster could be selected immediately after an EXISTING
+		 * 2-long same-root run, fusing them into a run of 5 - the filter must
+		 * account for the WHOLE unit's card count, not just 1.
+		 */
+		it('a same-root State.New teach cluster is never selected immediately after an existing same-root run when it would fuse into a run >= 3 (the fix must count the whole unit, not just its leading card)', () => {
+			const reviewC1 = makeCardRecord({
+				factId: 'chord-formula:C',
+				mode: 'formula',
+				state: State.Review,
+				stability: 1
+			});
+			const reviewC2 = makeCardRecord({
+				factId: 'chord-formula:Cm',
+				mode: 'formula',
+				state: State.Review,
+				stability: 2
+			});
+			const cluster = (['formula', 'see-play', 'formula-build'] as Mode[]).map((mode) =>
+				makeCardRecord({ factId: 'chord-formula:C7', mode, state: State.New })
+			);
+			const filler1 = makeCardRecord({
+				factId: 'chord-formula:Dm7',
+				mode: 'formula',
+				state: State.Review,
+				stability: 3
+			});
+			const filler2 = makeCardRecord({
+				factId: 'chord-formula:Em7',
+				mode: 'formula',
+				state: State.Review,
+				stability: 4
+			});
+			const input = [reviewC1, reviewC2, ...cluster, filler1, filler2];
+
+			for (let seed = 0; seed < 100; seed++) {
+				const output = interleaveQueue(input, seededRng(seed));
+				expect(output).toHaveLength(input.length);
+				expect(new Set(output)).toEqual(new Set(input));
+				// A lone teach cluster's own inherent 3-card same-root run is
+				// still accepted (run === 3), but the pre-existing 2-card
+				// same-root run must never fuse with it into a run of 5.
+				expect(maxSameRootRun(output)).toBeLessThanOrEqual(3);
+			}
+		});
+
+		/**
+		 * Confirms the relax path still terminates (rather than looping
+		 * forever) even in the genuinely-infeasible case where a same-root
+		 * teach cluster is the ONLY remaining candidate right after an
+		 * existing same-root run, with no other-root filler available to
+		 * break it up.
+		 */
+		it('the relax path still terminates when a same-root cluster is the only remaining unit after an existing same-root run (no filler available)', () => {
+			const reviewC1 = makeCardRecord({
+				factId: 'chord-formula:C',
+				mode: 'formula',
+				state: State.Review,
+				stability: 1
+			});
+			const reviewC2 = makeCardRecord({
+				factId: 'chord-formula:Cm',
+				mode: 'formula',
+				state: State.Review,
+				stability: 2
+			});
+			const cluster = (['formula', 'see-play', 'formula-build'] as Mode[]).map((mode) =>
+				makeCardRecord({ factId: 'chord-formula:C7', mode, state: State.New })
+			);
+			const input = [reviewC1, reviewC2, ...cluster];
+
+			const output = interleaveQueue(input, seededRng(11));
+			expect(output).toHaveLength(input.length);
+			expect(new Set(output)).toEqual(new Set(input));
+		});
 	});
 });

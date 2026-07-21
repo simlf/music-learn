@@ -194,8 +194,17 @@ export function interleaveQueue(
 			const leadCard = pool[i].cards[0];
 			if (leadCard.factId === lastFactId) continue;
 			const leadRoot = chordRootOf(leadCard.factId);
+			// A multi-card unit (a State.New teach cluster) emits ALL its cards
+			// atomically and every card in it shares the same factId/root, so
+			// picking it extends the trailing root run by the WHOLE unit's card
+			// count, not just one - checking only `trailingRootRun >= 2` (as if
+			// every unit were single-card) let a same-root teach cluster slip in
+			// right after an already-2-long same-root run, producing a run of
+			// trailingRootRun + unit.cards.length >= 3 (adversarial-review fix).
 			const wouldExtendRootRunTo3 =
-				leadRoot !== null && leadRoot === trailingRoot && trailingRootRun >= 2;
+				leadRoot !== null &&
+				leadRoot === trailingRoot &&
+				trailingRootRun + pool[i].cards.length >= 3;
 			if (wouldExtendRootRunTo3) continue;
 			// A non-chord fact (null root) imposes no root constraint at all, so
 			// it must never be treated as systematically lower-priority than a
