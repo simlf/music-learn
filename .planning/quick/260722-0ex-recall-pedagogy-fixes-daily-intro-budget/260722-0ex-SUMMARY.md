@@ -197,3 +197,13 @@ None - no external service configuration required. All changes are client-side (
 ---
 *Quick task: 260722-0ex-recall-pedagogy-fixes-daily-intro-budget*
 *Completed: 2026-07-22*
+
+## Post-review fixes (adversarial review round)
+
+A 3-lens adversarial review (srs-semantics, svelte-state, test-quality; every finding independently verified with refutation attempts) confirmed 3 defects, all fixed:
+
+1. `9723131` (critical): Again-graded formula-build card as sole queue item froze the session — Mode C `{#key}` did not change on re-enqueue, so BuildSession never remounted. Fixed with a `cardEpoch` counter folded into the key.
+2. `941080a` (minor): `handleGrade` double-tap could double-fire telemetry and double-advance the queue. In-flight `grading` guard + disabled grade buttons.
+3. `e8f8169` (minor): `interleaveQueue` root-run filter only counted a unit's leading card, letting multi-card teach clusters form same-root runs of 3+. Filter now counts the whole unit length.
+
+Final state: 1493/1493 tests passing, svelte-check 0 errors, build green.
