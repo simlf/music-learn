@@ -288,6 +288,42 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 		expect(screen.getByText(/Couldn't open the practice ledger\./)).toBeInTheDocument();
 	});
 
+	it('double-tapping a grade button while recordGrade is in flight only grades/advances once (adversarial-review in-flight guard fix)', async () => {
+		const card = makeCard('chord-formula:Cm7', 'chord-formula');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		let resolveGrade: ((updated: CardRecord) => void) | undefined;
+		recordGradeMock.mockImplementationOnce(
+			(c: CardRecord, rating: Rating) =>
+				new Promise<CardRecord>((resolve) => {
+					resolveGrade = () => resolve({ ...c, lastRating: rating });
+				})
+		);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+
+		await fireEvent.click(dockButton('Show Answer'));
+
+		// Two rapid taps on the same grade button while the first recordGrade
+		// call is still pending (unresolved) - the second tap must be a no-op,
+		// whether blocked by the `grading` in-flight guard or the grade
+		// buttons' `disabled={grading}` reflecting it.
+		await fireEvent.click(dockTestId('recall-grade-good'));
+		await fireEvent.click(dockTestId('recall-grade-good'));
+
+		expect(recordGradeMock).toHaveBeenCalledTimes(1);
+
+		resolveGrade?.(card);
+		await waitFor(() => screen.getByTestId('recall-complete'));
+
+		expect(recordGradeMock).toHaveBeenCalledTimes(1);
+		expect(recordPracticeAnswerMock).toHaveBeenCalledTimes(1);
+		expect(screen.getByTestId('recall-reviewed-count')).toHaveTextContent('1 REVIEWED TODAY');
+	});
+
 	it('announces reveal->grade transitions via an aria-live region (WR-03)', async () => {
 		const card = makeCard('chord-formula:Cm7', 'chord-formula');
 		introduceNewCardsMock.mockResolvedValue(0);

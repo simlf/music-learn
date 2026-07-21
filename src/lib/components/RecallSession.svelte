@@ -182,6 +182,14 @@
 	let revealed = $state(false);
 	let reviewedCount = $state(0);
 	/**
+	 * In-flight guard for handleGrade (adversarial-review fix): a double-tap
+	 * on a grade button while the first tap's recordGrade await is still
+	 * pending would otherwise double-fire recordPracticeAnswer telemetry and
+	 * double-advance the queue. Set true at the top of handleGrade, reset in
+	 * a finally so it clears on both the success and error paths.
+	 */
+	let grading = $state(false);
+	/**
 	 * Sketch 020-B: optional confidence pick for the current formula-mode
 	 * card. undefined = no dot picked (logs as 'unrated' on grade). Lives in
 	 * content flow, not the action dock - it is enrichment, never a gate on
@@ -734,7 +742,8 @@
 	 * decrements below its pre-re-enqueue value on an Again grade.
 	 */
 	async function handleGrade(rating: Rating): Promise<void> {
-		if (!currentCard) return;
+		if (grading || !currentCard) return;
+		grading = true;
 		// Snapshotted before any await, mirroring logConfidence's own
 		// currentCard-derived (never currentItem's) factId discipline below -
 		// advanceQueue may reshuffle the queue once this resolves.
@@ -781,6 +790,8 @@
 			if (isSessionComplete(queue)) pageState = 'complete';
 		} catch {
 			pageState = 'error';
+		} finally {
+			grading = false;
 		}
 	}
 
@@ -839,6 +850,7 @@
 				<Button
 					type="button"
 					variant="ghost"
+					disabled={grading}
 					style={gradeButtonStyle(grade.rating)}
 					data-testid={`recall-grade-${grade.label.toLowerCase()}`}
 					onclick={() => handleGrade(grade.rating)}
