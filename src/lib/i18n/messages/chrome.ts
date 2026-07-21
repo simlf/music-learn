@@ -25,7 +25,8 @@ export const chrome = {
 		'pwa.update.dismiss': 'Dismiss',
 		'chrome.sheet.close': 'Close',
 		'nav.more': 'More',
-		'nav.progressions': 'Progressions'
+		'nav.progressions': 'Progressions',
+		'nav.voicings': 'Voicings'
 	},
 	fr: {
 		'nav.lookup': 'Rechercher',
@@ -45,6 +46,7 @@ export const chrome = {
 		'pwa.update.dismiss': 'Ignorer',
 		'chrome.sheet.close': 'Fermer',
 		'nav.more': 'Plus',
-		'nav.progressions': 'Progressions'
+		'nav.progressions': 'Progressions',
+		'nav.voicings': 'Voicings'
 	}
 } satisfies LocaleDict;
