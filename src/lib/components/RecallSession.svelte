@@ -29,6 +29,7 @@
 	import { ensureAudioReady, playChord, playNote } from '$lib/audio/audio';
 	import { toPitch } from '$lib/audio/voicing';
 	import { symbolHasProvenance, songsForSymbol } from '$lib/practice/songProvenance';
+	import { logConfidence, type Confidence } from '$lib/practice/confidenceLog';
 	import { t } from '$lib/i18n/locale.svelte';
 	import ChordGlyph from './ChordGlyph.svelte';
 	import IntervalChip from './IntervalChip.svelte';
@@ -178,6 +179,13 @@
 	let cardsByKey = $state(new Map<string, CardRecord>());
 	let revealed = $state(false);
 	let reviewedCount = $state(0);
+	/**
+	 * Sketch 020-B: optional confidence pick for the current formula-mode
+	 * card. undefined = no dot picked (logs as 'unrated' on grade). Lives in
+	 * content flow, not the action dock - it is enrichment, never a gate on
+	 * Reveal or grading.
+	 */
+	let selectedConfidence = $state<Confidence | undefined>(undefined);
 	/** MD-02: how many real due cards the song filter is currently hiding, for the filter-aware empty message. */
 	let filteredHiddenCount = $state(0);
 
@@ -331,6 +339,7 @@
 	 */
 	function resetPerCardState(): void {
 		revealed = false;
+		selectedConfidence = undefined;
 		selected = new Set();
 		modeAAnswered = false;
 		modeAResult = undefined;
@@ -619,6 +628,24 @@
 	async function handleGrade(rating: Rating): Promise<void> {
 		if (!currentCard) return;
 		try {
+			// Sketch 020-B: log the (picked or 'unrated') confidence pick paired
+			// with correctness BEFORE the grade commits, using the card's own
+			// factId/mode (never currentItem's, in case advanceQueue reshuffles
+			// the queue below). logConfidence is already a total function (25-04
+			// swallows quota/parse errors internally); the try/catch here keeps
+			// the whole grade path resilient even against an unexpected throw, so
+			// a full store can never block the review loop.
+			try {
+				logConfidence({
+					factId: currentCard.factId,
+					mode: currentCard.mode,
+					confidence: selectedConfidence ?? 'unrated',
+					correct: rating === Rating.Good || rating === Rating.Easy,
+					at: new Date().toISOString()
+				});
+			} catch {
+				// Never let a logging failure block grading.
+			}
 			const updated = await recordGrade(currentCard, rating, new Date());
 			cardsByKey = new Map(cardsByKey).set(cardKey(updated.factId, updated.mode), updated);
 			queue = advanceQueue(queue, rating);
@@ -638,6 +665,24 @@
 			{ rating: Rating.Easy, label: t('recall.grade.easy') }
 		]
 	);
+
+	/**
+	 * Sketch 020-B: the three optional confidence dots rendered under the
+	 * formula-mode prompt (never in `.review-action-dock`). Literal glyphs
+	 * stay untranslated (immunity); only the aria label is keyed.
+	 */
+	const CONFIDENCE_DOTS = $derived.by(
+		(): { level: Confidence; glyph: string; aria: string }[] => [
+			{ level: 'unsure', glyph: '?', aria: t('recall.confidence.aria.unsure') },
+			{ level: 'somewhat', glyph: '~', aria: t('recall.confidence.aria.somewhat') },
+			{ level: 'certain', glyph: '!', aria: t('recall.confidence.aria.certain') }
+		]
+	);
+
+	/** Tapping the already-picked dot again clears it back to undefined (unrated). */
+	function toggleConfidence(level: Confidence): void {
+		selectedConfidence = selectedConfidence === level ? undefined : level;
+	}
 
 	/** Inline style override for the Again grade button (D-color rule: reuses --color-wrong verbatim, no new token). */
 	function gradeButtonStyle(rating: Rating): string | undefined {
@@ -896,6 +941,35 @@
 					<p class="text-body mt-4">{t('recall.prompt.note-question')}</p>
 				{/if}
 			</div>
+
+			<!--
+				Sketch 020-B (LOCKED): optional confidence dots sit in content flow
+				between the prompt and the keyboard/reveal, a deliberate exception
+				to the 014 docked-actions rule - rating is enrichment, never a
+				required action, so it lives in scrolling content. Reveal stays in
+				the action dock/in-flow slot below, untouched by this block. Gone
+				entirely once revealed (no post-hoc re-rating).
+			-->
+			{#if !revealed}
+				<div class="mt-4" data-testid="recall-confidence-dots">
+					<div class="conf-dot-row" role="group" aria-label={t('recall.confidence.group-aria')}>
+						{#each CONFIDENCE_DOTS as dot (dot.level)}
+							<button
+								type="button"
+								class="conf-dot"
+								class:picked={selectedConfidence === dot.level}
+								aria-label={dot.aria}
+								aria-pressed={selectedConfidence === dot.level}
+								data-testid={`recall-confidence-${dot.level}`}
+								onclick={() => toggleConfidence(dot.level)}
+							>
+								{dot.glyph}
+							</button>
+						{/each}
+					</div>
+					<p class="text-label mt-1 font-mono">{t('recall.confidence.legend')}</p>
+				</div>
+			{/if}
 
 			{#if currentFact.factKind === 'chord-formula'}
 				<div class="mt-4">
@@ -1193,5 +1267,31 @@
 		.review-inflow-actions {
 			display: none;
 		}
+	}
+
+	/*
+	 * Confidence dots (sketch 020-B, LOCKED): three 44px square, zero-radius
+	 * serif glyph buttons in content flow, adapted from the sketch reference's
+	 * .conf-dot / .conf-dot.picked pattern verbatim.
+	 */
+	.conf-dot-row {
+		display: flex;
+		gap: var(--spacing-sm);
+	}
+
+	.conf-dot {
+		width: 44px;
+		height: 44px;
+		border: 1px solid var(--color-ink);
+		border-radius: 0;
+		font-family: var(--font-serif);
+		font-size: 20px;
+		background: var(--color-paper-bright);
+		color: var(--color-ink);
+	}
+
+	.conf-dot.picked {
+		background: var(--color-ink);
+		color: var(--color-paper-bright);
 	}
 </style>
