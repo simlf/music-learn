@@ -150,6 +150,29 @@ describe('ShellVoicingDrill: stage derived from card maturity', () => {
 	});
 });
 
+describe('ShellVoicingDrill: stage UI gated on the deck read (WR-05)', () => {
+	it('suppresses the stage UI (and the meet stage Got it action) until the deck read for the current chord lands', async () => {
+		let resolveLoad!: (cards: CardRecord[]) => void;
+		getAllCardsMock.mockReturnValue(
+			new Promise<CardRecord[]>((resolve) => {
+				resolveLoad = resolve;
+			})
+		);
+
+		render(ShellVoicingDrill);
+
+		// While the read is in flight, no stage (nor Got it, whose tap would
+		// write a voicingMet mark from a stage derived from stale cards) renders.
+		expect(screen.queryByTestId('stage-meet')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('stage-subtract')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('stage-drill')).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Got it' })).not.toBeInTheDocument();
+
+		resolveLoad([makeCard(State.Learning)]);
+		await waitFor(() => screen.getByTestId('stage-subtract'));
+	});
+});
+
 describe('ShellVoicingDrill: step indicator', () => {
 	it('always renders the 1 Meet / 2 Subtract / 3 Drill chips, with the current stage inverted', async () => {
 		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);

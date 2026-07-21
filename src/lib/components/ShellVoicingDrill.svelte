@@ -46,10 +46,29 @@
 	const chord = $derived(spellChord(symbol));
 
 	let cards = $state<CardRecord[]>([]);
+	/**
+	 * False while the current symbol's deck read is in flight. The stage UI is
+	 * suppressed until the read lands, so a stale `cards` value (the previous
+	 * chord's records, or the initial []) never renders the wrong pedagogy
+	 * stage — and a fast "Got it" tap during that window can never write a
+	 * spurious voicingMet mark for the new chord.
+	 */
+	let cardsLoaded = $state(false);
 
+	/**
+	 * Loads the deck records for `forSymbol`, guarded against staleness: by
+	 * the time getAllCards resolves, a newer draw may have superseded this
+	 * request (rapid Next taps), so a response for a symbol that is no longer
+	 * `symbol` is dropped — otherwise the current chord's stage would be
+	 * computed from another chord's maturity. (`symbol` is read after the
+	 * await, so the effect below never tracks it twice.)
+	 */
 	async function loadCards(forSymbol: string) {
+		cardsLoaded = false;
 		const all = await getAllCards();
+		if (forSymbol !== symbol) return; // stale response: a newer draw superseded it
 		cards = all.filter((card) => card.factId === `chord-formula:${forSymbol}`);
+		cardsLoaded = true;
 	}
 
 	$effect(() => {
@@ -193,6 +212,11 @@
 </script>
 
 <div data-testid="shell-voicing-drill">
+	<!-- Stage UI is gated on the current chord's deck read (WR-05): rendering
+	     before it lands would flash a stage derived from the PREVIOUS chord's
+	     cards, and a fast "Got it" tap in that window would mark the wrong
+	     chord met. -->
+	{#if cardsLoaded}
 	<div class="step-indicator" data-testid="step-indicator" role="group" aria-label={t('voicings.aria.stepGroup')}>
 		<span
 			class="step"
@@ -304,6 +328,7 @@
 				</div>
 			{/if}
 		</div>
+	{/if}
 	{/if}
 </div>
 
