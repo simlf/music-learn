@@ -674,7 +674,7 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 **Requirements**: none mapped (sketch-driven; must-haves derived per-plan from session-6 sketch winners 017/019/020-B)
 **Depends on:** Phase 24
 **Design reference:** `.claude/skills/sketch-findings-music-learn/references/contextual-learning-metacognition.md` (session 6 locked winners); `.planning/sketches/WRAP-UP-SUMMARY.md`
-**Plans:** 5/8 plans executed
+**Plans:** 6/8 plans executed
 
 **Wave 1** *(parallel: disjoint file sets — four pure/primitive foundations)*
 
@@ -686,7 +686,7 @@ v2.0 Learning Upgrade executes in numeric order: 10 → 11 → 12 → 13. Phase 
 **Wave 2** *(blocked on Wave 1)*
 
 - [x] 25-05-PLAN.md — ProgressionDrill + /progressions route + nav + i18n: earn-the-symbol lead sheet, derive-then-play two-step (sketch 017) [depends 25-01]
-- [ ] 25-06-PLAN.md — Recall confidence dots: optional ? ~ ! capture in RecallSession, never blocks Reveal, logs on grade (sketch 020-B) [depends 25-04]
+- [x] 25-06-PLAN.md — Recall confidence dots: optional ? ~ ! capture in RecallSession, never blocks Reveal, logs on grade (sketch 020-B) [depends 25-04]
 - [ ] 25-08-PLAN.md — Progress calibration payoff view: 3-bar calibration chart + MISCALIBRATED flag + danger-cards drill CTA (sketch 020-C) [depends 25-04]
 
 **Wave 3** *(blocked on Wave 2: shares +layout.svelte / i18n index / chrome nav with 25-05)*

@@ -6,14 +6,14 @@ current_phase: 25
 current_phase_name: contextual-learning-from-session-6-sketches-progression-dril
 status: executing
 stopped_at: Completed 23-04-PLAN.md
-last_updated: "2026-07-21T16:08:51.738Z"
+last_updated: "2026-07-21T16:23:41.043Z"
 last_activity: 2026-07-20
 last_activity_desc: Phase 25 execution started
 progress:
   total_phases: 24
   completed_phases: 19
   total_plans: 98
-  completed_plans: 95
+  completed_plans: 96
   percent: 79
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 ## Current Position
 
 Phase: 25 (contextual-learning-from-session-6-sketches-progression-dril) — EXECUTING
-Plan: 6 of 8
+Plan: 7 of 8
 Status: Ready to execute
 Last activity: 2026-07-20 — Phase 25 execution started
 Full suite: 1284 tests green; svelte-check 0 errors.
@@ -158,6 +158,7 @@ Full suite: 1284 tests green; svelte-check 0 errors.
 | Phase 25 P03 | 12min | 2 tasks | 2 files |
 | Phase 25 P04 | 20min | 2 tasks | 2 files |
 | Phase 25 P05 | 65min | 3 tasks | 8 files |
+| Phase 25 P06 | 20min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -320,6 +321,8 @@ Recent decisions affecting current work:
 - [Phase 25-04]: calibration()'s miscalibrated flag requires both certain and somewhat levels to have >=1 sample (divide-by-zero guard) rather than treating a 0/0 comparison as miscalibrated
 - [Phase ?]: ProgressionDrill name-choice chips render as flat single-text-node spans (never ChordGlyph) so accessible chip text matches the raw chord symbol exactly for grading and testing
 - [Phase ?]: Play-step PianoKeyboard shows notes=[] (no highlighting) while unanswered, mirroring drills' construction/identification interactive pattern
+- [Phase ?]: Confidence dots render for all three formula-mode factKinds (chord-formula, interval-size, scale-degree), not just chord-formula
+- [Phase ?]: logConfidence factId/mode come from currentCard (the graded record), not currentItem, so the log entry stays correct across advanceQueue mutation
 
 ### Pending Todos
 
@@ -356,7 +359,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-21T16:07:15.810Z
+Last session: 2026-07-21T16:20:22.149Z
 Stopped at: Completed 23-04-PLAN.md
 Resume file: 
 None
