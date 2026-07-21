@@ -2,11 +2,12 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Playability & Comprehension
-current_phase: 25
-status: "Phase 25 shipped — PR #20"
+current_phase: 1
+status: Awaiting next milestone
 stopped_at: Completed 25-07-PLAN.md
-last_updated: "2026-07-21T17:54:35.167Z"
+last_updated: "2026-07-21T20:05:15.877Z"
 last_activity: 2026-07-21
+last_activity_desc: Milestone v2.1 completed and archived
 progress:
   total_phases: 24
   completed_phases: 20
@@ -27,24 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 
 ## Current Position
 
-Phase: 25
-Plan: Not started
-Status: Phase 25 shipped — PR #20
-Last activity: 2026-07-21
-Full suite: 1284 tests green; svelte-check 0 errors.
-
-**v2.0 Learning Upgrade (Phases 10-13): COMPLETE (shipped 2026-07-15).**
-
-**v2.1 Playability & Comprehension (Phases 15-20) — active batch; design winners = Session 4 sketches 008-013:**
-
-- Phase 15: Playable Keyboard Everywhere (KBD-01..03) — COMPLETE, but the shared fixed-bottom keyboard dock was later REMOVED (rejected as too intrusive); keyboards now render inline per page. See [[keyboard-inline-not-docked]].
-- Phase 16: Hear the Chord (HEAR-01, HEAR-02) — COMPLETE (verified). Auto-play + synced pulse on the BUILD reveal, plus gap-closure of the study-mode roll (ascending voicing, tick-synced audio/visual, octave-keyed pending).
-- Phase 17: Chord Explainer (HINT-01..03) — COMPLETE (verified). Escalating in-place hint ladder for unknown chords in Recall (family → formula chips → mini keyboard → full spelling + song hook).
-- Phase 18: Your Songs' Chords — song-provenance marks + a From-my-songs filter.
-- Phase 19: Interactive Theory — guided-step beginner lessons handing off into the first drill.
-- Phase 20: French Translation — header EN|FR toggle + full French i18n layer.
-
-(Phase 14 = standalone 14-mastery-criterion, separate from this batch.)
+Phase: Milestone v2.1 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-07-21 — Milestone v2.1 completed and archived
 
 ## Performance Metrics
 
@@ -161,6 +148,21 @@ Full suite: 1284 tests green; svelte-check 0 errors.
 | Phase 25 P06 | 20min | 2 tasks | 3 files |
 | Phase 25 P08 | 15min | 2 tasks | 3 files |
 | Phase 25 P07 | 13min | 3 tasks | 11 files |
+
+## Deferred Items
+
+Items acknowledged and deferred at milestone close on 2026-07-21:
+
+| Category | Item | Status |
+|----------|------|--------|
+| uat_gap | Phase 09: 09-UAT.md, 2 pending on-device scenarios | testing |
+| uat_gap | Phase 23: 23-UAT.md, on-device visual checks not run | pending |
+| verification_gap | Phase 09: 09-VERIFICATION.md | human_needed |
+| verification_gap | Phase 23: 23-VERIFICATION.md | human_needed |
+| todo | move-from-my-songs-review-pool-filter-off-recall-page (ui) | pending |
+| todo | verify-pwa-install-and-haptics-after-https-deploy (mobile) | pending |
+
+Also carried (non-artifact): phase 21 /drills hover recede-reveal eyeball; phase 25 optional on-device visual pass (/progressions, /voicings, /progress calibration).
 
 ## Accumulated Context
 
@@ -369,3 +371,7 @@ Last session: 2026-07-21T17:02:55.809Z
 Stopped at: Completed 25-07-PLAN.md
 Resume file: 
 None
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone
