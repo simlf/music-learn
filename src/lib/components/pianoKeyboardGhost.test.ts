@@ -56,6 +56,22 @@ describe('PianoKeyboard ghost-hatch (ghostKeys, sketch 019 synthesis)', () => {
 		expect(container.querySelectorAll('.piano-keyboard__key--ghost')).toHaveLength(0);
 	});
 
+	it('a flat-spelled ghost entry (E♭) lands on the sharp-labeled black key (chroma matching, never letter strings)', () => {
+		const { container } = render(PianoKeyboard, {
+			notes: [],
+			octaves: 2,
+			// An unassigned black key only offers its generic sharpLetter (D♯);
+			// the entry carries spellChord's own flat spelling (E♭). Chroma
+			// comparison must make the two meet on the same physical key.
+			ghostKeys: [{ letter: 'E♭', octave: 4, marker: 'R' }]
+		});
+
+		const ghostKey = container.querySelector('.piano-keyboard__key--ghost');
+		expect(ghostKey).not.toBeNull();
+		expect(ghostKey?.className).toContain('piano-keyboard__key--black');
+		expect(ghostKey?.getAttribute('data-ghost')).toBe('R');
+	});
+
 	it('a same-letter key at a different octave than the ghostKeys entry stays plain (octave-specific)', () => {
 		const { container } = render(PianoKeyboard, {
 			notes: [],

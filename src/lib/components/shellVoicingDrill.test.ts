@@ -91,6 +91,26 @@ describe('ShellVoicingDrill: stage derived from card maturity', () => {
 		expect(screen.queryByTestId('voicing-selector')).not.toBeInTheDocument();
 	});
 
+	it('ghost-hatches the root + fifth of a FLAT-rooted chord (Ebmaj7): chroma matching, never letter strings', async () => {
+		// Force the draw onto 'Ebmaj7' (flat root E♭, flat fifth B♭): its ghost
+		// entries carry spellChord's flat spellings, which must land on the
+		// keyboard's sharp-labeled black keys (D♯/A♯) via chroma comparison.
+		const { seventhChordSymbols } = await import('$lib/practice/shellVoicing');
+		const symbols = seventhChordSymbols();
+		const idx = symbols.indexOf('Ebmaj7');
+		expect(idx).toBeGreaterThan(-1);
+		vi.spyOn(Math, 'random').mockReturnValue((idx + 0.5) / symbols.length);
+		getAllCardsMock.mockResolvedValue([
+			{ ...makeCard(State.Learning), factId: 'chord-formula:Ebmaj7' }
+		]);
+
+		const { container } = render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-subtract'));
+		expect(container.querySelectorAll('[data-ghost="R"]')).toHaveLength(1);
+		expect(container.querySelectorAll('[data-ghost="5"]')).toHaveLength(1);
+	});
+
 	it('shows the drill stage (voicing selector, no teach panel) for any Review card', async () => {
 		getAllCardsMock.mockResolvedValue([makeCard(State.Learning), makeCard(State.Review)]);
 

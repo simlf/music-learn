@@ -17,6 +17,7 @@
 </script>
 
 <script lang="ts">
+	import { Note } from 'tonal';
 	import NoteLabel from './NoteLabel.svelte';
 	import { playNote } from '$lib/audio/audio';
 	import { intervalFromRoot, toAsciiAccidentals, transposeFrom } from '$lib/theory/interval';
@@ -167,9 +168,12 @@
 		 * Role-gated like `selectedClass`/`pendingClass` (never applies to a key
 		 * that already carries an interval-role fill) and octave-specific like
 		 * `flashWrongKey`/`pendingKeys` (a same-letter duplicate key at a
-		 * different octave is unaffected). Omitting it leaves rendering
-		 * byte-identical (no `.piano-keyboard__key--ghost` class or `data-ghost`
-		 * attribute is ever applied).
+		 * different octave is unaffected). Entries are matched to keys by
+		 * CHROMA + octave, never by letter string, so a flat-spelled entry
+		 * (e.g. "E♭") lands on the same black key as its sharp spelling
+		 * ("D♯"). Omitting it leaves rendering byte-identical (no
+		 * `.piano-keyboard__key--ghost` class or `data-ghost` attribute is
+		 * ever applied).
 		 */
 		ghostKeys?: { letter: string; octave: number; marker: string }[];
 	}
@@ -567,24 +571,44 @@
 	}
 
 	/**
-	 * Ghost-hatch "optional note" treatment (Phase 25, sketch 019 synthesis,
-	 * SK-019): mirrors `pendingClass`'s exact letter+octave equality check but
-	 * INVERTED on the role guard — applies only when there is NO role (like
-	 * `selectedClass`'s `!role` guard), since a ghost key is "allowed but not
-	 * required" and never fights with the four reserved interval-color fills.
-	 * Octave-specific like `flashWrongClass`/`pendingClass`, so a same-letter
-	 * duplicate key at a different octave is unaffected unless its own
-	 * { letter, octave } is listed.
+	 * The ghostKeys entry matching this physical key, compared by CHROMA (0-11)
+	 * plus octave — never by letter string. A ghost entry carries the chord's
+	 * own spelled letter (e.g. "E♭" from spellChord), while an unassigned black
+	 * key only offers its generic `sharpLetter` ("D♯"), so letter-string
+	 * equality silently fails for every flat-spelled root/fifth (the project's
+	 * "grade/match by chroma, never letter strings" rule exists for exactly
+	 * this). Chroma comparison makes enharmonic spellings meet on the same key.
 	 */
-	function ghostClass(letter: string, octave: number, role: IntervalRole | undefined): string {
-		return !role && ghostKeys?.some((k) => k.letter === letter && k.octave === octave)
-			? 'piano-keyboard__key--ghost'
-			: '';
+	function ghostEntryFor(
+		letter: string,
+		octave: number
+	): { letter: string; octave: number; marker: string } | undefined {
+		if (!ghostKeys?.length) return undefined;
+		const keyChroma = Note.chroma(toAsciiAccidentals(letter));
+		if (keyChroma === undefined) return undefined;
+		return ghostKeys.find(
+			(k) => Note.chroma(toAsciiAccidentals(k.letter)) === keyChroma && k.octave === octave
+		);
 	}
 
-	/** The matching ghostKeys entry's tiny mono marker ("R"/"5"), or undefined when this key has none. */
+	/**
+	 * Ghost-hatch "optional note" treatment (Phase 25, sketch 019 synthesis,
+	 * SK-019): matches by chroma+octave (see ghostEntryFor) but keeps
+	 * `pendingClass`'s guard shape INVERTED on the role — applies only when
+	 * there is NO role (like `selectedClass`'s `!role` guard), since a ghost
+	 * key is "allowed but not required" and never fights with the four
+	 * reserved interval-color fills. Octave-specific like
+	 * `flashWrongClass`/`pendingClass`, so a same-letter duplicate key at a
+	 * different octave is unaffected unless its own { letter, octave } is
+	 * listed.
+	 */
+	function ghostClass(letter: string, octave: number, role: IntervalRole | undefined): string {
+		return !role && ghostEntryFor(letter, octave) ? 'piano-keyboard__key--ghost' : '';
+	}
+
+	/** The matching (by chroma+octave) ghostKeys entry's tiny mono marker ("R"/"5"), or undefined when this key has none. */
 	function ghostMarker(letter: string, octave: number): string | undefined {
-		return ghostKeys?.find((k) => k.letter === letter && k.octave === octave)?.marker;
+		return ghostEntryFor(letter, octave)?.marker;
 	}
 </script>
 
