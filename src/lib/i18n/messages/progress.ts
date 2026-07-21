@@ -25,6 +25,13 @@ import type { LocaleDict } from './index';
  * consumer (LevelPicker.svelte on /drills, the Practice Settings card on
  * /progress) renders through instead of the raw `tier.name`/`tier.blurb`
  * fields, keyed by the tier's stable numeric id.
+ *
+ * `progress.calibration.*` (Phase 25 Plan 08, sketch 020-C): the confidence
+ * calibration card - the 3-bar accuracy chart, the MISCALIBRATED flag, and
+ * the confident-but-wrong danger-card list. IMMUNITY addendum:
+ * `progress.calibration.danger.meta`'s `{MODE}` substitution is a raw drill
+ * mode code (`formula`, `see-play`, `hear-name`), never translated - same
+ * treatment as chord symbols and interval shorthand elsewhere in this file.
  */
 export const progress = {
 	en: {
@@ -116,7 +123,19 @@ export const progress = {
 		'progress.tier.5.name': 'Sixths and sus',
 		'progress.tier.5.blurb': 'Sixth chords and sus chords. Coming later.',
 		'progress.tier.6.name': 'Extensions and alterations',
-		'progress.tier.6.blurb': '9ths, altered dominants, and more color tones. Coming later.'
+		'progress.tier.6.blurb': '9ths, altered dominants, and more color tones. Coming later.',
+
+		// Confidence calibration card (sketch 020-C).
+		'progress.calibration.heading': 'Confidence Check',
+		'progress.calibration.body':
+			'How your certainty lines up with being right, from your recent confidence-dot picks in Recall.',
+		'progress.calibration.level.unsure': 'Not sure',
+		'progress.calibration.level.somewhat': 'Somewhat',
+		'progress.calibration.level.certain': 'Certain',
+		'progress.calibration.miscalibrated': 'MISCALIBRATED',
+		'progress.calibration.danger.heading': 'Confident but wrong',
+		'progress.calibration.danger.meta': 'certain {N}× wrong · {MODE}',
+		'progress.calibration.danger.cta': 'Drill the danger cards'
 	},
 	fr: {
 		'progress.page.title': 'Progrès',
@@ -195,6 +214,17 @@ export const progress = {
 		'progress.tier.5.blurb': 'Les accords de sixte et les accords sus. Bientôt disponible.',
 		'progress.tier.6.name': 'Extensions et altérations',
 		'progress.tier.6.blurb':
-			"Neuvièmes, dominantes altérées et d'autres couleurs harmoniques. Bientôt disponible."
+			"Neuvièmes, dominantes altérées et d'autres couleurs harmoniques. Bientôt disponible.",
+
+		'progress.calibration.heading': 'Vérification de confiance',
+		'progress.calibration.body':
+			"Comment ta certitude correspond à la réalité, d'après tes derniers choix de confiance dans Réviser.",
+		'progress.calibration.level.unsure': 'Pas sûr·e',
+		'progress.calibration.level.somewhat': 'Plutôt sûr·e',
+		'progress.calibration.level.certain': 'Certain·e',
+		'progress.calibration.miscalibrated': 'MAL CALIBRÉ',
+		'progress.calibration.danger.heading': 'Sûr·e, mais faux',
+		'progress.calibration.danger.meta': 'certain·e {N}× faux · {MODE}',
+		'progress.calibration.danger.cta': 'Exercer les cartes à risque'
 	}
 } satisfies LocaleDict;
