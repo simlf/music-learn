@@ -14,7 +14,6 @@
 	import { matchChord } from '$lib/drills/matchChord';
 	import { spellChord } from '$lib/theory/chord';
 	import { toAsciiAccidentals } from '$lib/theory/interval';
-	import { toAscendingPitches } from '$lib/audio/voicing';
 	import type { SpelledNote } from '$lib/theory/types';
 	import PianoKeyboard from './PianoKeyboard.svelte';
 	import ChordGlyph from './ChordGlyph.svelte';
@@ -90,26 +89,25 @@
 	/** The subtract stage always grades the shell (2 notes); only the drill stage's selector varies the target. */
 	const targetNotes = $derived(stage === 'drill' ? noteSetFor(voicingStyle) : shellNotes(chord));
 
-	/** letter -> octave for the full 4-note stack's ascending root-position voicing (mirrors $lib/audio/voicing.ts's own ascending assignment), so ghostKeys can key the root/fifth markers correctly. */
-	function pitchOctaveByLetter(notes: SpelledNote[]): Map<string, number> {
-		const pitches = toAscendingPitches(notes.map((note) => note.letter));
-		const map = new Map<string, number>();
-		notes.forEach((note, i) => {
-			map.set(note.letter, Note.octave(pitches[i]) ?? 4);
-		});
-		return map;
-	}
+	/**
+	 * PianoKeyboard's base (first-octave) octave. Ghost markers are pinned
+	 * here rather than to the audio voicing's ascending octaves: any stack
+	 * note that ascends past B lands in octave 5 (e.g. G7's fifth D5), which
+	 * does not exist on a one-octave phone keyboard (C4..C5) — the marker
+	 * would silently vanish on exactly the device class this app targets.
+	 * Grading is chroma-based (octave-agnostic), so the audio octave buys
+	 * nothing for the visual hint; octave 4 always exists on every span.
+	 */
+	const KEYBOARD_BASE_OCTAVE = 4;
 
-	/** The subtract stage's ghost-hatched root+fifth markers (25-03's PianoKeyboard ghostKeys prop). */
-	const ghostKeys = $derived.by(() => {
-		const stack = fullStackNotes(chord);
-		const octaveByLetter = pitchOctaveByLetter(stack);
-		return optionalMarkers(chord).map((marker) => ({
+	/** The subtract stage's ghost-hatched root+fifth markers (25-03's PianoKeyboard ghostKeys prop), pinned to the keyboard's base octave (see KEYBOARD_BASE_OCTAVE). */
+	const ghostKeys = $derived.by(() =>
+		optionalMarkers(chord).map((marker) => ({
 			letter: marker.letter,
-			octave: octaveByLetter.get(marker.letter) ?? 4,
+			octave: KEYBOARD_BASE_OCTAVE,
 			marker: marker.marker
-		}));
-	});
+		}))
+	);
 
 	function toggleKey(letter: string) {
 		if (answered) return;

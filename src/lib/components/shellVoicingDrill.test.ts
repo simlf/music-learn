@@ -111,6 +111,31 @@ describe('ShellVoicingDrill: stage derived from card maturity', () => {
 		expect(container.querySelectorAll('[data-ghost="5"]')).toHaveLength(1);
 	});
 
+	it('ghost-hatches a fifth whose audio voicing ascends past the base octave (G7: fifth D5) by pinning markers to octave 4', async () => {
+		// G7's ascending stack is G4 B4 D5 F5: pinning the ghost markers to the
+		// audio octave would put the fifth on D5, a key that does not exist on
+		// a one-octave (phone) keyboard. Markers must pin to the keyboard's
+		// base octave 4 instead.
+		const { seventhChordSymbols } = await import('$lib/practice/shellVoicing');
+		const symbols = seventhChordSymbols();
+		const idx = symbols.indexOf('G7');
+		expect(idx).toBeGreaterThan(-1);
+		vi.spyOn(Math, 'random').mockReturnValue((idx + 0.5) / symbols.length);
+		getAllCardsMock.mockResolvedValue([
+			{ ...makeCard(State.Learning), factId: 'chord-formula:G7' }
+		]);
+
+		const { container } = render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-subtract'));
+		expect(container.querySelectorAll('[data-ghost="R"]')).toHaveLength(1);
+		expect(container.querySelectorAll('[data-ghost="5"]')).toHaveLength(1);
+		// The fifth's marker must sit on the FIRST (octave-4) D key, not the
+		// octave-5 duplicate that only exists on two-octave spans.
+		const dKeys = screen.getAllByRole('button', { name: 'D key' });
+		expect(dKeys[0].getAttribute('data-ghost')).toBe('5');
+	});
+
 	it('shows the drill stage (voicing selector, no teach panel) for any Review card', async () => {
 		getAllCardsMock.mockResolvedValue([makeCard(State.Learning), makeCard(State.Review)]);
 
