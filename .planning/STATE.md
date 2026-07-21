@@ -3,11 +3,10 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Playability & Comprehension
 current_phase: 25
-status: verifying
+status: "Phase 25 shipped — PR #20"
 stopped_at: Completed 25-07-PLAN.md
-last_updated: "2026-07-21T17:45:33.102Z"
+last_updated: "2026-07-21T17:54:35.167Z"
 last_activity: 2026-07-21
-last_activity_desc: Phase 25 complete
 progress:
   total_phases: 24
   completed_phases: 20
@@ -30,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 
 Phase: 25
 Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-07-21 — Phase 25 complete
+Status: Phase 25 shipped — PR #20
+Last activity: 2026-07-21
 Full suite: 1284 tests green; svelte-check 0 errors.
 
 **v2.0 Learning Upgrade (Phases 10-13): COMPLETE (shipped 2026-07-15).**
