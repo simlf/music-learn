@@ -6,14 +6,14 @@ current_phase: 25
 current_phase_name: contextual-learning-from-session-6-sketches-progression-dril
 status: executing
 stopped_at: Completed 23-04-PLAN.md
-last_updated: "2026-07-20T22:46:53.389Z"
+last_updated: "2026-07-21T16:08:51.738Z"
 last_activity: 2026-07-20
 last_activity_desc: Phase 25 execution started
 progress:
   total_phases: 24
   completed_phases: 19
   total_plans: 98
-  completed_plans: 94
+  completed_plans: 95
   percent: 79
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-14)
 ## Current Position
 
 Phase: 25 (contextual-learning-from-session-6-sketches-progression-dril) — EXECUTING
-Plan: 5 of 8
+Plan: 6 of 8
 Status: Ready to execute
 Last activity: 2026-07-20 — Phase 25 execution started
 Full suite: 1284 tests green; svelte-check 0 errors.
@@ -157,6 +157,7 @@ Full suite: 1284 tests green; svelte-check 0 errors.
 | Phase 25 P02 | 5min | 2 tasks | 2 files |
 | Phase 25 P03 | 12min | 2 tasks | 2 files |
 | Phase 25 P04 | 20min | 2 tasks | 2 files |
+| Phase 25 P05 | 65min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -317,6 +318,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 25-03]: ghostClass/ghostMarker mirror pendingClass/flashWrongClass's letter+octave-keyed, role-gated helper shape; marker renders via a data-ghost attribute + ::after (sketch 019's .k-ghost pattern), purely additive to PianoKeyboard
 - [Phase 25-04]: localStorage over Dexie for the confidence log: small single-user record volume, matches the lightweight-log convention, avoids a Dexie schema-version bump on the critical cards store
 - [Phase 25-04]: calibration()'s miscalibrated flag requires both certain and somewhat levels to have >=1 sample (divide-by-zero guard) rather than treating a 0/0 comparison as miscalibrated
+- [Phase ?]: ProgressionDrill name-choice chips render as flat single-text-node spans (never ChordGlyph) so accessible chip text matches the raw chord symbol exactly for grading and testing
+- [Phase ?]: Play-step PianoKeyboard shows notes=[] (no highlighting) while unanswered, mirroring drills' construction/identification interactive pattern
 
 ### Pending Todos
 
@@ -353,7 +356,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-20T22:46:03.505Z
+Last session: 2026-07-21T16:07:15.810Z
 Stopped at: Completed 23-04-PLAN.md
 Resume file: 
 None
