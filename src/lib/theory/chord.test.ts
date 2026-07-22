@@ -128,6 +128,52 @@ describe('spellChord', () => {
 		});
 	});
 
+	describe('slash chords (inversions)', () => {
+		it('C/E spells root-position with E as bass', () => {
+			const result = spellChord('C/E');
+			expect(result.recognized).toBe(true);
+			expect(result.bass).toBe('E');
+			expect(result.notes.map((n) => n.letter)).toEqual(['C', 'E', 'G']);
+			expect(result.notes.map((n) => n.role)).toEqual(['root', 'third', 'fifth']);
+		});
+
+		it('Cmaj7/G spells root-position with G as bass', () => {
+			const result = spellChord('Cmaj7/G');
+			expect(result.recognized).toBe(true);
+			expect(result.bass).toBe('G');
+			expect(result.notes.map((n) => n.letter)).toEqual(['C', 'E', 'G', 'B']);
+			expect(result.notes.map((n) => n.role)).toEqual(['root', 'third', 'fifth', 'seventh']);
+		});
+
+		it('G7/F spells root-position with F as bass', () => {
+			const result = spellChord('G7/F');
+			expect(result.recognized).toBe(true);
+			expect(result.bass).toBe('F');
+			expect(result.notes.map((n) => n.letter)).toEqual(['G', 'B', 'D', 'F']);
+			expect(result.notes.map((n) => n.role)).toEqual(['root', 'third', 'fifth', 'seventh']);
+		});
+
+		it('Am7/G spells root-position with G as bass', () => {
+			const result = spellChord('Am7/G');
+			expect(result.recognized).toBe(true);
+			expect(result.bass).toBe('G');
+			expect(result.notes.map((n) => n.letter)).toEqual(['A', 'C', 'E', 'G']);
+			expect(result.notes.map((n) => n.role)).toEqual(['root', 'third', 'fifth', 'seventh']);
+		});
+
+		it('C/D (non-chord-tone bass) is rejected as unrecognized', () => {
+			const result = spellChord('C/D');
+			expect(result.recognized).toBe(false);
+			expect(result.notes).toEqual([]);
+			expect(result.bass).toBeUndefined();
+		});
+
+		it('Cm7 (no regression) has bass undefined', () => {
+			const result = spellChord('Cm7');
+			expect(result.bass).toBeUndefined();
+		});
+	});
+
 	describe('ChordResult shape', () => {
 		it('includes input, symbol, root, quality, recognized, and aliases fields', () => {
 			const result = spellChord('Cm7');

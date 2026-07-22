@@ -182,6 +182,17 @@
 		void goto('/drills');
 	}
 
+	/**
+	 * Builds the slash-chord bass explanation line: the base symbol (before
+	 * the "/") and bass letter render verbatim regardless of locale per the
+	 * theory-engine symbol-immunity rule, substituted into the localized
+	 * template.
+	 */
+	function slashExplainLine(chord: ChordResult): string {
+		const base = chord.symbol.split('/')[0];
+		return t('home.slash.explain').replaceAll('{BASS}', chord.bass ?? '').replaceAll('{CHORD}', base);
+	}
+
 	function handleSubmit(event: SubmitEvent) {
 		event.preventDefault();
 		showChord(symbol);
@@ -315,19 +326,22 @@
 				<ChordGlyph root={result.root} quality={result.symbol.slice(result.root.length)} />
 				<SongMark songs={songsForSymbol(result.symbol, provenanceIndex)} />
 				<Button type="button" variant="ghost" onclick={hearIt}>{t('home.action.hear-it')}</Button>
-				<Button
-					type="button"
-					variant="ghost"
-					data-testid="drill-it"
-					onclick={drillIt}
-				>
-					{t('home.action.drill-it')}
-				</Button>
+				{#if !result.bass}
+					<Button type="button" variant="ghost" data-testid="drill-it" onclick={drillIt}>
+						{t('home.action.drill-it')}
+					</Button>
+				{/if}
 			</div>
 
 			{#if result.aliases.length > 0}
 				<p class="text-label text-muted mt-2 font-mono" data-testid="alias-line">
 					{aliasLine(result)}
+				</p>
+			{/if}
+
+			{#if result.bass}
+				<p class="text-label text-muted mt-2 font-mono" data-testid="slash-explain">
+					{slashExplainLine(result)}
 				</p>
 			{/if}
 

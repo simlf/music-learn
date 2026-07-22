@@ -43,7 +43,9 @@ export const home = {
 		'home.disambig.chip-minor-prefix': '',
 		'home.disambig.chip-minor-suffix': '— minor',
 		'home.disambig.chip-major-prefix': '',
-		'home.disambig.chip-major-suffix': '— major'
+		'home.disambig.chip-major-suffix': '— major',
+		'home.slash.explain':
+			'The slash means {BASS} is the lowest note: play {CHORD} with {BASS} at the bottom.'
 	},
 	fr: {
 		'home.title': "Recherche d'accord",
@@ -79,6 +81,8 @@ export const home = {
 		'home.disambig.chip-minor-prefix': '',
 		'home.disambig.chip-minor-suffix': '— mineur',
 		'home.disambig.chip-major-prefix': '',
-		'home.disambig.chip-major-suffix': '— majeur'
+		'home.disambig.chip-major-suffix': '— majeur',
+		'home.slash.explain':
+			'La barre oblique indique que {BASS} est la note la plus basse : jouez {CHORD} en plaçant {BASS} en bas.'
 	}
 } satisfies LocaleDict;

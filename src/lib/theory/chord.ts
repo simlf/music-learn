@@ -27,7 +27,34 @@ export function spellChord(symbol: string): ChordResult {
 			quality: '',
 			recognized: false,
 			aliases: [],
-			notes: []
+			notes: [],
+			bass: undefined
+		};
+	}
+
+	/*
+	 * DECISION: a non-chord-tone bass (e.g. C/D) is REJECTED via the
+	 * unrecognized path, not accepted as a degraded slash chord. tonal fills
+	 * chord.root with the bass note ONLY when the bass is a genuine chord
+	 * tone (a true inversion, root === bass); a non-chord-tone slash yields
+	 * root === '' alongside a negative bass interval ("-7m" for C/D) that
+	 * would collapse to roleForDegree's DoS-safe 'root' fallback and collide
+	 * with the actual root, corrupting the re-sort below. This guard
+	 * (chord.bass non-empty AND chord.root empty) cleanly routes C/D through
+	 * the existing did-you-mean/hint path instead of displaying a mis-modeled
+	 * note set. Verified against tonal 6.4.3: C/E root:"E", Cmaj7/G root:"G",
+	 * G7/F root:"F", Am7/G root:"G" (all recognized); C/D root:"" (rejected).
+	 */
+	if (chord.bass !== '' && chord.root === '') {
+		return {
+			input: symbol,
+			symbol: '',
+			root: '',
+			quality: '',
+			recognized: false,
+			aliases: [],
+			notes: [],
+			bass: undefined
 		};
 	}
 
@@ -40,6 +67,16 @@ export function spellChord(symbol: string): ChordResult {
 		};
 	});
 
+	// A genuine slash-chord inversion (chord.bass non-empty): tonal orders
+	// `notes` starting from the bass note upward, not in root-position order.
+	// Re-sort into root-position role order (root, second, third...) so the
+	// lookup/drills always see a canonical root-first spelling; the bass
+	// note itself is recorded separately for the explanatory line.
+	const isInversion = chord.bass !== '';
+	if (isInversion) {
+		notes.sort((a, b) => ROLE_ORDER[a.role] - ROLE_ORDER[b.role]);
+	}
+
 	return {
 		input: symbol,
 		symbol: chord.symbol,
@@ -47,7 +84,8 @@ export function spellChord(symbol: string): ChordResult {
 		quality: chord.type,
 		recognized: true,
 		aliases: chord.aliases,
-		notes
+		notes,
+		bass: isInversion ? toAccidentalGlyphs(chord.bass) : undefined
 	};
 }
 
@@ -77,6 +115,21 @@ const ROLE_BY_SIMPLE_DEGREE: Record<number, IntervalRole> = {
 	5: 'fifth',
 	6: 'sixth',
 	7: 'seventh'
+};
+
+/**
+ * Canonical root-position ordering for IntervalRole, used to re-sort a slash
+ * chord's bass-first note order (tonal's default) back into root-position
+ * order (root, second, third, fourth, fifth, sixth, seventh).
+ */
+const ROLE_ORDER: Record<IntervalRole, number> = {
+	root: 1,
+	second: 2,
+	third: 3,
+	fourth: 4,
+	fifth: 5,
+	sixth: 6,
+	seventh: 7
 };
 
 /**
