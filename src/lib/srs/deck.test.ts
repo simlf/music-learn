@@ -49,7 +49,7 @@ describe('deck', () => {
 
 	it('introduceNewCards defaults its limit to NEW_CARDS_PER_SESSION facts, each seeding a chord-formula teach cluster (3 cards/fact)', async () => {
 		const count = await introduceNewCards(undefined, now0);
-		expect(count).toBe(NEW_CARDS_PER_SESSION * 3);
+		expect(count).toBe(NEW_CARDS_PER_SESSION);
 		const cards = await getAllCards();
 		expect(cards).toHaveLength(NEW_CARDS_PER_SESSION * 3);
 		expect(new Set(cards.map((c) => c.factId)).size).toBe(NEW_CARDS_PER_SESSION);
@@ -57,7 +57,7 @@ describe('deck', () => {
 
 	it('introduceNewCards seeds distinct factIds across repeated calls, growing the deck incrementally (teach-cluster arithmetic)', async () => {
 		const firstCount = await introduceNewCards(5, now0);
-		expect(firstCount).toBe(5 * 3);
+		expect(firstCount).toBe(5);
 
 		const afterFirst = await getAllCards();
 		expect(afterFirst).toHaveLength(15);
@@ -65,7 +65,7 @@ describe('deck', () => {
 		expect(firstFactIds.size).toBe(5);
 
 		const secondCount = await introduceNewCards(5, now0);
-		expect(secondCount).toBe(5 * 3);
+		expect(secondCount).toBe(5);
 
 		const afterSecond = await getAllCards();
 		expect(afterSecond).toHaveLength(30);
@@ -107,7 +107,7 @@ describe('deck', () => {
 
 	it('non-chord facts unchanged: introduceNewCards(97, now) from empty seeds 96 chord-formula clusters plus exactly ONE single-card interval-size fact', async () => {
 		const count = await introduceNewCards(97, now0);
-		expect(count).toBe(96 * 3 + 1);
+		expect(count).toBe(97);
 
 		const cards = await getAllCards();
 		expect(new Set(cards.map((c) => c.factId)).size).toBe(97);
@@ -120,8 +120,7 @@ describe('deck', () => {
 
 	it('exhaustion: introduceNewCards(1000, now) seeds all 192 facts (96 chord clusters x3 + 96 single-card) and a further call introduces 0', async () => {
 		const firstCount = await introduceNewCards(1000, now0);
-		expect(firstCount).toBe(96 * 3 + 12 + 84);
-		expect(firstCount).toBe(384);
+		expect(firstCount).toBe(192);
 
 		const allCards = await getAllCards();
 		expect(allCards).toHaveLength(384);
@@ -192,8 +191,9 @@ describe('deck', () => {
 			);
 		}
 
-		// 3 new facts x 3 cards + 3 retrofitted legacy facts x 2 new cards each.
-		expect(count).toBe(3 * 3 + 3 * 2);
+		// 3 genuinely new facts + 3 retrofitted legacy facts = 6 facts touched
+		// (the fact count, not the raw record count of 3*3 + 3*2 = 15).
+		expect(count).toBe(3 + 3);
 	});
 
 	it("CardRecordSchema's widened mode enum accepts 'see-play' and 'hear-name' records without dropping them via safeParse", async () => {
@@ -217,7 +217,7 @@ describe('deck', () => {
 
 	it('hear-name stagger gate: hear-name is only introduced once ALL of a chord-formula fact\'s teach-cluster cards reach State.Review', async () => {
 		const firstIntroduced = await introduceNewCards(1, now0);
-		expect(firstIntroduced).toBe(3);
+		expect(firstIntroduced).toBe(1);
 
 		const clusterCards = await getAllCards();
 		expect(clusterCards).toHaveLength(3);

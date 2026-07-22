@@ -1,7 +1,19 @@
 import { describe, it, expect } from 'vitest';
-import { teachClusterModes, clusterGraduated, selectReviewCards } from './rotation';
+import { teachClusterModes, clusterGraduated, selectReviewCards, interleaveQueue } from './rotation';
 import { State } from '$lib/srs/scheduler';
 import type { CardRecord, Mode } from './deck';
+
+/** A deterministic seeded PRNG (mulberry32) so interleaveQueue's shuffle is reproducible across test runs. */
+function seededRng(seed: number): () => number {
+	let state = seed;
+	return () => {
+		state |= 0;
+		state = (state + 0x6d2b79f5) | 0;
+		let t = Math.imul(state ^ (state >>> 15), 1 | state);
+		t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+	};
+}
 
 /**
  * Fixed instant, mirroring deck.test.ts's own now0 convention (unused for
@@ -149,6 +161,239 @@ describe('rotation', () => {
 
 		it('returns [] for an empty dueCards array', () => {
 			expect(selectReviewCards([])).toEqual([]);
+		});
+	});
+
+	describe('interleaveQueue', () => {
+		it('is a permutation of the input: every card appears exactly once in the output', () => {
+			const input = [
+				makeCardRecord({ factId: 'chord-formula:Cm7', mode: 'formula', state: State.Review, stability: 1 }),
+				makeCardRecord({ factId: 'chord-formula:Dm7', mode: 'formula', state: State.Review, stability: 2 }),
+				makeCardRecord({ factId: 'chord-formula:Em7', mode: 'formula', state: State.Review, stability: 3 }),
+				makeCardRecord({ factId: 'interval-size:m3', mode: 'formula', state: State.Review, stability: 4 })
+			];
+			const output = interleaveQueue(input, seededRng(1));
+			expect(output).toHaveLength(input.length);
+			expect(new Set(output)).toEqual(new Set(input));
+		});
+
+		it('never places two consecutive cards of the same fact, except within a State.New teach cluster', () => {
+			const cluster = ['formula', 'see-play', 'formula-build'].map((mode) =>
+				makeCardRecord({ factId: 'chord-formula:Cm7', mode: mode as Mode, state: State.New })
+			);
+			const others = [
+				makeCardRecord({ factId: 'chord-formula:Dm7', mode: 'formula', state: State.Review, stability: 1 }),
+				makeCardRecord({ factId: 'chord-formula:Em7', mode: 'formula', state: State.Review, stability: 2 }),
+				makeCardRecord({ factId: 'interval-size:m3', mode: 'formula', state: State.Review, stability: 3 })
+			];
+			const input = [...cluster, ...others];
+			const output = interleaveQueue(input, seededRng(2));
+
+			for (let i = 1; i < output.length; i++) {
+				const prev = output[i - 1];
+				const curr = output[i];
+				if (prev.factId === curr.factId) {
+					// The only legal adjacency: both are State.New cards of the
+					// same fact (a teach cluster staying contiguous).
+					expect(prev.state).toBe(State.New);
+					expect(curr.state).toBe(State.New);
+				}
+			}
+		});
+
+		it('a State.New fact\'s teach-cluster cards stay contiguous in the output', () => {
+			const cluster = ['formula', 'see-play', 'formula-build'].map((mode) =>
+				makeCardRecord({ factId: 'chord-formula:Cm7', mode: mode as Mode, state: State.New })
+			);
+			const others = [
+				makeCardRecord({ factId: 'chord-formula:Dm7', mode: 'formula', state: State.Review, stability: 1 }),
+				makeCardRecord({ factId: 'interval-size:m3', mode: 'formula', state: State.Review, stability: 2 })
+			];
+			const input = [...cluster, ...others];
+			const output = interleaveQueue(input, seededRng(3));
+
+			const clusterIndices = output
+				.map((card, i) => (card.factId === 'chord-formula:Cm7' ? i : -1))
+				.filter((i) => i !== -1);
+			expect(clusterIndices).toHaveLength(3);
+			// Contiguous: consecutive indices, no gap.
+			expect(clusterIndices[1] - clusterIndices[0]).toBe(1);
+			expect(clusterIndices[2] - clusterIndices[1]).toBe(1);
+		});
+
+		it('never places 3 consecutive cards sharing the same chord root, across distinct facts of that root', () => {
+			// 4 distinct facts, all rooted on C, each its own single-card unit
+			// (non-New, so no teach-cluster exemption applies) - the only way to
+			// avoid a 3-in-a-row same-root run is genuine inter-unit spacing.
+			const input = [
+				makeCardRecord({ factId: 'chord-formula:C', mode: 'formula', state: State.Review, stability: 1 }),
+				makeCardRecord({ factId: 'chord-formula:Cm', mode: 'formula', state: State.Review, stability: 2 }),
+				makeCardRecord({ factId: 'chord-formula:C7', mode: 'formula', state: State.Review, stability: 3 }),
+				makeCardRecord({ factId: 'chord-formula:Cmaj7', mode: 'formula', state: State.Review, stability: 4 }),
+				makeCardRecord({ factId: 'chord-formula:Dm7', mode: 'formula', state: State.Review, stability: 5 }),
+				makeCardRecord({ factId: 'chord-formula:Em7', mode: 'formula', state: State.Review, stability: 6 })
+			];
+
+			for (let seed = 0; seed < 20; seed++) {
+				const output = interleaveQueue(input, seededRng(seed));
+				for (let i = 2; i < output.length; i++) {
+					const roots = [output[i - 2], output[i - 1], output[i]].map(
+						(card) => /^chord-formula:([A-G][#b]?)/.exec(card.factId)?.[1]
+					);
+					const allSameRoot = roots[0] !== undefined && roots.every((r) => r === roots[0]);
+					expect(allSameRoot).toBe(false);
+				}
+			}
+		});
+
+		it('a degenerate single-fact input (all cards share one factId) returns without looping, still a permutation', () => {
+			const input = ['formula', 'see-play', 'formula-build'].map((mode) =>
+				makeCardRecord({ factId: 'chord-formula:Cm7', mode: mode as Mode, state: State.New })
+			);
+			const output = interleaveQueue(input, seededRng(4));
+			expect(output).toHaveLength(3);
+			expect(new Set(output)).toEqual(new Set(input));
+		});
+
+		it('a degenerate single-root input (many distinct facts, all same root, all non-New) still terminates and is a permutation', () => {
+			const input = ['C', 'Cm', 'C7', 'Cmaj7', 'Cdim7', 'Cm7'].map((symbol, i) =>
+				makeCardRecord({
+					factId: `chord-formula:${symbol}`,
+					mode: 'formula',
+					state: State.Review,
+					stability: i + 1
+				})
+			);
+			const output = interleaveQueue(input, seededRng(5));
+			expect(output).toHaveLength(input.length);
+			expect(new Set(output)).toEqual(new Set(input));
+		});
+
+		it('is deterministic under a seeded rng (same input + seed => same output order)', () => {
+			const input = [
+				makeCardRecord({ factId: 'chord-formula:Cm7', mode: 'formula', state: State.Review, stability: 1 }),
+				makeCardRecord({ factId: 'chord-formula:Dm7', mode: 'formula', state: State.Review, stability: 2 }),
+				makeCardRecord({ factId: 'interval-size:m3', mode: 'formula', state: State.Review, stability: 3 })
+			];
+			const first = interleaveQueue(input, seededRng(7));
+			const second = interleaveQueue(input, seededRng(7));
+			expect(first.map((c) => c.factId)).toEqual(second.map((c) => c.factId));
+		});
+
+		it('a single-card input returns that card unchanged', () => {
+			const input = [makeCardRecord({ factId: 'chord-formula:Cm7' })];
+			expect(interleaveQueue(input, seededRng(8))).toEqual(input);
+		});
+
+		it('an empty input returns []', () => {
+			expect(interleaveQueue([], seededRng(9))).toEqual([]);
+		});
+
+		it('non-chord facts (interval-size/scale-degree) impose no root constraint and interleave freely', () => {
+			const input = [
+				makeCardRecord({ factId: 'interval-size:m3', mode: 'formula', state: State.Review, stability: 1 }),
+				makeCardRecord({ factId: 'interval-size:M3', mode: 'formula', state: State.Review, stability: 2 }),
+				makeCardRecord({ factId: 'scale-degree:G:3', mode: 'formula', state: State.Review, stability: 3 }),
+				makeCardRecord({ factId: 'scale-degree:C:2', mode: 'formula', state: State.Review, stability: 4 })
+			];
+			const output = interleaveQueue(input, seededRng(10));
+			expect(output).toHaveLength(4);
+			expect(new Set(output)).toEqual(new Set(input));
+		});
+
+		/** Longest run of consecutive same-chord-root cards anywhere in `cards` (null-root cards never extend or break-and-restart a numeric run beyond resetting it to 0). */
+		function maxSameRootRun(cards: CardRecord[]): number {
+			let max = 0;
+			let current = 0;
+			let lastRoot: string | null = null;
+			for (const card of cards) {
+				const root = /^chord-formula:([A-G][#b]?)/.exec(card.factId)?.[1] ?? null;
+				current = root !== null && root === lastRoot ? current + 1 : root !== null ? 1 : 0;
+				lastRoot = root;
+				max = Math.max(max, current);
+			}
+			return max;
+		}
+
+		/**
+		 * Adversarial-review fix: a multi-card State.New teach cluster is
+		 * atomic (its own 3 cards, all sharing one factId/root, are always
+		 * emitted together - accepted/expected, mirroring the factId-cluster
+		 * exception). The bug was that the candidate filter only checked
+		 * `trailingRootRun >= 2` (as if every unit were single-card), so a
+		 * same-root cluster could be selected immediately after an EXISTING
+		 * 2-long same-root run, fusing them into a run of 5 - the filter must
+		 * account for the WHOLE unit's card count, not just 1.
+		 */
+		it('a same-root State.New teach cluster is never selected immediately after an existing same-root run when it would fuse into a run >= 3 (the fix must count the whole unit, not just its leading card)', () => {
+			const reviewC1 = makeCardRecord({
+				factId: 'chord-formula:C',
+				mode: 'formula',
+				state: State.Review,
+				stability: 1
+			});
+			const reviewC2 = makeCardRecord({
+				factId: 'chord-formula:Cm',
+				mode: 'formula',
+				state: State.Review,
+				stability: 2
+			});
+			const cluster = (['formula', 'see-play', 'formula-build'] as Mode[]).map((mode) =>
+				makeCardRecord({ factId: 'chord-formula:C7', mode, state: State.New })
+			);
+			const filler1 = makeCardRecord({
+				factId: 'chord-formula:Dm7',
+				mode: 'formula',
+				state: State.Review,
+				stability: 3
+			});
+			const filler2 = makeCardRecord({
+				factId: 'chord-formula:Em7',
+				mode: 'formula',
+				state: State.Review,
+				stability: 4
+			});
+			const input = [reviewC1, reviewC2, ...cluster, filler1, filler2];
+
+			for (let seed = 0; seed < 100; seed++) {
+				const output = interleaveQueue(input, seededRng(seed));
+				expect(output).toHaveLength(input.length);
+				expect(new Set(output)).toEqual(new Set(input));
+				// A lone teach cluster's own inherent 3-card same-root run is
+				// still accepted (run === 3), but the pre-existing 2-card
+				// same-root run must never fuse with it into a run of 5.
+				expect(maxSameRootRun(output)).toBeLessThanOrEqual(3);
+			}
+		});
+
+		/**
+		 * Confirms the relax path still terminates (rather than looping
+		 * forever) even in the genuinely-infeasible case where a same-root
+		 * teach cluster is the ONLY remaining candidate right after an
+		 * existing same-root run, with no other-root filler available to
+		 * break it up.
+		 */
+		it('the relax path still terminates when a same-root cluster is the only remaining unit after an existing same-root run (no filler available)', () => {
+			const reviewC1 = makeCardRecord({
+				factId: 'chord-formula:C',
+				mode: 'formula',
+				state: State.Review,
+				stability: 1
+			});
+			const reviewC2 = makeCardRecord({
+				factId: 'chord-formula:Cm',
+				mode: 'formula',
+				state: State.Review,
+				stability: 2
+			});
+			const cluster = (['formula', 'see-play', 'formula-build'] as Mode[]).map((mode) =>
+				makeCardRecord({ factId: 'chord-formula:C7', mode, state: State.New })
+			);
+			const input = [reviewC1, reviewC2, ...cluster];
+
+			const output = interleaveQueue(input, seededRng(11));
+			expect(output).toHaveLength(input.length);
+			expect(new Set(output)).toEqual(new Set(input));
 		});
 	});
 });

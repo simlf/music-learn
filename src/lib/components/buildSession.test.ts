@@ -574,7 +574,7 @@ describe('BuildSession FSRS write on completion (BUILD-04, 12-06)', () => {
 		);
 	});
 
-	it('a Cm7 completion with 3 or more wrong taps writes a Hard rating', async () => {
+	it('a Cm7 completion with 3 wrong taps writes a Hard rating', async () => {
 		await buildCm7WithWrongTaps(3);
 
 		await waitFor(() => expect(recordGradeMock).toHaveBeenCalled());
@@ -585,6 +585,61 @@ describe('BuildSession FSRS write on completion (BUILD-04, 12-06)', () => {
 			expect.any(Date)
 		);
 	});
+
+	/**
+	 * BACKLOG-6 (260722-0ex): ratingForWrongTaps is now steps-aware. Cm7 has 3
+	 * steps (root + 3 more notes), so the Again threshold is 2 * 3 = 6: fewer
+	 * wrong taps than that still grades Hard (the prior ceiling), and 6 or
+	 * more grades Again - a genuinely forgotten formula, which lapses so it
+	 * can surface as weak in deriveCellState.
+	 */
+	it(
+		'a Cm7 completion with 5 wrong taps (below the 2x-steps threshold of 6) still writes a Hard rating',
+		async () => {
+			await buildCm7WithWrongTaps(5);
+
+			await waitFor(() => expect(recordGradeMock).toHaveBeenCalled());
+
+			expect(recordGradeMock).toHaveBeenCalledWith(
+				expect.objectContaining({ factId: 'chord-formula:Cm7' }),
+				Rating.Hard,
+				expect.any(Date)
+			);
+		},
+		10000
+	);
+
+	it(
+		'a Cm7 completion with 6 wrong taps (at the 2x-steps threshold) writes an Again rating',
+		async () => {
+			await buildCm7WithWrongTaps(6);
+
+			await waitFor(() => expect(recordGradeMock).toHaveBeenCalled());
+
+			expect(recordGradeMock).toHaveBeenCalledWith(
+				expect.objectContaining({ factId: 'chord-formula:Cm7' }),
+				Rating.Again,
+				expect.any(Date)
+			);
+		},
+		10000
+	);
+
+	it(
+		'a Cm7 completion with far more wrong taps than the threshold still writes Again, never a lower rating',
+		async () => {
+			await buildCm7WithWrongTaps(12);
+
+			await waitFor(() => expect(recordGradeMock).toHaveBeenCalled());
+
+			expect(recordGradeMock).toHaveBeenCalledWith(
+				expect.objectContaining({ factId: 'chord-formula:Cm7' }),
+				Rating.Again,
+				expect.any(Date)
+			);
+		},
+		15000
+	);
 
 	it(
 		'a full G major scale completion writes a formula-build card under scale-formula:G, factKind scale-formula',
@@ -695,7 +750,7 @@ describe('BuildSession FSRS write on completion (BUILD-04, 12-06)', () => {
 		consoleErrorSpy.mockRestore();
 	});
 
-	it('getCard is never called with mode "formula" and recordGrade is never called with Rating.Again', async () => {
+	it('getCard is never called with mode "formula"; recordGrade is not called with Rating.Again for a clean (zero-wrong-tap) completion', async () => {
 		await buildCm7WithWrongTaps(0);
 		await waitFor(() => expect(recordGradeMock).toHaveBeenCalled());
 
@@ -738,7 +793,7 @@ describe('BuildSession embedding seam (13-05, Task 1)', () => {
 		expect(screen.getByTestId('build-step-line')).toHaveTextContent('Take a whole step up from G.');
 	});
 
-	it('completing an embedded chord build with onComplete provided shows a single Next button and NO "SAVED TO RECALL" text, and clicking Next calls onComplete exactly once', async () => {
+	it('completing an embedded chord build with onComplete provided shows a single Next button and NO "SAVED TO RECALL" text, and clicking Next calls onComplete exactly once with the computed rating', async () => {
 		const onComplete = vi.fn();
 		render(BuildSession, {
 			props: { embedFact: { kind: 'chord', symbol: 'Cm7' }, onComplete }
@@ -759,8 +814,39 @@ describe('BuildSession embedding seam (13-05, Task 1)', () => {
 
 		await fireEvent.click(nextButton);
 
+		// A clean (zero-wrong-tap) completion computes Rating.Easy (BACKLOG-6),
+		// forwarded through onComplete rather than the prior hardcoded call.
 		expect(onComplete).toHaveBeenCalledTimes(1);
+		expect(onComplete).toHaveBeenCalledWith(Rating.Easy);
 	});
+
+	it(
+		'a wrong-heavy embedded chord build (>= 2x the 3-step count) forwards Rating.Again through onComplete, so RecallSession can re-enqueue it',
+		async () => {
+			const onComplete = vi.fn();
+			render(BuildSession, {
+				props: { embedFact: { kind: 'chord', symbol: 'Cm7' }, onComplete }
+			});
+
+			for (let i = 0; i < 6; i++) {
+				await fireEvent.click(screen.getAllByRole('button', { name: 'D key' })[0]);
+				await new Promise((resolve) => setTimeout(resolve, 700));
+			}
+			await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+
+			expect(screen.getByTestId('build-complete')).toBeInTheDocument();
+			await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+			expect(onComplete).toHaveBeenCalledTimes(1);
+			expect(onComplete).toHaveBeenCalledWith(Rating.Again);
+		},
+		10000
+	);
 
 	it('completing an embedded scale build with onComplete provided shows a single Next button and NO "SAVED TO RECALL" text', async () => {
 		const onComplete = vi.fn();

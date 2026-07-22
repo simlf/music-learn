@@ -165,7 +165,13 @@ export async function getCard(factId: string, mode: Mode): Promise<CardRecord | 
 /**
  * Introduces up to `limit` NEW FACTS' worth of cards (not `limit` raw
  * records - a fact's introduction may write more than one card), returns the
- * total record count written. Never seeds all 192 facts at once (gradual
+ * total count of FACTS introduced (factsTouched + retrofitsTouched), NOT the
+ * number of records written - a chord fact's teach cluster writes 3 records
+ * but counts as 1 fact; a retrofit hear-name unlock writes 1 record and
+ * counts as 1 fact; a non-chord fact writes 1 record and counts as 1 fact
+ * (260722-0ex, BACKLOG-1: this is the count the daily intro-budget module
+ * consumes, since the budget caps genuinely-new FACTS per day, not raw FSRS
+ * records). Never seeds all 192 facts at once (gradual
  * introduction, documented discretion) — the deck starts genuinely empty and
  * grows incrementally, matching the UI-SPEC's empty-state copy and the
  * recall map's "not yet seen" cell.
@@ -288,7 +294,7 @@ export async function introduceNewCards(
 	}
 
 	await _database().cards.bulkPut(records);
-	return records.length;
+	return factsTouched + retrofitsTouched;
 }
 
 /** True when `a` and `b` fall on the same LOCAL calendar day (getFullYear/getMonth/getDate, not UTC, matching Phase 08's clientDate convention). */
