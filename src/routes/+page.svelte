@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { spellChord } from '$lib/theory/chord';
+	import { setDrillSeeds } from '$lib/practice/drillSeeds';
 	import { pickHint, pickSuggestionHint } from '$lib/copy/hints';
 	import { didYouMean } from '$lib/theory/didYouMean';
 	import { detectCasingAmbiguity, type CasingAmbiguity } from '$lib/lookup/casingAmbiguity';
@@ -173,6 +175,13 @@
 		playChord(result.notes.map((note) => note.letter));
 	}
 
+	/** Seeds the resolved chord into the one-shot drill queue and navigates to /drills. */
+	function drillIt() {
+		if (!result) return;
+		setDrillSeeds([result.symbol]);
+		void goto('/drills');
+	}
+
 	function handleSubmit(event: SubmitEvent) {
 		event.preventDefault();
 		showChord(symbol);
@@ -306,6 +315,14 @@
 				<ChordGlyph root={result.root} quality={result.symbol.slice(result.root.length)} />
 				<SongMark songs={songsForSymbol(result.symbol, provenanceIndex)} />
 				<Button type="button" variant="ghost" onclick={hearIt}>{t('home.action.hear-it')}</Button>
+				<Button
+					type="button"
+					variant="ghost"
+					data-testid="drill-it"
+					onclick={drillIt}
+				>
+					{t('home.action.drill-it')}
+				</Button>
 			</div>
 
 			{#if result.aliases.length > 0}

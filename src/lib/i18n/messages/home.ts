@@ -18,6 +18,7 @@ export const home = {
 		'home.insert.flat': 'Insert flat',
 		'home.action.stamp': 'Stamp',
 		'home.action.hear-it': 'Hear it',
+		'home.action.drill-it': 'Drill it',
 		'home.empty.title': 'No chord yet',
 		'home.empty.body': 'Type a symbol like Cm7 and press Stamp to see its notes in ink and color.',
 		'home.recent.heading': 'Recent lookups',
@@ -51,6 +52,7 @@ export const home = {
 		'home.insert.flat': 'Insérer un bémol',
 		'home.action.stamp': 'Tamponner',
 		'home.action.hear-it': 'Écouter',
+		'home.action.drill-it': "S'entraîner",
 		'home.empty.title': "Pas encore d'accord",
 		'home.empty.body':
 			"Tapez un symbole comme Cm7 et appuyez sur Tamponner pour voir ses notes en encre et en couleur.",
