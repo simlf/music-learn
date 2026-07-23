@@ -45,4 +45,9 @@ export interface ChordResult {
 	aliases: string[];
 	/** Ordered, interval-tagged, dual-named spelled notes. Empty array if unrecognized. */
 	notes: SpelledNote[];
+	/**
+	 * The bass (lowest) note with accidental glyph for a slash-chord
+	 * inversion, e.g. "E" for C/E. Undefined for a plain root-position chord.
+	 */
+	bass?: string;
 }

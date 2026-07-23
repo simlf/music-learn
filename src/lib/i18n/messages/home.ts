@@ -18,6 +18,7 @@ export const home = {
 		'home.insert.flat': 'Insert flat',
 		'home.action.stamp': 'Stamp',
 		'home.action.hear-it': 'Hear it',
+		'home.action.drill-it': 'Drill it',
 		'home.empty.title': 'No chord yet',
 		'home.empty.body': 'Type a symbol like Cm7 and press Stamp to see its notes in ink and color.',
 		'home.recent.heading': 'Recent lookups',
@@ -42,7 +43,9 @@ export const home = {
 		'home.disambig.chip-minor-prefix': '',
 		'home.disambig.chip-minor-suffix': '— minor',
 		'home.disambig.chip-major-prefix': '',
-		'home.disambig.chip-major-suffix': '— major'
+		'home.disambig.chip-major-suffix': '— major',
+		'home.slash.explain':
+			'The slash means {BASS} is the lowest note: play {CHORD} with {BASS} at the bottom.'
 	},
 	fr: {
 		'home.title': "Recherche d'accord",
@@ -51,6 +54,7 @@ export const home = {
 		'home.insert.flat': 'Insérer un bémol',
 		'home.action.stamp': 'Tamponner',
 		'home.action.hear-it': 'Écouter',
+		'home.action.drill-it': "S'entraîner",
 		'home.empty.title': "Pas encore d'accord",
 		'home.empty.body':
 			"Tapez un symbole comme Cm7 et appuyez sur Tamponner pour voir ses notes en encre et en couleur.",
@@ -77,6 +81,8 @@ export const home = {
 		'home.disambig.chip-minor-prefix': '',
 		'home.disambig.chip-minor-suffix': '— mineur',
 		'home.disambig.chip-major-prefix': '',
-		'home.disambig.chip-major-suffix': '— majeur'
+		'home.disambig.chip-major-suffix': '— majeur',
+		'home.slash.explain':
+			'La barre oblique indique que {BASS} est la note la plus basse : jouez {CHORD} en plaçant {BASS} en bas.'
 	}
 } satisfies LocaleDict;

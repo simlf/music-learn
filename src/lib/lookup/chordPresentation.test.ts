@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { spellChord } from '$lib/theory/chord';
-import { formulaFor, aliasLine, formulaSentence } from './chordPresentation';
+import { formulaFor, aliasLine, displaySymbol, formulaSentence } from './chordPresentation';
 import { setLocale } from '$lib/i18n/locale.svelte';
 
 describe('formulaFor', () => {
@@ -56,6 +56,27 @@ describe('aliasLine', () => {
 		const line = aliasLine({ ...chord, aliases: [] });
 		expect(line).toBe(chord.symbol);
 		expect(line.endsWith(' = ')).toBe(false);
+	});
+});
+
+describe('displaySymbol', () => {
+	it('rebuilds a flat-rooted symbol in glyph form, never the ASCII duplicate', () => {
+		expect(displaySymbol(spellChord('Bbmaj7'))).toBe('B♭maj7');
+	});
+
+	it('leaves a natural-rooted symbol unchanged', () => {
+		expect(displaySymbol(spellChord('Cm7'))).toBe('Cm7');
+	});
+
+	it('glyph-converts both the root and the bass of a slash chord', () => {
+		const symbol = displaySymbol(spellChord('Abmaj7/Eb'));
+		expect(symbol).toBe('A♭maj7/E♭');
+		expect(symbol).not.toContain('Ab');
+		expect(symbol).not.toContain('Eb');
+	});
+
+	it('glyph-converts the bass of a sharp-bass slash chord', () => {
+		expect(displaySymbol(spellChord('D/F#'))).toBe('D/F♯');
 	});
 });
 

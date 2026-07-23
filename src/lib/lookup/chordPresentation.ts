@@ -1,4 +1,9 @@
-import { intervalBetween, intervalFromShort, toAsciiAccidentals } from '$lib/theory/interval';
+import {
+	intervalBetween,
+	intervalFromShort,
+	toAsciiAccidentals,
+	toGlyphAccidentals
+} from '$lib/theory/interval';
 import type { ChordResult, IntervalRole } from '$lib/theory/types';
 import { currentLocale } from '$lib/i18n/locale.svelte';
 
@@ -56,6 +61,27 @@ export function aliasLine(chord: ChordResult): string {
 		: chord.symbol;
 	const forms = [glyphSymbol, ...chord.aliases.map((alias) => chord.root + alias)];
 	return [...new Set(forms)].join(' = ');
+}
+
+/**
+ * Full glyph-form display symbol for a resolved chord. tonal echoes
+ * `chord.symbol` in ASCII accidental form ("Abmaj7", "Abmaj7/Eb") while
+ * `chord.root` is glyph-converted ("A♭"). Rebuild the symbol on the glyph
+ * root (root-aware, so quality suffixes like "b5" stay untouched) and, for a
+ * slash chord, glyph-convert the bass segment after the final "/" (quality
+ * suffixes always precede the slash, so lastIndexOf is safe). Use this for
+ * every display surface (the ChordGlyph quality suffix, the slash-explain
+ * base symbol); keep `chord.symbol` itself ASCII for drill seeds,
+ * recent-lookups, and spellChord round-trips.
+ */
+export function displaySymbol(chord: ChordResult): string {
+	const asciiRoot = toAsciiAccidentals(chord.root);
+	const glyphBody = chord.symbol.startsWith(asciiRoot)
+		? chord.root + chord.symbol.slice(asciiRoot.length)
+		: chord.symbol;
+	const slashIndex = glyphBody.lastIndexOf('/');
+	if (slashIndex === -1) return glyphBody;
+	return `${glyphBody.slice(0, slashIndex)}/${toGlyphAccidentals(glyphBody.slice(slashIndex + 1))}`;
 }
 
 /**

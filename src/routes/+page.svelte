@@ -1,11 +1,18 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { spellChord } from '$lib/theory/chord';
+	import { setDrillSeeds } from '$lib/practice/drillSeeds';
 	import { pickHint, pickSuggestionHint } from '$lib/copy/hints';
 	import { didYouMean } from '$lib/theory/didYouMean';
 	import { detectCasingAmbiguity, type CasingAmbiguity } from '$lib/lookup/casingAmbiguity';
 	import { ensureAudioReady, playChord, playNote } from '$lib/audio/audio';
 	import { intervalFromRoot, toAsciiAccidentals } from '$lib/theory/interval';
-	import { formulaFor, aliasLine, type FormulaEntry } from '$lib/lookup/chordPresentation';
+	import {
+		formulaFor,
+		aliasLine,
+		displaySymbol,
+		type FormulaEntry
+	} from '$lib/lookup/chordPresentation';
 	import { getRecentLookups, addRecentLookup } from '$lib/lookup/recentLookups';
 	import type { ChordResult } from '$lib/theory/types';
 	import PianoKeyboard, { type InspectPayload } from '$lib/components/PianoKeyboard.svelte';
@@ -170,7 +177,35 @@
 	function hearIt() {
 		if (!result) return;
 		void ensureAudioReady();
-		playChord(result.notes.map((note) => note.letter));
+		// result.notes is canonical root-position order (spellChord re-sorts a
+		// slash chord's notes into role order), so for an inversion rotate the
+		// letters until the bass leads - otherwise playChord would voice C/E as
+		// C4-E4-G4 (root position), contradicting the "E at the bottom" line.
+		// Both notes and result.bass are glyph form, so indexOf matches.
+		const letters = result.notes.map((note) => note.letter);
+		if (result.bass) {
+			const i = letters.indexOf(result.bass);
+			if (i > 0) letters.push(...letters.splice(0, i));
+		}
+		playChord(letters);
+	}
+
+	/** Seeds the resolved chord into the one-shot drill queue and navigates to /drills. */
+	function drillIt() {
+		if (!result) return;
+		setDrillSeeds([result.symbol]);
+		void goto('/drills');
+	}
+
+	/**
+	 * Builds the slash-chord bass explanation line: the base symbol (before
+	 * the "/") and bass letter render verbatim regardless of locale per the
+	 * theory-engine symbol-immunity rule, substituted into the localized
+	 * template.
+	 */
+	function slashExplainLine(chord: ChordResult): string {
+		const base = displaySymbol(chord).split('/')[0];
+		return t('home.slash.explain').replaceAll('{BASS}', chord.bass ?? '').replaceAll('{CHORD}', base);
 	}
 
 	function handleSubmit(event: SubmitEvent) {
@@ -303,14 +338,25 @@
 	{#if result?.recognized && !ambiguity}
 		<div class="stamp mt-8" data-testid="chord-result">
 			<div class="flex items-start gap-4">
-				<ChordGlyph root={result.root} quality={result.symbol.slice(result.root.length)} />
+				<ChordGlyph root={result.root} quality={displaySymbol(result).slice(result.root.length)} />
 				<SongMark songs={songsForSymbol(result.symbol, provenanceIndex)} />
 				<Button type="button" variant="ghost" onclick={hearIt}>{t('home.action.hear-it')}</Button>
+				{#if !result.bass}
+					<Button type="button" variant="ghost" data-testid="drill-it" onclick={drillIt}>
+						{t('home.action.drill-it')}
+					</Button>
+				{/if}
 			</div>
 
-			{#if result.aliases.length > 0}
+			{#if result.aliases.length > 0 && !result.bass}
 				<p class="text-label text-muted mt-2 font-mono" data-testid="alias-line">
 					{aliasLine(result)}
+				</p>
+			{/if}
+
+			{#if result.bass}
+				<p class="text-label text-muted mt-2 font-mono" data-testid="slash-explain">
+					{slashExplainLine(result)}
 				</p>
 			{/if}
 
