@@ -21,6 +21,13 @@ vi.mock('$app/navigation', () => ({
 	goto: (...args: unknown[]) => gotoMock(...args)
 }));
 
+const playChordMock = vi.fn();
+vi.mock('$lib/audio/audio', () => ({
+	playChord: (...args: unknown[]) => playChordMock(...args),
+	playNote: vi.fn(),
+	ensureAudioReady: async () => {}
+}));
+
 const { default: Page } = await import('./+page.svelte');
 
 function renderPage() {
@@ -38,6 +45,7 @@ beforeEach(() => {
 	localStorage.clear();
 	setDrillSeedsMock.mockClear();
 	gotoMock.mockClear();
+	playChordMock.mockClear();
 });
 
 afterEach(() => {
@@ -63,6 +71,20 @@ describe('Slash-chord (inversion) support on the Chord Lookup', () => {
 
 		expect(screen.getByTestId('drill-it')).toBeInTheDocument();
 		expect(screen.queryByTestId('slash-explain')).not.toBeInTheDocument();
+	});
+
+	it('Hear it voices the bass lowest for C/E (E leads, not root position)', async () => {
+		renderPage();
+
+		await lookupChord('C/E');
+		await fireEvent.click(screen.getByRole('button', { name: 'Hear it' }));
+
+		expect(playChordMock).toHaveBeenCalledTimes(1);
+		const letters = playChordMock.mock.calls[0][0] as string[];
+		// The card promises "E at the bottom": E must lead so toAscendingPitches
+		// voices it lowest, rather than the canonical root-position C-E-G.
+		expect(letters[0]).toBe('E');
+		expect(new Set(letters)).toEqual(new Set(['C', 'E', 'G']));
 	});
 
 	it('rejects C/D (non-chord-tone bass): no slash-explain line rendered', async () => {

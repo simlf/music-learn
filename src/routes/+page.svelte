@@ -172,7 +172,17 @@
 	function hearIt() {
 		if (!result) return;
 		void ensureAudioReady();
-		playChord(result.notes.map((note) => note.letter));
+		// result.notes is canonical root-position order (spellChord re-sorts a
+		// slash chord's notes into role order), so for an inversion rotate the
+		// letters until the bass leads - otherwise playChord would voice C/E as
+		// C4-E4-G4 (root position), contradicting the "E at the bottom" line.
+		// Both notes and result.bass are glyph form, so indexOf matches.
+		const letters = result.notes.map((note) => note.letter);
+		if (result.bass) {
+			const i = letters.indexOf(result.bass);
+			if (i > 0) letters.push(...letters.splice(0, i));
+		}
+		playChord(letters);
 	}
 
 	/** Seeds the resolved chord into the one-shot drill queue and navigates to /drills. */
