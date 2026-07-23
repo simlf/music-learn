@@ -131,7 +131,6 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           key: ${{ secrets.SSH_KEY }}
           envs: IMAGE_TAG,GHCR_USER,GHCR_TOKEN
-          script_stop: true
           script: |
             set -e
             cd ~/music-learn
@@ -144,3 +143,15 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
           GHCR_USER: ${{ github.actor }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Free disk space on the server if deploy failed
+        if: ${{ failure() }}
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            sudo docker system prune -af
+            df -h /
