@@ -343,7 +343,7 @@
 				{/if}
 			</div>
 
-			{#if result.aliases.length > 0}
+			{#if result.aliases.length > 0 && !result.bass}
 				<p class="text-label text-muted mt-2 font-mono" data-testid="alias-line">
 					{aliasLine(result)}
 				</p>

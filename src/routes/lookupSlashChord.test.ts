@@ -64,6 +64,25 @@ describe('Slash-chord (inversion) support on the Chord Lookup', () => {
 		expect(screen.getByRole('button', { name: 'Hear it' })).toBeInTheDocument();
 	});
 
+	it('hides the alias-equivalence line for a slash chord (aliases are bass-less)', async () => {
+		renderPage();
+
+		await lookupChord('C/E');
+
+		// tonal's aliases drop the /bass, so the line would falsely read
+		// "C/E = CM = C = ..." contradicting the explain line below it.
+		expect(screen.queryByTestId('alias-line')).not.toBeInTheDocument();
+		expect(screen.getByTestId('slash-explain')).toBeInTheDocument();
+	});
+
+	it('still shows the alias-equivalence line for a plain chord with aliases (C-7)', async () => {
+		renderPage();
+
+		await lookupChord('C-7');
+
+		expect(screen.getByTestId('alias-line')).toBeInTheDocument();
+	});
+
 	it('shows Drill it and no slash-explain line for a plain chord (Cm7)', async () => {
 		renderPage();
 
