@@ -7,7 +7,12 @@
 	import { detectCasingAmbiguity, type CasingAmbiguity } from '$lib/lookup/casingAmbiguity';
 	import { ensureAudioReady, playChord, playNote } from '$lib/audio/audio';
 	import { intervalFromRoot, toAsciiAccidentals } from '$lib/theory/interval';
-	import { formulaFor, aliasLine, type FormulaEntry } from '$lib/lookup/chordPresentation';
+	import {
+		formulaFor,
+		aliasLine,
+		displaySymbol,
+		type FormulaEntry
+	} from '$lib/lookup/chordPresentation';
 	import { getRecentLookups, addRecentLookup } from '$lib/lookup/recentLookups';
 	import type { ChordResult } from '$lib/theory/types';
 	import PianoKeyboard, { type InspectPayload } from '$lib/components/PianoKeyboard.svelte';
@@ -199,7 +204,7 @@
 	 * template.
 	 */
 	function slashExplainLine(chord: ChordResult): string {
-		const base = chord.symbol.split('/')[0];
+		const base = displaySymbol(chord).split('/')[0];
 		return t('home.slash.explain').replaceAll('{BASS}', chord.bass ?? '').replaceAll('{CHORD}', base);
 	}
 
@@ -333,7 +338,7 @@
 	{#if result?.recognized && !ambiguity}
 		<div class="stamp mt-8" data-testid="chord-result">
 			<div class="flex items-start gap-4">
-				<ChordGlyph root={result.root} quality={result.symbol.slice(result.root.length)} />
+				<ChordGlyph root={result.root} quality={displaySymbol(result).slice(result.root.length)} />
 				<SongMark songs={songsForSymbol(result.symbol, provenanceIndex)} />
 				<Button type="button" variant="ghost" onclick={hearIt}>{t('home.action.hear-it')}</Button>
 				{#if !result.bass}

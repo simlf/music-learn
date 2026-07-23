@@ -42,7 +42,7 @@ export function toAsciiAccidentals(letter: string): string {
 }
 
 /** Converts tonal's ASCII accidentals back to display glyphs (♯ ♭). */
-function toGlyphAccidentals(note: string): string {
+export function toGlyphAccidentals(note: string): string {
 	return note.replace(/#/g, '♯').replace(/b/g, '♭');
 }
 

@@ -106,6 +106,16 @@ describe('Slash-chord (inversion) support on the Chord Lookup', () => {
 		expect(new Set(letters)).toEqual(new Set(['C', 'E', 'G']));
 	});
 
+	it('renders the slash-explain base symbol in glyph form, not tonal ASCII', async () => {
+		renderPage();
+
+		await lookupChord('Abmaj7/Eb');
+
+		const explain = screen.getByTestId('slash-explain');
+		expect(explain).toHaveTextContent('A♭maj7');
+		expect(explain.textContent).not.toContain('Abmaj7');
+	});
+
 	it('rejects C/D (non-chord-tone bass): no slash-explain line rendered', async () => {
 		renderPage();
 
