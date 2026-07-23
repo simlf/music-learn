@@ -33,17 +33,22 @@ export function spellChord(symbol: string): ChordResult {
 	}
 
 	/*
-	 * DECISION: a non-chord-tone bass (e.g. C/D) is REJECTED via the
-	 * unrecognized path, not accepted as a degraded slash chord. tonal fills
-	 * chord.root with the bass note ONLY when the bass is a genuine chord
-	 * tone (a true inversion, root === bass); a non-chord-tone slash yields
-	 * root === '' alongside a negative bass interval ("-7m" for C/D) that
-	 * would collapse to roleForDegree's DoS-safe 'root' fallback and collide
-	 * with the actual root, corrupting the re-sort below. This guard
-	 * (chord.bass non-empty AND chord.root empty) cleanly routes C/D through
-	 * the existing did-you-mean/hint path instead of displaying a mis-modeled
-	 * note set. Verified against tonal 6.4.3: C/E root:"E", Cmaj7/G root:"G",
-	 * G7/F root:"F", Am7/G root:"G" (all recognized); C/D root:"" (rejected).
+	 * DECISION: a slash chord is accepted ONLY when tonal can model the bass
+	 * as an inversion over a base chord factor (root fills, root === bass);
+	 * everything else is REJECTED via the unrecognized path. This is broader
+	 * than just non-chord-tone basses: tonal expresses an inversion as a
+	 * rootDegree over the base triad/seventh, so it recognizes C/E, Cmaj7/G,
+	 * G7/F, Am7/G (root:"E"/"G"/"F"/"G") but leaves root:"" for
+	 *   - non-chord-tone basses (C/D), AND
+	 *   - basses on an extension or enharmonic respelling tonal cannot map to
+	 *     a rootDegree (C9/D, Cmaj9/D, Cadd9/D, C13/A, Cdim7/A).
+	 * In every root:"" case tonal emits a negative bass interval ("-7m" for
+	 * C/D) plus, for the extension cases, a duplicate note - either of which
+	 * would collapse to roleForDegree's DoS-safe 'root' fallback, collide with
+	 * the actual root, and corrupt the re-sort below. This guard (chord.bass
+	 * non-empty AND chord.root empty) cleanly routes all of them through the
+	 * existing did-you-mean/hint path instead of displaying a mis-modeled note
+	 * set. Verified against tonal 6.4.3.
 	 */
 	if (chord.bass !== '' && chord.root === '') {
 		return {

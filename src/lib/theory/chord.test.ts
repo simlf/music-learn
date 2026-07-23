@@ -168,6 +168,19 @@ describe('spellChord', () => {
 			expect(result.bass).toBeUndefined();
 		});
 
+		it('rejects extended-chord basses tonal cannot model as a rootDegree inversion', () => {
+			// tonal only expresses inversions over base chord factors as a
+			// rootDegree; a bass on an extension (or an enharmonic respelling)
+			// leaves root:"" plus a negative interval / duplicate note, so the
+			// guard routes these through the unrecognized path (DECISION comment).
+			for (const symbol of ['C9/D', 'Cmaj9/D', 'Cadd9/D', 'C13/A', 'Cdim7/A']) {
+				const result = spellChord(symbol);
+				expect(result.recognized, symbol).toBe(false);
+				expect(result.notes, symbol).toEqual([]);
+				expect(result.bass, symbol).toBeUndefined();
+			}
+		});
+
 		it('Cm7 (no regression) has bass undefined', () => {
 			const result = spellChord('Cm7');
 			expect(result.bass).toBeUndefined();
