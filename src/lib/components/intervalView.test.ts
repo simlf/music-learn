@@ -34,7 +34,6 @@ describe('IntervalView default (stacked-thirds) render (IVW-01)', () => {
 		expect(within(stacked).getByText('P5')).toBeInTheDocument();
 		expect(within(stacked).getByText('m7')).toBeInTheDocument();
 
-		expect(within(stacked).getByText('+m3')).toBeInTheDocument();
 		expect(within(stacked).getByText('+M3')).toBeInTheDocument();
 		// two '+m3' gap markers exist (root->3rd and 5th->7th)
 		expect(within(stacked).getAllByText('+m3').length).toBe(2);
