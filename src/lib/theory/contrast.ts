@@ -1,4 +1,5 @@
 import { Note } from 'tonal';
+import { currentLocale } from '$lib/i18n/locale.svelte';
 import { spellChord } from './chord';
 import { letterToSolfege } from './solfege';
 import type { ChordResult } from './types';
@@ -51,9 +52,14 @@ function notesMissingFrom(chord: ChordResult, other: Set<number>): string[] {
 		.map((note) => note.letter);
 }
 
-/** Joins 1-2 note letters for prose: "E♭" or "G and B♭". */
+/**
+ * Joins 1-2 note letters for prose: "E♭" or "G and B♭" (EN) / "G et B♭" (FR).
+ * The note letters themselves stay immune (glyph accidentals preserved); only
+ * the connective word is localized.
+ */
 function joinNotes(letters: string[]): string {
-	return letters.join(' and ');
+	const connective = currentLocale() === 'fr' ? ' et ' : ' and ';
+	return letters.join(connective);
 }
 
 /** At most this many differing notes per side still reads as one line. */
@@ -68,6 +74,11 @@ const MAX_NOTES_PER_SIDE = 2;
  * Returns null when either symbol is invalid, the chords are the same set of
  * pitches (including enharmonic respellings), or the diff needs more than
  * one line to say cleanly.
+ *
+ * Locale-aware (I18N-02, mirroring $lib/copy/mnemonics): the connective prose
+ * ("has"/"a", "is built on"/"est bâti sur", "does not"/"non", "and"/"et")
+ * follows `currentLocale()`; chord symbols, note letters, and solfège
+ * syllables stay immune and are interpolated verbatim in both locales.
  */
 export function contrastLine(correctSymbol: string, givenSymbol: string): string | null {
 	const correct = spellChord(correctSymbol);
@@ -90,10 +101,16 @@ export function contrastLine(correctSymbol: string, givenSymbol: string): string
 	const givenRootChroma = Note.chroma(toAsciiAccidentals(given.root));
 	if (correctRootChroma === undefined || givenRootChroma === undefined) return null;
 
+	const fr = currentLocale() === 'fr';
+
 	if (correctRootChroma !== givenRootChroma) {
 		const correctRoot = `${correct.root} (${letterToSolfege(correct.root)})`;
 		const givenRoot = `${given.root} (${letterToSolfege(given.root)})`;
-		return `${correctName} is built on ${correctRoot}, ${givenName} on ${givenRoot}.`;
+		// "Cm7 est bâti sur C (Do), Dm7 sur D (Ré)." - chord names, root letters
+		// and solfège syllables stay immune; only the connective prose is French.
+		return fr
+			? `${correctName} est bâti sur ${correctRoot}, ${givenName} sur ${givenRoot}.`
+			: `${correctName} is built on ${correctRoot}, ${givenName} on ${givenRoot}.`;
 	}
 
 	const onlyCorrect = notesMissingFrom(correct, givenChromas);
@@ -103,13 +120,19 @@ export function contrastLine(correctSymbol: string, givenSymbol: string): string
 	}
 
 	if (onlyCorrect.length > 0 && onlyGiven.length > 0) {
-		return `${correctName} has ${joinNotes(onlyCorrect)}, ${givenName} has ${joinNotes(onlyGiven)}.`;
+		return fr
+			? `${correctName} a ${joinNotes(onlyCorrect)}, ${givenName} a ${joinNotes(onlyGiven)}.`
+			: `${correctName} has ${joinNotes(onlyCorrect)}, ${givenName} has ${joinNotes(onlyGiven)}.`;
 	}
 	if (onlyCorrect.length > 0) {
-		return `${correctName} has ${joinNotes(onlyCorrect)}, ${givenName} does not.`;
+		return fr
+			? `${correctName} a ${joinNotes(onlyCorrect)}, ${givenName} non.`
+			: `${correctName} has ${joinNotes(onlyCorrect)}, ${givenName} does not.`;
 	}
 	if (onlyGiven.length > 0) {
-		return `${givenName} has ${joinNotes(onlyGiven)}, ${correctName} does not.`;
+		return fr
+			? `${givenName} a ${joinNotes(onlyGiven)}, ${correctName} non.`
+			: `${givenName} has ${joinNotes(onlyGiven)}, ${correctName} does not.`;
 	}
 	return null;
 }

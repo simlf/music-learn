@@ -38,7 +38,7 @@ describe('PianoKeyboard inspect mode (inspectable + onInspect)', () => {
 		expect(onInspect).toHaveBeenCalledTimes(1);
 		const payload = onInspect.mock.calls[0][0] as InspectPayload;
 		expect(payload.letter).toBe('E♭');
-		expect(payload.solfege).toBe('Mi');
+		expect(payload.solfege).toBe('Mi♭');
 		expect(payload.inChord).toBe(true);
 		expect(payload.info?.short).toBe('m3');
 		expect(payload.info?.longFr).toBe('tierce mineure');

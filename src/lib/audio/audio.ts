@@ -9,10 +9,13 @@ import { SALAMANDER_BASE_URL, SALAMANDER_URLS } from './samples';
  *   module constructs nothing, so it is jsdom/test/prerender safe. Component
  *   tests mock this module (`vi.mock('$lib/audio/audio')`) and never touch a
  *   real AudioContext.
- * - Synth-first, never silent: a PolySynth plays instantly on the very first
- *   gesture while the Salamander sampled piano (1.9 MB, 30 mp3s) loads in the
- *   background, then the sampler swaps in transparently. If the sample fetch
- *   fails (offline), the session stays synth-only.
+ * - Sampler-first, never a timbre swap mid-session: the Salamander sampled
+ *   piano (1.9 MB, 30 mp3s, self-hosted so it loads fast) is preloaded on the
+ *   first user gesture, and play calls await that load so the very first note
+ *   sounds on the real piano - identical to every note after it. A PolySynth
+ *   is kept as a fallback only: if the sample fetch fails (offline) or is
+ *   still in flight when a note is played, the synth covers that note so the
+ *   app is never silent. Once samples are in, every note is the sampler.
  * - `Tone.getContext().lookAhead = 0` kills tone's built-in 100ms scheduling
  *   delay so key touches feel immediate (R2-audio.md, risk 4).
  * - Spam hygiene: a 50ms per-note retrigger guard and a 16-voice soft cap on
@@ -50,6 +53,12 @@ let synth: ToneNS.PolySynth | null = null;
 let sampler: ToneNS.Sampler | null = null;
 let samplesLoaded = false;
 let samplerFailed = false;
+/**
+ * Resolves once the sampler has finished loading (onload) or definitively
+ * failed (onerror). Play calls await this so the first audible note lands on
+ * the sampled piano rather than the synth. null until sample loading begins.
+ */
+let samplerReady: Promise<void> | null = null;
 /** null = not read from localStorage yet (lazy, so import stays side-effect free). */
 let enabled: boolean | null = null;
 /** null = not read from localStorage yet (lazy, so import stays side-effect free). */
@@ -135,20 +144,24 @@ function loadTone(): Promise<ToneModule> {
 
 function beginSampleLoad(t: ToneModule): void {
 	if (sampler || samplerFailed) return;
-	sampler = new t.Sampler({
-		urls: SALAMANDER_URLS,
-		baseUrl: SALAMANDER_BASE_URL,
-		release: SAMPLER_RELEASE_SEC,
-		onload: () => {
-			samplesLoaded = true;
-		},
-		onerror: () => {
-			// Offline or misconfigured hosting: stay on the synth for this
-			// session rather than retry-looping a broken fetch.
-			samplerFailed = true;
-			samplesLoaded = false;
-		}
-	}).toDestination();
+	samplerReady = new Promise<void>((resolve) => {
+		sampler = new t.Sampler({
+			urls: SALAMANDER_URLS,
+			baseUrl: SALAMANDER_BASE_URL,
+			release: SAMPLER_RELEASE_SEC,
+			onload: () => {
+				samplesLoaded = true;
+				resolve();
+			},
+			onerror: () => {
+				// Offline or misconfigured hosting: stay on the synth for this
+				// session rather than retry-looping a broken fetch.
+				samplerFailed = true;
+				samplesLoaded = false;
+				resolve();
+			}
+		}).toDestination();
+	});
 }
 
 /**
@@ -164,7 +177,12 @@ export async function ensureAudioReady(): Promise<void> {
 	beginSampleLoad(t);
 }
 
-/** The instrument to attack on: sampled piano once loaded, synth until then. */
+/**
+ * The instrument to attack on: the sampled piano once loaded, otherwise the
+ * synth. Play calls await sample loading (see withInstrument) before reading
+ * this, so the synth is only ever chosen when loading has failed - not merely
+ * because it is still in flight.
+ */
 function activeInstrument(): Instrument | null {
 	if (sampler && samplesLoaded) return sampler;
 	return synth;
@@ -178,6 +196,11 @@ function activeInstrument(): Instrument | null {
 async function withInstrument(action: (instrument: Instrument) => void): Promise<void> {
 	try {
 		await ensureAudioReady();
+		// Wait for the sampled piano before choosing an instrument, so the
+		// first note sounds on the real piano rather than the synth. If loading
+		// fails (samplerReady resolves via onerror) or is somehow absent, we
+		// fall through to the synth so the app is never silent.
+		if (samplerReady) await samplerReady;
 		const instrument = activeInstrument();
 		if (instrument) action(instrument);
 	} catch {
@@ -324,6 +347,7 @@ export function _resetForTests(): void {
 	sampler = null;
 	samplesLoaded = false;
 	samplerFailed = false;
+	samplerReady = null;
 	enabled = null;
 	studyMode = null;
 	lastAttackAt.clear();

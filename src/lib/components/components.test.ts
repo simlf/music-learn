@@ -31,11 +31,12 @@ describe('PianoKeyboard', () => {
 			'piano-keyboard__key--seventh'
 		);
 
-		// Dual naming: solfège present alongside letters (degree-based, accidental-agnostic)
+		// Dual naming: solfège present alongside letters, carrying the accidental
+		// (Cm7 = C, E♭, G, B♭ → Do, Mi♭, Sol, Si♭)
 		expect(screen.getByText('Do')).toBeInTheDocument();
-		expect(screen.getByText('Mi')).toBeInTheDocument();
+		expect(screen.getByText('Mi♭')).toBeInTheDocument();
 		expect(screen.getByText('Sol')).toBeInTheDocument();
-		expect(screen.getByText('Si')).toBeInTheDocument();
+		expect(screen.getByText('Si♭')).toBeInTheDocument();
 
 		// Exactly four highlighted keys (root/third/fifth/seventh classes)
 		const highlighted = document.querySelectorAll(
@@ -549,7 +550,7 @@ describe('InspectRegister', () => {
 		render(InspectRegister, {
 			payload: {
 				letter: 'E♭',
-				solfege: 'Mi',
+				solfege: 'Mi♭',
 				octave: 4,
 				inChord: true,
 				info: {
@@ -566,7 +567,7 @@ describe('InspectRegister', () => {
 		});
 
 		const register = screen.getByTestId('inspect-register');
-		expect(register).toHaveTextContent('E♭ · Mi · m3 · minor 3rd · 3 semitones');
+		expect(register).toHaveTextContent('E♭ · Mi♭ · m3 · minor 3rd · 3 semitones');
 	});
 
 	it('switches to the French long name and semitone word under the fr locale (I18N-02)', () => {
@@ -574,7 +575,7 @@ describe('InspectRegister', () => {
 		render(InspectRegister, {
 			payload: {
 				letter: 'E♭',
-				solfege: 'Mi',
+				solfege: 'Mi♭',
 				octave: 4,
 				inChord: true,
 				info: {
@@ -591,7 +592,7 @@ describe('InspectRegister', () => {
 		});
 
 		const register = screen.getByTestId('inspect-register');
-		expect(register).toHaveTextContent('E♭ · Mi · m3 · tierce mineure · 3 demi-tons');
+		expect(register).toHaveTextContent('E♭ · Mi♭ · m3 · tierce mineure · 3 demi-tons');
 	});
 
 	it('uses the singular semitone word for one semitone (en default)', () => {
