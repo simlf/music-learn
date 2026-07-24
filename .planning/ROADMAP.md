@@ -19,7 +19,7 @@ Full phase details for everything shipped through v2.1: [milestones/v2.1-ROADMAP
 
 ### 🚧 v2.2 Hub Consolidation + Interval Theory (Phases 26-31)
 
-- [ ] **Phase 26: Shared IntervalView Component** - Any looked-up chord reveals its stacked-thirds and its formula, from existing chord data.
+- [x] **Phase 26: Shared IntervalView Component** - Any looked-up chord reveals its stacked-thirds and its formula, from existing chord data. (completed 2026-07-24)
 - [ ] **Phase 27: Practice Hub — One Smart Interleaved Session** - A single "Start practice" action runs one FSRS-scheduled session mixing all five drill types.
 - [ ] **Phase 28: Learn Hub — Theory + Scales Explore + Interval Reference** - One Learn surface to read theory, explore the major scale, and reference chord intervals.
 - [ ] **Phase 29: Progress Hub — Stats, Streak, Review Map, Songs** - One Progress surface for stats, streak, weak spots, the SRS review map, and song management.
