@@ -102,7 +102,7 @@ describe('intervalQuestionNotes', () => {
 
 		expect(notes).toHaveLength(2);
 		expect(notes[0]).toEqual({ letter: 'C', solfege: 'Do', role: 'root' });
-		expect(notes[1]).toEqual({ letter: 'E♭', solfege: 'Mi', role: 'third' });
+		expect(notes[1]).toEqual({ letter: 'E♭', solfege: 'Mi♭', role: 'third' });
 	});
 
 	it('spells the target relative to a flat root', () => {

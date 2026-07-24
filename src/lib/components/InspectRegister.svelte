@@ -6,7 +6,7 @@
 	 * One-line mono interval register (R4): the readout for keyboard/formula
 	 * inspect taps, in the Print Shop status-register voice. Reserves its
 	 * line height so filling it never shifts the layout. Reads
-	 * "E♭ · Mi · m3 · tierce mineure · 3 demi-tons" in fr (or the English
+	 * "E♭ · Mi♭ · m3 · tierce mineure · 3 demi-tons" in fr (or the English
 	 * long-name/semitone word in en); before the first tap it shows a quiet
 	 * invitation. Only the human-language long-form companion (info.long vs
 	 * info.longFr) and the semitone word switch with locale (I18N-02); the

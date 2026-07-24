@@ -470,7 +470,7 @@ describe('Chord/glyph/interval-shorthand/solfège immunity across surfaces (I18N
 	it('InspectRegister keeps letter/solfège/interval-shorthand identical across locales while only the long-name and unit word switch', () => {
 		const payload = {
 			letter: 'E♭',
-			solfege: 'Mi',
+			solfege: 'Mi♭',
 			octave: 4,
 			info: intervalFromRoot('C', 'E♭'),
 			inChord: true
@@ -479,14 +479,14 @@ describe('Chord/glyph/interval-shorthand/solfège immunity across surfaces (I18N
 		flushSync(() => setLocale('en'));
 		const { unmount } = render(InspectRegister, { payload });
 		expect(screen.getByTestId('inspect-register')).toHaveTextContent(
-			'E♭ · Mi · m3 · minor 3rd · 3 semitones'
+			'E♭ · Mi♭ · m3 · minor 3rd · 3 semitones'
 		);
 		unmount();
 
 		flushSync(() => setLocale('fr'));
 		render(InspectRegister, { payload });
 		expect(screen.getByTestId('inspect-register')).toHaveTextContent(
-			'E♭ · Mi · m3 · tierce mineure · 3 demi-tons'
+			'E♭ · Mi♭ · m3 · tierce mineure · 3 demi-tons'
 		);
 	});
 

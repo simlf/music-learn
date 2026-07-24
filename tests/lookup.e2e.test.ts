@@ -339,7 +339,7 @@ describe('lookup page interval register (Track C)', () => {
 		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
 
 		const register = screen.getByTestId('inspect-register');
-		expect(register).toHaveTextContent('E♭ · Mi · m3 · minor 3rd · 3 semitones');
+		expect(register).toHaveTextContent('E♭ · Mi♭ · m3 · minor 3rd · 3 semitones');
 		expect(playNoteMock).toHaveBeenCalledWith('Eb4');
 	});
 
@@ -352,7 +352,7 @@ describe('lookup page interval register (Track C)', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Inspect B♭' }));
 
 		const register = screen.getByTestId('inspect-register');
-		expect(register).toHaveTextContent('B♭ · Si · m7 · minor 7th · 10 semitones');
+		expect(register).toHaveTextContent('B♭ · Si♭ · m7 · minor 7th · 10 semitones');
 		expect(playNoteMock).toHaveBeenCalledWith('Bb4');
 	});
 
@@ -415,7 +415,7 @@ describe('lookup page French locale (I18N-02)', () => {
 		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
 
 		const register = screen.getByTestId('inspect-register');
-		expect(register).toHaveTextContent('E♭ · Mi · m3 · tierce mineure · 3 demi-tons');
+		expect(register).toHaveTextContent('E♭ · Mi♭ · m3 · tierce mineure · 3 demi-tons');
 	});
 
 	it('renders a STARTER_CHORD symbol identically in en and fr (notation immunity)', () => {

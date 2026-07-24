@@ -954,7 +954,7 @@ describe('drills wrong-answer reveal is inspectable (Track C)', () => {
 		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
 
 		const register = screen.getByTestId('inspect-register');
-		expect(register).toHaveTextContent('B♭ · Si · m7 · minor 7th · 10 semitones');
+		expect(register).toHaveTextContent('B♭ · Si♭ · m7 · minor 7th · 10 semitones');
 		expect(playNoteMock).toHaveBeenCalledWith('Bb4');
 	});
 

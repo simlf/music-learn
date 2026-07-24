@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { contrastLine } from './contrast';
+import { setLocale } from '$lib/i18n/locale.svelte';
 
 describe('contrastLine: same-root near-miss pairs (the drill distractor space)', () => {
 	it.each([
@@ -30,11 +31,11 @@ describe('contrastLine: different-root pairs contrast the roots', () => {
 	});
 
 	it('keeps accidental glyphs on the root letters', () => {
-		expect(contrastLine('F#m7', 'Am7')).toBe('F♯m7 is built on F♯ (Fa), Am7 on A (La).');
+		expect(contrastLine('F#m7', 'Am7')).toBe('F♯m7 is built on F♯ (Fa♯), Am7 on A (La).');
 	});
 
 	it('handles flat roots from the jazz root set', () => {
-		expect(contrastLine('Bbmaj7', 'Cmaj7')).toBe('B♭maj7 is built on B♭ (Si), Cmaj7 on C (Do).');
+		expect(contrastLine('Bbmaj7', 'Cmaj7')).toBe('B♭maj7 is built on B♭ (Si♭), Cmaj7 on C (Do).');
 	});
 });
 
@@ -84,5 +85,32 @@ describe('contrastLine: output hygiene', () => {
 	it('displays chord symbols with glyph accidental roots, keeping quality suffixes ASCII', () => {
 		// The b in "m7b5" is a quality spelling, not an accidental to glyph.
 		expect(contrastLine('Bbm7b5', 'Bbm7')).toBe('B♭m7b5 has F♭, B♭m7 has F.');
+	});
+});
+
+describe('contrastLine: French locale (I18N-02)', () => {
+	afterEach(() => {
+		setLocale('en');
+	});
+
+	it('localizes the connective prose while keeping chord symbols and notes immune', () => {
+		setLocale('fr');
+		// "has ... has" -> "a ... a"; note letters and glyphs unchanged.
+		expect(contrastLine('Cm7', 'C7')).toBe('Cm7 a E♭, C7 a E.');
+	});
+
+	it('uses "non" for the one-sided (triad vs seventh) diff', () => {
+		setLocale('fr');
+		expect(contrastLine('C7', 'C')).toBe('C7 a B♭, C non.');
+	});
+
+	it('joins two differing notes with "et" (not "and")', () => {
+		setLocale('fr');
+		expect(contrastLine('Cm7', 'Cdim7')).toBe('Cm7 a G et B♭, Cdim7 a G♭ et B♭♭.');
+	});
+
+	it('contrasts different roots with "est bâti sur ... sur", solfège immune', () => {
+		setLocale('fr');
+		expect(contrastLine('Cm7', 'Dm7')).toBe('Cm7 est bâti sur C (Do), Dm7 sur D (Ré).');
 	});
 });

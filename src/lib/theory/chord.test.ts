@@ -66,18 +66,23 @@ describe('spellChord', () => {
 	});
 
 	describe('THEORY-04: every note has a letter and a French solfège label', () => {
+		// The syllable carries the accidental (e.g. "Fa♯"), so match on the base
+		// syllable (the accidental glyphs are stripped) plus the raw glyphs.
+		const baseSyllable = (solfege: string) => solfege.replace(/[♯♭]/g, '');
+
 		it('every note in Cm7 has a nonempty letter and a valid solfege syllable', () => {
 			const result = spellChord('Cm7');
 			for (const note of result.notes) {
 				expect(note.letter.length).toBeGreaterThan(0);
-				expect(SOLFEGE_SYLLABLES).toContain(note.solfege);
+				expect(SOLFEGE_SYLLABLES).toContain(baseSyllable(note.solfege));
 			}
 		});
 
-		it('every note in F♯m7 has a valid solfege syllable', () => {
+		it('every note in F♯m7 has a valid solfege syllable that carries the accidental', () => {
 			const result = spellChord('F#m7');
+			expect(result.notes.map((n) => n.solfege)).toEqual(['Fa♯', 'La', 'Do♯', 'Mi']);
 			for (const note of result.notes) {
-				expect(SOLFEGE_SYLLABLES).toContain(note.solfege);
+				expect(SOLFEGE_SYLLABLES).toContain(baseSyllable(note.solfege));
 			}
 		});
 	});

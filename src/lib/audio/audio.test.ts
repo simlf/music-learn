@@ -148,8 +148,31 @@ describe('ensureAudioReady', () => {
 });
 
 describe('playNote', () => {
-	it('plays instantly on the synth while samples are still loading', async () => {
+	/**
+	 * Play calls await sample loading before choosing an instrument, so a play
+	 * issued during the initial gesture must not resolve to the synth until the
+	 * sampler's onload/onerror has fired. This helper flushes the ensureReady
+	 * microtasks so the pending Sampler exists, fires its onload, then lets the
+	 * awaited play chain settle on the sampled piano.
+	 */
+	async function loadSamplesForPendingPlays(): Promise<void> {
+		await flush();
+		sampler().options.onload();
+		await flush();
+	}
+
+	it('sounds the first note on the sampled piano (awaits loading, never the synth)', async () => {
 		playNote('C4');
+		await loadSamplesForPendingPlays();
+
+		expect(sampler().triggerAttackRelease).toHaveBeenCalledWith('C4', '8n', undefined, 0.75);
+		expect(synth().triggerAttackRelease).not.toHaveBeenCalled();
+	});
+
+	it('falls back to the synth for a note played while samples fail to load', async () => {
+		playNote('C4');
+		await flush();
+		sampler().options.onerror(new Error('offline'));
 		await flush();
 
 		expect(synth().triggerAttackRelease).toHaveBeenCalledWith('C4', '8n', undefined, 0.75);
@@ -157,19 +180,19 @@ describe('playNote', () => {
 
 	it('normalizes display-glyph accidentals to ASCII pitches', async () => {
 		playNote('B♭3');
-		await flush();
+		await loadSamplesForPendingPlays();
 
-		expect(synth().triggerAttackRelease).toHaveBeenCalledWith('Bb3', '8n', undefined, 0.75);
+		expect(sampler().triggerAttackRelease).toHaveBeenCalledWith('Bb3', '8n', undefined, 0.75);
 	});
 
 	it('honors velocity and durationSec options', async () => {
 		playNote('C4', { velocity: 0.5, durationSec: 2 });
-		await flush();
+		await loadSamplesForPendingPlays();
 
-		expect(synth().triggerAttackRelease).toHaveBeenCalledWith('C4', 2, undefined, 0.5);
+		expect(sampler().triggerAttackRelease).toHaveBeenCalledWith('C4', 2, undefined, 0.5);
 	});
 
-	it('swaps to the sampled piano transparently once samples finish loading', async () => {
+	it('plays on the sampled piano once samples finish loading', async () => {
 		await ensureAudioReady();
 		sampler().options.onload();
 
@@ -181,31 +204,35 @@ describe('playNote', () => {
 	});
 
 	it('ignores a same-note retrigger within the 50ms spam window, then allows it again', async () => {
+		await ensureAudioReady();
+		sampler().options.onload();
 		const nowSpy = vi.spyOn(Date, 'now');
 		try {
 			nowSpy.mockReturnValue(1000);
 			playNote('C4');
 			playNote('C4');
 			await flush();
-			expect(synth().triggerAttackRelease).toHaveBeenCalledTimes(1);
+			expect(sampler().triggerAttackRelease).toHaveBeenCalledTimes(1);
 
 			nowSpy.mockReturnValue(1060);
 			playNote('C4');
 			await flush();
-			expect(synth().triggerAttackRelease).toHaveBeenCalledTimes(2);
+			expect(sampler().triggerAttackRelease).toHaveBeenCalledTimes(2);
 		} finally {
 			nowSpy.mockRestore();
 		}
 	});
 
 	it('lets two different notes sound back to back inside the window (guard is per note)', async () => {
+		await ensureAudioReady();
+		sampler().options.onload();
 		const nowSpy = vi.spyOn(Date, 'now');
 		try {
 			nowSpy.mockReturnValue(1000);
 			playNote('C4');
 			playNote('E4');
 			await flush();
-			expect(synth().triggerAttackRelease).toHaveBeenCalledTimes(2);
+			expect(sampler().triggerAttackRelease).toHaveBeenCalledTimes(2);
 		} finally {
 			nowSpy.mockRestore();
 		}
@@ -213,11 +240,18 @@ describe('playNote', () => {
 });
 
 describe('playChord', () => {
+	/** Flushes the pending Sampler into existence, loads it, and settles plays. */
+	async function loadSamplesForPendingPlays(): Promise<void> {
+		await flush();
+		sampler().options.onload();
+		await flush();
+	}
+
 	it('voices spelled letters as ascending root-position pitches at reveal velocity', async () => {
 		playChord(['C', 'E♭', 'G', 'B♭']);
-		await flush();
+		await loadSamplesForPendingPlays();
 
-		expect(synth().triggerAttackRelease).toHaveBeenCalledWith(
+		expect(sampler().triggerAttackRelease).toHaveBeenCalledWith(
 			['C4', 'Eb4', 'G4', 'Bb4'],
 			'2n',
 			undefined,
@@ -227,9 +261,9 @@ describe('playChord', () => {
 
 	it('honors velocity and durationSec options', async () => {
 		playChord(['C', 'E', 'G'], { velocity: 0.6, durationSec: 1.5 });
-		await flush();
+		await loadSamplesForPendingPlays();
 
-		expect(synth().triggerAttackRelease).toHaveBeenCalledWith(
+		expect(sampler().triggerAttackRelease).toHaveBeenCalledWith(
 			['C4', 'E4', 'G4'],
 			1.5,
 			undefined,
@@ -250,12 +284,24 @@ describe('playArpeggio', () => {
 		vi.useRealTimers();
 	});
 
+	/**
+	 * Loads the sampled piano so the awaited-instrument path in withInstrument
+	 * resolves to the sampler under fake timers. Must run before scheduling the
+	 * arpeggio; uses real timers only for the load handshake.
+	 */
+	async function preloadSampler(): Promise<void> {
+		await ensureAudioReady();
+		sampler().options.onload();
+		await flush();
+	}
+
 	it('sounds the first note synchronously, then later notes at their staggered ticks in order', async () => {
+		await preloadSampler();
 		vi.useFakeTimers();
 		try {
 			playArpeggio(['C', 'E', 'G'], { staggerMs: 260 });
 			await vi.advanceTimersByTimeAsync(0);
-			expect(synth().triggerAttackRelease).toHaveBeenNthCalledWith(
+			expect(sampler().triggerAttackRelease).toHaveBeenNthCalledWith(
 				1,
 				'C4',
 				'8n',
@@ -264,7 +310,7 @@ describe('playArpeggio', () => {
 			);
 
 			await vi.advanceTimersByTimeAsync(260);
-			expect(synth().triggerAttackRelease).toHaveBeenNthCalledWith(
+			expect(sampler().triggerAttackRelease).toHaveBeenNthCalledWith(
 				2,
 				'E4',
 				'8n',
@@ -273,7 +319,7 @@ describe('playArpeggio', () => {
 			);
 
 			await vi.advanceTimersByTimeAsync(260);
-			expect(synth().triggerAttackRelease).toHaveBeenNthCalledWith(
+			expect(sampler().triggerAttackRelease).toHaveBeenNthCalledWith(
 				3,
 				'G4',
 				'8n',
@@ -309,6 +355,7 @@ describe('playArpeggio', () => {
 	});
 
 	it('rolls a scale ascending, matching the block-strike voicing', async () => {
+		await preloadSampler();
 		vi.useFakeTimers();
 		try {
 			const notes = ['G', 'A', 'B', 'C', 'D', 'E', 'F#', 'G'];
@@ -319,7 +366,7 @@ describe('playArpeggio', () => {
 				await vi.advanceTimersByTimeAsync(260);
 			}
 
-			const played = synth().triggerAttackRelease.mock.calls.map((call) => call[0]);
+			const played = sampler().triggerAttackRelease.mock.calls.map((call) => call[0]);
 			expect(played).toEqual(['G4', 'A4', 'B4', 'C5', 'D5', 'E5', 'F#5', 'G5']);
 			expect(played).toEqual(toAscendingPitches(notes));
 		} finally {
@@ -328,15 +375,16 @@ describe('playArpeggio', () => {
 	});
 
 	it('startDelayMs offsets every attack so nothing sounds at t=0', async () => {
+		await preloadSampler();
 		vi.useFakeTimers();
 		try {
 			playArpeggio(['C', 'E', 'G'], { staggerMs: 260, startDelayMs: 260 });
 
 			await vi.advanceTimersByTimeAsync(0);
-			expect(mockTone.synths).toHaveLength(0);
+			expect(sampler().triggerAttackRelease).not.toHaveBeenCalled();
 
 			await vi.advanceTimersByTimeAsync(260);
-			expect(synth().triggerAttackRelease).toHaveBeenNthCalledWith(
+			expect(sampler().triggerAttackRelease).toHaveBeenNthCalledWith(
 				1,
 				'C4',
 				'8n',
@@ -345,7 +393,7 @@ describe('playArpeggio', () => {
 			);
 
 			await vi.advanceTimersByTimeAsync(260);
-			expect(synth().triggerAttackRelease).toHaveBeenNthCalledWith(
+			expect(sampler().triggerAttackRelease).toHaveBeenNthCalledWith(
 				2,
 				'E4',
 				'8n',
@@ -385,14 +433,23 @@ describe('study mode toggle', () => {
 });
 
 describe('noteOn / noteOff', () => {
+	/** Loads the sampled piano so held-note attacks resolve to the sampler. */
+	async function preloadSampler(): Promise<void> {
+		await ensureAudioReady();
+		sampler().options.onload();
+		await flush();
+	}
+
 	it('attacks on noteOn and releases on noteOff', async () => {
+		await preloadSampler();
+
 		noteOn('C4');
 		await flush();
-		expect(synth().triggerAttack).toHaveBeenCalledWith('C4', undefined, 0.75);
+		expect(sampler().triggerAttack).toHaveBeenCalledWith('C4', undefined, 0.75);
 
 		noteOff('C4');
 		await flush();
-		expect(synth().triggerRelease).toHaveBeenCalledWith('C4');
+		expect(sampler().triggerRelease).toHaveBeenCalledWith('C4');
 	});
 
 	it('noteOff before anything ever sounded is a silent no-op that loads no tone', async () => {
@@ -403,12 +460,14 @@ describe('noteOn / noteOff', () => {
 	});
 
 	it('soft-caps held voices at 16 by releasing the oldest before a new attack', async () => {
+		await preloadSampler();
+
 		const pitches = Array.from({ length: 17 }, (_, i) => `C${i}`);
 		for (const pitch of pitches) noteOn(pitch);
 		await flush();
 
-		expect(synth().triggerAttack).toHaveBeenCalledTimes(17);
-		expect(synth().triggerRelease).toHaveBeenCalledWith('C0');
+		expect(sampler().triggerAttack).toHaveBeenCalledTimes(17);
+		expect(sampler().triggerRelease).toHaveBeenCalledWith('C0');
 	});
 });
 
@@ -477,8 +536,10 @@ describe('sound toggle', () => {
 		setSoundEnabled(true);
 		playNote('C4');
 		await flush();
+		sampler().options.onload();
+		await flush();
 
-		expect(synth().triggerAttackRelease).toHaveBeenCalledTimes(1);
+		expect(sampler().triggerAttackRelease).toHaveBeenCalledTimes(1);
 	});
 });
 
