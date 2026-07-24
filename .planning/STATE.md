@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Hub Consolidation + Interval Theory
 status: planning
-last_updated: "2026-07-24T17:01:51.743Z"
+last_updated: "2026-07-24T18:30:00.000Z"
 last_activity: 2026-07-24
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-21)
 
 **Core value:** See a jazz chord symbol and know instantly what to play with the left hand.
-**Current focus:** Planning next milestone (v2.1 shipped 2026-07-21)
+**Current focus:** v2.2 Hub Consolidation + Interval Theory — roadmap set (6 phases, 26-31); next: plan Phase 26
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 26 - Shared IntervalView Component (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-07-24 — Milestone v2.2 started
+Status: Roadmap complete, ready to plan Phase 26
+Last activity: 2026-07-24 — v2.2 roadmap created (6 phases, 26-31)
 
 ## Performance Metrics
 
@@ -164,6 +164,7 @@ Also carried (non-artifact): phase 21 /drills hover recede-reveal eyeball; phase
 
 ### Roadmap Evolution
 
+- v2.2 roadmap created (2026-07-24): 6 phases (26-31) for Hub Consolidation + Interval Theory, continuing numbering from v2.1's Phase 25. Phase 26 Shared IntervalView (foundational); Phase 27 Practice hub — one smart interleaved session (highest-risk, generators-as-modules constraint); Phase 28 Learn hub (theory + Scales Explore + interval reference); Phase 29 Progress hub (stats/streak/review-map/songs); Phase 30 four-hub nav cutover + 8 redirect shims + showcase deletion; Phase 31 no-regression gate + test remap. 16 requirements mapped 1:1, full coverage. UI + routing restructure only — no data-schema migration, no new theory data source.
 - Phase 21 added: Drills Polish — prevent duplicate song selection; make practice-pool container discrete (desktop hover reveal) + persist enabled state; replay played chord as a full chord for memorization.
 - Phase 22 added: Installable PWA — native SvelteKit service worker for offline app-shell caching, mobile installability (Android + iOS add-to-home-screen polish), and a new-version update prompt. Samples excluded from install precache.
 - Phase 23 added: Phase-First UX for Phone — bottom tab bar nav (1A), Drills question-first reflow with folded chrome (1B), glanceable+actionable Progress with 7-day strip and inline accuracy bars (1C). Phone-first; desktop mostly unchanged. Source spec: UX Improvements.dc.html.
@@ -371,4 +372,4 @@ None
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Plan the first phase with /gsd-plan-phase 26

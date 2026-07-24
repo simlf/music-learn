@@ -54,4 +54,19 @@
 
 | REQ-ID | Phase |
 |--------|-------|
-| _(filled by roadmap)_ | |
+| HUB-01 | Phase 30 |
+| HUB-02 | Phase 30 |
+| HUB-03 | Phase 30 |
+| IVW-01 | Phase 26 |
+| IVW-02 | Phase 26 |
+| IVW-03 | Phase 26 |
+| PRAC-01 | Phase 27 |
+| PRAC-02 | Phase 27 |
+| PRAC-03 | Phase 27 |
+| PRAC-04 | Phase 27 |
+| PRAC-05 | Phase 27 |
+| LEARN-01 | Phase 28 |
+| LEARN-02 | Phase 28 |
+| PROG-01 | Phase 29 |
+| REG-01 | Phase 31 |
+| REG-02 | Phase 31 |
