@@ -146,6 +146,12 @@ describe('lookup page dual naming and interval formula', () => {
 		const button = screen.getByRole('button', { name: /stamp/i });
 		await fireEvent.click(button);
 
+		// IntervalView (Phase 26) defaults to the stacked-thirds view; the
+		// interval-formula testid only mounts after switching the toggle to
+		// Formula, which reproduces the original row this test was written
+		// against (R/m3/P5/m7 labels).
+		await fireEvent.click(screen.getByRole('button', { name: 'Formula view' }));
+
 		const formula = screen.getByTestId('interval-formula');
 		expect(within(formula).getByText('R')).toBeInTheDocument();
 		expect(within(formula).getByText('m3')).toBeInTheDocument();
@@ -378,6 +384,10 @@ describe('lookup page interval register (Track C)', () => {
 
 		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'Cm7' } });
 		await fireEvent.click(screen.getByRole('button', { name: /stamp/i }));
+
+		// Switch to the Formula view (IntervalView defaults to stacked) so the
+		// `m3` label under test is the tone chip, not a stacked-view gap marker.
+		await fireEvent.click(screen.getByRole('button', { name: 'Formula view' }));
 
 		const formula = screen.getByTestId('interval-formula');
 		const chip = within(formula).getByText('m3');
