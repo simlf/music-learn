@@ -80,9 +80,14 @@ Full phase details for everything shipped through v2.1: [milestones/v2.1-ROADMAP
   2. The user can toggle the same chord to a formula view of intervals-from-root (e.g. `Cm7 = R, ♭3, 5, ♭7`).
   3. Solfège labels carry their accidentals through in both views (e.g. `E♭` renders as `Mi♭`).
   4. The view is one reusable component driven only by the chord's existing `tonal` intervals — no new theory data source is added.
-**Plans**: TBD
+**Plans**: 4 plans (waves 1-3)
+Plans:
+- [ ] 26-01-PLAN.md — Pure `stackedThirdsFor` derivation + unit tests (per-quality gap patterns + E♭→Mi♭ carry-through) [wave 1]
+- [ ] 26-02-PLAN.md — `interval-view` i18n keys (EN/FR toggle + aria labels), merged into the catalog [wave 1]
+- [ ] 26-03-PLAN.md — `IntervalView.svelte` shared component + component test (stacked default, formula toggle, gap-vs-chip, inspect passthrough) [wave 2]
+- [ ] 26-04-PLAN.md — Lookup integration (REG-01 drop-in) + regression test retarget [wave 3]
 **UI hint**: yes
-**Notes**: Foundational per design — sequence first so the Learn hub (Phase 28) can embed the same shared component as an interval reference block (IVW-03 + LEARN-01). Pure presentation; REG-01 binding (Lookup's existing decode behavior stays unchanged). Reuses the corrected solfège accidental carry-through (`letterToSolfege`).
+**Notes**: Foundational per design — sequence first so the Learn hub (Phase 28) can embed the same shared component as an interval reference block (IVW-03 + LEARN-01). Pure presentation; REG-01 binding (Lookup's existing decode behavior stays unchanged). Reuses the corrected solfège accidental carry-through (`letterToSolfege`). Planner note: formula-view chip labels use the app's actual interval-quality shorthand (`R, m3, P5, m7`), NOT the design doc's illustrative scale-degree notation (`R, ♭3, 5, ♭7`) — REG-01 mandates byte-identical reproduction of today's row; only gap markers (`+m3`/`+M3`) use the design's notation.
 
 ### Phase 27: Practice Hub — One Smart Interleaved Session
 **Goal**: A single "Start practice" action runs one FSRS-scheduled session that interleaves every drill type in a single queue.
