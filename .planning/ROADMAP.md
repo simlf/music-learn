@@ -83,12 +83,12 @@ Full phase details for everything shipped through v2.1: [milestones/v2.1-ROADMAP
   3. Solfège labels carry their accidentals through in both views (e.g. `E♭` renders as `Mi♭`).
   4. The view is one reusable component driven only by the chord's existing `tonal` intervals — no new theory data source is added.
 
-**Plans**: 2/4 plans executed
+**Plans**: 3/4 plans executed
 Plans:
 
 - [x] 26-01-PLAN.md — Pure `stackedThirdsFor` derivation + unit tests (per-quality gap patterns + E♭→Mi♭ carry-through) [wave 1]
 - [x] 26-02-PLAN.md — `interval-view` i18n keys (EN/FR toggle + aria labels), merged into the catalog [wave 1]
-- [ ] 26-03-PLAN.md — `IntervalView.svelte` shared component + component test (stacked default, formula toggle, gap-vs-chip, inspect passthrough) [wave 2]
+- [x] 26-03-PLAN.md — `IntervalView.svelte` shared component + component test (stacked default, formula toggle, gap-vs-chip, inspect passthrough) [wave 2]
 - [ ] 26-04-PLAN.md — Lookup integration (REG-01 drop-in) + regression test retarget [wave 3]
 
 **UI hint**: yes
