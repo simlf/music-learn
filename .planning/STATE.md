@@ -5,15 +5,15 @@ milestone_name: Hub Consolidation + Interval Theory
 current_phase: 27
 current_phase_name: Practice Hub — One Smart Interleaved Session
 status: executing
-stopped_at: Completed 27-01-PLAN.md
-last_updated: "2026-07-24T23:29:19.381Z"
+stopped_at: Completed 27-02-PLAN.md
+last_updated: "2026-07-24T23:39:47.879Z"
 last_activity: 2026-07-24
 last_activity_desc: Phase 26 complete, transitioned to Phase 27
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 9
-  completed_plans: 5
+  completed_plans: 6
   percent: 17
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-21)
 ## Current Position
 
 Phase: 27 — Practice Hub — One Smart Interleaved Session
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-07-24 — Phase 26 complete, transitioned to Phase 27
 
@@ -154,6 +154,7 @@ Last activity: 2026-07-24 — Phase 26 complete, transitioned to Phase 27
 | Phase 26 P03 | 6min | 2 tasks | 2 files |
 | Phase 26 P04 | 13min | 2 tasks | 3 files |
 | Phase 27 P01 | 5min | 2 tasks | 2 files |
+| Phase 27-practice-hub P02 | 15min | 2 tasks | 5 files |
 
 ## Deferred Items
 
@@ -346,6 +347,7 @@ Recent decisions affecting current work:
 - [Phase 26-04]: IntervalView's toggle Button carries an aria-label distinct from its visible text; e2e toggle clicks target the aria-label accessible name — getByRole resolves accessible name via aria-label, not rendered text
 - [Phase 27]: [Phase 27-01]: composePracticeQueue groups items into one FIFO queue per family and greedily emits, preferring the family with the most remaining items among those that would not extend a same-family run to 3 -- mirrors interleaveQueue's scarcest-breaks-last preference, re-expressed over PracticeFamily instead of chord root
 - [Phase 27]: [Phase 27-01]: Single-family input to composePracticeQueue short-circuits to an identity pass-through rather than entering the weave loop, guaranteeing PRAC-05's single-type-due gate by construction
+- [Phase ?]: [Phase 27-02]: ShellVoicingDrill/ProgressionDrill embed seams read embedSymbol/embedTemplateId+embedKey once via untrack() into init-time state (mirrors BuildSession embedFact), gating only the round-end advance affordance on onComplete presence
 
 ### Pending Todos
 
@@ -383,10 +385,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-24T23:29:19.374Z
-Stopped at: Completed 27-01-PLAN.md
+Last session: 2026-07-24T23:39:47.873Z
+Stopped at: Completed 27-02-PLAN.md
 Resume file: 
-
-None
 
 - Plan the first phase with /gsd-plan-phase 26

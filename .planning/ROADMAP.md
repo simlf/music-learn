@@ -107,10 +107,10 @@ Plans:
   4. With the song filter on, the Practice queue surfaces only questions drawn from the user's songs.
   5. When only one drill type is due, the session surfaces only that type — no artificial variety is injected (single-type-due gate).
 
-**Plans**: 1/5 plans executed
+**Plans**: 2/5 plans executed
 
 - [x] 27-01-PLAN.md — Pure practiceQueue.ts composer (hybrid FSRS + synthetic items, single-type-due gate, song-filter helpers) + queue tests
-- [ ] 27-02-PLAN.md — Embed seams on ShellVoicingDrill + ProgressionDrill (voicing/progression drivable from the queue) + tests
+- [x] 27-02-PLAN.md — Embed seams on ShellVoicingDrill + ProgressionDrill (voicing/progression drivable from the queue) + tests
 - [ ] 27-03-PLAN.md — New family components PracticeChordDrill (name-it) + PracticeIntervalDrill (intervals) + tests
 - [ ] 27-04-PLAN.md — Thin /practice host: load/compose, pre-start "Start practice", empty tiers, carded-family session, family cue, FSRS grade commit, end-card, i18n
 - [ ] 27-05-PLAN.md — Weave synthetic voicing/progression families into the host + full REG-02 five-family e2e (interleaving, single-type-due gate, song-filter steering, grade-commit split)
