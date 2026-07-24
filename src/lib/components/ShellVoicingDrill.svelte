@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { Note } from 'tonal';
 	import {
 		fullStackNotes,
@@ -34,6 +35,25 @@
 	 * against 25-02's note-subset exports.
 	 */
 
+	/**
+	 * Embedding seam (27-02): when `embedSymbol` is provided, the drill's
+	 * active chord is that symbol instead of a fresh drawSymbol() draw - the
+	 * stage is still derived internally from that symbol's own deck read
+	 * (voicingStageForChord unchanged, REG-01). `onComplete` (when provided
+	 * alongside) replaces the standalone "Next" fresh-draw behavior: the same
+	 * moment the standalone flow would draw a new chord, the embedded
+	 * component instead calls onComplete() and leaves its own state
+	 * (including the reveal) untouched, mirroring BuildSession's
+	 * embedFact/onComplete precedent. Omitting both props leaves every
+	 * render byte-identical to this component's pre-embedding behavior.
+	 */
+	interface Props {
+		embedSymbol?: string;
+		onComplete?: () => void;
+	}
+
+	let { embedSymbol, onComplete }: Props = $props();
+
 	type VoicingStyle = 'root' | 'shell' | 'rootless';
 
 	/** Draws a fresh 7th-chord symbol from the shared fact catalog's seventh-bearing family (25-02). */
@@ -42,7 +62,10 @@
 		return symbols[Math.floor(Math.random() * symbols.length)];
 	}
 
-	let symbol = $state(drawSymbol());
+	// embedSymbol is read once via untrack (mirrors BuildSession's embedFact
+	// read): a deliberate init-time snapshot, not a reactive dependency - when
+	// present, drawSymbol() is never called, per REG-01/T-27-02-01.
+	let symbol = $state(untrack(() => embedSymbol ?? drawSymbol()));
 	const chord = $derived(spellChord(symbol));
 
 	let cards = $state<CardRecord[]>([]);
@@ -184,8 +207,17 @@
 		}
 	}
 
-	/** Next: draws a fresh chord and fully resets the per-question state. */
+	/**
+	 * Next: draws a fresh chord and fully resets the per-question state. When
+	 * embedded (onComplete provided), the round is over: call onComplete()
+	 * instead and leave the current reveal/state untouched (27-02) - the host
+	 * owns advancing to the next queue item, not a fresh drawSymbol() draw.
+	 */
 	function next() {
+		if (onComplete) {
+			onComplete();
+			return;
+		}
 		symbol = drawSymbol();
 		selected = new Set();
 		answered = false;
