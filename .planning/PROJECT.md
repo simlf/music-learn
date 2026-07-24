@@ -16,9 +16,22 @@ Chord symbol fluency: see a jazz chord symbol like `Cm7` or `F♯ø7` in sheet m
 
 **Previous milestones:** v1.0 Chord Fluency Core (shipped 2026-07-13), v2.0 Learning Upgrade (shipped 2026-07-15). History: `.planning/milestones/` and MILESTONES.md.
 
+## Current Milestone: v2.2 Hub Consolidation + Interval Theory
+
+**Goal:** Collapse 10 flat routes into 4 clear hubs and add a shared interval view so any chord shows both its stacked-thirds and its formula, with no regression in drills, SRS, stats, or song filtering.
+
+**Target features:**
+- 4-hub navigation (Lookup / Practice / Learn / Progress) replacing 10 flat links, on desktop nav and phone tab bar; showcase route deleted; old routes become thin redirect shims for one release.
+- Shared IntervalView component (stacked-thirds default + formula toggle), embedded in both Lookup and Learn, computed from existing tonal chord data.
+- Practice hub: one smart SRS session hosting all five drill generators (name-it, build-it, voicings, intervals, progressions) in a single interleaved queue, no mode-picker, song filter still steers, single-type-due quality gate.
+- Learn hub: theory lessons merged with Scales Explore content + interval reference.
+- Progress hub: progress + recall + songs merged into one surface.
+
+**Source:** approved design at `docs/superpowers/specs/2026-07-24-hub-consolidation-design.md`. UI + routing restructure only — no data-schema migration, no new theory data source.
+
 ## Next Milestone Goals
 
-Not yet defined — run `/gsd-new-milestone`. Candidates on the table:
+Candidates for after v2.2:
 - Phase 4 carry-over: MIDI play-to-answer (needs hardware-in-the-loop)
 - `.planning/v2.1-IMPROVEMENT-BACKLOG.md` items (e.g. sketch 018 tempo-fluency metronome drill I-03)
 - Deferred on-device verification batch
@@ -106,4 +119,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-21 after v2.1 milestone*
+*Last updated: 2026-07-24 — v2.2 Hub Consolidation + Interval Theory milestone started*

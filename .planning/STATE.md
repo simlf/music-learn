@@ -1,20 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.1
-milestone_name: Playability & Comprehension
-current_phase: 1
-status: Awaiting next milestone
-stopped_at: Completed 25-07-PLAN.md
-last_updated: "2026-07-21T20:05:15.877Z"
-last_activity: 2026-07-21
-last_activity_desc: Milestone v2.1 completed and archived
+milestone: v2.2
+milestone_name: Hub Consolidation + Interval Theory
+status: planning
+last_updated: "2026-07-24T17:01:51.743Z"
+last_activity: 2026-07-24
 progress:
-  total_phases: 24
-  completed_phases: 20
-  total_plans: 98
-  completed_plans: 98
-  percent: 83
-current_phase_name: contextual-learning-from-session-6-sketches-progression-dril
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -28,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-07-21)
 
 ## Current Position
 
-Phase: Milestone v2.1 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-07-21 — Milestone v2.1 completed and archived
+Status: Defining requirements
+Last activity: 2026-07-24 — Milestone v2.2 started
 
 ## Performance Metrics
 
