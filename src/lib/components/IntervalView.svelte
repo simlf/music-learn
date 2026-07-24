@@ -36,11 +36,15 @@
 	/**
 	 * Display label for a tone chip: formula's own label ("R", "m3", "P5",
 	 * "m7") except the root tone in stacked mode, which displays as the
-	 * lowercase word "root" (display-only override — never mutates
-	 * FormulaEntry/stackedThirdsFor's data).
+	 * localized word for "root" (WR-01 fix: routed through t() so it flips to
+	 * "fondamentale" under fr, matching every other piece of chrome around
+	 * it — display-only override, never mutates FormulaEntry/
+	 * stackedThirdsFor's data). The formula view's root label stays the
+	 * literal "R" (byte-identical to today, REG-01) because this branch only
+	 * fires when view === 'stacked'.
 	 */
 	function displayLabel(entry: FormulaEntry): string {
-		if (view === 'stacked' && entry.role === 'root') return 'root';
+		if (view === 'stacked' && entry.role === 'root') return t('interval-view.tone.root');
 		return entry.label;
 	}
 </script>

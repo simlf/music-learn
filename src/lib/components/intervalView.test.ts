@@ -125,6 +125,23 @@ describe('IntervalView dual naming + accidental carry-through (IVW-03)', () => {
 	});
 });
 
+describe('IntervalView stacked root-label i18n (WR-01)', () => {
+	it('the stacked-view root chip flips to "fondamentale" under fr and back to "root" under en', () => {
+		render(IntervalView, { chord: cm7, onInspectTone: vi.fn() });
+
+		const view = screen.getByTestId('interval-view');
+		const stacked = within(view).getByTestId('interval-stacked');
+		expect(within(stacked).getByText('root')).toBeInTheDocument();
+
+		flushSync(() => setLocale('fr'));
+		expect(within(stacked).getByText('fondamentale')).toBeInTheDocument();
+		expect(within(stacked).queryByText('root')).not.toBeInTheDocument();
+
+		flushSync(() => setLocale('en'));
+		expect(within(stacked).getByText('root')).toBeInTheDocument();
+	});
+});
+
 describe('IntervalView toggle i18n + chrome (IVW-02)', () => {
 	it('default en toggle labels are Stacked/Formula; fr flips to Empile/Formule and the group aria-label to Vue des intervalles', () => {
 		render(IntervalView, { chord: cm7, onInspectTone: vi.fn() });

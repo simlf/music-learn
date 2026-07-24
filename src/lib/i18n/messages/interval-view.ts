@@ -16,13 +16,15 @@ export const intervalView = {
 		'interval-view.toggle.stacked': 'Stacked',
 		'interval-view.toggle.formula': 'Formula',
 		'interval-view.aria.stacked': 'Stacked-thirds view',
-		'interval-view.aria.formula': 'Formula view'
+		'interval-view.aria.formula': 'Formula view',
+		'interval-view.tone.root': 'root'
 	},
 	fr: {
 		'interval-view.aria.group': 'Vue des intervalles',
 		'interval-view.toggle.stacked': 'Empilé',
 		'interval-view.toggle.formula': 'Formule',
 		'interval-view.aria.stacked': 'Vue empilée en tierces',
-		'interval-view.aria.formula': 'Vue formule'
+		'interval-view.aria.formula': 'Vue formule',
+		'interval-view.tone.root': 'fondamentale'
 	}
 } satisfies LocaleDict;
