@@ -11,6 +11,7 @@ import { progress } from './messages/progress';
 import { home } from './messages/home';
 import { progressions } from './messages/progressions';
 import { voicings } from './messages/voicings';
+import { intervalView } from './messages/interval-view';
 import { setLocale, t } from './locale.svelte';
 
 /**
@@ -61,7 +62,8 @@ describe('domain dictionary key collisions (I18N-02)', () => {
 		['progress', progress.en],
 		['home', home.en],
 		['progressions', progressions.en],
-		['voicings', voicings.en]
+		['voicings', voicings.en],
+		['interval-view', intervalView.en]
 	];
 
 	it('has no key defined by more than one domain dictionary', () => {
