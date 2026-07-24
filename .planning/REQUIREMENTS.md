@@ -13,9 +13,9 @@
 
 ### Interval View (IVW)
 
-- [ ] **IVW-01**: For any chord, the user can see its **stacked-thirds** bottom-up adjacent gaps (e.g. `Cm7 = root +m3 ♭3 +M3 5 +m3 ♭7`), rendered by default, computed from the chord's existing `tonal` intervals with no new data.
+- [x] **IVW-01**: For any chord, the user can see its **stacked-thirds** bottom-up adjacent gaps (e.g. `Cm7 = root +m3 ♭3 +M3 5 +m3 ♭7`), rendered by default, computed from the chord's existing `tonal` intervals with no new data.
 - [ ] **IVW-02**: The user can toggle the same chord to a **formula** view of intervals-from-root (e.g. `Cm7 = R, ♭3, 5, ♭7`).
-- [ ] **IVW-03**: The interval view is a single shared component embedded in both the Lookup hub (per looked-up chord) and the Learn hub (as an interval reference block), and its solfège carries accidentals through (e.g. `Mi♭`).
+- [x] **IVW-03**: The interval view is a single shared component embedded in both the Lookup hub (per looked-up chord) and the Learn hub (as an interval reference block), and its solfège carries accidentals through (e.g. `Mi♭`).
 
 ### Practice Hub (PRAC)
 

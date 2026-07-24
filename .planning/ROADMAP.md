@@ -72,84 +72,104 @@ Full phase details for everything shipped through v2.1: [milestones/v2.1-ROADMAP
 ## Phase Details
 
 ### Phase 26: Shared IntervalView Component
+
 **Goal**: Any looked-up chord reveals its interval structure two ways, computed from the chord's existing `tonal` data.
 **Depends on**: Nothing (first phase of the milestone)
 **Requirements**: IVW-01, IVW-02, IVW-03
 **Success Criteria** (what must be TRUE):
+
   1. For any looked-up chord in Lookup, the user sees its stacked-thirds bottom-up adjacent gaps by default (e.g. `Cm7 = root +m3 ♭3 +M3 5 +m3 ♭7`).
   2. The user can toggle the same chord to a formula view of intervals-from-root (e.g. `Cm7 = R, ♭3, 5, ♭7`).
   3. Solfège labels carry their accidentals through in both views (e.g. `E♭` renders as `Mi♭`).
   4. The view is one reusable component driven only by the chord's existing `tonal` intervals — no new theory data source is added.
-**Plans**: 4 plans (waves 1-3)
+
+**Plans**: 1/4 plans executed
 Plans:
-- [ ] 26-01-PLAN.md — Pure `stackedThirdsFor` derivation + unit tests (per-quality gap patterns + E♭→Mi♭ carry-through) [wave 1]
+
+- [x] 26-01-PLAN.md — Pure `stackedThirdsFor` derivation + unit tests (per-quality gap patterns + E♭→Mi♭ carry-through) [wave 1]
 - [ ] 26-02-PLAN.md — `interval-view` i18n keys (EN/FR toggle + aria labels), merged into the catalog [wave 1]
 - [ ] 26-03-PLAN.md — `IntervalView.svelte` shared component + component test (stacked default, formula toggle, gap-vs-chip, inspect passthrough) [wave 2]
 - [ ] 26-04-PLAN.md — Lookup integration (REG-01 drop-in) + regression test retarget [wave 3]
+
 **UI hint**: yes
 **Notes**: Foundational per design — sequence first so the Learn hub (Phase 28) can embed the same shared component as an interval reference block (IVW-03 + LEARN-01). Pure presentation; REG-01 binding (Lookup's existing decode behavior stays unchanged). Reuses the corrected solfège accidental carry-through (`letterToSolfege`). Planner note: formula-view chip labels use the app's actual interval-quality shorthand (`R, m3, P5, m7`), NOT the design doc's illustrative scale-degree notation (`R, ♭3, 5, ♭7`) — REG-01 mandates byte-identical reproduction of today's row; only gap markers (`+m3`/`+M3`) use the design's notation.
 
 ### Phase 27: Practice Hub — One Smart Interleaved Session
+
 **Goal**: A single "Start practice" action runs one FSRS-scheduled session that interleaves every drill type in a single queue.
 **Depends on**: Nothing new (the existing `/drills` engine is the host)
 **Requirements**: PRAC-01, PRAC-02, PRAC-03, PRAC-04, PRAC-05
 **Success Criteria** (what must be TRUE):
+
   1. From the Practice hub the user starts practice with a single "Start practice" action — there is no mode-picker grid.
   2. One session interleaves questions from all five generators (name-it, build-it, voicings, intervals, progressions) in a single queue.
   3. The queue is ordered by the FSRS scheduler weighting due-date and weakness, with the existing tiers, grading, and telemetry preserved.
   4. With the song filter on, the Practice queue surfaces only questions drawn from the user's songs.
   5. When only one drill type is due, the session surfaces only that type — no artificial variety is injected (single-type-due gate).
+
 **Plans**: TBD
 **UI hint**: yes
 **Notes**: HIGHEST-RISK phase. Structural constraint (design §Practice hub): the five drill generators MUST stay as separate modules feeding one queue; the `/drills` host page (`+page.svelte`, already ~1380 lines) must NOT balloon into a monster file. REG-01 binding: existing drill grading, tiers, telemetry, SRS scheduling, and song-filter behavior must be preserved exactly — only the hosting and entry point change. The song filter preference already exists (moved to Songs by quick task 260720-v9u); this phase consumes it, Progress (Phase 29) relocates its management UI.
 
 ### Phase 28: Learn Hub — Theory + Scales Explore + Interval Reference
+
 **Goal**: One Learn surface where the user reads shape-first theory, explores the major scale, and references chord intervals.
 **Depends on**: Phase 26 (shared IntervalView reference block), Phase 27 (Scales "Practice" relocated to the Practice hub)
 **Requirements**: LEARN-01, LEARN-02
 **Success Criteria** (what must be TRUE):
+
   1. The Learn hub shows the existing shape-first theory lessons and the Scales "Explore" content (major-scale degrees/intervals) together on one surface.
   2. The shared IntervalView appears in Learn as an interval reference block.
   3. The Scales "Practice" drill is reached through the Practice hub, and Learn shows only "Explore."
+
 **Plans**: TBD
 **UI hint**: yes
 **Notes**: Reuses the Phase 26 IntervalView instance (IVW-03 — one shared component, not a second copy). REG-01 binding: theory lesson content and its handoff into drills, plus scale Explore behavior, stay unchanged; only their location moves.
 
 ### Phase 29: Progress Hub — Stats, Streak, Review Map, Songs
+
 **Goal**: One Progress surface presenting stats, streak, weak spots, the SRS review map, and song management.
 **Depends on**: Nothing new (relocates the existing progress / recall / songs surfaces)
 **Requirements**: PROG-01
 **Success Criteria** (what must be TRUE):
+
   1. The Progress hub shows stats, streak, and weak spots (the former `progress` route).
   2. The Progress hub shows the SRS review map (the former `recall` route).
   3. The Progress hub shows song management, including the From-my-songs filter (the former `songs` route).
   4. All three formerly separate surfaces are reachable from the one Progress surface.
+
 **Plans**: TBD
 **UI hint**: yes
 **Notes**: REG-01 binding: stats/streak computation, review-map data, and the song-filter preference all behave exactly as before; only their display location moves. The song filter surfaced here is the same preference the Practice queue reads (PRAC-04).
 
 ### Phase 30: Four-Hub Nav Cutover + Redirect Shims
+
 **Goal**: The app presents exactly 4 hubs everywhere; old bookmarks and deep-links still land correctly; the orphan route is removed.
 **Depends on**: Phases 26, 27, 28, 29 (all hub content must exist before nav flips and old routes become shims)
 **Requirements**: HUB-01, HUB-02, HUB-03
 **Success Criteria** (what must be TRUE):
+
   1. The desktop nav shows exactly 4 hubs (Lookup, Practice, Learn, Progress), replacing the 10 flat links.
   2. The phone tab bar shows the same 4 hubs, and the "More" bottom sheet is gone.
   3. Visiting any of the 8 old routes (`/drills`, `/scales`, `/voicings`, `/build`, `/progressions`, `/recall`, `/songs`, `/theory`) redirects to the hub that now owns it.
   4. The orphan `/showcase` route no longer exists.
+
 **Plans**: TBD
 **UI hint**: yes
 **Notes**: Design guidance — the thin, one-release redirect shims are grouped with the nav restructure as a no-regression safety net for existing bookmarks/deep-links. Removing the shims is a deferred follow-up (out of scope this milestone). `/scales` redirects to Learn (which owns "Explore"); its "Practice" tab already moved to the Practice hub in Phase 28.
 
 ### Phase 31: No-Regression Gate & Test Remap
+
 **Goal**: The whole restructure ships green — every prior behavior intact, every route's tests remapped to its absorbing hub, new tests covering the merges.
 **Depends on**: Phase 30 (the full restructure must be in place)
 **Requirements**: REG-01, REG-02
 **Success Criteria** (what must be TRUE):
+
   1. Existing drills, SRS scheduling, progress/streak stats, and song-filter behavior work exactly as they did before the restructure.
   2. Each old route's test file is remapped to the absorbing hub, with no orphaned or duplicated coverage.
   3. New tests cover the merged Practice queue interleaving (including the single-type-due gate), the IntervalView (stacked vs formula per chord quality plus accidental carry-through), and each redirect shim.
   4. The full test suite and `svelte-check` both pass with zero errors.
+
 **Plans**: TBD
 **Notes**: REG-01 and REG-02 are binding constraints throughout Phases 26-30 (each merge phase preserves behavior and remaps its own route's tests as it goes). This phase is the milestone-wide green gate that consolidates the remapped suite and confirms no behavior regression across all four hubs. No UI (verification/test phase).
 
