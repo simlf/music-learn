@@ -1,3 +1,4 @@
+import { Rating } from '$lib/srs/scheduler';
 import type { CardRecord, Mode, FactKind } from '$lib/srs/deck';
 import { factById } from '$lib/srs/facts';
 import { seventhChordSymbols, voicingStageForChord, type VoicingStage } from './shellVoicing';
@@ -185,4 +186,170 @@ export function syntheticProgressionItems(
 		});
 	}
 	return items;
+}
+
+/**
+ * Weaves `cardedItems` and `syntheticItems` into one interleaved queue: a
+ * permutation of every input item (none dropped or duplicated), preserving
+ * each family's own within-list relative order, and avoiding a single
+ * family running 3-in-a-row when 2+ families are present. With a single
+ * family present, returns that family's items unchanged (PRAC-05's
+ * single-type-due gate: no artificial variety injection, no padding).
+ *
+ * Algorithm mirrors srs/rotation.ts's interleaveQueue greedy-with-relaxation
+ * pattern, re-expressed locally over PracticeFamily instead of chord root:
+ * group items into one FIFO queue per family (preserving arrival order),
+ * shuffle the family iteration order once via the injected rng (tie-break
+ * baseline, matching interleaveQueue's own shuffle-then-greedy convention),
+ * then greedily emit one item at a time - among families whose next pick
+ * would NOT extend the trailing same-family run to 3, prefer the family
+ * with the MOST items remaining (spend the scarcest family's items last, so
+ * a heavily family-skewed queue doesn't dead-end into an unavoidable
+ * 3-in-a-row later). If no family satisfies that constraint (a genuinely
+ * infeasible composition), relax to any family different from the trailing
+ * one, or failing that (a single remaining family) whichever family still
+ * has items - so the pass always terminates (T-27-01-01) rather than
+ * looping forever.
+ */
+export function composePracticeQueue(
+	cardedItems: HybridQueueItem[],
+	syntheticItems: HybridQueueItem[],
+	rng: () => number = Math.random
+): HybridQueueItem[] {
+	const all = [...cardedItems, ...syntheticItems];
+
+	const byFamily = new Map<PracticeFamily, HybridQueueItem[]>();
+	for (const item of all) {
+		const list = byFamily.get(item.family);
+		if (list) {
+			list.push(item);
+		} else {
+			byFamily.set(item.family, [item]);
+		}
+	}
+
+	if (byFamily.size <= 1) return all;
+
+	const familyOrder = shuffleWithRng([...byFamily.keys()], rng);
+	const output: HybridQueueItem[] = [];
+	let trailingFamily: PracticeFamily | undefined;
+	let trailingRun = 0;
+
+	while (output.length < all.length) {
+		let bestFamily: PracticeFamily | undefined;
+		let bestScore = -1;
+		for (const family of familyOrder) {
+			const items = byFamily.get(family);
+			if (items === undefined || items.length === 0) continue;
+			const wouldExtendRunTo3 = family === trailingFamily && trailingRun >= 2;
+			if (wouldExtendRunTo3) continue;
+			const score = items.length;
+			if (score > bestScore) {
+				bestScore = score;
+				bestFamily = family;
+			}
+		}
+
+		if (bestFamily === undefined) {
+			// Relax: no family satisfies the no-3-in-a-row constraint. Prefer a
+			// family different from the trailing one; failing that (a single
+			// remaining family), pick whichever family still has items so the
+			// loop always terminates.
+			bestFamily = familyOrder.find((family) => {
+				const items = byFamily.get(family);
+				return items !== undefined && items.length > 0 && family !== trailingFamily;
+			});
+			if (bestFamily === undefined) {
+				bestFamily = familyOrder.find((family) => {
+					const items = byFamily.get(family);
+					return items !== undefined && items.length > 0;
+				});
+			}
+		}
+
+		// Unreachable while output.length < all.length: some family always has
+		// remaining items, so bestFamily is always found above.
+		/* istanbul ignore next */
+		if (bestFamily === undefined) break;
+
+		const items = byFamily.get(bestFamily);
+		/* istanbul ignore next */
+		if (items === undefined) break;
+		const next = items.shift();
+		/* istanbul ignore next */
+		if (next === undefined) break;
+		output.push(next);
+
+		if (bestFamily === trailingFamily) {
+			trailingRun += 1;
+		} else {
+			trailingFamily = bestFamily;
+			trailingRun = 1;
+		}
+	}
+
+	return output;
+}
+
+/** True for the three FSRS-backed families (a CardedQueueItem), false for synthetic ones. */
+function isCardedItem(item: HybridQueueItem): item is CardedQueueItem {
+	return item.family === 'name-it' || item.family === 'build-it' || item.family === 'interval';
+}
+
+/**
+ * Removes the front item of `queue`. Mirrors srs/session.ts's advanceQueue
+ * D-10 contract: re-enqueues the front item to the back only when it is a
+ * CardedQueueItem AND `outcome === Rating.Again`; every synthetic item and
+ * every non-Again outcome is consumed without re-enqueue. Never mutates the
+ * input array - always returns a new one.
+ */
+export function advanceHybridQueue(queue: HybridQueueItem[], outcome: Rating): HybridQueueItem[] {
+	if (queue.length === 0) return queue;
+	const [current, ...rest] = queue;
+	if (isCardedItem(current) && outcome === Rating.Again) {
+		return [...rest, current];
+	}
+	return rest;
+}
+
+/**
+ * Mirrors RecallSession.svelte's applySongFilter contract for the carded
+ * half of the queue (SONG-02/PRAC-04): keeps only name-it/build-it items
+ * whose symbol satisfies `predicate`, dropping interval items (they have no
+ * chord symbol to match) and any non-matching chord. Caller only invokes
+ * this when the filter is ON and the provenance index is non-empty.
+ */
+export function filterCardedBySong(
+	items: CardedQueueItem[],
+	predicate: (symbol: string) => boolean
+): CardedQueueItem[] {
+	return items.filter(
+		(item) =>
+			(item.family === 'name-it' || item.family === 'build-it') &&
+			item.symbol !== undefined &&
+			predicate(item.symbol)
+	);
+}
+
+/** Keeps only voicing items whose symbol satisfies `predicate` (PRAC-04's synthetic-half restriction). */
+export function filterVoicingsBySong(
+	items: VoicingQueueItem[],
+	predicate: (symbol: string) => boolean
+): VoicingQueueItem[] {
+	return items.filter((item) => predicate(item.symbol));
+}
+
+/** The set of practice families present in `queue`. */
+export function familiesInQueue(queue: HybridQueueItem[]): Set<PracticeFamily> {
+	return new Set(queue.map((item) => item.family));
+}
+
+/** True once the queue has no items left to grade/consume. Mirrors srs/session.ts's isSessionComplete. */
+export function isHybridSessionComplete(queue: HybridQueueItem[]): boolean {
+	return queue.length === 0;
+}
+
+/** The "N LEFT" remaining-items count. Mirrors srs/session.ts's sessionRemaining. */
+export function hybridSessionRemaining(queue: HybridQueueItem[]): number {
+	return queue.length;
 }
