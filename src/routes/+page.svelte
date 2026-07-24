@@ -7,17 +7,12 @@
 	import { detectCasingAmbiguity, type CasingAmbiguity } from '$lib/lookup/casingAmbiguity';
 	import { ensureAudioReady, playChord, playNote } from '$lib/audio/audio';
 	import { intervalFromRoot, toAsciiAccidentals } from '$lib/theory/interval';
-	import {
-		formulaFor,
-		aliasLine,
-		displaySymbol,
-		type FormulaEntry
-	} from '$lib/lookup/chordPresentation';
+	import { aliasLine, displaySymbol, type FormulaEntry } from '$lib/lookup/chordPresentation';
 	import { getRecentLookups, addRecentLookup } from '$lib/lookup/recentLookups';
 	import type { ChordResult } from '$lib/theory/types';
 	import PianoKeyboard, { type InspectPayload } from '$lib/components/PianoKeyboard.svelte';
 	import ChordGlyph from '$lib/components/ChordGlyph.svelte';
-	import IntervalChip from '$lib/components/IntervalChip.svelte';
+	import IntervalView from '$lib/components/IntervalView.svelte';
 	import InspectRegister from '$lib/components/InspectRegister.svelte';
 	import SongHook from '$lib/components/SongHook.svelte';
 	import SongMark from '$lib/components/SongMark.svelte';
@@ -373,19 +368,8 @@
 
 			<SongHook short={inspectPayload?.info?.short ?? ''} />
 
-			<div class="mt-6 flex gap-4" data-testid="interval-formula">
-				{#each formulaFor(result) as entry (entry.role + entry.letter)}
-					<button
-						type="button"
-						class="formula-tap flex flex-col items-center gap-1"
-						aria-label={`Inspect ${entry.letter}`}
-						onclick={() => inspectFormulaEntry(entry)}
-					>
-						<IntervalChip role={entry.role} label={entry.label} longName={entry.longFr} />
-						<span class="text-label font-mono">{entry.letter}</span>
-						<span class="text-label font-mono">{entry.solfege}</span>
-					</button>
-				{/each}
+			<div class="mt-6">
+				<IntervalView chord={result} onInspectTone={inspectFormulaEntry} />
 			</div>
 
 			<WhyTheseNotes
@@ -410,21 +394,6 @@
 		margin: calc(-1 * var(--spacing-sm));
 		vertical-align: middle;
 		cursor: pointer;
-	}
-
-	/* Formula columns are tap targets (Track C): visually the same stacked
-	   chip + letter + solfège column, now playing/inspecting like the key it
-	   names. Plain button reset; the column stack already clears 44px tall,
-	   min-width covers the narrow "R" column. */
-	.formula-tap {
-		background: none;
-		border: none;
-		padding: 0;
-		min-width: 44px;
-		min-height: 44px;
-		cursor: pointer;
-		font: inherit;
-		color: inherit;
 	}
 
 	.stamp {
