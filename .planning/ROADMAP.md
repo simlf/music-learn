@@ -177,10 +177,10 @@ Plans:
   3. Visiting any of the 8 old routes (`/drills`, `/scales`, `/voicings`, `/build`, `/progressions`, `/recall`, `/songs`, `/theory`) redirects to the hub that now owns it.
   4. The orphan `/showcase` route no longer exists.
 
-**Plans**: 1/5 plans executed
+**Plans**: 2/5 plans executed
 
 - [x] 30-01-PLAN.md — Nav cutover to 4 hubs + nav.practice/nav.learn i18n + masthead test (Wave 1)
-- [ ] 30-02-PLAN.md — Wire drill/lesson seeds into /practice as prioritized name-it items (Wave 1)
+- [x] 30-02-PLAN.md — Wire drill/lesson seeds into /practice as prioritized name-it items (Wave 1)
 - [ ] 30-03-PLAN.md — Repoint Progress + Lookup drill handoffs to /practice + their tests (Wave 1)
 - [ ] 30-04-PLAN.md — Repoint Recall/Lesson to /practice, Build to /progress + their tests (Wave 1)
 - [ ] 30-05-PLAN.md — 8 redirect shims + delete showcase + coverage-test remap + delete 15 route tests + green gate (Wave 2)

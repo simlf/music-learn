@@ -9,7 +9,7 @@
 
 - [x] **HUB-01**: User sees exactly 4 top-level hubs (Lookup, Practice, Learn, Progress) in the desktop nav and the phone tab bar, replacing the 10 flat links; the phone "More" bottom sheet is removed.
 - [ ] **HUB-02**: The orphan `showcase` route is deleted (it duplicated Lookup and was not in nav).
-- [ ] **HUB-03**: Each old route (`/drills`, `/scales`, `/voicings`, `/build`, `/progressions`, `/recall`, `/songs`, `/theory`) redirects to the hub that now owns it, so existing bookmarks and deep-links still land somewhere correct for one release.
+- [x] **HUB-03**: Each old route (`/drills`, `/scales`, `/voicings`, `/build`, `/progressions`, `/recall`, `/songs`, `/theory`) redirects to the hub that now owns it, so existing bookmarks and deep-links still land somewhere correct for one release.
 
 ### Interval View (IVW)
 
