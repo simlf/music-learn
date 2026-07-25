@@ -192,6 +192,17 @@ export function syntheticProgressionItems(
 }
 
 /**
+ * The `symbol` a HybridQueueItem carries, or undefined for a
+ * ProgressionQueueItem (which has no symbol field at all). Narrows on the
+ * `family` discriminant rather than a structural check, mirroring
+ * isCardedItem's own discriminant-narrowing convention below.
+ */
+function itemSymbol(item: HybridQueueItem): string | undefined {
+	if (item.family === 'progression') return undefined;
+	return item.symbol;
+}
+
+/**
  * Weaves `cardedItems` and `syntheticItems` into one interleaved queue: a
  * permutation of every input item (none dropped or duplicated), preserving
  * each family's own within-list relative order, and avoiding a single
@@ -213,6 +224,19 @@ export function syntheticProgressionItems(
  * one, or failing that (a single remaining family) whichever family still
  * has items - so the pass always terminates (T-27-01-01) rather than
  * looping forever.
+ *
+ * Same-symbol anti-adjacency (UAT G2): a chord's teach cluster spans
+ * several modes (formula, see-play, ...) that all map to the SAME family
+ * (familyForCard) but carry the SAME `symbol` - e.g. two name-it items for
+ * "Cm7". The family-run rule above never looks at `symbol`, so those two
+ * items could still land front-to-front and read as "the same chord
+ * twice." Among the families eligible under the no-3-in-a-row rule, this
+ * skips any whose NEXT item shares the immediately-previous placed item's
+ * symbol, as long as at least one other eligible family's next item has a
+ * different (or no) symbol. When every eligible family's next item shares
+ * the trailing symbol (no alternative - e.g. a single symbol genuinely due
+ * across every family), the repeat is allowed rather than blocking
+ * progress, preserving PRAC-05.
  */
 export function composePracticeQueue(
 	cardedItems: HybridQueueItem[],
@@ -237,15 +261,35 @@ export function composePracticeQueue(
 	const output: HybridQueueItem[] = [];
 	let trailingFamily: PracticeFamily | undefined;
 	let trailingRun = 0;
+	let trailingSymbol: string | undefined;
 
 	while (output.length < all.length) {
-		let bestFamily: PracticeFamily | undefined;
-		let bestScore = -1;
+		const eligible: PracticeFamily[] = [];
 		for (const family of familyOrder) {
 			const items = byFamily.get(family);
 			if (items === undefined || items.length === 0) continue;
 			const wouldExtendRunTo3 = family === trailingFamily && trailingRun >= 2;
 			if (wouldExtendRunTo3) continue;
+			eligible.push(family);
+		}
+
+		// G2: among the eligible families, prefer ones whose next item would
+		// NOT repeat the trailing symbol - but only when such an alternative
+		// exists; otherwise fall back to every eligible family (allow the
+		// repeat, e.g. a single symbol genuinely due).
+		const nonRepeating = eligible.filter((family) => {
+			const front = byFamily.get(family)?.[0];
+			if (front === undefined) return false;
+			const frontSymbol = itemSymbol(front);
+			return trailingSymbol === undefined || frontSymbol === undefined || frontSymbol !== trailingSymbol;
+		});
+		const candidateFamilies = nonRepeating.length > 0 ? nonRepeating : eligible;
+
+		let bestFamily: PracticeFamily | undefined;
+		let bestScore = -1;
+		for (const family of candidateFamilies) {
+			const items = byFamily.get(family);
+			if (items === undefined) continue;
 			const score = items.length;
 			if (score > bestScore) {
 				bestScore = score;
@@ -289,6 +333,7 @@ export function composePracticeQueue(
 			trailingFamily = bestFamily;
 			trailingRun = 1;
 		}
+		trailingSymbol = itemSymbol(next);
 	}
 
 	return output;

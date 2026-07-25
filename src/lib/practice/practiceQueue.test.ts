@@ -295,6 +295,73 @@ describe('composePracticeQueue', () => {
 		const composed = composePracticeQueue(carded, [], seededRng(3));
 		expect(composed).toEqual(carded);
 	});
+
+	describe('same-symbol anti-adjacency (UAT G2)', () => {
+		/** The `symbol` an item carries, or undefined for a ProgressionQueueItem (which has none). */
+		function itemSymbol(item: HybridQueueItem): string | undefined {
+			return item.family === 'progression' ? undefined : item.symbol;
+		}
+
+		/** True iff any two adjacent items in `queue` share a defined, equal `symbol`. */
+		function hasAdjacentSameSymbol(queue: HybridQueueItem[]): boolean {
+			for (let i = 1; i < queue.length; i++) {
+				const prevSymbol = itemSymbol(queue[i - 1]);
+				const curSymbol = itemSymbol(queue[i]);
+				if (prevSymbol !== undefined && curSymbol !== undefined && prevSymbol === curSymbol) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		it('never lands two same-symbol name-it items (different modes of the same chord) adjacent when an alternative family item exists', () => {
+			// Same chord (Cm7), two modes both classified as name-it by
+			// familyForCard (a real teach-cluster shape) - plus a distinct
+			// name-it symbol and two voicing items as the alternative family.
+			const carded: CardedQueueItem[] = [
+				makeCarded('name-it', 'Cm7', { id: 'fsrs:chord-formula:Cm7:formula', mode: 'formula' }),
+				makeCarded('name-it', 'Cm7', { id: 'fsrs:chord-formula:Cm7:see-play', mode: 'see-play' }),
+				makeCarded('name-it', 'Dm7')
+			];
+			const synthetic: HybridQueueItem[] = [makeVoicing('Fmaj7'), makeVoicing('Gmaj7')];
+
+			for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+				const composed = composePracticeQueue(carded, synthetic, seededRng(seed));
+				// Still a faithful permutation and still respects the family rule.
+				const inputIds = [...carded, ...synthetic].map((item) => item.id).sort();
+				expect(composed.map((item) => item.id).sort()).toEqual(inputIds);
+				expect(hasThreeInARow(composed)).toBe(false);
+				expect(hasAdjacentSameSymbol(composed)).toBe(false);
+			}
+		});
+
+		it('allows the repeat when NO alternative eligible item exists (e.g. every eligible family shares the trailing symbol)', () => {
+			// Every family's next-up item shares symbol 'Cm7' (name-it AND the
+			// only synthetic item, voicing, both drilling Cm7 right now) - no
+			// alternative exists, so the anti-adjacency must not block progress.
+			const carded: CardedQueueItem[] = [
+				makeCarded('name-it', 'Cm7', { id: 'fsrs:chord-formula:Cm7:formula', mode: 'formula' }),
+				makeCarded('name-it', 'Cm7', { id: 'fsrs:chord-formula:Cm7:see-play', mode: 'see-play' })
+			];
+			const synthetic: HybridQueueItem[] = [makeVoicing('Cm7')];
+
+			for (const seed of [1, 2, 3]) {
+				const composed = composePracticeQueue(carded, synthetic, seededRng(seed));
+				const inputIds = [...carded, ...synthetic].map((item) => item.id).sort();
+				expect(composed.map((item) => item.id).sort()).toEqual(inputIds);
+				expect(composed).toHaveLength(3);
+			}
+		});
+
+		it('still allows a legitimately-single-due symbol to repeat when it is the only family present (PRAC-05 preserved)', () => {
+			const carded: CardedQueueItem[] = [
+				makeCarded('name-it', 'Cm7', { id: 'fsrs:chord-formula:Cm7:formula', mode: 'formula' }),
+				makeCarded('name-it', 'Cm7', { id: 'fsrs:chord-formula:Cm7:see-play', mode: 'see-play' })
+			];
+			const composed = composePracticeQueue(carded, [], seededRng(9));
+			expect(composed).toEqual(carded);
+		});
+	});
 });
 
 describe('advanceHybridQueue', () => {
