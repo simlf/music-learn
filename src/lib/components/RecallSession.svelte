@@ -950,7 +950,7 @@
 			{t('recall.empty.no-deck.body')}
 		</p>
 		<div class="mt-6">
-			<Button variant="primary" href="/drills">{t('recall.cta.practice-now')}</Button>
+			<Button variant="primary" href="/practice">{t('recall.cta.practice-now')}</Button>
 		</div>
 	</div>
 {:else if pageState === 'empty-none-due'}
@@ -960,7 +960,7 @@
 			{t('recall.empty.none-due.body')}
 		</p>
 		<div class="mt-6">
-			<Button variant="ghost" href="/drills">{t('recall.cta.practice-now')}</Button>
+			<Button variant="ghost" href="/practice">{t('recall.cta.practice-now')}</Button>
 		</div>
 	</div>
 {:else if pageState === 'empty-filtered-none-due'}
@@ -973,7 +973,7 @@
 				: t('recall.empty.filtered.plural')}
 		</p>
 		<div class="mt-6">
-			<Button variant="ghost" href="/drills">{t('recall.cta.practice-now')}</Button>
+			<Button variant="ghost" href="/practice">{t('recall.cta.practice-now')}</Button>
 		</div>
 	</div>
 {:else if pageState === 'error'}
@@ -992,7 +992,7 @@
 			{reviewedCount} {t('recall.register.reviewed-today')}
 		</p>
 		<div class="mt-6">
-			<Button variant="primary" href="/drills">{t('recall.cta.practice-now')}</Button>
+			<Button variant="primary" href="/practice">{t('recall.cta.practice-now')}</Button>
 			{#if onViewMap}
 				<Button type="button" variant="ghost" onclick={onViewMap}>{t('recall.cta.view-map')}</Button>
 			{/if}

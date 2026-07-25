@@ -289,7 +289,7 @@
 			</p>
 			<p class="text-heading mt-4 font-serif">C · Cm</p>
 			<div class="handoff-cta mt-4">
-				<Button href="/drills">{t('theory.lesson.handoff.cta')}</Button>
+				<Button href="/practice">{t('theory.lesson.handoff.cta')}</Button>
 			</div>
 		</div>
 	{/if}
