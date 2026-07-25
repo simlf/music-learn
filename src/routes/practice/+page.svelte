@@ -9,13 +9,22 @@
 		syntheticProgressionItems,
 		filterVoicingsBySong,
 		type HybridQueueItem,
-		type VoicingQueueItem
+		type VoicingQueueItem,
+		type CardedQueueItem
 	} from '$lib/practice/practiceQueue';
-	import { getDueCards, getAllCards, introduceNewCards, recordGrade, type CardRecord } from '$lib/srs/deck';
+	import {
+		getDueCards,
+		getAllCards,
+		introduceNewCards,
+		recordGrade,
+		type CardRecord,
+		type Mode
+	} from '$lib/srs/deck';
 	import { selectReviewCards, interleaveQueue } from '$lib/srs/rotation';
 	import { remainingIntroBudget, consumeIntroBudget } from '$lib/srs/introBudget';
-	import { Rating } from '$lib/srs/scheduler';
+	import { Rating, newCard } from '$lib/srs/scheduler';
 	import { factById } from '$lib/srs/facts';
+	import { consumeDrillSeeds, consumeLessonSeeds } from '$lib/practice/drillSeeds';
 	import { readSongFilter } from '$lib/practice/songFilterPref';
 	import { buildProvenanceIndex, symbolHasProvenance } from '$lib/practice/songProvenance';
 	import { recordPracticeAnswer } from '$lib/practice/answerTelemetry';
@@ -121,9 +130,68 @@
 	 */
 	const SYNTHETIC_PROGRESSION_COUNT = 2;
 
+	/**
+	 * REG-01 seed handoff: consumes both one-shot channels and builds
+	 * prioritized name-it CardedQueueItems, mirroring the old /drills page's
+	 * seed-consumption semantics (30-CONTEXT "Preserve the drill-seed
+	 * handoff"). Both channels are drained via consumeDrillSeeds/
+	 * consumeLessonSeeds regardless of which wins, so neither leaks into a
+	 * later session; a lesson handoff takes precedence over a Progress
+	 * weak-list handoff when both are somehow present. A symbol that does not
+	 * resolve to a supported chord-formula fact (factById) is skipped
+	 * (T-30-02-01: a tampered/malformed seed can never inject an unrenderable
+	 * question).
+	 */
+	async function buildSeededItems(): Promise<CardedQueueItem[]> {
+		const lessonSeedSymbols = consumeLessonSeeds();
+		const drillSeedSymbols = consumeDrillSeeds();
+		const seedSymbols = lessonSeedSymbols.length > 0 ? lessonSeedSymbols : drillSeedSymbols;
+		if (seedSymbols.length === 0) return [];
+
+		const existingCards = await getAllCards();
+		const cardsByKey = new Map<string, CardRecord>();
+		for (const card of existingCards) {
+			cardsByKey.set(`${card.factId}:${card.mode}`, card);
+		}
+
+		const mode: Mode = 'formula';
+		const now = new Date();
+		const items: CardedQueueItem[] = [];
+		for (const symbol of seedSymbols) {
+			const factId = `chord-formula:${symbol}`;
+			const fact = factById(factId);
+			if (fact === undefined || fact.factKind !== 'chord-formula') continue;
+
+			const card: CardRecord =
+				cardsByKey.get(`${factId}:${mode}`) ??
+				({
+					...newCard(now),
+					factId,
+					factKind: 'chord-formula',
+					mode,
+					lastRating: null,
+					masteryDayCount: 0
+				} satisfies CardRecord);
+
+			items.push({
+				id: `fsrs:${factId}:${mode}`,
+				family: 'name-it',
+				factId,
+				mode,
+				factKind: 'chord-formula',
+				symbol,
+				short: undefined,
+				card
+			});
+		}
+		return items;
+	}
+
 	async function load(): Promise<void> {
 		pageState = 'loading';
 		try {
+			const seededItems = await buildSeededItems();
+
 			const preDue = await getDueCards();
 			let dueBase: CardRecord[];
 			if (preDue.length > DUE_BACKLOG_GATE) {
@@ -137,7 +205,7 @@
 				dueBase = await getDueCards();
 			}
 			const due = applySongFilter(dueBase);
-			if (due.length === 0) {
+			if (due.length === 0 && seededItems.length === 0) {
 				// MD-02: distinguish "the filter hid everything" from "truly
 				// nothing due" - dueBase is only non-empty here when
 				// applySongFilter actually restricted the set.
@@ -217,15 +285,22 @@
 			const syntheticItems: HybridQueueItem[] = [...voicingItems, ...progressionItems];
 			const composed = composePracticeQueue(cardedItems, syntheticItems, Math.random);
 
-			if (composed.length === 0) {
+			if (composed.length === 0 && seededItems.length === 0) {
 				// Every due card belonged to an excluded family (scale
 				// practice, Phase 28) - nothing practiceable is due right now.
 				pageState = 'empty-none-due';
 				return;
 			}
 
-			queue = composed;
-			length = composed.length;
+			// Seeded items lead the queue; a due card that is ALSO seeded is
+			// deduped from the composed half by id, so it is drilled once, at
+			// the front, not twice.
+			const seedIds = new Set(seededItems.map((item) => item.id));
+			const dedupedComposed = composed.filter((item) => !seedIds.has(item.id));
+			const finalQueue: HybridQueueItem[] = [...seededItems, ...dedupedComposed];
+
+			queue = finalQueue;
+			length = finalQueue.length;
 			asked = 0;
 			score = { correct: 0, streak: 0 };
 			bestStreak = 0;
