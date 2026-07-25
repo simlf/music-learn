@@ -316,20 +316,23 @@
 
 	{#if effectiveStage === 'meet'}
 		<div data-testid="stage-meet">
+			<div class="meet-glyph mb-4" data-testid="meet-glyph">
+				<ChordGlyph root={chord.root} quality={glyphQuality} />
+			</div>
 			<div class="vcards">
 				<div class="vcard" data-testid="compare-know">
 					<div class="vcard__head">
 						<h4 class="vcard__label">{t('voicings.compare.knowLabel')}</h4>
 						<span class="vcard__use">{t('voicings.compare.knowCaption')}</span>
 					</div>
-					<PianoKeyboard notes={fullStackNotes(chord)} />
+					<PianoKeyboard notes={fullStackNotes(chord)} inspectable />
 				</div>
 				<div class="vcard" data-testid="compare-use">
 					<div class="vcard__head">
 						<h4 class="vcard__label">{t('voicings.compare.useLabel')}</h4>
 						<span class="vcard__use">{t('voicings.compare.useCaption')}</span>
 					</div>
-					<PianoKeyboard notes={shellNotes(chord)} />
+					<PianoKeyboard notes={shellNotes(chord)} inspectable />
 				</div>
 			</div>
 			{#if viewedStage === null}

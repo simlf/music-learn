@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ShellVoicingDrill from './ShellVoicingDrill.svelte';
 import { newCard, State } from '$lib/srs/scheduler';
@@ -158,6 +158,53 @@ describe('ShellVoicingDrill: stage derived from card maturity', () => {
 		expect(screen.getByRole('button', { name: 'SHELL' })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'ROOTLESS' })).toBeInTheDocument();
 		expect(screen.queryByTestId('teach-panel')).not.toBeInTheDocument();
+	});
+});
+
+describe('ShellVoicingDrill: meet (Voir) stage shows the target symbol and tap-to-hear keys (UAT G3)', () => {
+	it('renders the target chord symbol above the compare keyboards', async () => {
+		getAllCardsMock.mockResolvedValue([]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-meet'));
+		const glyph = screen.getByTestId('meet-glyph');
+		expect(glyph.textContent).toContain('C');
+	});
+
+	it('makes both compare keyboards tap-to-hear: tapping a note sounds it via the shared audio contract', async () => {
+		getAllCardsMock.mockResolvedValue([]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-meet'));
+
+		// Inspect-mode taps play through emitInspect (PianoKeyboard's own
+		// pre-existing inspect path), which calls playNote directly - unlike
+		// interactive/construct mode's playKeyTouch, it doesn't call
+		// ensureAudioReady itself.
+		const knowBoard = screen.getByTestId('compare-know');
+		const cKey = within(knowBoard).getAllByRole('button', { name: 'C key' })[0];
+		await fireEvent.click(cKey);
+
+		expect(playNoteMock).toHaveBeenCalledWith('C4');
+	});
+
+	it('the compare keyboards stay display-only for grading: tapping never toggles selection or affects Got it', async () => {
+		getAllCardsMock.mockResolvedValue([]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-meet'));
+
+		const useBoard = screen.getByTestId('compare-use');
+		const eKey = within(useBoard).getAllByRole('button', { name: 'E key' })[0];
+		await fireEvent.click(eKey);
+
+		// Inspect-mode taps carry no aria-pressed toggle state (unlike
+		// interactive mode's selection), and Got it is still present/untouched.
+		expect(eKey).not.toHaveAttribute('aria-pressed');
+		expect(screen.getByRole('button', { name: 'Got it' })).toBeInTheDocument();
 	});
 });
 
