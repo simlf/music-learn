@@ -277,32 +277,48 @@
 		asked += 1;
 	}
 
+	/**
+	 * In-flight guard for completeCarded (CR-02, adversarial-review fix):
+	 * mirrors RecallSession.svelte's own `grading` flag (its "In-flight guard
+	 * for handleGrade" precedent) - a double-tap on Next before the first
+	 * recordGrade await resolves must never double-commit the FSRS grade,
+	 * double-count the score register (finishItem), or double-advance the
+	 * queue.
+	 */
+	let grading = $state(false);
+
 	/** Grades + advances a carded (name-it/interval) item: FSRS commit via deck.recordGrade (PRAC-03/REG-01/T-27-04-01). */
 	async function completeCarded(correct: boolean): Promise<void> {
+		if (grading) return;
 		const item = currentItem;
 		if (item === undefined || item.family === 'voicing' || item.family === 'progression') {
 			return;
 		}
-		const rating = correct ? Rating.Good : Rating.Again;
-		const durationMs = Date.now() - questionShownAt;
-		// CR-01: capture the CardRecord recordGrade actually persisted and
-		// re-enqueue THAT (not the stale pre-grade snapshot still held by
-		// `item`/`queue[0]`), so a re-enqueued Again item is graded from its
-		// current FSRS state on its next pass - mirrors RecallSession's own
-		// cardsByKey-refresh-after-grade pattern.
-		const updatedCard = await recordGrade(item.card, rating);
-		recordPracticeAnswer({
-			item: item.family === 'interval' ? (item.short ?? '') : (item.symbol ?? ''),
-			kind: item.family === 'interval' ? 'interval' : 'chord',
-			correct,
-			durationMs
-		});
-		finishItem(item, correct);
-		const updatedItem = { ...item, card: updatedCard };
-		queue = advanceHybridQueue([updatedItem, ...queue.slice(1)], rating);
-		questionShownAt = Date.now();
-		cardEpoch += 1;
-		if (isHybridSessionComplete(queue)) pageState = 'complete';
+		grading = true;
+		try {
+			const rating = correct ? Rating.Good : Rating.Again;
+			const durationMs = Date.now() - questionShownAt;
+			// CR-01: capture the CardRecord recordGrade actually persisted and
+			// re-enqueue THAT (not the stale pre-grade snapshot still held by
+			// `item`/`queue[0]`), so a re-enqueued Again item is graded from its
+			// current FSRS state on its next pass - mirrors RecallSession's own
+			// cardsByKey-refresh-after-grade pattern.
+			const updatedCard = await recordGrade(item.card, rating);
+			recordPracticeAnswer({
+				item: item.family === 'interval' ? (item.short ?? '') : (item.symbol ?? ''),
+				kind: item.family === 'interval' ? 'interval' : 'chord',
+				correct,
+				durationMs
+			});
+			finishItem(item, correct);
+			const updatedItem = { ...item, card: updatedCard };
+			queue = advanceHybridQueue([updatedItem, ...queue.slice(1)], rating);
+			questionShownAt = Date.now();
+			cardEpoch += 1;
+			if (isHybridSessionComplete(queue)) pageState = 'complete';
+		} finally {
+			grading = false;
+		}
 	}
 
 	/**
