@@ -13,6 +13,7 @@ import { progressions } from './messages/progressions';
 import { voicings } from './messages/voicings';
 import { intervalView } from './messages/interval-view';
 import { practice } from './messages/practice';
+import { learn } from './messages/learn';
 import { setLocale, t } from './locale.svelte';
 
 /**
@@ -65,7 +66,8 @@ describe('domain dictionary key collisions (I18N-02)', () => {
 		['progressions', progressions.en],
 		['voicings', voicings.en],
 		['interval-view', intervalView.en],
-		['practice', practice.en]
+		['practice', practice.en],
+		['learn', learn.en]
 	];
 
 	it('has no key defined by more than one domain dictionary', () => {
