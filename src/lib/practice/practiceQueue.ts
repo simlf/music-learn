@@ -30,8 +30,11 @@ import { PROGRESSION_TEMPLATES, PROGRESSION_KEYS, buildProgression } from './pro
  *      srs/session.ts's advanceQueue Rating.Again re-enqueue contract for
  *      carded items; synthetic items are always consumed.
  *
- * Song filter (PRAC-04) restricts BOTH halves via filterCardedBySong /
- * filterVoicingsBySong before composePracticeQueue is called - this module
+ * Song filter (PRAC-04, WR-02): the carded half is restricted upstream of
+ * this module, by the host's own applySongFilter over the raw due
+ * CardRecord[] (before selectReviewCards/cardsToQueueItems even run); only
+ * the synthetic voicing half is filtered inside this module, via
+ * filterVoicingsBySong, before composePracticeQueue is called. This module
  * never reads the song filter preference itself (host-owned, per
  * 27-CONTEXT's "read the global pref once via readSongFilter()").
  */
@@ -310,25 +313,6 @@ export function advanceHybridQueue(queue: HybridQueueItem[], outcome: Rating): H
 		return [...rest, current];
 	}
 	return rest;
-}
-
-/**
- * Mirrors RecallSession.svelte's applySongFilter contract for the carded
- * half of the queue (SONG-02/PRAC-04): keeps only name-it/build-it items
- * whose symbol satisfies `predicate`, dropping interval items (they have no
- * chord symbol to match) and any non-matching chord. Caller only invokes
- * this when the filter is ON and the provenance index is non-empty.
- */
-export function filterCardedBySong(
-	items: CardedQueueItem[],
-	predicate: (symbol: string) => boolean
-): CardedQueueItem[] {
-	return items.filter(
-		(item) =>
-			(item.family === 'name-it' || item.family === 'build-it') &&
-			item.symbol !== undefined &&
-			predicate(item.symbol)
-	);
 }
 
 /** Keeps only voicing items whose symbol satisfies `predicate` (PRAC-04's synthetic-half restriction). */

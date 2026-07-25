@@ -8,7 +8,6 @@ import {
 	syntheticProgressionItems,
 	composePracticeQueue,
 	advanceHybridQueue,
-	filterCardedBySong,
 	filterVoicingsBySong,
 	familiesInQueue,
 	hybridSessionRemaining,
@@ -25,7 +24,7 @@ import { seventhChordSymbols } from './shellVoicing';
  * PLAN). Task 1 covers types + card-to-item mapping + synthetic-item
  * builders (familyForCard, cardsToQueueItems, syntheticVoicingItems,
  * syntheticProgressionItems). Task 2 (composePracticeQueue,
- * advanceHybridQueue, filterCardedBySong, filterVoicingsBySong,
+ * advanceHybridQueue, filterVoicingsBySong,
  * familiesInQueue, hybridSessionRemaining, isHybridSessionComplete) is
  * appended below once Task 1 is green.
  */
@@ -321,19 +320,6 @@ describe('advanceHybridQueue', () => {
 		const second = makeProgression('major-ii-V-I', 'C');
 		const advanced = advanceHybridQueue([first, second], Rating.Again);
 		expect(advanced).toEqual([second]);
-	});
-});
-
-describe('filterCardedBySong', () => {
-	it('keeps only name-it/build-it items whose symbol satisfies the predicate, dropping interval items', () => {
-		const items: CardedQueueItem[] = [
-			makeCarded('name-it', 'Cm7'),
-			makeCarded('build-it', 'Dm7'),
-			makeCarded('name-it', 'F#7'),
-			makeCarded('interval', 'M3')
-		];
-		const filtered = filterCardedBySong(items, (symbol) => symbol === 'Cm7' || symbol === 'Dm7');
-		expect(filtered.map((item) => item.symbol)).toEqual(['Cm7', 'Dm7']);
 	});
 });
 
