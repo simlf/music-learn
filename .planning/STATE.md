@@ -6,14 +6,14 @@ current_phase: 27
 current_phase_name: Practice Hub — One Smart Interleaved Session
 status: executing
 stopped_at: Completed 27-02-PLAN.md
-last_updated: "2026-07-24T23:55:45.391Z"
+last_updated: "2026-07-25T00:22:05.398Z"
 last_activity: 2026-07-24
 last_activity_desc: Phase 26 complete, transitioned to Phase 27
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 9
-  completed_plans: 7
+  completed_plans: 8
   percent: 17
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-21)
 ## Current Position
 
 Phase: 27 — Practice Hub — One Smart Interleaved Session
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-07-24 — Phase 26 complete, transitioned to Phase 27
 
@@ -156,6 +156,7 @@ Last activity: 2026-07-24 — Phase 26 complete, transitioned to Phase 27
 | Phase 27 P01 | 5min | 2 tasks | 2 files |
 | Phase 27-practice-hub P02 | 15min | 2 tasks | 5 files |
 | Phase 27-practice-hub P03 | 20min | 2 tasks | 4 files |
+| Phase 27 P04 | 25min | 2 tasks | 5 files |
 
 ## Deferred Items
 
@@ -350,6 +351,8 @@ Recent decisions affecting current work:
 - [Phase 27]: [Phase 27-01]: Single-family input to composePracticeQueue short-circuits to an identity pass-through rather than entering the weave loop, guaranteeing PRAC-05's single-type-due gate by construction
 - [Phase ?]: [Phase 27-02]: ShellVoicingDrill/ProgressionDrill embed seams read embedSymbol/embedTemplateId+embedKey once via untrack() into init-time state (mirrors BuildSession embedFact), gating only the round-end advance affordance on onComplete presence
 - [Phase ?]: PracticeChordDrill/PracticeIntervalDrill compute their question once at init via untrack(), mirroring BuildSession/ShellVoicingDrill/ProgressionDrill's embed-seam precedent (one component instance per queue item, not reactive re-derivation)
+- [Phase 27]: [Phase 27-04]: completeBuild never re-calls deck.recordGrade for the build-it family - BuildSession's own onComplete already committed the FSRS grade internally via recordConstructionOutcome, mirroring RecallSession's handleModeCNext precedent; a second call would double-apply the FSRS transition
+- [Phase 27]: [Phase 27-04]: added a cardEpoch counter to the in-session {#key} block so an Again-graded item re-enqueued as the sole queue item still force-remounts a fresh drill component instead of freezing on its stale answered state
 
 ### Pending Todos
 
@@ -387,7 +390,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-24T23:55:13.352Z
+Last session: 2026-07-25T00:21:51.060Z
 Stopped at: Completed 27-02-PLAN.md
 Resume file: 
 

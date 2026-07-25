@@ -19,7 +19,7 @@
 
 ### Practice Hub (PRAC)
 
-- [ ] **PRAC-01**: From the Practice hub the user starts practice with a single "Start practice" action — no mode-picker grid.
+- [x] **PRAC-01**: From the Practice hub the user starts practice with a single "Start practice" action — no mode-picker grid.
 - [x] **PRAC-02**: One practice session interleaves questions from all five drill generators (name-it, build-it, voicings, intervals, progressions) in a single queue hosted by the existing drills engine (tiers, grading, telemetry preserved).
 - [x] **PRAC-03**: The queue is built by the FSRS scheduler drawing from all generators weighted by due-date and weakness (no regression in SRS scheduling behavior).
 - [x] **PRAC-04**: The song filter (owned by Progress → Songs) still steers which questions the Practice queue surfaces.
