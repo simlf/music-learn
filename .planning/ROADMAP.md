@@ -129,12 +129,14 @@ Plans:
   2. The shared IntervalView appears in Learn as an interval reference block.
   3. The Scales "Practice" drill is reached through the Practice hub, and Learn shows only "Explore."
 
-**Plans**: 5 plans
-- [ ] 28-01-PLAN.md — Extract TheoryLessons.svelte; /theory becomes a thin wrapper (DRY foundation)
+**Plans**: 1/5 plans executed
+
+- [x] 28-01-PLAN.md — Extract TheoryLessons.svelte; /theory becomes a thin wrapper (DRY foundation)
 - [ ] 28-02-PLAN.md — Extract ScaleExplorer.svelte (exploreOnly prop); /scales becomes a thin wrapper
 - [ ] 28-03-PLAN.md — Register the learn.* i18n domain (index.ts merge + messages.test.ts collision list)
 - [ ] 28-04-PLAN.md — Build the /learn hub (theory + explore + 5-quality interval reference) + render/smoke test (LEARN-01)
 - [ ] 28-05-PLAN.md — Additive Scale-practice disclosure on /practice + reachability test (LEARN-02)
+
 **UI hint**: yes
 **Notes**: Reuses the Phase 26 IntervalView instance (IVW-03 — one shared component, not a second copy). REG-01 binding: theory lesson content and its handoff into drills, plus scale Explore behavior, stay unchanged; only their location moves.
 

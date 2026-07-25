@@ -4,16 +4,16 @@ milestone: v2.2
 milestone_name: Hub Consolidation + Interval Theory
 current_phase: 28
 current_phase_name: Learn Hub — Theory + Scales Explore + Interval Reference
-status: verifying
+status: executing
 stopped_at: Completed 27-05-PLAN.md
-last_updated: "2026-07-25T01:15:22.831Z"
+last_updated: "2026-07-25T01:47:20.245Z"
 last_activity: 2026-07-25
 last_activity_desc: Phase 27 complete, transitioned to Phase 28
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 9
-  completed_plans: 9
+  total_plans: 14
+  completed_plans: 10
   percent: 33
 ---
 
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-07-21)
 ## Current Position
 
 Phase: 28 — Learn Hub — Theory + Scales Explore + Interval Reference
-Plan: Not started
-Status: Phase complete — ready for verification
+Plan: 2 of 5 in current phase
+Status: Ready to execute
 Last activity: 2026-07-25 — Phase 27 complete, transitioned to Phase 28
 
 ## Performance Metrics
@@ -159,6 +159,7 @@ Last activity: 2026-07-25 — Phase 27 complete, transitioned to Phase 28
 | Phase 27-practice-hub P03 | 20min | 2 tasks | 4 files |
 | Phase 27 P04 | 25min | 2 tasks | 5 files |
 | Phase 27-practice-hub P05 | 40min | 2 tasks | 3 files |
+| Phase 28 P01 | 3min | 2 tasks | 2 files |
 
 ## Deferred Items
 
@@ -357,6 +358,7 @@ Recent decisions affecting current work:
 - [Phase 27]: [Phase 27-04]: added a cardEpoch counter to the in-session {#key} block so an Again-graded item re-enqueued as the sole queue item still force-remounts a fresh drill component instead of freezing on its stale answered state
 - [Phase 27-practice-hub]: Voicing/progression synthetic gating lives in the /practice host's load(), computed from selectedCards, not inside practiceQueue.ts's pure builders — Keeps the pure queue module free of any due/gating policy; the PRAC-05 gate is host-owned state, matching the host-thin architecture
 - [Phase 27-practice-hub]: Progressions are omitted entirely (not partially filtered) under the song filter — Progressions are key/template-based, not single-song-chord based - no principled way to restrict a 4-bar progression to one song's chord
+- [Phase 28]: TheoryLessons.svelte renders as a bare fragment (no chrome); /theory and future /learn hub share one lesson-body source of truth
 
 ### Pending Todos
 
@@ -394,7 +396,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-25T00:45:08.991Z
+Last session: 2026-07-25T01:45:45.843Z
 Stopped at: Completed 27-05-PLAN.md
 Resume file: 
 
