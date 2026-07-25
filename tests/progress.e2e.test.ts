@@ -4,6 +4,7 @@ import { readable } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ProgressPage from '../src/routes/progress/+page.svelte';
 import { setLocale } from '$lib/i18n/locale.svelte';
+import { resetStatsCache } from '$lib/practice/statsCache';
 
 // +layout.svelte reads the `$page` store from $app/stores to mark the active
 // nav link, same mock shape as tests/drills.e2e.test.ts.
@@ -76,6 +77,14 @@ vi.mock('$app/navigation', () => ({
 const { default: RootLayout } = await import('../src/routes/+layout.svelte');
 
 beforeEach(() => {
+	// 29-REVIEW WR-01: ProgressStats now caches the last successful
+	// fetchStats/fetchStreak payload at module scope (keyed by API token) so
+	// a Stats -> Recall -> Stats tab bounce renders instantly instead of
+	// refetching. Reset it here so each `it` still simulates a genuinely
+	// fresh /progress session rather than inheriting a previous test's
+	// mocked network response (the caching behavior itself is covered by a
+	// dedicated describe block below).
+	resetStatsCache();
 	storedToken = '';
 	currentTier = 1;
 	soundOn = true;
@@ -217,6 +226,55 @@ describe('progress page token-missing state', () => {
 
 		expect(setApiTokenMock).toHaveBeenCalledWith('new-token');
 		await waitFor(() => expect(fetchStatsMock).toHaveBeenCalledTimes(1));
+		await waitFor(() => expect(screen.getByTestId('progress-empty')).toBeInTheDocument());
+	});
+});
+
+describe('Stats caching across remounts (29-REVIEW WR-01)', () => {
+	it('renders the cached stats/streak immediately on a second mount (no loading skeleton), while still refreshing from the network in the background', async () => {
+		storedToken = 'secret';
+		fetchStatsMock.mockResolvedValue({
+			items: [{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4, needsPractice: true }],
+			weakest: [{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4, needsPractice: true }]
+		});
+		fetchStreakMock.mockResolvedValue({ streak: 3, practicedToday: true });
+
+		const first = render(ProgressPage);
+		await waitFor(() => expect(screen.getByTestId('streak-hero')).toBeInTheDocument());
+		expect(fetchStatsMock).toHaveBeenCalledTimes(1);
+		first.unmount();
+
+		// Second mount (simulates returning to the Stats tab after visiting
+		// Recall/Songs): the cache should render populated content on the
+		// very first render pass, with no 'progress-loading' skeleton frame,
+		// even though a background refresh is still in flight.
+		render(ProgressPage);
+		expect(screen.queryByTestId('progress-loading')).not.toBeInTheDocument();
+		expect(screen.getByTestId('streak-hero')).toBeInTheDocument();
+		expect(screen.getByTestId('weakest-spots')).toBeInTheDocument();
+
+		await waitFor(() => expect(fetchStatsMock).toHaveBeenCalledTimes(2));
+		await waitFor(() => expect(fetchStreakMock).toHaveBeenCalledTimes(2));
+	});
+
+	it('does not cache across a different API token (a token change always refetches)', async () => {
+		storedToken = 'secret';
+		fetchStatsMock.mockResolvedValue({
+			items: [{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4, needsPractice: true }],
+			weakest: []
+		});
+		fetchStreakMock.mockResolvedValue({ streak: 1, practicedToday: true });
+
+		const first = render(ProgressPage);
+		await waitFor(() => expect(screen.getByTestId('streak-hero')).toBeInTheDocument());
+		first.unmount();
+
+		storedToken = 'a-different-token';
+		fetchStatsMock.mockResolvedValue({ items: [], weakest: [] });
+		fetchStreakMock.mockResolvedValue({ streak: 0, practicedToday: false });
+
+		render(ProgressPage);
+		expect(screen.getByTestId('progress-loading')).toBeInTheDocument();
 		await waitFor(() => expect(screen.getByTestId('progress-empty')).toBeInTheDocument());
 	});
 });

@@ -22,6 +22,7 @@
 	import { factById } from '$lib/srs/facts';
 	import { getLevelState, setCurrentTier } from '$lib/practice/levelState';
 	import { TIERS, type TierId } from '$lib/practice/tiers';
+	import { getCachedStats, getCachedStreak, setCachedStats, setCachedStreak } from '$lib/practice/statsCache';
 	import PracticeItemRow from '$lib/components/PracticeItemRow.svelte';
 	import AccuracyTable from '$lib/components/AccuracyTable.svelte';
 	import StreakBadge from '$lib/components/StreakBadge.svelte';
@@ -106,30 +107,73 @@
 		return pickStreakLine(kind).replace('{N}', String(streak));
 	});
 
+	/**
+	 * Cache-first, background-refresh load (29-REVIEW WR-01): the Progress hub
+	 * mounts exactly one section at a time, so switching Stats -> Recall ->
+	 * Stats destroys and recreates this component on every return trip. A
+	 * cache hit renders the last-known-good stats/streak immediately (no
+	 * loading skeleton, no wait) while a fresh fetchStats/fetchStreak round-
+	 * trip still runs in the background and reconciles the view when it
+	 * settles - so a tab bounce feels instant but the data never goes stale
+	 * for the rest of the session. On a cache MISS (first /progress visit
+	 * this session, or a token change), behavior is unchanged from before:
+	 * pageState goes to 'loading' and only resolves once the network
+	 * round-trip completes.
+	 */
 	async function load(): Promise<void> {
-		if (getApiToken() === '') {
+		const token = getApiToken();
+		if (token === '') {
 			pageState = 'token-missing';
 			return;
 		}
-		pageState = 'loading';
+
+		const cachedStats = getCachedStats(token);
+		const cachedStreak = getCachedStreak(token);
+
+		if (cachedStats) {
+			items = cachedStats.items;
+			weakest = cachedStats.weakest;
+			pageState = cachedStats.items.length === 0 ? 'empty' : 'populated';
+		} else {
+			pageState = 'loading';
+		}
+
+		if (cachedStreak) {
+			streak = cachedStreak.streak;
+			practicedToday = cachedStreak.practicedToday;
+			last7 = cachedStreak.last7;
+		}
+
 		try {
 			const result = await fetchStats();
+			setCachedStats(token, { items: result.items, weakest: result.weakest });
 			items = result.items;
 			weakest = result.weakest;
 			pageState = result.items.length === 0 ? 'empty' : 'populated';
 		} catch {
-			pageState = 'error';
+			// Only surface the error state when there was nothing cached to fall
+			// back on - a cache hit means the user still has a usable (if
+			// momentarily stale) view, which beats replacing it with an error.
+			if (!cachedStats) pageState = 'error';
 		}
 
 		try {
 			const streakResult = await fetchStreak(localDateString());
-			streak = streakResult.streak;
-			practicedToday = streakResult.practicedToday;
-			last7 = streakResult.last7 ?? [];
+			const normalized = {
+				streak: streakResult.streak,
+				practicedToday: streakResult.practicedToday,
+				last7: streakResult.last7 ?? []
+			};
+			setCachedStreak(token, normalized);
+			streak = normalized.streak;
+			practicedToday = normalized.practicedToday;
+			last7 = normalized.last7;
 		} catch {
-			streak = 0;
-			practicedToday = false;
-			last7 = [];
+			if (!cachedStreak) {
+				streak = 0;
+				practicedToday = false;
+				last7 = [];
+			}
 		}
 	}
 

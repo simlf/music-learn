@@ -3,6 +3,7 @@ import { readable } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ProgressPage from '../src/routes/progress/+page.svelte';
 import { readSongFilter } from '$lib/practice/songFilterPref';
+import { resetStatsCache } from '$lib/practice/statsCache';
 
 /**
  * Phase 29-05 (REG-02): the Progress hub smoke test. Guards the new hub
@@ -105,6 +106,10 @@ vi.mock('$lib/srs/deck', async (importOriginal) => {
 });
 
 beforeEach(() => {
+	// 29-REVIEW WR-01: reset ProgressStats' module-level stats/streak cache so
+	// each `it` simulates a fresh /progress session (see the matching comment
+	// in tests/progress.e2e.test.ts).
+	resetStatsCache();
 	localStorage.clear();
 	storedToken = '';
 	currentTier = 1;
@@ -206,6 +211,35 @@ describe('Song-filter write contract (PROG-01)', () => {
 		await fireEvent.click(toggle);
 
 		expect(readSongFilter()).toBe(true);
+	});
+});
+
+describe('Stats tab bounce reuses cached data (29-REVIEW WR-01)', () => {
+	it('Stats -> Recall -> Stats renders the cached stats immediately on return, without a loading-skeleton flash', async () => {
+		storedToken = 'secret';
+		fetchStatsMock.mockResolvedValue({
+			items: [{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4, needsPractice: true }],
+			weakest: []
+		});
+		fetchStreakMock.mockResolvedValue({ streak: 2, practicedToday: true });
+
+		render(ProgressPage);
+		const tabs = within(screen.getByRole('group', { name: /progress hub sections/i }));
+
+		await waitFor(() => expect(screen.getByTestId('streak-hero')).toBeInTheDocument());
+		expect(fetchStatsMock).toHaveBeenCalledTimes(1);
+
+		await fireEvent.click(tabs.getByRole('button', { name: /recall/i }));
+		expect(screen.queryByTestId('streak-hero')).not.toBeInTheDocument();
+
+		await fireEvent.click(tabs.getByRole('button', { name: /stats/i }));
+
+		// Cache hit: the streak hero renders on the very next tick, with no
+		// intervening 'progress-loading' skeleton frame.
+		expect(screen.getByTestId('streak-hero')).toBeInTheDocument();
+		expect(screen.queryByTestId('progress-loading')).not.toBeInTheDocument();
+
+		await waitFor(() => expect(fetchStatsMock).toHaveBeenCalledTimes(2));
 	});
 });
 
