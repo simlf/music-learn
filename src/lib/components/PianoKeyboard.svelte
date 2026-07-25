@@ -932,10 +932,15 @@
 	 * deliberately NOT the gray `--wrong` fill (that treatment reads as an
 	 * error) — a ghost key means "allowed but not required." Mutually
 	 * exclusive with the four reserved interval-color fills (`ghostClass`'s
-	 * `!role` guard, mirroring `.piano-keyboard__key--selected` above).
+	 * `!role` guard, mirroring `.piano-keyboard__key--selected` above). No
+	 * `position` override here (UAT bug B fix): the base `.piano-keyboard__key`
+	 * rule is already `position: absolute`, which is itself a valid
+	 * positioning context for the `::after` marker below - a ghost key
+	 * previously set `position: relative` here, which overrode that absolute
+	 * layer and dropped the key into normal document flow below the keyboard
+	 * row instead of at its assigned `left`/`top` slot.
 	 */
 	.piano-keyboard__key--ghost {
-		position: relative;
 		background-image: repeating-linear-gradient(
 			45deg,
 			transparent,
