@@ -77,7 +77,7 @@ describe('InteractiveLesson (LEARN-01/02/03)', () => {
 		expect(screen.getByText('A major third is 4 keys up')).toBeInTheDocument();
 	});
 
-	it('a wrong tap on step 2 shows the count-hint retry, does not advance, and plays no audio', async () => {
+	it('a wrong tap on step 2 shows the count-hint retry, does not advance, but still sounds its own key-touch note (G1: every tap sounds)', async () => {
 		render(InteractiveLesson);
 		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
 		playNoteMock.mockClear();
@@ -96,7 +96,12 @@ describe('InteractiveLesson (LEARN-01/02/03)', () => {
 		expect(
 			within(stillActiveStep).getByRole('img', { name: /piano keyboard/i })
 		).toBeInTheDocument();
-		expect(playNoteMock).not.toHaveBeenCalled();
+		// The wrong D tap still sounds via PianoKeyboard's own activation choke
+		// point (G1 UAT fix: app-wide, every tap sounds, right or wrong); this
+		// component itself never calls playNote/playChord for a wrong tap, only
+		// the visual flash/hint (unchanged from before).
+		expect(playNoteMock).toHaveBeenCalledTimes(1);
+		expect(playNoteMock).toHaveBeenCalledWith('D4');
 		expect(playChordMock).not.toHaveBeenCalled();
 	});
 

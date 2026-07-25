@@ -15,8 +15,6 @@
 	import { matchChord } from '$lib/drills/matchChord';
 	import { spellChord } from '$lib/theory/chord';
 	import { toAsciiAccidentals } from '$lib/theory/interval';
-	import { ensureAudioReady, playNote } from '$lib/audio/audio';
-	import { toPitch } from '$lib/audio/voicing';
 	import type { SpelledNote } from '$lib/theory/types';
 	import PianoKeyboard from './PianoKeyboard.svelte';
 	import ChordGlyph from './ChordGlyph.svelte';
@@ -259,12 +257,6 @@
 		viewedStage = null;
 	}
 
-	/** Key-touch sound (Track A parity, mirrors PracticeIntervalDrill's pressKey): every on-screen key press sounds its note. */
-	function pressKey(letter: string, octave: number): void {
-		void ensureAudioReady();
-		playNote(toPitch(letter, octave));
-	}
-
 	/** Got it (meet stage): marks the compare intro shown for this chord and re-derives the stage (fades to subtract). */
 	function gotIt() {
 		markVoicingMet(symbol);
@@ -389,7 +381,6 @@
 					interactive={!answered}
 					selected={answered ? undefined : selected}
 					onToggle={answered ? undefined : toggleKey}
-					onPress={answered ? undefined : pressKey}
 					ghostKeys={stage === 'subtract' ? ghostKeys : undefined}
 					pulseToken={answered ? pulseToken : undefined}
 				/>

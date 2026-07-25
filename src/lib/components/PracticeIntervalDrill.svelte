@@ -8,8 +8,7 @@
 		type IntervalQuestion
 	} from '$lib/drills/generateIntervalQuestion';
 	import { intervalFromShort } from '$lib/theory/interval';
-	import { ensureAudioReady, playChord, playNote } from '$lib/audio/audio';
-	import { toPitch } from '$lib/audio/voicing';
+	import { ensureAudioReady, playChord } from '$lib/audio/audio';
 	import PianoKeyboard from './PianoKeyboard.svelte';
 	import IntervalChip from './IntervalChip.svelte';
 	import Button from './Button.svelte';
@@ -79,12 +78,6 @@
 		reveal(gradeIntervalTap(question.root, letter, question.interval.semitones));
 	}
 
-	/** Key-touch sound (Track A parity): every on-screen key press sounds its note. */
-	function pressKey(letter: string, octave: number): void {
-		void ensureAudioReady();
-		playNote(toPitch(letter, octave));
-	}
-
 	function handleNext(): void {
 		onComplete(correct);
 	}
@@ -128,7 +121,6 @@
 				interactive={!answered}
 				selected={answered ? undefined : new Set()}
 				onToggle={answered ? undefined : tapConstructionKey}
-				onPress={answered ? undefined : pressKey}
 				wrongLetters={answered
 					? correct
 						? new Set()

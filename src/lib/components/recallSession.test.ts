@@ -1848,11 +1848,12 @@ describe('RecallSession inline keyboard (KBD-01/KBD-03)', () => {
 		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-prompt'));
 
+		// Sound is now intrinsic to PianoKeyboard's activation choke point (G1
+		// UAT fix): a single click both sounds the key and toggles selection.
 		const cKey = screen.getAllByRole('button', { name: 'C key' })[0];
-		await fireEvent.pointerDown(cKey);
-		expect(playNoteMock).toHaveBeenCalledWith('C4');
-
 		await fireEvent.click(cKey);
+
+		expect(playNoteMock).toHaveBeenCalledWith('C4');
 		expect(cKey).toHaveAttribute('aria-pressed', 'true');
 	});
 

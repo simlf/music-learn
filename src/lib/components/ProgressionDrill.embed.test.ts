@@ -13,6 +13,15 @@ import { setLocale } from '$lib/i18n/locale.svelte';
  * (REG-01).
  */
 
+// The embedded PianoKeyboard's interactive keys sound their own key-touch
+// note through its own choke point (G1 UAT fix); mock the audio module so no
+// consumer test ever triggers a real AudioContext/tone import in jsdom
+// (ARCHITECTURE-CONTRACTS.md consumer rule).
+vi.mock('$lib/audio/audio', () => ({
+	playNote: vi.fn(),
+	ensureAudioReady: vi.fn()
+}));
+
 /** First occurrence of a natural-letter key by its accessible name (mirrors progressionDrill.test.ts's clickKey convention). */
 function clickKey(letter: string) {
 	const keys = screen.getAllByRole('button', { name: `${letter} key` });

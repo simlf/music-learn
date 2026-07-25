@@ -6,14 +6,23 @@ import { saveSong, type Song } from '$lib/practice/songs';
 
 /**
  * Component test for ProgressionDrill (Phase 25 Plan 05, sketch-017
- * synthesis, SK-017): mocks nothing but Math.random, which drives BOTH the
- * pure 25-01 progression engine's random draw (randomProgression) and its
- * Fisher-Yates nameChoices shuffle - a constant 0 return deterministically
- * draws PROGRESSION_TEMPLATES[0] ('major-ii-V-I') keyed to PROGRESSION_KEYS[0]
+ * synthesis, SK-017): mocks Math.random, which drives BOTH the pure 25-01
+ * progression engine's random draw (randomProgression) and its Fisher-Yates
+ * nameChoices shuffle - a constant 0 return deterministically draws
+ * PROGRESSION_TEMPLATES[0] ('major-ii-V-I') keyed to PROGRESSION_KEYS[0]
  * ('C'), producing bars Dm7 (ii, subdominant) / G7 (V, dominant) / Cmaj7 (I,
  * tonic), with nameChoices' shuffle output worked out by hand below so the
- * exact chip text is assertable without any component-side seam.
+ * exact chip text is assertable without any component-side seam. Also mocks
+ * $lib/audio/audio: the embedded PianoKeyboard's interactive keys now sound
+ * their own key-touch note through its own choke point (G1 UAT fix), so no
+ * consumer test may let a real AudioContext/tone import happen in jsdom
+ * (ARCHITECTURE-CONTRACTS.md consumer rule).
  */
+
+vi.mock('$lib/audio/audio', () => ({
+	playNote: vi.fn(),
+	ensureAudioReady: vi.fn()
+}));
 
 function song(overrides: Partial<Song> = {}): Song {
 	return {

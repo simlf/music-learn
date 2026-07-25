@@ -5,15 +5,21 @@ import type { InspectPayload } from './PianoKeyboard.svelte';
 
 // The inspect tap plays its note through the audio contract; tests never
 // construct a real AudioContext (ARCHITECTURE-CONTRACTS.md consumer rule).
+// ensureAudioReady is also mocked: since the G1 UAT fix, interactive mode's
+// own activation choke point calls it too (playKeyTouch), and PianoKeyboard
+// imports both from this same module.
 const playNoteMock = vi.fn();
+const ensureAudioReadyMock = vi.fn();
 vi.mock('$lib/audio/audio', () => ({
-	playNote: (...args: unknown[]) => playNoteMock(...args)
+	playNote: (...args: unknown[]) => playNoteMock(...args),
+	ensureAudioReady: (...args: unknown[]) => ensureAudioReadyMock(...args)
 }));
 
 const { default: PianoKeyboard } = await import('./PianoKeyboard.svelte');
 
 beforeEach(() => {
 	playNoteMock.mockClear();
+	ensureAudioReadyMock.mockClear();
 });
 
 afterEach(() => {
@@ -136,7 +142,10 @@ describe('PianoKeyboard inspect mode (inspectable + onInspect)', () => {
 
 		expect(onToggle).toHaveBeenCalledWith('C');
 		expect(onInspect).not.toHaveBeenCalled();
-		expect(playNoteMock).not.toHaveBeenCalled();
+		// Interactive mode's own choke-point sound still fires (G1 UAT fix);
+		// it's emitInspect specifically that never runs here, since inspect
+		// loses to interactive.
+		expect(playNoteMock).toHaveBeenCalledWith('C4');
 	});
 
 	it('omitting inspectable keeps the display-only render free of button semantics and silent', async () => {

@@ -26,9 +26,15 @@ const playArpeggioMock = vi.fn();
 const ensureAudioReadyMock = vi.fn();
 const soundEnabledMock = vi.fn();
 const studyModeEnabledMock = vi.fn();
+// playNote isn't imported by BuildSession itself, but its embedded
+// PianoKeyboard IS constructable, and every construct tap now sounds its own
+// key-touch note through PianoKeyboard's own choke point (G1 UAT fix) - so
+// this mock must be defined too, or that real (unmocked) import would throw.
+const playNoteMock = vi.fn();
 vi.mock('$lib/audio/audio', () => ({
 	playChord: (...args: unknown[]) => playChordMock(...args),
 	playArpeggio: (...args: unknown[]) => playArpeggioMock(...args),
+	playNote: (...args: unknown[]) => playNoteMock(...args),
 	ensureAudioReady: (...args: unknown[]) => ensureAudioReadyMock(...args),
 	soundEnabled: (...args: unknown[]) => soundEnabledMock(...args),
 	studyModeEnabled: (...args: unknown[]) => studyModeEnabledMock(...args)
@@ -41,6 +47,7 @@ beforeEach(() => {
 	recordGradeMock.mockImplementation(async (card, rating) => ({ ...card, lastRating: rating }));
 	playChordMock.mockReset();
 	playArpeggioMock.mockReset();
+	playNoteMock.mockReset();
 	ensureAudioReadyMock.mockReset();
 	ensureAudioReadyMock.mockResolvedValue(undefined);
 	soundEnabledMock.mockReset();

@@ -401,8 +401,11 @@ describe('ShellVoicingDrill: key-touch sound (UAT bug A)', () => {
 
 		await waitFor(() => screen.getByTestId('stage-subtract'));
 
+		// Sound is now intrinsic to PianoKeyboard's activation choke point (G1
+		// UAT fix), fired on click/Enter/Space (the tap that actually selects
+		// the key), not on pointerdown.
 		const eKey = screen.getAllByRole('button', { name: 'E key' })[0];
-		await fireEvent.pointerDown(eKey);
+		await fireEvent.click(eKey);
 
 		expect(ensureAudioReadyMock).toHaveBeenCalled();
 		expect(playNoteMock).toHaveBeenCalledWith('E4');

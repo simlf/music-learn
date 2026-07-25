@@ -2,18 +2,23 @@ import { render, screen, fireEvent } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { spellChord } from '$lib/theory/chord';
 
-// Construction taps must never auto-play audio from inside PianoKeyboard - the
-// caller (BuildSession) owns correct/wrong feedback sound. Tests never
-// construct a real AudioContext (ARCHITECTURE-CONTRACTS.md consumer rule).
+// Construction taps sound their own key-touch note through PianoKeyboard's
+// activation choke point (G1 UAT fix) - the SAME path interactive mode uses -
+// while the caller (BuildSession/InteractiveLesson) still owns correct/wrong
+// VISUAL feedback. Tests never construct a real AudioContext
+// (ARCHITECTURE-CONTRACTS.md consumer rule).
 const playNoteMock = vi.fn();
+const ensureAudioReadyMock = vi.fn();
 vi.mock('$lib/audio/audio', () => ({
-	playNote: (...args: unknown[]) => playNoteMock(...args)
+	playNote: (...args: unknown[]) => playNoteMock(...args),
+	ensureAudioReady: (...args: unknown[]) => ensureAudioReadyMock(...args)
 }));
 
 const { default: PianoKeyboard } = await import('./PianoKeyboard.svelte');
 
 beforeEach(() => {
 	playNoteMock.mockClear();
+	ensureAudioReadyMock.mockClear();
 });
 
 afterEach(() => {
@@ -33,7 +38,7 @@ describe('PianoKeyboard construct mode (constructable + onConstructTap + flashWr
 		expect(screen.getAllByRole('button', { name: 'D key' }).length).toBeGreaterThan(0);
 	});
 
-	it('clicking a white key not in notes fires onConstructTap with its letter and key-position octave, without playing audio', async () => {
+	it('clicking a white key not in notes fires onConstructTap with its letter and key-position octave, and sounds its own key-touch note (G1)', async () => {
 		const notes = spellChord('Cm7').notes.slice(0, 1);
 		const onConstructTap = vi.fn();
 		render(PianoKeyboard, { notes, constructable: true, onConstructTap });
@@ -42,10 +47,11 @@ describe('PianoKeyboard construct mode (constructable + onConstructTap + flashWr
 
 		expect(onConstructTap).toHaveBeenCalledTimes(1);
 		expect(onConstructTap).toHaveBeenCalledWith('D', 4);
-		expect(playNoteMock).not.toHaveBeenCalled();
+		expect(ensureAudioReadyMock).toHaveBeenCalled();
+		expect(playNoteMock).toHaveBeenCalledWith('D4');
 	});
 
-	it('clicking a black key fires onConstructTap with its sharp-letter spelling and correct octave', async () => {
+	it('clicking a black key fires onConstructTap with its sharp-letter spelling and correct octave, and sounds it too', async () => {
 		const notes = spellChord('Cm7').notes.slice(0, 1);
 		const onConstructTap = vi.fn();
 		render(PianoKeyboard, { notes, constructable: true, onConstructTap });
@@ -53,7 +59,7 @@ describe('PianoKeyboard construct mode (constructable + onConstructTap + flashWr
 		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
 
 		expect(onConstructTap).toHaveBeenCalledWith('D♯', 4);
-		expect(playNoteMock).not.toHaveBeenCalled();
+		expect(playNoteMock).toHaveBeenCalledWith('D#4');
 	});
 
 	it('Enter and Space both activate a key in constructable mode, mirroring interactive/inspectable', async () => {
@@ -104,7 +110,10 @@ describe('PianoKeyboard construct mode (constructable + onConstructTap + flashWr
 
 		expect(onConstructTap).toHaveBeenCalledWith('C', 4);
 		expect(onInspect).not.toHaveBeenCalled();
-		expect(playNoteMock).not.toHaveBeenCalled();
+		// Construct mode's own choke-point sound still fires (G1); it's
+		// emitInspect specifically that never runs here, since inspect loses to
+		// construct.
+		expect(playNoteMock).toHaveBeenCalledWith('C4');
 	});
 
 	it('flashWrongKey paints the wrong-fill class on the exact octave-specific white key only', () => {

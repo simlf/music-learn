@@ -1,11 +1,28 @@
 import { render, screen, fireEvent, within } from '@testing-library/svelte';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import PianoKeyboard from './PianoKeyboard.svelte';
 import IntervalChip from './IntervalChip.svelte';
 import InspectRegister from './InspectRegister.svelte';
 import RecentChipRow from './RecentChipRow.svelte';
 import { spellChord } from '$lib/theory/chord';
 import { setLocale } from '$lib/i18n/locale.svelte';
+
+// Interactive-mode taps now sound their own key-touch note through
+// PianoKeyboard's own activation choke point (G1 UAT fix), so every test
+// module rendering an interactive/constructable/inspectable keyboard mocks
+// this module - never a real AudioContext/tone import in jsdom
+// (ARCHITECTURE-CONTRACTS.md consumer rule).
+const playNoteMock = vi.fn();
+const ensureAudioReadyMock = vi.fn();
+vi.mock('$lib/audio/audio', () => ({
+	playNote: (...args: unknown[]) => playNoteMock(...args),
+	ensureAudioReady: (...args: unknown[]) => ensureAudioReadyMock(...args)
+}));
+
+beforeEach(() => {
+	playNoteMock.mockClear();
+	ensureAudioReadyMock.mockClear();
+});
 
 describe('PianoKeyboard', () => {
 	it('highlights the four Cm7 spelled notes with their interval role colors and dual naming', () => {
@@ -407,6 +424,76 @@ describe('PianoKeyboard', () => {
 			await fireEvent.pointerDown(key);
 
 			expect(onPress).not.toHaveBeenCalled();
+		});
+
+		describe('key-touch sound (G1 UAT fix)', () => {
+			it('clicking an interactive key sounds it exactly once through the shared audio contract', async () => {
+				render(PianoKeyboard, {
+					notes: [],
+					interactive: true,
+					selected: new Set<string>(),
+					onToggle: () => {}
+				});
+
+				const [cKey] = screen.getAllByRole('button', { name: 'C key' });
+				await fireEvent.click(cKey);
+
+				expect(ensureAudioReadyMock).toHaveBeenCalled();
+				expect(playNoteMock).toHaveBeenCalledTimes(1);
+				expect(playNoteMock).toHaveBeenCalledWith('C4');
+			});
+
+			it('does not double-play when a caller also wires onPress on the same key', async () => {
+				const onPress = vi.fn();
+				render(PianoKeyboard, {
+					notes: [],
+					interactive: true,
+					selected: new Set<string>(),
+					onToggle: () => {},
+					onPress
+				});
+
+				const [cKey] = screen.getAllByRole('button', { name: 'C key' });
+				await fireEvent.pointerDown(cKey);
+				await fireEvent.click(cKey);
+
+				// onPress (pointerdown) and the choke-point sound (click) both fire
+				// from the same single tap gesture, but the sound itself still only
+				// plays once - onPress carries no audio of its own (G1: callers no
+				// longer wire audio-only onPress handlers).
+				expect(onPress).toHaveBeenCalledTimes(1);
+				expect(playNoteMock).toHaveBeenCalledTimes(1);
+			});
+
+			it('Enter/Space also sounds the key (mirrors click, the other activation path)', async () => {
+				render(PianoKeyboard, {
+					notes: [],
+					interactive: true,
+					selected: new Set<string>(),
+					onToggle: () => {}
+				});
+
+				const [cKey] = screen.getAllByRole('button', { name: 'C key' });
+				await fireEvent.keyDown(cKey, { key: 'Enter' });
+
+				expect(playNoteMock).toHaveBeenCalledTimes(1);
+				expect(playNoteMock).toHaveBeenCalledWith('C4');
+			});
+
+			it('a construct-mode tap also sounds its own key, mirroring interactive mode', async () => {
+				const { notes } = spellChord('Cm7');
+				render(PianoKeyboard, {
+					notes: notes.slice(0, 1),
+					constructable: true,
+					onConstructTap: () => {}
+				});
+
+				const [dKey] = screen.getAllByRole('button', { name: 'D key' });
+				await fireEvent.click(dKey);
+
+				expect(ensureAudioReadyMock).toHaveBeenCalled();
+				expect(playNoteMock).toHaveBeenCalledWith('D4');
+			});
 		});
 
 		it('renders byte-identical markup whether onPress is passed or omitted', () => {

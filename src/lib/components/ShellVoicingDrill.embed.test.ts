@@ -13,6 +13,15 @@ import { setLocale } from '$lib/i18n/locale.svelte';
  * no embed props the standalone /voicings flow is unchanged (REG-01).
  */
 
+// The embedded PianoKeyboard's interactive/inspectable keys sound their own
+// key-touch note through PianoKeyboard's own choke point (G1 UAT fix); mock
+// the audio module so no consumer test ever triggers a real AudioContext/tone
+// import in jsdom (ARCHITECTURE-CONTRACTS.md consumer rule).
+vi.mock('$lib/audio/audio', () => ({
+	playNote: vi.fn(),
+	ensureAudioReady: vi.fn()
+}));
+
 const now0 = new Date('2026-07-25T00:00:00.000Z');
 
 function makeCard(factId: string, state: State): CardRecord {

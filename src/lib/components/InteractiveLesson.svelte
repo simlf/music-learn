@@ -143,8 +143,9 @@
 			}
 			wrongFlash = null;
 			clearTimeout(flashTimer);
-			void ensureAudioReady();
-			playNote(toPitch(letter, octave));
+			// The tap's own key-touch sound now comes from PianoKeyboard's
+			// activation choke point itself (G1 UAT fix) - calling playNote here
+			// too would double-play the same note.
 			// Advancement and the earnedNotes fill above happen unconditionally -
 			// never gated on soundEnabled() (LEARN-02's locked "sound-off still
 			// advances" clause).
@@ -153,8 +154,9 @@
 			wrongFlash = { letter, octave };
 			feedbackLine =
 				step.wrongHint !== null ? wrongHintFor(step.wrongHint[currentLocale()], letter) : null;
-			// Wrong taps never call playNote/playChord - the caller (this
-			// component) owns feedback, mirroring BuildSession's contract.
+			// A wrong tap still sounds its own key-touch note (G1: every tap
+			// sounds, right or wrong) via PianoKeyboard's choke point; this
+			// component only owns the wrong-tap VISUAL feedback (flash/hint).
 			clearTimeout(flashTimer);
 			flashTimer = setTimeout(() => {
 				wrongFlash = null;

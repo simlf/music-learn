@@ -427,13 +427,6 @@
 		selected = next;
 	}
 
-	/** Key-touch sound (mirrors Drills' pressKey exactly); no-ops once answered. */
-	function pressModeAKey(letter: string, octave: number): void {
-		if (modeAAnswered) return;
-		void ensureAudioReady();
-		playNote(toPitch(letter, octave));
-	}
-
 	/**
 	 * Grades the played chroma set against the target chord (D-03: chroma set
 	 * equality only, never letter strings). Writes the FSRS rating
@@ -924,7 +917,6 @@
 			interactive
 			selected={selected}
 			onToggle={toggleModeAKey}
-			onPress={pressModeAKey}
 			wrongLetters={modeAWrong ? extraLettersPlayed : undefined}
 		/>
 	{:else if currentItem?.mode === 'hear-name'}
