@@ -43,8 +43,10 @@ cause: step indicator was display-only spans; stage auto-derived from FSRS matur
 fix: commit 5e0b7f6 — step tabs are now clickable buttons; can review the meet/Voir reference then return; grading stays on the real stage.
 result: [needs on-device re-check].
 
-### F4. name-it (nomme cet accord) per-note tactile right/wrong feedback
-status: DEFERRED (enhancement, not a bug) — PracticeChordDrill is multiple-choice; the keyboard is inspect-only with no note-tap grading. Adding per-note right/wrong is new wiring. Awaiting user go-ahead.
+### F4. name-it (nomme cet accord) clearer right/wrong feedback
+cause: on a correct answer the drill showed no affirmation (only silent badges); only a miss revealed a glyph, so correctness was ambiguous.
+fix: commits 5383eb0 / 2825675 — clear "✓ Correct" (fr "Bien vu") / "✕ Incorrect" (fr "Pas tout à fait") feedback after answering, new i18n keys EN/FR; per-note role reveal on tap already gated to post-answer (no pre-answer leak). Reserved vermilion untouched.
+result: [needs on-device re-check] — visual/animation polish (stamp timing, glyph sizing, EN/FR).
 
 ## Summary
 
@@ -52,7 +54,7 @@ total: 2 tests + 4 findings
 tests_passed: 1 (accent)
 tests_pending: 1 (phone responsive/animation)
 findings_fixed: 3 (F1/F2/F3, pending on-device re-check)
-findings_deferred: 1 (F4 name-it feedback)
+findings_fixed: 4 (F1/F2/F3/F4, pending on-device re-check)
 
 ## Gaps
 
