@@ -291,7 +291,13 @@
 	async function completeCarded(correct: boolean): Promise<void> {
 		if (grading) return;
 		const item = currentItem;
-		if (item === undefined || item.family === 'voicing' || item.family === 'progression') {
+		// WR-01: allowlist the two families completeCarded actually grades
+		// (name-it/interval), rather than denylisting the two synthetic
+		// families - build-it is also a CardedFamily and commits its own FSRS
+		// grade internally (see completeBuild's comment), so a denylist here
+		// would silently double-commit if routing ever misdirected a
+		// build-it item into this handler.
+		if (item === undefined || (item.family !== 'name-it' && item.family !== 'interval')) {
 			return;
 		}
 		grading = true;
