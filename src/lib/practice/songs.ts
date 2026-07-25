@@ -40,11 +40,14 @@ export interface Song {
 }
 
 /**
- * Reads the persisted song list. Returns [] when the store is empty,
- * missing, or not an array; individual malformed entries are dropped so one
- * corrupt record never wipes the rest of the library.
+ * Reads the raw persisted song list, schema-guarded but NOT deduped. Returns
+ * [] when the store is empty, missing, or not an array; individual malformed
+ * entries are dropped so one corrupt record never wipes the rest of the
+ * library. Internal - saveSong/deleteSong read+write through this so a
+ * display-only dedup (see listSongs) never gets baked into an unrelated
+ * write.
  */
-export function listSongs(): Song[] {
+function readStoredSongs(): Song[] {
 	try {
 		const raw = localStorage.getItem(STORAGE_KEY);
 		if (raw === null) return [];
@@ -59,24 +62,85 @@ export function listSongs(): Song[] {
 }
 
 /**
+ * Reads the persisted song list for display, collapsing duplicate stored
+ * records that share the same non-empty presetId (UAT G4: a preset added
+ * before the in-memory add-guard existed could already be duplicated in
+ * storage, and would otherwise show twice in Progress > Songs forever).
+ * Read-path only: never rewrites localStorage, so a pre-existing duplicate
+ * stays in storage but is never surfaced twice.
+ */
+export function listSongs(): Song[] {
+	return dedupeByPresetId(readStoredSongs());
+}
+
+/**
+ * Collapses `songs` so each non-empty presetId contributes exactly one
+ * entry, at that presetId's first-occurrence position (list order and
+ * relative position of every other song are otherwise untouched). Within a
+ * duplicate group, an active song wins over an inactive one; otherwise the
+ * first-seen record wins. Songs without a presetId (custom songs) are never
+ * touched or reordered.
+ */
+function dedupeByPresetId(songs: Song[]): Song[] {
+	const winnerByPresetId = new Map<string, Song>();
+	for (const song of songs) {
+		if (song.presetId === undefined || song.presetId === '') continue;
+		const existing = winnerByPresetId.get(song.presetId);
+		if (existing === undefined || (!existing.active && song.active)) {
+			winnerByPresetId.set(song.presetId, song);
+		}
+	}
+
+	const seenPresetIds = new Set<string>();
+	const result: Song[] = [];
+	for (const song of songs) {
+		if (song.presetId === undefined || song.presetId === '') {
+			result.push(song);
+			continue;
+		}
+		if (seenPresetIds.has(song.presetId)) continue;
+		seenPresetIds.add(song.presetId);
+		result.push(winnerByPresetId.get(song.presetId) ?? song);
+	}
+	return result;
+}
+
+/**
  * Upserts a song by id: an existing song is replaced in place (keeping its
  * list position), a new one is appended. Storage failures degrade to a
  * no-op write.
+ *
+ * Same-presetId add guard (UAT G4 hardening): if `song` is genuinely new (no
+ * existing record shares its id) but its presetId already has a stored
+ * record, the add is a no-op rather than appending a second row for the
+ * same preset - the storage layer itself can no longer manufacture a fresh
+ * duplicate, even if a future call site forgets the in-memory
+ * findSongByPresetId guard.
  */
 export function saveSong(song: Song): void {
-	const songs = listSongs();
+	const songs = readStoredSongs();
 	const index = songs.findIndex((existing) => existing.id === song.id);
-	if (index === -1) {
-		songs.push(song);
-	} else {
+	if (index !== -1) {
 		songs[index] = song;
+		writeSongs(songs);
+		return;
 	}
+
+	if (
+		song.presetId !== undefined &&
+		song.presetId !== '' &&
+		songs.some((existing) => existing.presetId === song.presetId)
+	) {
+		return;
+	}
+
+	songs.push(song);
 	writeSongs(songs);
 }
 
 /** Removes the song with the given id. Unknown ids are a no-op. */
 export function deleteSong(id: string): void {
-	const songs = listSongs();
+	const songs = readStoredSongs();
 	const remaining = songs.filter((song) => song.id !== id);
 	if (remaining.length === songs.length) return;
 	writeSongs(remaining);
