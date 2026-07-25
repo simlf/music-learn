@@ -16,12 +16,24 @@
 	 * L1068-1099 prompt/choice-grid, L1153-1225 feedback) verbatim: grading
 	 * is a symbol pick (never played-note chroma matching), the keyboard
 	 * shows the chord's own notes throughout, and the correct-symbol glyph
-	 * only reveals on a miss - a correct answer shows no extra chrome
-	 * beyond the interval-badge reveal on the keyboard itself.
+	 * only reveals on a miss (see the UAT F4 note below for the right/wrong
+	 * affirmation added alongside that reveal).
 	 *
 	 * Generation/grading is entirely delegated to the shared pure modules
 	 * (generateQuestion, spellChord) - REG-01: no logic duplicated from
 	 * drills, this component only re-authors the small markup.
+	 *
+	 * UAT F4 fix: a correct answer previously showed no affirmation at all
+	 * (only the gated interval-badge reveal on the keyboard) - a returning
+	 * player couldn't tell they'd gotten it right. Now both branches of the
+	 * reveal carry an explicit right/wrong signal: a bold "Correct" line on
+	 * a hit (mirrors RecallSession's hear-name `confirmationText` line), and
+	 * a muted "Incorrect" marker beside the existing correct-symbol
+	 * ChordGlyph on a miss (mirrors SongManager's muted "✕" remove-chip
+	 * treatment) - deliberately NOT vermilion (reserved for primary CTAs
+	 * per LocaleToggle's own comment) and NOT any of the four reserved
+	 * interval-role colors, only the existing `text-muted` token already
+	 * used for wrong-answer chrome elsewhere.
 	 */
 	interface Props {
 		/** The chord symbol this item drills (from the host's queue). */
@@ -90,10 +102,22 @@
 
 	{#if answered}
 		<div class="mt-4 stamp" data-testid="chord-drill-feedback">
-			{#if !correct}
+			{#if correct}
+				<p class="text-body font-bold" data-testid="chord-drill-correct">
+					<span aria-hidden="true">✓</span>
+					{t('drills.feedback.correct')}
+				</p>
+			{:else}
 				<div class="flex items-start gap-4">
 					<ChordGlyph root={target.root} quality={target.symbol.slice(target.root.length)} />
 				</div>
+				<p
+					class="text-label text-muted mt-2 font-mono uppercase"
+					data-testid="chord-drill-incorrect"
+				>
+					<span aria-hidden="true">✕</span>
+					{t('drills.feedback.incorrect')}
+				</p>
 			{/if}
 		</div>
 

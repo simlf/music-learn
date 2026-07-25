@@ -69,6 +69,10 @@ export const drills = {
 		'drills.feedback.legendExtra': 'Your extra note',
 		'drills.feedback.hereIsInterval': 'Here is the interval:',
 		'drills.feedback.youTapped': 'You tapped',
+
+		// Name-it (identification) right/wrong affirmation (UAT F4).
+		'drills.feedback.correct': 'Correct',
+		'drills.feedback.incorrect': 'Incorrect',
 		'drills.button.next': 'Next',
 		'drills.button.replayChord': 'Hear it again',
 
@@ -157,6 +161,9 @@ export const drills = {
 		'drills.feedback.legendExtra': 'Ta note en trop',
 		'drills.feedback.hereIsInterval': "Voici l'intervalle :",
 		'drills.feedback.youTapped': 'Tu as joué',
+
+		'drills.feedback.correct': 'Bien vu',
+		'drills.feedback.incorrect': 'Pas tout à fait',
 		'drills.button.next': 'Suivant',
 		'drills.button.replayChord': 'Réécouter',
 
