@@ -36,8 +36,8 @@
 
 ### No Regression (REG)
 
-- [ ] **REG-01**: Existing drills, SRS scheduling, progress/streak stats, and song-filter behavior work exactly as before the restructure — only the pages that display state move between routes.
-- [ ] **REG-02**: Per-route test files are remapped to the absorbing hub; new tests cover the merged Practice queue interleaving (incl. single-type-due gate), the IntervalView (stacked vs formula per chord quality + accidental carry-through), and each redirect shim; full suite + `svelte-check` stay green.
+- [x] **REG-01**: Existing drills, SRS scheduling, progress/streak stats, and song-filter behavior work exactly as before the restructure — only the pages that display state move between routes.
+- [x] **REG-02**: Per-route test files are remapped to the absorbing hub; new tests cover the merged Practice queue interleaving (incl. single-type-due gate), the IntervalView (stacked vs formula per chord quality + accidental carry-through), and each redirect shim; full suite + `svelte-check` stay green.
 
 ## Out of Scope (this milestone)
 

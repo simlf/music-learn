@@ -200,10 +200,10 @@ Plans:
   3. New tests cover the merged Practice queue interleaving (including the single-type-due gate), the IntervalView (stacked vs formula per chord quality plus accidental carry-through), and each redirect shim.
   4. The full test suite and `svelte-check` both pass with zero errors.
 
-**Plans**: 2 plans
+**Plans**: 1/2 plans executed
 Plans:
 
-- [ ] 31-01-PLAN.md — Audit REG-02 coverage matrix (fill only genuine gaps) + cross-hub capstone integration test (REG-01: 4-hub topology, 8 redirects, one flow per hub) [wave 1]
+- [x] 31-01-PLAN.md — Audit REG-02 coverage matrix (fill only genuine gaps) + cross-hub capstone integration test (REG-01: 4-hub topology, 8 redirects, one flow per hub) [wave 1]
 - [ ] 31-02-PLAN.md — Full milestone green gate (build+prerender / test / svelte-check) + REQUIREMENTS.md traceability confirmation, mark REG-01/REG-02 delivered [wave 2]
 
 **Notes**: REG-01 and REG-02 are binding constraints throughout Phases 26-30 (each merge phase preserves behavior and remaps its own route's tests as it goes). This phase is the milestone-wide green gate that consolidates the remapped suite and confirms no behavior regression across all four hubs. No UI (verification/test phase). UI-SPEC skipped (no net-new visual surface).
