@@ -98,3 +98,53 @@ describe('PracticeChordDrill: grading and reveal', () => {
 		expect(onComplete).toHaveBeenCalledTimes(1);
 	});
 });
+
+describe('PracticeChordDrill: right/wrong affirmation (UAT F4)', () => {
+	it('a correct answer shows a clear "Correct" affirmation, and no incorrect marker or glyph', async () => {
+		render(PracticeChordDrill, { props: { symbol: 'Cm7', onComplete: vi.fn() } });
+
+		await fireEvent.click(choiceButton('Cm7'));
+
+		const feedback = screen.getByTestId('chord-drill-feedback');
+		expect(screen.getByTestId('chord-drill-correct')).toHaveTextContent('Correct');
+		expect(feedback.querySelector('.chord-glyph')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('chord-drill-incorrect')).not.toBeInTheDocument();
+	});
+
+	it('a wrong answer shows the correct-symbol glyph plus a clear "Incorrect" marker, and no correct affirmation', async () => {
+		render(PracticeChordDrill, { props: { symbol: 'Cm7', onComplete: vi.fn() } });
+
+		const choiceGrid = screen.getByTestId('choice-grid');
+		const buttons = within(choiceGrid).getAllByRole('button');
+		const wrong = buttons.find((button) => button.textContent?.trim() !== 'Cm7');
+		expect(wrong).toBeDefined();
+
+		await fireEvent.click(wrong!);
+
+		const feedback = screen.getByTestId('chord-drill-feedback');
+		expect(feedback.querySelector('.chord-glyph')).toBeInTheDocument();
+		expect(screen.getByTestId('chord-drill-incorrect')).toHaveTextContent('Incorrect');
+		expect(screen.queryByTestId('chord-drill-correct')).not.toBeInTheDocument();
+	});
+
+	it('renders the French affirmation/marker copy under fr', async () => {
+		setLocale('fr');
+		render(PracticeChordDrill, { props: { symbol: 'Cm7', onComplete: vi.fn() } });
+
+		const choiceGrid = screen.getByTestId('choice-grid');
+		const correct = within(choiceGrid)
+			.getAllByRole('button')
+			.find((button) => button.textContent?.trim() === 'Cm7');
+		expect(correct).toBeDefined();
+
+		await fireEvent.click(correct!);
+
+		expect(screen.getByTestId('chord-drill-correct')).toHaveTextContent('Bien vu');
+	});
+
+	it('does not leak interval-badge roles before the user answers', () => {
+		render(PracticeChordDrill, { props: { symbol: 'Cm7', onComplete: vi.fn() } });
+
+		expect(document.querySelector('.piano-keyboard__ivbadge')).not.toBeInTheDocument();
+	});
+});
