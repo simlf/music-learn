@@ -23,7 +23,7 @@ Full phase details for everything shipped through v2.1: [milestones/v2.1-ROADMAP
 - [x] **Phase 27: Practice Hub — One Smart Interleaved Session** - A single "Start practice" action runs one FSRS-scheduled session mixing all five drill types. (completed 2026-07-25)
 - [x] **Phase 28: Learn Hub — Theory + Scales Explore + Interval Reference** - One Learn surface to read theory, explore the major scale, and reference chord intervals. (completed 2026-07-25)
 - [x] **Phase 29: Progress Hub — Stats, Streak, Review Map, Songs** - One Progress surface for stats, streak, weak spots, the SRS review map, and song management. (completed 2026-07-25)
-- [ ] **Phase 30: Four-Hub Nav Cutover + Redirect Shims** - The app shows exactly 4 hubs everywhere; old bookmarks still land correctly; the orphan route is gone.
+- [x] **Phase 30: Four-Hub Nav Cutover + Redirect Shims** - The app shows exactly 4 hubs everywhere; old bookmarks still land correctly; the orphan route is gone. (completed 2026-07-25)
 - [ ] **Phase 31: No-Regression Gate & Test Remap** - The whole restructure ships green: prior behavior intact, every route's tests remapped, new tests covering the merges.
 
 <details>
