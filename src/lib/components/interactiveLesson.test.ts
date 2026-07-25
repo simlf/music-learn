@@ -140,12 +140,12 @@ describe('InteractiveLesson (LEARN-01/02/03)', () => {
 		expect(screen.getByText('A major third is 4 keys up')).toBeInTheDocument();
 	});
 
-	it('after completing all four steps, the handoff card renders with a real /drills link', async () => {
+	it('after completing all four steps, the handoff card renders with a real /practice link', async () => {
 		await completeAllSteps();
 
 		expect(screen.getByTestId('lesson-handoff')).toBeInTheDocument();
 		const link = screen.getByRole('link', { name: /try this in a drill/i });
-		expect(link).toHaveAttribute('href', '/drills');
+		expect(link).toHaveAttribute('href', '/practice');
 	});
 
 	it('clicking the handoff CTA writes [\'C\',\'Cm\'] to the lesson-seeds localStorage key', async () => {

@@ -453,7 +453,7 @@ describe('BuildSession completion summary (BUILD-01/02, 12-05 Task 2)', () => {
 
 		expect(screen.getByRole('button', { name: 'Build Another' })).toBeInTheDocument();
 		const recallLink = screen.getByRole('link', { name: 'Recall It Now' });
-		expect(recallLink).toHaveAttribute('href', '/recall');
+		expect(recallLink).toHaveAttribute('href', '/progress');
 	});
 
 	it('"Build Another" returns to the picker with the SAME kind (chords) preserved, not reset', async () => {
