@@ -53,9 +53,8 @@ result: [needs on-device re-check] — visual/animation polish (stamp timing, gl
 total: 2 tests + 4 findings
 tests_passed: 1 (accent)
 tests_pending: 1 (phone responsive/animation)
-findings_fixed: 3 (F1/F2/F3, pending on-device re-check)
 findings_fixed: 4 (F1/F2/F3/F4, pending on-device re-check)
 
 ## Gaps
 
-F1/F2/F3 fixes are on the PR branch (commits e8c9f43 / 8a49675 / 5e0b7f6), suite green (1474). On-device re-check needed for audio (F1), key alignment (F2), stage nav (F3), plus the still-pending phone-width Test 2. F4 awaits a go/no-go.
+F1-F4 fixes are on the PR branch (e8c9f43 / 8a49675 / 5e0b7f6 / 5383eb0), suite green (1478). On-device re-check needed for: audio (F1), key alignment (F2), stage nav (F3), name-it correct/incorrect polish (F4), plus the still-pending phone-width Test 2.
