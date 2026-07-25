@@ -4,17 +4,17 @@ milestone: v2.2
 milestone_name: Hub Consolidation + Interval Theory
 current_phase: 29
 current_phase_name: Progress Hub — Stats, Streak, Review Map, Songs
-status: executing
+status: verifying
 stopped_at: Completed 29-02-PLAN.md
-last_updated: "2026-07-25T03:18:16.766Z"
+last_updated: "2026-07-25T03:25:06.075Z"
 last_activity: 2026-07-25
 last_activity_desc: Phase 28 complete, transitioned to Phase 29
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 19
-  completed_plans: 18
-  percent: 50
+  completed_plans: 19
+  percent: 67
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-21)
 
 Phase: 29 — Progress Hub — Stats, Streak, Review Map, Songs
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-25 — Phase 28 complete, transitioned to Phase 29
 
 ## Performance Metrics
@@ -169,6 +169,7 @@ Last activity: 2026-07-25 — Phase 28 complete, transitioned to Phase 29
 | Phase 29 P02 | 5min | 2 tasks | 2 files |
 | Phase 29 P03 | 15min | 2 tasks | 2 files |
 | Phase 29 P04 | 20min | 2 tasks | 2 files |
+| Phase 29 P05 | 12min | 1 tasks | 1 files |
 
 ## Deferred Items
 
@@ -378,6 +379,8 @@ Recent decisions affecting current work:
 - [Phase ?]: RecallPanel exposes mode via Svelte 5 $bindable prop (not export let); host <main> owns data-review-dock gating, keeping the shared panel dock-agnostic
 - [Phase 29-04]: Hub main gates data-review-dock on activeTab === 'recall' && recallMode === 'review', combining hub tab state with RecallPanel's bindable nested mode, so the dock never leaks onto Stats or Songs
 - [Phase 29-04]: RecallPanel renders unwrapped (owns its own panel); ProgressStats and SongManager each get a host-owned border-ink bg-paper-bright border-2 wrapper for consistent section chrome across all three tabs
+- [Phase 29]: Song-filter write assertion reads the real readSongFilter() (single-key contract), not a nonexistent visual indicator
+- [Phase 29]: data-review-dock assertion walks the full lifecycle (Stats absent -> Recall+Review present -> Recall+Map absent -> Songs absent) in one test
 
 ### Pending Todos
 
@@ -415,7 +418,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-25T03:17:40.562Z
+Last session: 2026-07-25T03:23:56.631Z
 Stopped at: Completed 29-02-PLAN.md
 Resume file: 
 None

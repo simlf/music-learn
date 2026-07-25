@@ -152,7 +152,7 @@ Plans:
   3. The Progress hub shows song management, including the From-my-songs filter (the former `songs` route).
   4. All three formerly separate surfaces are reachable from the one Progress surface.
 
-**Plans**: 4/5 plans executed
+**Plans**: 5/5 plans complete
 
 Plans:
 
@@ -160,7 +160,7 @@ Plans:
 - [x] 29-02-PLAN.md — Extract SongManager.svelte + thin /songs wrapper (heading prop; sole filter writer) [wave 1]
 - [x] 29-03-PLAN.md — Extract RecallPanel.svelte ($bindable mode) + thin /recall wrapper (dock gate) [wave 1]
 - [x] 29-04-PLAN.md — Extract ProgressStats.svelte + rewrite /progress into the 3-tab hub host [wave 2]
-- [ ] 29-05-PLAN.md — Progress hub smoke test (tab switch, filter write, review-dock gating) [wave 3]
+- [x] 29-05-PLAN.md — Progress hub smoke test (tab switch, filter write, review-dock gating) [wave 3]
 
 **UI hint**: yes
 **Notes**: REG-01 binding: stats/streak computation, review-map data, and the song-filter preference all behave exactly as before; only their display location moves. The song filter surfaced here is the same preference the Practice queue reads (PRAC-04). CRITICAL coupling: the fixed review-action dock (`data-review-dock`) is gated in the hub on BOTH `activeTab==='recall'` AND `recallMode==='review'` so it never leaks onto Stats/Songs. DRY: SongManager/RecallPanel/ProgressStats extracted once; /songs + /recall become thin wrappers (redirects are Phase 30). Existing progress/songs/coverage suites must pass unedited.
