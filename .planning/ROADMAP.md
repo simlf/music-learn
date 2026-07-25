@@ -177,7 +177,12 @@ Plans:
   3. Visiting any of the 8 old routes (`/drills`, `/scales`, `/voicings`, `/build`, `/progressions`, `/recall`, `/songs`, `/theory`) redirects to the hub that now owns it.
   4. The orphan `/showcase` route no longer exists.
 
-**Plans**: TBD
+**Plans**: 5 plans
+- [ ] 30-01-PLAN.md — Nav cutover to 4 hubs + nav.practice/nav.learn i18n + masthead test (Wave 1)
+- [ ] 30-02-PLAN.md — Wire drill/lesson seeds into /practice as prioritized name-it items (Wave 1)
+- [ ] 30-03-PLAN.md — Repoint Progress + Lookup drill handoffs to /practice + their tests (Wave 1)
+- [ ] 30-04-PLAN.md — Repoint Recall/Lesson to /practice, Build to /progress + their tests (Wave 1)
+- [ ] 30-05-PLAN.md — 8 redirect shims + delete showcase + coverage-test remap + delete 15 route tests + green gate (Wave 2)
 **UI hint**: yes
 **Notes**: Design guidance — the thin, one-release redirect shims are grouped with the nav restructure as a no-regression safety net for existing bookmarks/deep-links. Removing the shims is a deferred follow-up (out of scope this milestone). `/scales` redirects to Learn (which owns "Explore"); its "Practice" tab already moved to the Practice hub in Phase 28.
 
