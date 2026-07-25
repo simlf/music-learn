@@ -6,7 +6,6 @@
 	import { getApiToken } from '$lib/api/client';
 	import StreakBadge from '$lib/components/StreakBadge.svelte';
 	import LocaleToggle from '$lib/components/LocaleToggle.svelte';
-	import BottomSheet from '$lib/components/BottomSheet.svelte';
 	import UpdatePrompt from '$lib/components/UpdatePrompt.svelte';
 	import { initLocale, t, type MessageKey } from '$lib/i18n/locale.svelte';
 	import { registerUpdateWatcher } from '$lib/pwa/swUpdate.svelte';
@@ -14,17 +13,17 @@
 
 	let { children }: LayoutProps = $props();
 
+	/**
+	 * Phase 30 (HUB-01): nav cutover from 10 flat links to the 4 hubs. Both
+	 * the desktop masthead and the phone bottom tab bar render from this one
+	 * source array (bottomTabLinks below is a filtered view, never a second
+	 * literal list).
+	 */
 	const navLinks: { href: string; labelKey: MessageKey }[] = [
 		{ href: '/', labelKey: 'nav.lookup' },
-		{ href: '/drills', labelKey: 'nav.drills' },
-		{ href: '/build', labelKey: 'nav.build' },
-		{ href: '/recall', labelKey: 'nav.recall' },
-		{ href: '/scales', labelKey: 'nav.scales' },
-		{ href: '/songs', labelKey: 'nav.songs' },
-		{ href: '/theory', labelKey: 'nav.theory' },
-		{ href: '/progress', labelKey: 'nav.progress' },
-		{ href: '/progressions', labelKey: 'nav.progressions' },
-		{ href: '/voicings', labelKey: 'nav.voicings' }
+		{ href: '/practice', labelKey: 'nav.practice' },
+		{ href: '/learn', labelKey: 'nav.learn' },
+		{ href: '/progress', labelKey: 'nav.progress' }
 	];
 
 	/**
@@ -43,34 +42,28 @@
 	 */
 	const TAB_ICONS: Record<string, string> = {
 		'/': '<svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="2" aria-hidden="true"><circle cx="10" cy="10" r="6"/><line x1="15" y1="15" x2="21" y2="21"/></svg>',
-		'/drills':
+		'/practice':
 			'<svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="2" aria-hidden="true"><rect x="3" y="6" width="18" height="12"/><line x1="8" y1="6" x2="8" y2="14"/><line x1="13" y1="6" x2="13" y2="14"/><line x1="18" y1="6" x2="18" y2="14"/></svg>',
 		'/recall':
 			'<svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="2" aria-hidden="true"><rect x="4" y="5" width="13" height="16"/><rect x="8" y="3" width="13" height="16"/></svg>',
 		'/songs':
-			'<svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="2" aria-hidden="true"><circle cx="7" cy="18" r="3"/><path d="M10 18V5l9-2v12"/><circle cx="16" cy="15" r="3"/></svg>'
+			'<svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="2" aria-hidden="true"><circle cx="7" cy="18" r="3"/><path d="M10 18V5l9-2v12"/><circle cx="16" cy="15" r="3"/></svg>',
+		'/learn':
+			'<svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="2" aria-hidden="true"><path d="M12 5v15"/><path d="M12 5c-2-1.3-5-1.3-8-.3v14c3-1 6-1 8 .3"/><path d="M12 5c2-1.3 5-1.3 8-.3v14c-3-1-6-1-8 .3"/></svg>',
+		'/progress':
+			'<svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="2" aria-hidden="true"><line x1="4" y1="20" x2="20" y2="20"/><line x1="7" y1="20" x2="7" y2="14"/><line x1="12" y1="20" x2="12" y2="9"/><line x1="17" y1="20" x2="17" y2="4"/></svg>'
 	};
 
-	const MORE_ICON =
-		'<svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="2" aria-hidden="true"><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>';
-
 	/**
-	 * Phone-only bottom tab bar (1A, UX-1A): the 4 primary destinations, in
-	 * the same order the desktop masthead already lists them. Derived by
-	 * filtering `navLinks` (not a second literal array) so the two never
-	 * drift apart.
+	 * Phone-only bottom tab bar (1A, UX-1A; reduced to the 4 hubs in Phase
+	 * 30, HUB-01): the same 4 primary destinations, in the same order the
+	 * desktop masthead already lists them. Derived by filtering `navLinks`
+	 * (not a second literal array) so the two never drift apart. The "More"
+	 * sheet (former 5th slot) is removed entirely - with exactly 4 hubs
+	 * there is no overflow to hold.
 	 */
-	const bottomTabHrefs = ['/', '/drills', '/recall', '/songs'];
+	const bottomTabHrefs = ['/', '/practice', '/learn', '/progress'];
 	const bottomTabLinks = navLinks.filter((link) => bottomTabHrefs.includes(link.href));
-
-	/**
-	 * "More" sheet contents (1A): the remaining 4 destinations, same
-	 * filter-not-duplicate-literal approach as bottomTabLinks above.
-	 */
-	const moreHrefs = ['/build', '/scales', '/theory', '/progress', '/progressions', '/voicings'];
-	const moreLinks = navLinks.filter((link) => moreHrefs.includes(link.href));
-
-	let moreOpen = $state(false);
 
 	/**
 	 * Masthead streak chip (PROG-03): fetched only when a token is already
@@ -140,38 +133,7 @@
 			>
 		</a>
 	{/each}
-	<button
-		type="button"
-		class="bottom-tab-bar__item font-mono"
-		aria-haspopup="dialog"
-		aria-expanded={moreOpen}
-		aria-label={t('nav.more')}
-		onclick={() => (moreOpen = true)}
-	>
-		<span class="bottom-tab-bar__icon">{@html MORE_ICON}</span>
-		<span class="bottom-tab-bar__label uppercase" style="letter-spacing: 0.06em;"
-			>{t('nav.more')}</span
-		>
-	</button>
 </nav>
-
-<BottomSheet open={moreOpen} onClose={() => (moreOpen = false)} ariaLabel={t('nav.more')}>
-	<div data-testid="more-sheet">
-		{#each moreLinks as link (link.href)}
-			<a
-				href={link.href}
-				class="more-sheet__link text-label font-mono uppercase"
-				onclick={() => (moreOpen = false)}
-			>
-				{t(link.labelKey)}
-			</a>
-		{/each}
-		<div class="more-sheet__divider"></div>
-		<div class="more-sheet__locale">
-			<LocaleToggle />
-		</div>
-	</div>
-</BottomSheet>
 
 {@render children()}
 
@@ -200,10 +162,8 @@
 	}
 
 	/*
-	 * Phone-only bottom tab bar (1A, UX-1A). Fixed to the viewport bottom,
-	 * below the BottomSheet backdrop/surface (z-index 100/101 - see
-	 * BottomSheet.svelte's own comment) so an open More sheet visually
-	 * covers it.
+	 * Phone-only bottom tab bar (1A, UX-1A; reduced to 4 hubs and the More
+	 * sheet removed in Phase 30, HUB-01). Fixed to the viewport bottom.
 	 *
 	 * CR-01 (23-REVIEW): Tailwind v4 emits its utilities inside
 	 * `@layer utilities`, while a Svelte component's own scoped `<style>`
@@ -298,25 +258,5 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		max-width: 100%;
-	}
-
-	/* More sheet contents (1A): plain nav rows + a divider before LocaleToggle. */
-	.more-sheet__link {
-		display: flex;
-		align-items: center;
-		min-height: 44px;
-		color: var(--color-ink);
-		text-decoration: none;
-	}
-
-	.more-sheet__divider {
-		border-top: 2px solid var(--color-ink);
-		margin: var(--spacing-md) 0;
-	}
-
-	.more-sheet__locale {
-		display: flex;
-		justify-content: center;
-		padding-bottom: var(--spacing-md);
 	}
 </style>
