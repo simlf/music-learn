@@ -4,16 +4,16 @@ milestone: v2.2
 milestone_name: Hub Consolidation + Interval Theory
 current_phase: 29
 current_phase_name: Progress Hub — Stats, Streak, Review Map, Songs
-status: verifying
+status: executing
 stopped_at: Completed 28-03-PLAN.md
-last_updated: "2026-07-25T02:27:15.086Z"
+last_updated: "2026-07-25T02:58:21.653Z"
 last_activity: 2026-07-25
 last_activity_desc: Phase 28 complete, transitioned to Phase 29
 progress:
   total_phases: 6
   completed_phases: 3
-  total_plans: 14
-  completed_plans: 14
+  total_plans: 19
+  completed_plans: 15
   percent: 50
 ---
 
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-07-21)
 ## Current Position
 
 Phase: 29 — Progress Hub — Stats, Streak, Review Map, Songs
-Plan: Not started
-Status: Phase complete — ready for verification
+Plan: 2 of 5
+Status: Ready to execute
 Last activity: 2026-07-25 — Phase 28 complete, transitioned to Phase 29
 
 ## Performance Metrics
@@ -165,6 +165,7 @@ Last activity: 2026-07-25 — Phase 28 complete, transitioned to Phase 29
 | Phase 28-learn-hub-theory-scales-explore-interval-reference P03 | 5min | 2 tasks | 3 files |
 | Phase 28 P04 | 8min | 2 tasks | 2 files |
 | Phase 28 P05 | 12min | 2 tasks | 2 files |
+| Phase 29 P01 | 6min | 2 tasks | 3 files |
 
 ## Deferred Items
 
@@ -369,6 +370,7 @@ Recent decisions affecting current work:
 - [Phase 28]: Interval Reference block kept inline in /learn's +page.svelte (not extracted as a 4th component) since it is five short IntervalView instances plus a small data constant with no other reuse target
 - [Phase ?]: The disclosure's own scaleExpanded/scaleTonic state never touches pageState, the hybrid queue, or the FSRS grade/advance handlers (LEARN-02 kept additive per REG-01)
 - [Phase ?]: Test mocks $lib/srs/deck entirely (empty deck) rather than fake-indexeddb, since no prior /practice route test file existed to mirror
+- [Phase 29-01]: progress-hub.ts domain holds only the 4 new hub-chrome keys (tab.stats/tab.recall/tab.songs/aria.tabs); absorbed progress/recall/songs copy stays untouched, matching the 'only pages move' boundary
 
 ### Pending Todos
 
@@ -406,7 +408,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-25T02:13:50.756Z
+Last session: 2026-07-25T02:56:31.409Z
 Stopped at: Completed 28-03-PLAN.md
 Resume file: 
 None

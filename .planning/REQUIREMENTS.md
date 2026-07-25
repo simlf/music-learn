@@ -32,7 +32,7 @@
 
 ### Progress Hub (PROG)
 
-- [ ] **PROG-01**: The Progress hub presents stats, streak, weak spots, the SRS review map, and song management (absorbing the former `progress`, `recall`, and `songs` routes) in one surface.
+- [x] **PROG-01**: The Progress hub presents stats, streak, weak spots, the SRS review map, and song management (absorbing the former `progress`, `recall`, and `songs` routes) in one surface.
 
 ### No Regression (REG)
 
