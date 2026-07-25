@@ -4,17 +4,17 @@ milestone: v2.2
 milestone_name: Hub Consolidation + Interval Theory
 current_phase: 28
 current_phase_name: Learn Hub — Theory + Scales Explore + Interval Reference
-status: executing
+status: verifying
 stopped_at: Completed 28-03-PLAN.md
-last_updated: "2026-07-25T02:06:26.022Z"
+last_updated: "2026-07-25T02:14:23.754Z"
 last_activity: 2026-07-25
 last_activity_desc: Phase 27 complete, transitioned to Phase 28
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 14
-  completed_plans: 13
-  percent: 33
+  completed_plans: 14
+  percent: 50
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-21)
 
 Phase: 28 — Learn Hub — Theory + Scales Explore + Interval Reference
 Plan: 5 of 5 in current phase
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-25 — Phase 27 complete, transitioned to Phase 28
 
 ## Performance Metrics
@@ -163,6 +163,7 @@ Last activity: 2026-07-25 — Phase 27 complete, transitioned to Phase 28
 | Phase 28 P02 | 5min | 2 tasks | 2 files |
 | Phase 28-learn-hub-theory-scales-explore-interval-reference P03 | 5min | 2 tasks | 3 files |
 | Phase 28 P04 | 8min | 2 tasks | 2 files |
+| Phase 28 P05 | 12min | 2 tasks | 2 files |
 
 ## Deferred Items
 
@@ -365,6 +366,8 @@ Recent decisions affecting current work:
 - [Phase ?]: ScaleExplorer.svelte (Phase 28-02): exploreOnly prop gates the mode-toggle + Practice branch off, extraction is byte-identical when false
 - [Phase ?]: [Phase 28-03]: learn.ts i18n domain copy taken verbatim from 28-PATTERNS.md's structure pattern (which reconciled UI-SPEC English strings with vetted French translations), rather than re-derived, to guarantee exact alignment with what Wave-2 plans 28-04/28-05 expect
 - [Phase 28]: Interval Reference block kept inline in /learn's +page.svelte (not extracted as a 4th component) since it is five short IntervalView instances plus a small data constant with no other reuse target
+- [Phase ?]: The disclosure's own scaleExpanded/scaleTonic state never touches pageState, the hybrid queue, or the FSRS grade/advance handlers (LEARN-02 kept additive per REG-01)
+- [Phase ?]: Test mocks $lib/srs/deck entirely (empty deck) rather than fake-indexeddb, since no prior /practice route test file existed to mirror
 
 ### Pending Todos
 
@@ -402,7 +405,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-25T02:04:35.439Z
+Last session: 2026-07-25T02:13:50.756Z
 Stopped at: Completed 28-03-PLAN.md
 Resume file: 
 None
