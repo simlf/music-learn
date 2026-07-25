@@ -116,6 +116,37 @@
 		return derived;
 	});
 
+	/**
+	 * Step-tab review override (UAT bug C+D): a due card's derived `stage`
+	 * often skips straight to 'subtract'/'drill', so there is no way back to
+	 * the '1 Voir' compare intro for reference. Clicking a step tab that
+	 * ISN'T the real `stage` sets this to that stage so its content renders
+	 * instead; clicking the real stage's own tab (or the same override tab
+	 * again) resets it to null. Only 'meet' has genuinely distinct read-only
+	 * reference content (the compare cards, no grading state) - the drill/
+	 * subtract tabs simply return to the real `stage` when clicked (RULE:
+	 * never let a reviewed stage's controls grade against the wrong target),
+	 * so `viewedStage` is only ever 'meet' or null in practice.
+	 */
+	let viewedStage = $state<VoicingStage | null>(null);
+
+	/** The stage whose content is currently rendered: the review override when set, else the real derived `stage`. */
+	const effectiveStage = $derived(viewedStage ?? stage);
+
+	/**
+	 * Step-tab click handler. Clicking the tab for the currently active real
+	 * stage (or re-clicking an already-viewed 'meet' tab) always returns to
+	 * the real stage; clicking 'meet' while it ISN'T the real stage shows the
+	 * read-only compare reference (see `viewedStage`/`effectiveStage`).
+	 */
+	function selectStep(target: VoicingStage) {
+		if (target === 'meet' && target !== stage) {
+			viewedStage = viewedStage === 'meet' ? null : 'meet';
+			return;
+		}
+		viewedStage = null;
+	}
+
 	let voicingStyle = $state<VoicingStyle>('shell');
 	let selected = $state<Set<string>>(new Set());
 	/** True only once a CORRECT play has been graded (the reveal + Next state). A wrong play never sets this - it never gates (see wrongRetry). */
@@ -225,6 +256,7 @@
 		answered = false;
 		wrongRetry = false;
 		voicingStyle = 'shell';
+		viewedStage = null;
 	}
 
 	/** Key-touch sound (Track A parity, mirrors PracticeIntervalDrill's pressKey): every on-screen key press sounds its note. */
@@ -258,30 +290,39 @@
 	     chord met. -->
 	{#if cardsLoaded}
 	<div class="step-indicator" data-testid="step-indicator" role="group" aria-label={t('voicings.aria.stepGroup')}>
-		<span
+		<button
+			type="button"
 			class="step"
-			class:step--active={stage === 'meet'}
+			class:step--active={effectiveStage === 'meet'}
+			aria-pressed={effectiveStage === 'meet'}
 			data-testid="step-meet"
+			onclick={() => selectStep('meet')}
 		>
 			{t('voicings.step.meet')}
-		</span>
-		<span
+		</button>
+		<button
+			type="button"
 			class="step"
-			class:step--active={stage === 'subtract'}
+			class:step--active={effectiveStage === 'subtract'}
+			aria-pressed={effectiveStage === 'subtract'}
 			data-testid="step-subtract"
+			onclick={() => selectStep('subtract')}
 		>
 			{t('voicings.step.subtract')}
-		</span>
-		<span
+		</button>
+		<button
+			type="button"
 			class="step"
-			class:step--active={stage === 'drill'}
+			class:step--active={effectiveStage === 'drill'}
+			aria-pressed={effectiveStage === 'drill'}
 			data-testid="step-drill"
+			onclick={() => selectStep('drill')}
 		>
 			{t('voicings.step.drill')}
-		</span>
+		</button>
 	</div>
 
-	{#if stage === 'meet'}
+	{#if effectiveStage === 'meet'}
 		<div data-testid="stage-meet">
 			<div class="vcards">
 				<div class="vcard" data-testid="compare-know">
@@ -299,11 +340,17 @@
 					<PianoKeyboard notes={shellNotes(chord)} />
 				</div>
 			</div>
-			<div class="mt-4">
-				<Button type="button" variant="primary" onclick={gotIt}>
-					{t('voicings.button.gotIt')}
-				</Button>
-			</div>
+			{#if viewedStage === null}
+				<!-- Got it only advances the REAL meet stage: when this compare
+				     content is showing as a reviewed reference (viewedStage set
+				     while the real stage has already moved on), the action that
+				     mutates the meet-shown mark is hidden - reference only. -->
+				<div class="mt-4">
+					<Button type="button" variant="primary" onclick={gotIt}>
+						{t('voicings.button.gotIt')}
+					</Button>
+				</div>
+			{/if}
 		</div>
 	{:else}
 		<div data-testid={stage === 'drill' ? 'stage-drill' : 'stage-subtract'}>
@@ -389,7 +436,13 @@
 		letter-spacing: 0.06em;
 		text-align: center;
 		padding: var(--spacing-xs) var(--spacing-sm);
+		border: none;
 		border-right: 1px solid var(--color-ink);
+		border-radius: 0;
+		background: var(--color-paper-bright);
+		color: var(--color-ink);
+		min-height: 44px;
+		cursor: pointer;
 	}
 
 	.step:last-child {

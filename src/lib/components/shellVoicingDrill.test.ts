@@ -317,6 +317,82 @@ describe('ShellVoicingDrill: grading + advance', () => {
 	});
 });
 
+describe('ShellVoicingDrill: step tabs review navigation (UAT bug C+D)', () => {
+	it('clicking "1 MEET" while the real stage is subtract shows the read-only compare reference, without a Got it action', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-subtract'));
+
+		await fireEvent.click(screen.getByTestId('step-meet'));
+
+		expect(screen.getByTestId('stage-meet')).toBeInTheDocument();
+		expect(screen.getByTestId('compare-know')).toBeInTheDocument();
+		expect(screen.getByTestId('compare-use')).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Got it' })).not.toBeInTheDocument();
+		expect(screen.getByTestId('step-meet')).toHaveClass('step--active');
+	});
+
+	it('clicking the real stage\'s own tab returns from the reviewed reference to the real (subtract) content', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-subtract'));
+		await fireEvent.click(screen.getByTestId('step-meet'));
+		expect(screen.getByTestId('stage-meet')).toBeInTheDocument();
+
+		await fireEvent.click(screen.getByTestId('step-subtract'));
+
+		expect(screen.getByTestId('stage-subtract')).toBeInTheDocument();
+		expect(screen.queryByTestId('stage-meet')).not.toBeInTheDocument();
+	});
+
+	it('re-clicking "1 MEET" while already viewing it toggles back to the real stage', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Review)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-drill'));
+		await fireEvent.click(screen.getByTestId('step-meet'));
+		expect(screen.getByTestId('stage-meet')).toBeInTheDocument();
+
+		await fireEvent.click(screen.getByTestId('step-meet'));
+
+		expect(screen.getByTestId('stage-drill')).toBeInTheDocument();
+	});
+
+	it('reviewing "1 MEET" never corrupts grading: Check still grades the real (drill) stage after returning', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Review)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-drill'));
+		await fireEvent.click(screen.getByRole('button', { name: 'SHELL' }));
+
+		await fireEvent.click(screen.getByTestId('step-meet'));
+		expect(screen.getByTestId('stage-meet')).toBeInTheDocument();
+		await fireEvent.click(screen.getByTestId('step-drill'));
+		expect(screen.getByTestId('stage-drill')).toBeInTheDocument();
+
+		clickKey('E');
+		clickKey('B');
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
+	});
+
+	it('the real meet stage keeps its Got it action untouched (no viewedStage override yet)', async () => {
+		getAllCardsMock.mockResolvedValue([]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-meet'));
+		expect(screen.getByRole('button', { name: 'Got it' })).toBeInTheDocument();
+	});
+});
+
 describe('ShellVoicingDrill: key-touch sound (UAT bug A)', () => {
 	it('sounds a note when an interactive voicing key is pressed', async () => {
 		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);
