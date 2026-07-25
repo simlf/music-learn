@@ -8,6 +8,7 @@ import { songs } from './messages/songs';
 import { theory } from './messages/theory';
 import { scales } from './messages/scales';
 import { progress } from './messages/progress';
+import { progressHub } from './messages/progress-hub';
 import { home } from './messages/home';
 import { progressions } from './messages/progressions';
 import { voicings } from './messages/voicings';
@@ -62,6 +63,7 @@ describe('domain dictionary key collisions (I18N-02)', () => {
 		['theory', theory.en],
 		['scales', scales.en],
 		['progress', progress.en],
+		['progress-hub', progressHub.en],
 		['home', home.en],
 		['progressions', progressions.en],
 		['voicings', voicings.en],

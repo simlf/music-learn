@@ -6,6 +6,7 @@ import { songs } from './songs';
 import { theory } from './theory';
 import { scales } from './scales';
 import { progress } from './progress';
+import { progressHub } from './progress-hub';
 import { home } from './home';
 import { progressions } from './progressions';
 import { voicings } from './voicings';
@@ -40,6 +41,7 @@ export const messages = {
 		...theory.en,
 		...scales.en,
 		...progress.en,
+		...progressHub.en,
 		...home.en,
 		...progressions.en,
 		...voicings.en,
@@ -56,6 +58,7 @@ export const messages = {
 		...theory.fr,
 		...scales.fr,
 		...progress.fr,
+		...progressHub.fr,
 		...home.fr,
 		...progressions.fr,
 		...voicings.fr,
