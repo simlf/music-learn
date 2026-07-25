@@ -273,6 +273,19 @@
 		if (style === 'rootless') return t('voicings.selector.rootless');
 		return t('voicings.selector.shell');
 	}
+
+	/**
+	 * Drill-stage instruction (G5 UAT fix): names the currently selected
+	 * voicing style, so switching Fond./Shell/Sans fond. visibly changes what
+	 * the player is asked to play, instead of the same vague "Play it." for
+	 * every style. The subtract stage keeps its own fixed shell-only prompt
+	 * (that stage has no style selector).
+	 */
+	function drillPrompt(style: VoicingStyle): string {
+		if (style === 'root') return t('voicings.prompt.playFull');
+		if (style === 'rootless') return t('voicings.prompt.playRootless');
+		return t('voicings.prompt.playShell');
+	}
 </script>
 
 <div data-testid="shell-voicing-drill">
@@ -375,7 +388,7 @@
 			{/if}
 
 			<p class="text-body mt-4">
-				{stage === 'subtract' ? t('voicings.prompt.playShell') : t('voicings.prompt.playStyle')}
+				{stage === 'subtract' ? t('voicings.prompt.playShell') : drillPrompt(voicingStyle)}
 			</p>
 
 			<div class="mt-4">

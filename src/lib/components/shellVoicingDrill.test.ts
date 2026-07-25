@@ -208,6 +208,40 @@ describe('ShellVoicingDrill: meet (Voir) stage shows the target symbol and tap-t
 	});
 });
 
+describe('ShellVoicingDrill: drill (Exo) stage instruction names the selected style (UAT G5)', () => {
+	it('shows a full-voicing instruction for ROOT and switches wording per style tap', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Review)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-drill'));
+
+		await fireEvent.click(screen.getByRole('button', { name: 'ROOT' }));
+		expect(
+			screen.getByText('Play the full voicing: root, third, fifth, seventh.')
+		).toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'SHELL' }));
+		expect(screen.getByText('Play the shell: just the guide tones.')).toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'ROOTLESS' }));
+		expect(
+			screen.getByText('Play it rootless: no root, just third, fifth, seventh.')
+		).toBeInTheDocument();
+	});
+
+	it('the subtract stage keeps its own fixed shell-only prompt regardless of style (no selector there)', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-subtract'));
+
+		expect(screen.getByText('Play the shell: just the guide tones.')).toBeInTheDocument();
+		expect(screen.queryByTestId('voicing-selector')).not.toBeInTheDocument();
+	});
+});
+
 describe('ShellVoicingDrill: stage UI gated on the deck read (WR-05)', () => {
 	it('suppresses the stage UI (and the meet stage Got it action) until the deck read for the current chord lands', async () => {
 		let resolveLoad!: (cards: CardRecord[]) => void;

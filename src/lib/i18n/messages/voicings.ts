@@ -50,7 +50,8 @@ export const voicings = {
 		'voicings.aria.selectorGroup': 'Voicing style',
 
 		'voicings.prompt.playShell': 'Play the shell: just the guide tones.',
-		'voicings.prompt.playStyle': 'Play it.',
+		'voicings.prompt.playFull': 'Play the full voicing: root, third, fifth, seventh.',
+		'voicings.prompt.playRootless': 'Play it rootless: no root, just third, fifth, seventh.',
 
 		'voicings.button.check': 'Check',
 		'voicings.button.next': 'Next',
@@ -83,7 +84,9 @@ export const voicings = {
 		'voicings.aria.selectorGroup': 'Style de voicing',
 
 		'voicings.prompt.playShell': 'Joue le shell : juste les tons de guidage.',
-		'voicings.prompt.playStyle': 'Joue-le.',
+		'voicings.prompt.playFull': 'Joue le voicing complet : fondamentale, tierce, quinte, septième.',
+		'voicings.prompt.playRootless':
+			'Joue-le sans fondamentale : juste tierce, quinte, septième.',
 
 		'voicings.button.check': 'Vérifier',
 		'voicings.button.next': 'Suivant',
