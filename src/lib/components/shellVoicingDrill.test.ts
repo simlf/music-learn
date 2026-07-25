@@ -41,6 +41,15 @@ vi.mock('$lib/srs/deck', async (importOriginal) => {
 	};
 });
 
+/** Mirrors PracticeIntervalDrill.test.ts's audio-module mock convention (no real AudioContext/tone import in jsdom). */
+const playNoteMock = vi.fn();
+const ensureAudioReadyMock = vi.fn(async () => {});
+vi.mock('$lib/audio/audio', () => ({
+	playChord: vi.fn(),
+	playNote: (...args: unknown[]) => playNoteMock(...args),
+	ensureAudioReady: () => ensureAudioReadyMock()
+}));
+
 /** First occurrence of a natural-letter key by its accessible name (mirrors progressionDrill.test.ts's clickKey convention). */
 function clickKey(letter: string) {
 	const keys = screen.getAllByRole('button', { name: `${letter} key` });
@@ -50,6 +59,8 @@ function clickKey(letter: string) {
 beforeEach(() => {
 	localStorage.clear();
 	getAllCardsMock.mockReset();
+	playNoteMock.mockReset();
+	ensureAudioReadyMock.mockClear();
 	vi.spyOn(Math, 'random').mockReturnValue(0);
 });
 
@@ -303,5 +314,38 @@ describe('ShellVoicingDrill: grading + advance', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
 
 		expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
+	});
+});
+
+describe('ShellVoicingDrill: key-touch sound (UAT bug A)', () => {
+	it('sounds a note when an interactive voicing key is pressed', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-subtract'));
+
+		const eKey = screen.getAllByRole('button', { name: 'E key' })[0];
+		await fireEvent.pointerDown(eKey);
+
+		expect(ensureAudioReadyMock).toHaveBeenCalled();
+		expect(playNoteMock).toHaveBeenCalledWith('E4');
+	});
+
+	it('does not sound a note once the question is answered (keyboard is no longer interactive)', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-subtract'));
+
+		clickKey('E');
+		clickKey('B');
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+		playNoteMock.mockClear();
+		ensureAudioReadyMock.mockClear();
+
+		expect(screen.queryByRole('button', { name: 'E key' })).not.toBeInTheDocument();
+		expect(playNoteMock).not.toHaveBeenCalled();
 	});
 });
