@@ -5,15 +5,15 @@ milestone_name: Hub Consolidation + Interval Theory
 current_phase: 30
 current_phase_name: Four-Hub Nav Cutover + Redirect Shims
 status: verifying
-stopped_at: Completed 29-02-PLAN.md
-last_updated: "2026-07-25T03:46:29.732Z"
+stopped_at: Completed 30-01-PLAN.md
+last_updated: "2026-07-25T10:05:13.918Z"
 last_activity: 2026-07-25
-last_activity_desc: Phase 29 complete, transitioned to Phase 30
+last_activity_desc: Completed 30-01-PLAN.md (four-hub nav chrome + i18n)
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 19
-  completed_plans: 19
+  total_plans: 24
+  completed_plans: 20
   percent: 67
 ---
 
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-07-21)
 ## Current Position
 
 Phase: 30 — Four-Hub Nav Cutover + Redirect Shims
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-07-25 — Phase 29 complete, transitioned to Phase 30
+Plan: 1 of 5
+Status: Ready to execute
+Last activity: 2026-07-25 — Completed 30-01-PLAN.md (four-hub nav chrome + i18n)
 
 ## Performance Metrics
 
@@ -171,6 +171,7 @@ Last activity: 2026-07-25 — Phase 29 complete, transitioned to Phase 30
 | Phase 29 P03 | 15min | 2 tasks | 2 files |
 | Phase 29 P04 | 20min | 2 tasks | 2 files |
 | Phase 29 P05 | 12min | 1 tasks | 1 files |
+| Phase 30 P01 | 25min | 3 tasks | 3 files |
 
 ## Deferred Items
 
@@ -382,6 +383,8 @@ Recent decisions affecting current work:
 - [Phase 29-04]: RecallPanel renders unwrapped (owns its own panel); ProgressStats and SongManager each get a host-owned border-ink bg-paper-bright border-2 wrapper for consistent section chrome across all three tabs
 - [Phase 29]: Song-filter write assertion reads the real readSongFilter() (single-key contract), not a nonexistent visual indicator
 - [Phase 29]: data-review-dock assertion walks the full lifecycle (Stats absent -> Recall+Review present -> Recall+Map absent -> Songs absent) in one test
+- [Phase 30]: navLinks reduced to 4 hubs (Lookup/Practice/Learn/Progress); bottomTabLinks stays derived by .filter, More sheet removed entirely — 30-01: chrome-only nav cutover, matches 30-UI-SPEC/30-PATTERNS exactly
+- [Phase 30]: TAB_ICONS: /practice re-keys the former /drills glyph verbatim; /learn gets an open-book glyph; /progress gets ascending-bars, all copied from 30-UI-SPEC — 30-01: keeps TAB_ICONS keyed by href in sync with navLinks
 
 ### Pending Todos
 
@@ -419,7 +422,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-25T03:23:56.631Z
-Stopped at: Completed 29-02-PLAN.md
+Last session: 2026-07-25T10:05:13.910Z
+Stopped at: Completed 30-01-PLAN.md
 Resume file: 
 None
