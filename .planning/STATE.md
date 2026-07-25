@@ -357,6 +357,7 @@ Recent decisions affecting current work:
 | 260720-vm6 | Deploy CI: skip on doc-only pushes, skip gate tests on already-tested merges | 2026-07-20 | 9845fca | [260720-vm6-deploy-ci-md-filter-and-test-skip](./quick/260720-vm6-deploy-ci-md-filter-and-test-skip/) |
 | 260723-dkp | Deploy CI: docker prune on failed deploy (disk-full recovery), removed invalid script_stop input | 2026-07-23 | d9d36ae | [260723-dkp-docker-prune-on-deploy-failure](./quick/260723-dkp-docker-prune-on-deploy-failure/) |
 | 260720-v9u | Move "From my songs" filter to Songs page as single global preference | 2026-07-20 | eec9db4 | [260720-v9u-move-the-from-my-songs-review-pool-filte](./quick/260720-v9u-move-the-from-my-songs-review-pool-filte/) |
+| 260725-1j9 | nginx: no-cache header for /service-worker.js so PWA update detection works on mobile | 2026-07-25 | 139d0c4 | [260725-1j9-service-worker-no-cache-header](./quick/260725-1j9-service-worker-no-cache-header/) |
 
 ## Deferred Items
 
