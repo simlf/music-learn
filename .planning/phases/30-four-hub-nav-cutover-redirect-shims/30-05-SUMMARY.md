@@ -178,3 +178,7 @@ None - no external service configuration required.
 ---
 *Phase: 30-four-hub-nav-cutover-redirect-shims*
 *Completed: 2026-07-25*
+
+## Self-Check: PASSED
+
+All created files verified present (8 shim +page.ts files, redirectShims.test.ts, this SUMMARY.md); all 8 old +page.svelte files and src/routes/showcase confirmed deleted; all 4 task/plan commit hashes (8e2d7ce, 16883a9, 9219b25, 269bd39) verified present in git log.

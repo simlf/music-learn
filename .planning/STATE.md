@@ -6,15 +6,15 @@ current_phase: 30
 current_phase_name: Four-Hub Nav Cutover + Redirect Shims
 status: verifying
 stopped_at: Completed 30-02-PLAN.md
-last_updated: "2026-07-25T10:31:41.269Z"
+last_updated: "2026-07-25T10:45:38.094Z"
 last_activity: 2026-07-25
 last_activity_desc: Completed 30-01-PLAN.md (four-hub nav chrome + i18n)
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 24
-  completed_plans: 23
-  percent: 67
+  completed_plans: 24
+  percent: 83
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-21)
 ## Current Position
 
 Phase: 30 — Four-Hub Nav Cutover + Redirect Shims
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-07-25 — Completed 30-01-PLAN.md (four-hub nav chrome + i18n)
 
@@ -175,6 +175,7 @@ Last activity: 2026-07-25 — Completed 30-01-PLAN.md (four-hub nav chrome + i18
 | Phase 30-four-hub-nav-cutover-redirect-shims P02 | 25min | 2 tasks | 2 files |
 | Phase 30 P03 | 12min | 2 tasks | 5 files |
 | Phase 30 P04 | 12min | 2 tasks | 6 files |
+| Phase 30 P05 | 20min | 3 tasks | 18 files |
 
 ## Deferred Items
 
@@ -391,6 +392,8 @@ Recent decisions affecting current work:
 - [Phase 30]: Seed consumption in /practice's buildSeededItems() drains both localStorage channels at the top of load(), lesson seeds taking precedence over weak-list seeds — 30-02
 - [Phase 30]: Every empty-state early return in /practice's load() is gated behind seededItems.length === 0 so a seeded session always starts even when nothing is FSRS-due — 30-02
 - [Phase ?]: Repointed all 6 Progress/Lookup drill handoffs to /practice; fixed pre-existing masthead nav-link test regression from 30-01's 4-hub nav (scoped query to within(masthead))
+- [Phase ?]: [Phase 30-05]: Redirect-shim +page.ts (prerender=true, throw redirect(308, target)) confirmed prerender-safe under adapter-static; no client goto() fallback needed — Build log printed all 8 308 redirect lines cleanly
+- [Phase ?]: [Phase 30-05]: coverage.test.ts's cross-surface chord-identity test dropped (not rewritten) after losing its Build-surface half; masthead FR-wiring assertion repointed to Practice/Pratiquer — Per plan guidance; Phase 31 re-establishes comprehensive coverage
 
 ### Pending Todos
 
@@ -428,7 +431,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-25T10:31:11.602Z
+Last session: 2026-07-25T10:44:50.916Z
 Stopped at: Completed 30-02-PLAN.md
 Resume file: 
 None
