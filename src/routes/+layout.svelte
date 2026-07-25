@@ -44,10 +44,6 @@
 		'/': '<svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="2" aria-hidden="true"><circle cx="10" cy="10" r="6"/><line x1="15" y1="15" x2="21" y2="21"/></svg>',
 		'/practice':
 			'<svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="2" aria-hidden="true"><rect x="3" y="6" width="18" height="12"/><line x1="8" y1="6" x2="8" y2="14"/><line x1="13" y1="6" x2="13" y2="14"/><line x1="18" y1="6" x2="18" y2="14"/></svg>',
-		'/recall':
-			'<svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="2" aria-hidden="true"><rect x="4" y="5" width="13" height="16"/><rect x="8" y="3" width="13" height="16"/></svg>',
-		'/songs':
-			'<svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="2" aria-hidden="true"><circle cx="7" cy="18" r="3"/><path d="M10 18V5l9-2v12"/><circle cx="16" cy="15" r="3"/></svg>',
 		'/learn':
 			'<svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="2" aria-hidden="true"><path d="M12 5v15"/><path d="M12 5c-2-1.3-5-1.3-8-.3v14c3-1 6-1 8 .3"/><path d="M12 5c2-1.3 5-1.3 8-.3v14c-3-1-6-1-8 .3"/></svg>',
 		'/progress':
