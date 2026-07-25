@@ -152,14 +152,14 @@ Plans:
   3. The Progress hub shows song management, including the From-my-songs filter (the former `songs` route).
   4. All three formerly separate surfaces are reachable from the one Progress surface.
 
-**Plans**: 3/5 plans executed
+**Plans**: 4/5 plans executed
 
 Plans:
 
 - [x] 29-01-PLAN.md — Register the progress-hub.* i18n domain (3 tab labels + aria) [wave 1]
 - [x] 29-02-PLAN.md — Extract SongManager.svelte + thin /songs wrapper (heading prop; sole filter writer) [wave 1]
 - [x] 29-03-PLAN.md — Extract RecallPanel.svelte ($bindable mode) + thin /recall wrapper (dock gate) [wave 1]
-- [ ] 29-04-PLAN.md — Extract ProgressStats.svelte + rewrite /progress into the 3-tab hub host [wave 2]
+- [x] 29-04-PLAN.md — Extract ProgressStats.svelte + rewrite /progress into the 3-tab hub host [wave 2]
 - [ ] 29-05-PLAN.md — Progress hub smoke test (tab switch, filter write, review-dock gating) [wave 3]
 
 **UI hint**: yes
