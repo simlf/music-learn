@@ -6,14 +6,14 @@ current_phase: 28
 current_phase_name: Learn Hub — Theory + Scales Explore + Interval Reference
 status: executing
 stopped_at: Completed 27-05-PLAN.md
-last_updated: "2026-07-25T01:47:20.245Z"
+last_updated: "2026-07-25T01:52:53.373Z"
 last_activity: 2026-07-25
 last_activity_desc: Phase 27 complete, transitioned to Phase 28
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 14
-  completed_plans: 10
+  completed_plans: 11
   percent: 33
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-21)
 ## Current Position
 
 Phase: 28 — Learn Hub — Theory + Scales Explore + Interval Reference
-Plan: 2 of 5 in current phase
+Plan: 3 of 5 in current phase
 Status: Ready to execute
 Last activity: 2026-07-25 — Phase 27 complete, transitioned to Phase 28
 
@@ -160,6 +160,7 @@ Last activity: 2026-07-25 — Phase 27 complete, transitioned to Phase 28
 | Phase 27 P04 | 25min | 2 tasks | 5 files |
 | Phase 27-practice-hub P05 | 40min | 2 tasks | 3 files |
 | Phase 28 P01 | 3min | 2 tasks | 2 files |
+| Phase 28 P02 | 5min | 2 tasks | 2 files |
 
 ## Deferred Items
 
@@ -359,6 +360,7 @@ Recent decisions affecting current work:
 - [Phase 27-practice-hub]: Voicing/progression synthetic gating lives in the /practice host's load(), computed from selectedCards, not inside practiceQueue.ts's pure builders — Keeps the pure queue module free of any due/gating policy; the PRAC-05 gate is host-owned state, matching the host-thin architecture
 - [Phase 27-practice-hub]: Progressions are omitted entirely (not partially filtered) under the song filter — Progressions are key/template-based, not single-song-chord based - no principled way to restrict a 4-bar progression to one song's chord
 - [Phase 28]: TheoryLessons.svelte renders as a bare fragment (no chrome); /theory and future /learn hub share one lesson-body source of truth
+- [Phase ?]: ScaleExplorer.svelte (Phase 28-02): exploreOnly prop gates the mode-toggle + Practice branch off, extraction is byte-identical when false
 
 ### Pending Todos
 
@@ -396,7 +398,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-25T01:45:45.843Z
+Last session: 2026-07-25T01:52:31.604Z
 Stopped at: Completed 27-05-PLAN.md
 Resume file: 
 
