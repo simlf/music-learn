@@ -169,7 +169,7 @@ describe('progress page populated state', () => {
 });
 
 describe('progress page empty state', () => {
-	it('renders progress-empty with the exact copy and a Start a Drill link to /drills', async () => {
+	it('renders progress-empty with the exact copy and a Start a Drill link to /practice', async () => {
 		storedToken = 'secret';
 		fetchStatsMock.mockResolvedValue({ items: [], weakest: [] });
 
@@ -179,7 +179,7 @@ describe('progress page empty state', () => {
 		expect(screen.getByText('Nothing on the ledger yet.')).toBeInTheDocument();
 
 		const link = screen.getByRole('link', { name: 'Start a Drill' });
-		expect(link).toHaveAttribute('href', '/drills');
+		expect(link).toHaveAttribute('href', '/practice');
 	});
 });
 
@@ -287,7 +287,12 @@ describe('progress masthead nav link', () => {
 
 		render(RootLayout, { params: {}, data: {}, children: emptyChildren });
 
-		const link = screen.getByRole('link', { name: 'Progress' });
+		// Scoped to the masthead (Phase 30-04 nav cutover): the phone bottom
+		// tab bar now also renders a "Progress" link since it shares the same
+		// 4-hub navLinks source, so an unscoped query matches twice in jsdom
+		// (which renders both desktop and phone markup with no media query).
+		const masthead = within(screen.getByTestId('masthead'));
+		const link = masthead.getByRole('link', { name: 'Progress' });
 		expect(link).toBeInTheDocument();
 		expect(link).toHaveAttribute('href', '/progress');
 	});
@@ -387,7 +392,7 @@ describe('French locale (I18N-02)', () => {
 });
 
 describe('Drill all N button (weakest spots -> seeded session)', () => {
-	it('reads "Drill all 2" for two weak chords, seeds the drill session with the weakest chord items, and navigates to /drills', async () => {
+	it('reads "Drill all 2" for two weak chords, seeds the drill session with the weakest chord items, and navigates to /practice', async () => {
 		storedToken = 'secret';
 		fetchStatsMock.mockResolvedValue({
 			items: [
@@ -407,10 +412,10 @@ describe('Drill all N button (weakest spots -> seeded session)', () => {
 		await fireEvent.click(within(weakestSection).getByRole('button', { name: 'Drill all 2' }));
 
 		expect(setDrillSeedsMock).toHaveBeenCalledWith(['Cm7', 'F#m7b5']);
-		expect(gotoMock).toHaveBeenCalledWith('/drills');
+		expect(gotoMock).toHaveBeenCalledWith('/practice');
 	});
 
-	it('the per-row DRILL button seeds only that one symbol and navigates to /drills', async () => {
+	it('the per-row DRILL button seeds only that one symbol and navigates to /practice', async () => {
 		storedToken = 'secret';
 		fetchStatsMock.mockResolvedValue({
 			items: [
@@ -430,7 +435,7 @@ describe('Drill all N button (weakest spots -> seeded session)', () => {
 		await fireEvent.click(within(weakestSection).getByRole('button', { name: 'Drill Cm7' }));
 
 		expect(setDrillSeedsMock).toHaveBeenCalledWith(['Cm7']);
-		expect(gotoMock).toHaveBeenCalledWith('/drills');
+		expect(gotoMock).toHaveBeenCalledWith('/practice');
 	});
 });
 
