@@ -24,7 +24,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-21)
 
 **Core value:** See a jazz chord symbol and know instantly what to play with the left hand.
-**Current focus:** Phase 26 — shared-intervalview-component
+**Current focus:** Phase 31 — no-regression-gate-test-remap (final v2.2 phase)
 
 ## Current Position
 
