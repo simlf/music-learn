@@ -249,7 +249,15 @@ describe('carded grade commit (PRAC-03/REG-01/T-27-04-01)', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
 		expect(recordGradeMock).toHaveBeenCalledTimes(2);
-		expect(recordGradeMock).toHaveBeenNthCalledWith(2, card, Rating.Good);
+		// CR-01: the second grade must use the CardRecord the FIRST recordGrade
+		// call returned (the mock's `{...card, lastRating: rating}` echo), not
+		// the stale pre-first-grade `card` snapshot - re-enqueuing the stale
+		// object would silently discard the Again grade's persisted effect.
+		expect(recordGradeMock).toHaveBeenNthCalledWith(
+			2,
+			{ ...card, lastRating: Rating.Again },
+			Rating.Good
+		);
 
 		const endCard = screen.getByTestId('session-end-card');
 		expect(endCard).toHaveTextContent('ROUND COMPLETE');
