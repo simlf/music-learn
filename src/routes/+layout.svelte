@@ -16,7 +16,7 @@
 	/**
 	 * Phase 30 (HUB-01): nav cutover from 10 flat links to the 4 hubs. Both
 	 * the desktop masthead and the phone bottom tab bar render from this one
-	 * source array (bottomTabLinks below is a filtered view, never a second
+	 * source array (bottomTabLinks below is this same array, never a second
 	 * literal list).
 	 */
 	const navLinks: { href: string; labelKey: MessageKey }[] = [
@@ -57,13 +57,14 @@
 	/**
 	 * Phone-only bottom tab bar (1A, UX-1A; reduced to the 4 hubs in Phase
 	 * 30, HUB-01): the same 4 primary destinations, in the same order the
-	 * desktop masthead already lists them. Derived by filtering `navLinks`
-	 * (not a second literal array) so the two never drift apart. The "More"
-	 * sheet (former 5th slot) is removed entirely - with exactly 4 hubs
-	 * there is no overflow to hold.
+	 * desktop masthead already lists them. Now that `navLinks` is exactly
+	 * the 4 hubs (no superset to filter from - that was the pre-Phase-30
+	 * 5-link + "More" design), the bottom tab bar renders `navLinks`
+	 * directly rather than a second literal href list, so the two can never
+	 * drift apart. The "More" sheet (former 5th slot) is removed entirely -
+	 * with exactly 4 hubs there is no overflow to hold.
 	 */
-	const bottomTabHrefs = ['/', '/practice', '/learn', '/progress'];
-	const bottomTabLinks = navLinks.filter((link) => bottomTabHrefs.includes(link.href));
+	const bottomTabLinks = navLinks;
 
 	/**
 	 * Masthead streak chip (PROG-03): fetched only when a token is already
