@@ -4,17 +4,17 @@ milestone: v2.2
 milestone_name: Hub Consolidation + Interval Theory
 current_phase: 27
 current_phase_name: Practice Hub — One Smart Interleaved Session
-status: executing
-stopped_at: Completed 27-02-PLAN.md
-last_updated: "2026-07-25T00:22:05.398Z"
+status: verifying
+stopped_at: Completed 27-05-PLAN.md
+last_updated: "2026-07-25T00:45:08.997Z"
 last_activity: 2026-07-24
 last_activity_desc: Phase 26 complete, transitioned to Phase 27
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 9
-  completed_plans: 8
-  percent: 17
+  completed_plans: 9
+  percent: 33
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-21)
 
 Phase: 27 — Practice Hub — One Smart Interleaved Session
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-24 — Phase 26 complete, transitioned to Phase 27
 
 ## Performance Metrics
@@ -157,6 +157,7 @@ Last activity: 2026-07-24 — Phase 26 complete, transitioned to Phase 27
 | Phase 27-practice-hub P02 | 15min | 2 tasks | 5 files |
 | Phase 27-practice-hub P03 | 20min | 2 tasks | 4 files |
 | Phase 27 P04 | 25min | 2 tasks | 5 files |
+| Phase 27-practice-hub P05 | 40min | 2 tasks | 3 files |
 
 ## Deferred Items
 
@@ -353,6 +354,8 @@ Recent decisions affecting current work:
 - [Phase ?]: PracticeChordDrill/PracticeIntervalDrill compute their question once at init via untrack(), mirroring BuildSession/ShellVoicingDrill/ProgressionDrill's embed-seam precedent (one component instance per queue item, not reactive re-derivation)
 - [Phase 27]: [Phase 27-04]: completeBuild never re-calls deck.recordGrade for the build-it family - BuildSession's own onComplete already committed the FSRS grade internally via recordConstructionOutcome, mirroring RecallSession's handleModeCNext precedent; a second call would double-apply the FSRS transition
 - [Phase 27]: [Phase 27-04]: added a cardEpoch counter to the in-session {#key} block so an Again-graded item re-enqueued as the sole queue item still force-remounts a fresh drill component instead of freezing on its stale answered state
+- [Phase 27-practice-hub]: Voicing/progression synthetic gating lives in the /practice host's load(), computed from selectedCards, not inside practiceQueue.ts's pure builders — Keeps the pure queue module free of any due/gating policy; the PRAC-05 gate is host-owned state, matching the host-thin architecture
+- [Phase 27-practice-hub]: Progressions are omitted entirely (not partially filtered) under the song filter — Progressions are key/template-based, not single-song-chord based - no principled way to restrict a 4-bar progression to one song's chord
 
 ### Pending Todos
 
@@ -390,8 +393,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-25T00:21:51.060Z
-Stopped at: Completed 27-02-PLAN.md
+Last session: 2026-07-25T00:45:08.991Z
+Stopped at: Completed 27-05-PLAN.md
 Resume file: 
 
 None

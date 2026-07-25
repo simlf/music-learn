@@ -107,13 +107,13 @@ Plans:
   4. With the song filter on, the Practice queue surfaces only questions drawn from the user's songs.
   5. When only one drill type is due, the session surfaces only that type — no artificial variety is injected (single-type-due gate).
 
-**Plans**: 4/5 plans executed
+**Plans**: 5/5 plans complete
 
 - [x] 27-01-PLAN.md — Pure practiceQueue.ts composer (hybrid FSRS + synthetic items, single-type-due gate, song-filter helpers) + queue tests
 - [x] 27-02-PLAN.md — Embed seams on ShellVoicingDrill + ProgressionDrill (voicing/progression drivable from the queue) + tests
 - [x] 27-03-PLAN.md — New family components PracticeChordDrill (name-it) + PracticeIntervalDrill (intervals) + tests
 - [x] 27-04-PLAN.md — Thin /practice host: load/compose, pre-start "Start practice", empty tiers, carded-family session, family cue, FSRS grade commit, end-card, i18n
-- [ ] 27-05-PLAN.md — Weave synthetic voicing/progression families into the host + full REG-02 five-family e2e (interleaving, single-type-due gate, song-filter steering, grade-commit split)
+- [x] 27-05-PLAN.md — Weave synthetic voicing/progression families into the host + full REG-02 five-family e2e (interleaving, single-type-due gate, song-filter steering, grade-commit split)
 
 **UI hint**: yes
 **Notes**: HIGHEST-RISK phase. Structural constraint (design §Practice hub): the five drill generators MUST stay as separate modules feeding one queue; the `/drills` host page (`+page.svelte`, already ~1380 lines) must NOT balloon into a monster file. REG-01 binding: existing drill grading, tiers, telemetry, SRS scheduling, and song-filter behavior must be preserved exactly — only the hosting and entry point change. The song filter preference already exists (moved to Songs by quick task 260720-v9u); this phase consumes it, Progress (Phase 29) relocates its management UI.
