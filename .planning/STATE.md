@@ -5,15 +5,15 @@ milestone_name: Hub Consolidation + Interval Theory
 current_phase: 29
 current_phase_name: Progress Hub — Stats, Streak, Review Map, Songs
 status: executing
-stopped_at: Completed 28-03-PLAN.md
-last_updated: "2026-07-25T02:58:21.653Z"
+stopped_at: Completed 29-02-PLAN.md
+last_updated: "2026-07-25T03:05:15.164Z"
 last_activity: 2026-07-25
 last_activity_desc: Phase 28 complete, transitioned to Phase 29
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 19
-  completed_plans: 15
+  completed_plans: 16
   percent: 50
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-21)
 ## Current Position
 
 Phase: 29 — Progress Hub — Stats, Streak, Review Map, Songs
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-07-25 — Phase 28 complete, transitioned to Phase 29
 
@@ -166,6 +166,7 @@ Last activity: 2026-07-25 — Phase 28 complete, transitioned to Phase 29
 | Phase 28 P04 | 8min | 2 tasks | 2 files |
 | Phase 28 P05 | 12min | 2 tasks | 2 files |
 | Phase 29 P01 | 6min | 2 tasks | 3 files |
+| Phase 29 P02 | 5min | 2 tasks | 2 files |
 
 ## Deferred Items
 
@@ -371,6 +372,7 @@ Recent decisions affecting current work:
 - [Phase ?]: The disclosure's own scaleExpanded/scaleTonic state never touches pageState, the hybrid queue, or the FSRS grade/advance handlers (LEARN-02 kept additive per REG-01)
 - [Phase ?]: Test mocks $lib/srs/deck entirely (empty deck) rather than fake-indexeddb, since no prior /practice route test file existed to mirror
 - [Phase 29-01]: progress-hub.ts domain holds only the 4 new hub-chrome keys (tab.stats/tab.recall/tab.songs/aria.tabs); absorbed progress/recall/songs copy stays untouched, matching the 'only pages move' boundary
+- [Phase 29-02]: SongManager renders as a bare fragment with a heading prop gating only the internal title/subtitle, enabling reuse by both the thin /songs wrapper and the future Progress hub Songs tab with zero copy-paste
 
 ### Pending Todos
 
@@ -408,7 +410,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-25T02:56:31.409Z
-Stopped at: Completed 28-03-PLAN.md
+Last session: 2026-07-25T03:05:15.157Z
+Stopped at: Completed 29-02-PLAN.md
 Resume file: 
 None
