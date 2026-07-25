@@ -99,7 +99,7 @@
 	/** Seeds the danger cards' chord symbols into a drill session (mirrors drillThese()). */
 	function drillDangerCards(): void {
 		setDrillSeeds(chordDangerSymbols);
-		void goto('/drills');
+		void goto('/practice');
 	}
 
 	const streakLine = $derived.by(() => {
@@ -212,7 +212,7 @@
 	/** Seeds a drill session from the weakest chord items (R6 proposal 2). */
 	function drillThese(): void {
 		setDrillSeeds(weakest.filter((item) => item.kind === 'chord').map((item) => item.item));
-		void goto('/drills');
+		void goto('/practice');
 	}
 
 	/**
@@ -260,7 +260,7 @@
 			{t('progress.empty.body')}
 		</p>
 		<div class="mt-6">
-			<Button variant="primary" href="/drills">{t('progress.empty.cta')}</Button>
+			<Button variant="primary" href="/practice">{t('progress.empty.cta')}</Button>
 		</div>
 	</div>
 {:else if pageState === 'error'}
@@ -298,7 +298,7 @@
 			</div>
 		{/if}
 		<div class="mt-6">
-			<Button variant="primary" href="/drills">{t('progress.streak.cta')}</Button>
+			<Button variant="primary" href="/practice">{t('progress.streak.cta')}</Button>
 		</div>
 	</div>
 
@@ -312,7 +312,7 @@
 						{item}
 						onDrill={(symbol) => {
 							setDrillSeeds([symbol]);
-							void goto('/drills');
+							void goto('/practice');
 						}}
 					/>
 				{/each}

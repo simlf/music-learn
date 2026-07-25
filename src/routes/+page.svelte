@@ -185,11 +185,11 @@
 		playChord(letters);
 	}
 
-	/** Seeds the resolved chord into the one-shot drill queue and navigates to /drills. */
+	/** Seeds the resolved chord into the one-shot drill queue and navigates to /practice. */
 	function drillIt() {
 		if (!result) return;
 		setDrillSeeds([result.symbol]);
-		void goto('/drills');
+		void goto('/practice');
 	}
 
 	/**
