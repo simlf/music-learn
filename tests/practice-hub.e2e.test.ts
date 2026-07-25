@@ -17,6 +17,16 @@ import { saveSong } from '$lib/practice/songs';
  * $lib/practice/practiceQueue all run REAL so the actual FSRS-ordering/
  * queue-composition logic is exercised end-to-end. songFilterPref/
  * songProvenance/songs are also REAL (plain localStorage, safe in jsdom).
+ *
+ * Plan 05 note: this file's scope is deliberately the three CARDED
+ * families' grading mechanics in isolation (PRAC-01/PRAC-03/REG-01) - it
+ * mocks practiceQueue's synthetic builders (syntheticVoicingItems/
+ * syntheticProgressionItems) down to `[]` so a due chord-formula card here
+ * never also pulls in a voicing/progression item, keeping these tests
+ * focused on carded-family grade-commit behavior. The full five-family
+ * interleave, the PRAC-05 single-type-due gate, and the synthetic
+ * grade-commit split are covered end-to-end (with the REAL builders) in
+ * tests/practice-hub-mix.e2e.test.ts.
  */
 
 const introduceNewCardsMock = vi.fn();
@@ -32,6 +42,15 @@ vi.mock('$lib/srs/deck', () => ({
 	recordGrade: (...args: unknown[]) => recordGradeMock(...args),
 	getCard: (...args: unknown[]) => getCardMock(...args)
 }));
+
+vi.mock('$lib/practice/practiceQueue', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('$lib/practice/practiceQueue')>();
+	return {
+		...actual,
+		syntheticVoicingItems: () => [],
+		syntheticProgressionItems: () => []
+	};
+});
 
 const remainingIntroBudgetMock = vi.fn();
 const consumeIntroBudgetMock = vi.fn();

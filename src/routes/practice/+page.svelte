@@ -5,7 +5,11 @@
 		cardsToQueueItems,
 		advanceHybridQueue,
 		isHybridSessionComplete,
-		type HybridQueueItem
+		syntheticVoicingItems,
+		syntheticProgressionItems,
+		filterVoicingsBySong,
+		type HybridQueueItem,
+		type VoicingQueueItem
 	} from '$lib/practice/practiceQueue';
 	import { getDueCards, getAllCards, introduceNewCards, recordGrade, type CardRecord } from '$lib/srs/deck';
 	import { selectReviewCards, interleaveQueue } from '$lib/srs/rotation';
@@ -20,18 +24,19 @@
 	import PracticeChordDrill from '$lib/components/PracticeChordDrill.svelte';
 	import PracticeIntervalDrill from '$lib/components/PracticeIntervalDrill.svelte';
 	import BuildSession from '$lib/components/BuildSession.svelte';
+	import ShellVoicingDrill from '$lib/components/ShellVoicingDrill.svelte';
+	import ProgressionDrill from '$lib/components/ProgressionDrill.svelte';
 
 	/**
-	 * Phase 27 Plan 04: the thin `/practice` host. Owns ONLY reactive session
-	 * glue (load/compose, page-state, family cue, grade-commit, advance) and
-	 * delegates every question surface to PracticeChordDrill/
-	 * PracticeIntervalDrill/BuildSession (27-01/27-03). Never a mode-picker
-	 * grid (PRAC-01) - a single "Start practice" action, populated by the
-	 * hybrid FSRS+synthetic queue composed via practiceQueue.ts.
-	 *
-	 * Synthetic voicing/progression items are added by Plan 05; this plan's
-	 * queue is carded-only (name-it/build-it/interval), composed via
-	 * composePracticeQueue with an empty synthetic half (see the seam below).
+	 * Phase 27 Plan 04+05: the thin `/practice` host. Owns ONLY reactive
+	 * session glue (load/compose, page-state, family cue, grade-commit,
+	 * advance) and delegates every question surface to PracticeChordDrill/
+	 * PracticeIntervalDrill/BuildSession (the three FSRS-carded families,
+	 * 27-01/27-03) and ShellVoicingDrill/ProgressionDrill (the two synthetic,
+	 * non-persisted families, woven in by Plan 05 via their 27-02 embed
+	 * seams). Never a mode-picker grid (PRAC-01) - a single "Start practice"
+	 * action, populated by the hybrid FSRS+synthetic queue composed via
+	 * practiceQueue.ts.
 	 */
 
 	type PageState =
@@ -94,6 +99,15 @@
 	/** Daily new-card intro budget + due-backlog gate (mirrors RecallSession's load() skeleton verbatim). */
 	const DUE_BACKLOG_GATE = 20;
 
+	/**
+	 * The small, session-scaled count of synthetic progression items woven
+	 * into one round when at least one chord-formula card is due (Plan 05).
+	 * Kept low deliberately: progressions are the heaviest single item in the
+	 * mix (a 4-bar earn-the-symbol grid), so a handful is "enough variety",
+	 * not a flood that crowds out the carded half.
+	 */
+	const SYNTHETIC_PROGRESSION_COUNT = 2;
+
 	async function load(): Promise<void> {
 		pageState = 'loading';
 		try {
@@ -128,9 +142,66 @@
 			const orderedCards = interleaveQueue(selectedCards, Math.random);
 			const cardedItems = cardsToQueueItems(orderedCards);
 
-			// Plan 05 seam: synthetic voicing/progression items are composed
-			// and passed in here; this plan's queue is carded-only.
-			const syntheticItems: HybridQueueItem[] = [];
+			/**
+			 * PRAC-05 single-type-due gate: voicing/progression synthetics
+			 * are gated on the FSRS due signal, not injected unconditionally.
+			 * The due chord-formula symbols are read from `selectedCards`
+			 * (the actual carded half selected above) - an interval-only due
+			 * set yields an empty set here, so both synthetic halves stay
+			 * empty and the session surfaces intervals only.
+			 */
+			const dueChordSymbols = new Set<string>();
+			for (const card of selectedCards) {
+				if (card.factKind !== 'chord-formula') continue;
+				const fact = factById(card.factId);
+				if (fact !== undefined && fact.factKind === 'chord-formula') {
+					dueChordSymbols.add(fact.symbol);
+				}
+			}
+
+			let voicingItems: VoicingQueueItem[] = [];
+			let progressionItems: HybridQueueItem[] = [];
+			if (dueChordSymbols.size > 0) {
+				// Voicing synthetics: one item per DUE seventh chord only - a
+				// chord card that isn't due never surfaces its voicing item,
+				// even if it is a seventh chord.
+				const allCards = await getAllCards();
+				const cardsBySymbol = new Map<string, CardRecord[]>();
+				for (const card of allCards) {
+					if (card.factKind !== 'chord-formula') continue;
+					const fact = factById(card.factId);
+					if (fact === undefined || fact.factKind !== 'chord-formula') continue;
+					if (!dueChordSymbols.has(fact.symbol)) continue;
+					const list = cardsBySymbol.get(fact.symbol);
+					if (list) {
+						list.push(card);
+					} else {
+						cardsBySymbol.set(fact.symbol, [card]);
+					}
+				}
+				voicingItems = syntheticVoicingItems(cardsBySymbol).filter((item) =>
+					dueChordSymbols.has(item.symbol)
+				);
+				if (songFilterOn && provenanceIndex.size > 0) {
+					voicingItems = filterVoicingsBySong(voicingItems, (symbol) =>
+						symbolHasProvenance(symbol, provenanceIndex)
+					);
+				}
+
+				// Progression synthetics: a small, session-scaled count, only
+				// when at least one chord card is due (progressions are
+				// chord-naming practice). Progressions have no single chord
+				// symbol of their own to test against song provenance
+				// (key/template-based, not single-song-chord based), so the
+				// chosen filter policy is to omit them entirely when the
+				// song filter is ON rather than guess at a partial
+				// restriction (PRAC-04).
+				if (!(songFilterOn && provenanceIndex.size > 0)) {
+					progressionItems = syntheticProgressionItems(SYNTHETIC_PROGRESSION_COUNT, Math.random);
+				}
+			}
+
+			const syntheticItems: HybridQueueItem[] = [...voicingItems, ...progressionItems];
 			const composed = composePracticeQueue(cardedItems, syntheticItems, Math.random);
 
 			if (composed.length === 0) {
@@ -257,6 +328,29 @@
 	}
 
 	/**
+	 * Grades + advances a synthetic (voicing/progression) item. These items
+	 * carry no FSRS card at all (HYBRID model, non-persisted per
+	 * 27-CONTEXT's "no persisted-schema change") - recordGrade must NEVER be
+	 * called for them (T-27-05-01). onComplete only ever fires after a
+	 * correct play/earn in both ShellVoicingDrill and ProgressionDrill (they
+	 * never gate to completion on a wrong answer), so the round counter
+	 * always finishes the item as correct. The host only advances the local
+	 * queue/score register here - no telemetry event is recorded for
+	 * synthetic completions (the embedded components own their own internal
+	 * behavior; adding a host-level recordPracticeAnswer call here would be
+	 * new surface not required by any family's own contract).
+	 */
+	function completeSynthetic(): void {
+		const item = currentItem;
+		if (item === undefined || (item.family !== 'voicing' && item.family !== 'progression')) return;
+		finishItem(item, true);
+		queue = advanceHybridQueue(queue, Rating.Good);
+		questionShownAt = Date.now();
+		cardEpoch += 1;
+		if (isHybridSessionComplete(queue)) pageState = 'complete';
+	}
+
+	/**
 	 * The end-card's "Run it again" CTA: re-runs load() and, when the freshly
 	 * composed queue is non-empty, drops straight into a fresh round rather
 	 * than stopping at the pre-start confirmation card again - matching
@@ -341,8 +435,15 @@
 					embedFact={{ kind: 'chord', symbol: currentItem.symbol ?? '' }}
 					onComplete={(rating) => completeBuild(rating)}
 				/>
+			{:else if currentItem.family === 'voicing'}
+				<ShellVoicingDrill embedSymbol={currentItem.symbol} onComplete={() => completeSynthetic()} />
+			{:else if currentItem.family === 'progression'}
+				<ProgressionDrill
+					embedTemplateId={currentItem.templateId}
+					embedKey={currentItem.key}
+					onComplete={() => completeSynthetic()}
+				/>
 			{/if}
-			<!-- Plan 05 seam: 'voicing'/'progression' branches render ShellVoicingDrill/ProgressionDrill here. -->
 		{/key}
 	{:else if pageState === 'complete'}
 		<div
