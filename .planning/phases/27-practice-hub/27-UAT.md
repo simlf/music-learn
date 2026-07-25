@@ -55,6 +55,31 @@ tests_passed: 1 (accent)
 tests_pending: 1 (phone responsive/animation)
 findings_fixed: 4 (F1/F2/F3/F4, pending on-device re-check)
 
+## Round 2 findings (fixed, pending on-device re-check)
+
+### G1. Keys must play piano sound on every tap, everywhere
+cause: audio was opt-in per caller (only inspect mode + wired onPress played); ProgressionDrill, build construct, etc. were silent.
+fix: 3da6b09 — audio centralized in PianoKeyboard activation choke point (interactive + constructing modes), redundant caller audio removed (no double-play). Every tappable key sounds once.
+result: [needs on-device re-check] — jsdom can't hear audio.
+
+### G2. name-it served the same chord back-to-back
+cause: a chord's teach cluster maps multiple modes to the name-it family, so 2+ same-symbol name-it items could land adjacent; interleaver only guarded same-family runs, never symbol.
+fix: 17ce2dc — same-symbol anti-adjacency in composePracticeQueue (still allows a legitimately single-due symbol to repeat, PRAC-05 preserved).
+result: [fixed, covered by tests].
+
+### G3. Voicing "Voir" stage: show target symbol + tap-to-hear
+fix: 88926f4 — ChordGlyph target shown; meet keyboards inspectable (tap plays). Build "Construire" tap-to-hear covered by G1.
+result: [needs on-device re-check].
+
+### G4. Duplicate preset song in Progress > Songs
+cause: no storage-level uniqueness by presetId; in-memory guard couldn't collapse on-disk dups.
+fix: 7c362a3 — listSongs dedups by presetId on read (non-destructive); saveSong hardened against new preset dups.
+result: [fixed, covered by tests] — user's existing duplicate now shows once.
+
+### G5. Voicing "Exo" no instruction / inert Fond.·Shell·Sans fond. tabs
+fix: 6d40199 — Exo prompt now names the selected style (playFull/playShell/playRootless, EN/FR); switching sub-tabs changes the instruction. Drill stays a from-memory recall (target hidden pre-answer by design).
+result: [needs on-device re-check] — confirm the style prompt reads clearly.
+
 ## Gaps
 
-F1-F4 fixes are on the PR branch (e8c9f43 / 8a49675 / 5e0b7f6 / 5383eb0), suite green (1478). On-device re-check needed for: audio (F1), key alignment (F2), stage nav (F3), name-it correct/incorrect polish (F4), plus the still-pending phone-width Test 2.
+Round 1 (F1-F4: e8c9f43 / 8a49675 / 5e0b7f6 / 5383eb0) + round 2 (G1-G5: 3da6b09 / 17ce2dc / 88926f4 / 7c362a3 / 6d40199) all on the PR branch. Full suite green (1497), build green. On-device re-check still needed for anything audio/visual/animation (F1, F2, F3, F4, G1, G3, G5) plus the phone-width Test 2. G2/G4 covered by tests.
