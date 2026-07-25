@@ -26,6 +26,8 @@
 	import BuildSession from '$lib/components/BuildSession.svelte';
 	import ShellVoicingDrill from '$lib/components/ShellVoicingDrill.svelte';
 	import ProgressionDrill from '$lib/components/ProgressionDrill.svelte';
+	import ScaleKeyboardDrill from '$lib/components/ScaleKeyboardDrill.svelte';
+	import { MAJOR_SCALE_ROOTS, majorScaleNotes } from '$lib/theory/scale';
 
 	/**
 	 * Phase 27 Plan 04+05: the thin `/practice` host. Owns ONLY reactive
@@ -70,6 +72,17 @@
 
 	/** MD-02 (mirrored from RecallSession): how many real due cards the song filter is hiding. */
 	let filteredHiddenCount = $state(0);
+
+	/**
+	 * Phase 28 Plan 05 (LEARN-02): the additive "Scale practice" disclosure.
+	 * Its own tonic/expanded state never touches `pageState`, the hybrid
+	 * queue, or the FSRS grade/advance handlers above - it renders a
+	 * completely separate, collapsed-by-default surface reached from the
+	 * Practice hub (REG-01: Phase 27's interleaved session stays unchanged).
+	 */
+	let scaleExpanded = $state(false);
+	let scaleTonic = $state('C');
+	const scaleNotes = $derived(majorScaleNotes(scaleTonic));
 
 	/**
 	 * Quick task 260720-v9u: /practice reads the shared global "From my songs"
@@ -504,6 +517,42 @@
 			</div>
 		</div>
 	{/if}
+
+	<div class="mt-8">
+		<Button
+			type="button"
+			variant="ghost"
+			aria-expanded={scaleExpanded}
+			onclick={() => (scaleExpanded = !scaleExpanded)}
+		>
+			{scaleExpanded ? t('learn.scale-practice.close') : t('learn.scale-practice.toggle')}
+		</Button>
+
+		{#if scaleExpanded}
+			<div class="border-ink bg-paper-bright mt-4 border-2 px-4 py-6" data-testid="scale-practice-card">
+				<p class="text-heading font-bold">{t('learn.scale-practice.heading')}</p>
+				<p class="text-body mt-2">{t('learn.scale-practice.body')}</p>
+
+				<div class="mt-6 flex flex-wrap gap-2" data-testid="scale-practice-tonic-row">
+					{#each MAJOR_SCALE_ROOTS as root (root)}
+						<Button
+							type="button"
+							variant={root === scaleTonic ? 'primary' : 'ghost'}
+							aria-label={`${root} ${t('scales.tonic.qualitySuffix')}`}
+							aria-pressed={root === scaleTonic}
+							onclick={() => (scaleTonic = root)}
+						>
+							{root}
+						</Button>
+					{/each}
+				</div>
+
+				<div class="mt-6">
+					<ScaleKeyboardDrill notes={scaleNotes} tonic={scaleTonic} />
+				</div>
+			</div>
+		{/if}
+	</div>
 </main>
 
 <style>
