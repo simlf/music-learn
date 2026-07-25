@@ -6,14 +6,14 @@ current_phase: 30
 current_phase_name: Four-Hub Nav Cutover + Redirect Shims
 status: verifying
 stopped_at: Completed 30-02-PLAN.md
-last_updated: "2026-07-25T10:20:03.425Z"
+last_updated: "2026-07-25T10:25:33.672Z"
 last_activity: 2026-07-25
 last_activity_desc: Completed 30-01-PLAN.md (four-hub nav chrome + i18n)
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 24
-  completed_plans: 21
+  completed_plans: 22
   percent: 67
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-21)
 ## Current Position
 
 Phase: 30 — Four-Hub Nav Cutover + Redirect Shims
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-07-25 — Completed 30-01-PLAN.md (four-hub nav chrome + i18n)
 
@@ -173,6 +173,7 @@ Last activity: 2026-07-25 — Completed 30-01-PLAN.md (four-hub nav chrome + i18
 | Phase 29 P05 | 12min | 1 tasks | 1 files |
 | Phase 30 P01 | 25min | 3 tasks | 3 files |
 | Phase 30-four-hub-nav-cutover-redirect-shims P02 | 25min | 2 tasks | 2 files |
+| Phase 30 P03 | 12min | 2 tasks | 5 files |
 
 ## Deferred Items
 
@@ -388,6 +389,7 @@ Recent decisions affecting current work:
 - [Phase 30]: TAB_ICONS: /practice re-keys the former /drills glyph verbatim; /learn gets an open-book glyph; /progress gets ascending-bars, all copied from 30-UI-SPEC — 30-01: keeps TAB_ICONS keyed by href in sync with navLinks
 - [Phase 30]: Seed consumption in /practice's buildSeededItems() drains both localStorage channels at the top of load(), lesson seeds taking precedence over weak-list seeds — 30-02
 - [Phase 30]: Every empty-state early return in /practice's load() is gated behind seededItems.length === 0 so a seeded session always starts even when nothing is FSRS-due — 30-02
+- [Phase ?]: Repointed all 6 Progress/Lookup drill handoffs to /practice; fixed pre-existing masthead nav-link test regression from 30-01's 4-hub nav (scoped query to within(masthead))
 
 ### Pending Todos
 
@@ -425,7 +427,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-25T10:20:03.417Z
+Last session: 2026-07-25T10:25:11.716Z
 Stopped at: Completed 30-02-PLAN.md
 Resume file: 
 None
