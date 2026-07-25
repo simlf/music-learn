@@ -28,7 +28,7 @@
 ### Learn Hub (LEARN)
 
 - [x] **LEARN-01**: The Learn hub presents the existing shape-first theory lessons together with the Scales "Explore" content (major-scale degrees/intervals) and the shared interval reference, in one surface.
-- [ ] **LEARN-02**: The Scales "Practice" tab is reachable through the Practice hub, while only "Explore" remains in Learn.
+- [x] **LEARN-02**: The Scales "Practice" tab is reachable through the Practice hub, while only "Explore" remains in Learn.
 
 ### Progress Hub (PROG)
 

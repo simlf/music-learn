@@ -129,11 +129,11 @@ Plans:
   2. The shared IntervalView appears in Learn as an interval reference block.
   3. The Scales "Practice" drill is reached through the Practice hub, and Learn shows only "Explore."
 
-**Plans**: 2/5 plans executed
+**Plans**: 3/5 plans executed
 
 - [x] 28-01-PLAN.md — Extract TheoryLessons.svelte; /theory becomes a thin wrapper (DRY foundation)
 - [x] 28-02-PLAN.md — Extract ScaleExplorer.svelte (exploreOnly prop); /scales becomes a thin wrapper
-- [ ] 28-03-PLAN.md — Register the learn.* i18n domain (index.ts merge + messages.test.ts collision list)
+- [x] 28-03-PLAN.md — Register the learn.* i18n domain (index.ts merge + messages.test.ts collision list)
 - [ ] 28-04-PLAN.md — Build the /learn hub (theory + explore + 5-quality interval reference) + render/smoke test (LEARN-01)
 - [ ] 28-05-PLAN.md — Additive Scale-practice disclosure on /practice + reachability test (LEARN-02)
 

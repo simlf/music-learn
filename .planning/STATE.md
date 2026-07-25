@@ -5,15 +5,15 @@ milestone_name: Hub Consolidation + Interval Theory
 current_phase: 28
 current_phase_name: Learn Hub — Theory + Scales Explore + Interval Reference
 status: executing
-stopped_at: Completed 27-05-PLAN.md
-last_updated: "2026-07-25T01:52:53.373Z"
+stopped_at: Completed 28-03-PLAN.md
+last_updated: "2026-07-25T01:59:12.014Z"
 last_activity: 2026-07-25
 last_activity_desc: Phase 27 complete, transitioned to Phase 28
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 14
-  completed_plans: 11
+  completed_plans: 12
   percent: 33
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-21)
 ## Current Position
 
 Phase: 28 — Learn Hub — Theory + Scales Explore + Interval Reference
-Plan: 3 of 5 in current phase
+Plan: 4 of 5 in current phase
 Status: Ready to execute
 Last activity: 2026-07-25 — Phase 27 complete, transitioned to Phase 28
 
@@ -161,6 +161,7 @@ Last activity: 2026-07-25 — Phase 27 complete, transitioned to Phase 28
 | Phase 27-practice-hub P05 | 40min | 2 tasks | 3 files |
 | Phase 28 P01 | 3min | 2 tasks | 2 files |
 | Phase 28 P02 | 5min | 2 tasks | 2 files |
+| Phase 28-learn-hub-theory-scales-explore-interval-reference P03 | 5min | 2 tasks | 3 files |
 
 ## Deferred Items
 
@@ -361,6 +362,7 @@ Recent decisions affecting current work:
 - [Phase 27-practice-hub]: Progressions are omitted entirely (not partially filtered) under the song filter — Progressions are key/template-based, not single-song-chord based - no principled way to restrict a 4-bar progression to one song's chord
 - [Phase 28]: TheoryLessons.svelte renders as a bare fragment (no chrome); /theory and future /learn hub share one lesson-body source of truth
 - [Phase ?]: ScaleExplorer.svelte (Phase 28-02): exploreOnly prop gates the mode-toggle + Practice branch off, extraction is byte-identical when false
+- [Phase ?]: [Phase 28-03]: learn.ts i18n domain copy taken verbatim from 28-PATTERNS.md's structure pattern (which reconciled UI-SPEC English strings with vetted French translations), rather than re-derived, to guarantee exact alignment with what Wave-2 plans 28-04/28-05 expect
 
 ### Pending Todos
 
@@ -398,8 +400,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-25T01:52:31.604Z
-Stopped at: Completed 27-05-PLAN.md
+Last session: 2026-07-25T01:59:12.007Z
+Stopped at: Completed 28-03-PLAN.md
 Resume file: 
-
-None
