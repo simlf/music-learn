@@ -73,6 +73,18 @@
 	let streakLoading = $state(false);
 
 	onMount(() => {
+		// Dev-only guard (30-REVIEW WR-03): navLinks/TAB_ICONS/bottomTabLinks
+		// must stay in lockstep by hand. Fail loudly here instead of letting a
+		// missing TAB_ICONS entry silently render a blank {@html} icon slot.
+		if (import.meta.env.DEV) {
+			for (const link of navLinks) {
+				if (!(link.href in TAB_ICONS)) {
+					throw new Error(
+						`[+layout.svelte] TAB_ICONS is missing an entry for nav link "${link.href}"`
+					);
+				}
+			}
+		}
 		initLocale();
 		registerUpdateWatcher();
 		if (getApiToken() === '') return;
