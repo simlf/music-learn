@@ -4,17 +4,17 @@ milestone: v2.2
 milestone_name: Hub Consolidation + Interval Theory
 current_phase: 31
 current_phase_name: No-Regression Gate & Test Remap
-status: executing
+status: verifying
 stopped_at: Completed 30-02-PLAN.md
-last_updated: "2026-07-25T11:35:26.103Z"
+last_updated: "2026-07-25T11:42:39.248Z"
 last_activity: 2026-07-25
 last_activity_desc: Phase 30 complete, transitioned to Phase 31
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 26
-  completed_plans: 25
-  percent: 83
+  completed_plans: 26
+  percent: 100
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-21)
 
 Phase: 31 — No-Regression Gate & Test Remap
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-25 — Phase 30 complete, transitioned to Phase 31
 
 ## Performance Metrics
@@ -178,6 +178,7 @@ Last activity: 2026-07-25 — Phase 30 complete, transitioned to Phase 31
 | Phase 30 P04 | 12min | 2 tasks | 6 files |
 | Phase 30 P05 | 20min | 3 tasks | 18 files |
 | Phase 31 P01 | 35min | 2 tasks | 2 files |
+| Phase 31 P02 | 12min | 2 tasks | 1 files |
 
 ## Deferred Items
 
@@ -397,6 +398,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 30-05]: Redirect-shim +page.ts (prerender=true, throw redirect(308, target)) confirmed prerender-safe under adapter-static; no client goto() fallback needed — Build log printed all 8 308 redirect lines cleanly
 - [Phase ?]: [Phase 30-05]: coverage.test.ts's cross-surface chord-identity test dropped (not rewritten) after losing its Build-surface half; masthead FR-wiring assertion repointed to Practice/Pratiquer — Per plan guidance; Phase 31 re-establishes comprehensive coverage
 - [Phase ?]: Both CONTEXT-flagged thin spots (interval-family presence in the merged Practice mix; single-type-due variety-injection gate) already covered by tests/practice-hub-mix.e2e.test.ts, no gap-fill needed
+- [Phase 31]: Milestone shipping gate confirmed green (build+test+check); v2.2 REQUIREMENTS.md traceability confirmed for all 16 REQ-IDs — REG-01/REG-02 were already marked delivered by Plan 01's own state-update step (its frontmatter also declared requirements: [REG-01, REG-02]); this plan's gate run retroactively substantiates the marking as correct
 
 ### Pending Todos
 
@@ -434,7 +436,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-25T11:34:13.059Z
+Last session: 2026-07-25T11:42:28.186Z
 Stopped at: Completed 30-02-PLAN.md
 Resume file: 
 None

@@ -160,3 +160,8 @@ This is the final phase of the v2.2 Hub Consolidation + Interval Theory mileston
 ---
 *Phase: 31-no-regression-gate-test-remap*
 *Completed: 2026-07-25*
+
+## Self-Check: PASSED
+
+- FOUND: `.planning/phases/31-no-regression-gate-test-remap/31-02-SUMMARY.md`
+- FOUND commit e15d566 (docs(31-02): record green milestone gate (build+test+check) and confirm traceability)
