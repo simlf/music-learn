@@ -148,3 +148,75 @@ describe('PracticeChordDrill: right/wrong affirmation (UAT F4)', () => {
 		expect(document.querySelector('.piano-keyboard__ivbadge')).not.toBeInTheDocument();
 	});
 });
+
+describe('PracticeChordDrill: picked-vs-correct on a miss (E1)', () => {
+	it('shows what the user picked and the correct answer on a wrong choice', async () => {
+		render(PracticeChordDrill, { props: { symbol: 'Cm7', onComplete: vi.fn() } });
+
+		const choiceGrid = screen.getByTestId('choice-grid');
+		const buttons = within(choiceGrid).getAllByRole('button');
+		const wrong = buttons.find((button) => button.textContent?.trim() !== 'Cm7');
+		expect(wrong).toBeDefined();
+		const wrongLabel = wrong!.textContent?.trim();
+
+		await fireEvent.click(wrong!);
+
+		const line = screen.getByTestId('chord-drill-picked-vs-correct');
+		expect(line).toHaveTextContent(wrongLabel!);
+		expect(line).toHaveTextContent('Cm7');
+	});
+
+	it('does not render a picked-vs-correct line on a correct answer', async () => {
+		render(PracticeChordDrill, { props: { symbol: 'Cm7', onComplete: vi.fn() } });
+
+		await fireEvent.click(choiceButton('Cm7'));
+
+		expect(screen.queryByTestId('chord-drill-picked-vs-correct')).not.toBeInTheDocument();
+	});
+
+	it('renders the French picked-vs-correct copy under fr', async () => {
+		setLocale('fr');
+		render(PracticeChordDrill, { props: { symbol: 'Cm7', onComplete: vi.fn() } });
+
+		const choiceGrid = screen.getByTestId('choice-grid');
+		const wrong = within(choiceGrid)
+			.getAllByRole('button')
+			.find((button) => button.textContent?.trim() !== 'Cm7');
+		expect(wrong).toBeDefined();
+
+		await fireEvent.click(wrong!);
+
+		expect(screen.getByTestId('chord-drill-picked-vs-correct')).toHaveTextContent('Tu as choisi');
+	});
+});
+
+describe('PracticeChordDrill: per-quality stacked-thirds pattern (E2)', () => {
+	it('shows the m7 stacked-thirds shape after a correct answer', async () => {
+		render(PracticeChordDrill, { props: { symbol: 'Cm7', onComplete: vi.fn() } });
+
+		await fireEvent.click(choiceButton('Cm7'));
+
+		const shape = screen.getByTestId('chord-drill-shape');
+		expect(shape).toHaveTextContent('m7: m3 · M3 · m3');
+	});
+
+	it('shows the m7 stacked-thirds shape after a wrong answer too', async () => {
+		render(PracticeChordDrill, { props: { symbol: 'Cm7', onComplete: vi.fn() } });
+
+		const choiceGrid = screen.getByTestId('choice-grid');
+		const wrong = within(choiceGrid)
+			.getAllByRole('button')
+			.find((button) => button.textContent?.trim() !== 'Cm7');
+		expect(wrong).toBeDefined();
+
+		await fireEvent.click(wrong!);
+
+		expect(screen.getByTestId('chord-drill-shape')).toHaveTextContent('m7: m3 · M3 · m3');
+	});
+
+	it('does not leak the stacked-thirds shape before the user answers', () => {
+		render(PracticeChordDrill, { props: { symbol: 'Cm7', onComplete: vi.fn() } });
+
+		expect(screen.queryByTestId('chord-drill-shape')).not.toBeInTheDocument();
+	});
+});

@@ -2,6 +2,7 @@
 	import { untrack } from 'svelte';
 	import { generateQuestion, type ChordQuestion } from '$lib/drills/generateQuestion';
 	import { spellChord } from '$lib/theory/chord';
+	import { stackedThirdsFor } from '$lib/lookup/chordPresentation';
 	import { ensureAudioReady, playChord } from '$lib/audio/audio';
 	import PianoKeyboard from './PianoKeyboard.svelte';
 	import ChordGlyph from './ChordGlyph.svelte';
@@ -34,6 +35,21 @@
 	 * per LocaleToggle's own comment) and NOT any of the four reserved
 	 * interval-role colors, only the existing `text-muted` token already
 	 * used for wrong-answer chrome elsewhere.
+	 *
+	 * E1 fix (name-it feedback, 30-CONTEXT): a miss previously revealed only
+	 * the correct symbol, with no record of what was actually tapped - a
+	 * returning player couldn't compare their own guess against the answer.
+	 * `picked` snapshots the tapped choice at answer time; the miss branch
+	 * now renders an explicit "you picked X, it was Y" line beside the
+	 * existing correct-symbol ChordGlyph.
+	 *
+	 * E2 fix (per-quality stacked-thirds pattern, 30-CONTEXT): after EITHER
+	 * outcome, a short teaching line shows the answer chord's stacked-thirds
+	 * gap pattern (stackedThirdsFor's `gaps[].label`, e.g. "+m3"/"+M3"/"+m3"
+	 * for a m7 chord) so a beginner learns the invariant shape per quality
+	 * ("if it's m7, the shape is m3 . M3 . m3") rather than only memorizing
+	 * one symbol at a time. Rendered muted/mono, visually subordinate to the
+	 * correct/incorrect affirmation above it - never competing with it.
 	 */
 	interface Props {
 		/** The chord symbol this item drills (from the host's queue). */
@@ -57,8 +73,22 @@
 		() => generateQuestion({ symbol, direction: 'identification' }) as ChordQuestion
 	);
 
+	/** The answer chord's quality suffix ("m7", "m7b5", ...) - same slice ChordGlyph's quality prop already uses below. */
+	const targetQuality = target.symbol.slice(target.root.length);
+	/**
+	 * E2: the invariant stacked-thirds shape for this quality, e.g. "m3 . M3
+	 * . m3" for m7 - stackedThirdsFor's gap labels ("+m3") with the leading
+	 * "+" stripped, joined with a middot (matches the fix spec's own
+	 * "m7: m3 · M3 · m3" example verbatim).
+	 */
+	const stackedThirdsPattern = stackedThirdsFor(target)
+		.gaps.map((gap) => gap.label.replace(/^\+/, ''))
+		.join(' · ');
+
 	let answered = $state(false);
 	let correct = $state(false);
+	/** E1: the choice the user actually tapped, snapshotted at answer time. */
+	let picked = $state<string | undefined>(undefined);
 
 	/**
 	 * Identification grading (drills D-05 parity): tapping a choice IS the
@@ -70,6 +100,7 @@
 		if (answered) return;
 		answered = true;
 		correct = choice === symbol;
+		picked = choice;
 		void ensureAudioReady();
 		playChord(target.notes.map((note) => note.letter));
 	}
@@ -109,7 +140,7 @@
 				</p>
 			{:else}
 				<div class="flex items-start gap-4">
-					<ChordGlyph root={target.root} quality={target.symbol.slice(target.root.length)} />
+					<ChordGlyph root={target.root} quality={targetQuality} />
 				</div>
 				<p
 					class="text-label text-muted mt-2 font-mono uppercase"
@@ -118,7 +149,20 @@
 					<span aria-hidden="true">✕</span>
 					{t('drills.feedback.incorrect')}
 				</p>
+				<p class="text-body mt-2" data-testid="chord-drill-picked-vs-correct">
+					{t('drills.feedback.pickedVsCorrect')
+						.replace('{picked}', picked ?? '')
+						.replace('{correct}', symbol)}
+				</p>
 			{/if}
+
+			<p
+				class="text-label text-muted mt-2 font-mono uppercase"
+				data-testid="chord-drill-shape"
+				aria-label={t('drills.aria.chordShape')}
+			>
+				{targetQuality}: {stackedThirdsPattern}
+			</p>
 		</div>
 
 		<div class="mt-4">
