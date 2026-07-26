@@ -16,6 +16,7 @@
 	import { spellChord } from '$lib/theory/chord';
 	import { toAsciiAccidentals } from '$lib/theory/interval';
 	import type { SpelledNote } from '$lib/theory/types';
+	import { ensureAudioReady, playChord } from '$lib/audio/audio';
 	import PianoKeyboard from './PianoKeyboard.svelte';
 	import ChordGlyph from './ChordGlyph.svelte';
 	import Button from './Button.svelte';
@@ -115,34 +116,30 @@
 	});
 
 	/**
-	 * Step-tab review override (UAT bug C+D): a due card's derived `stage`
-	 * often skips straight to 'subtract'/'drill', so there is no way back to
-	 * the '1 Voir' compare intro for reference. Clicking a step tab that
-	 * ISN'T the real `stage` sets this to that stage so its content renders
-	 * instead; clicking the real stage's own tab (or the same override tab
-	 * again) resets it to null. Only 'meet' has genuinely distinct read-only
-	 * reference content (the compare cards, no grading state) - the drill/
-	 * subtract tabs simply return to the real `stage` when clicked (RULE:
-	 * never let a reviewed stage's controls grade against the wrong target),
-	 * so `viewedStage` is only ever 'meet' or null in practice.
+	 * Step-tab free navigation (UAT V1 fix): the three pedagogy stages are
+	 * user-navigable at any time for the current chord, so the player can
+	 * freely move Voir<->Retirer<->Exo to learn or practice, instead of the
+	 * step tabs only ever reflecting the FSRS-derived `stage`. `null` means
+	 * "no override" - the tabs show the real derived `stage`; a non-null
+	 * value overrides it until the next chord (`next()` resets this to null)
+	 * or another tab click.
 	 */
-	let viewedStage = $state<VoicingStage | null>(null);
+	let activeStage = $state<VoicingStage | null>(null);
 
-	/** The stage whose content is currently rendered: the review override when set, else the real derived `stage`. */
-	const effectiveStage = $derived(viewedStage ?? stage);
+	/** The stage whose content is currently rendered: the user's override when set, else the real derived `stage`. */
+	const effectiveStage = $derived(activeStage ?? stage);
 
 	/**
-	 * Step-tab click handler. Clicking the tab for the currently active real
-	 * stage (or re-clicking an already-viewed 'meet' tab) always returns to
-	 * the real stage; clicking 'meet' while it ISN'T the real stage shows the
-	 * read-only compare reference (see `viewedStage`/`effectiveStage`).
+	 * Step-tab click handler: sets the active override to whichever tab was
+	 * clicked (meet/subtract/drill alike), starting the newly-shown stage's
+	 * per-attempt state clean (a stage switch is never mid-question).
 	 */
 	function selectStep(target: VoicingStage) {
-		if (target === 'meet' && target !== stage) {
-			viewedStage = viewedStage === 'meet' ? null : 'meet';
-			return;
-		}
-		viewedStage = null;
+		if (target === effectiveStage) return;
+		activeStage = target;
+		selected = new Set();
+		answered = false;
+		wrongRetry = false;
 	}
 
 	let voicingStyle = $state<VoicingStyle>('shell');
@@ -159,8 +156,16 @@
 		return shellNotes(chord);
 	}
 
-	/** The subtract stage always grades the shell (2 notes); only the drill stage's selector varies the target. */
-	const targetNotes = $derived(stage === 'drill' ? noteSetFor(voicingStyle) : shellNotes(chord));
+	/**
+	 * The grading target follows `effectiveStage` (whichever stage the user is
+	 * currently viewing/answering), not the FSRS-derived `stage`: the subtract
+	 * stage always grades the shell (2 notes), the drill stage's selector
+	 * varies the target, and meet is reference-only (never rendered with a
+	 * Check control, so this value is inert there).
+	 */
+	const targetNotes = $derived(
+		effectiveStage === 'drill' ? noteSetFor(voicingStyle) : shellNotes(chord)
+	);
 
 	/**
 	 * PianoKeyboard's base (first-octave) octave. Ghost markers are pinned
@@ -194,18 +199,27 @@
 		selected = next;
 	}
 
+	/**
+	 * Style tab switch (UAT V3 fix): deliberately does NOT clear `selected` -
+	 * the player's already-tapped notes must survive a Fond./Shell/Sans fond.
+	 * switch, since the notes typically overlap across styles and re-tapping
+	 * from scratch after every switch was the reported friction. `wrongRetry`
+	 * still clears since it was surfaced against the previous style's target.
+	 */
 	function selectStyle(style: VoicingStyle) {
-		if (stage !== 'drill' || answered) return;
+		if (effectiveStage !== 'drill' || answered) return;
 		voicingStyle = style;
-		selected = new Set();
 		wrongRetry = false;
 	}
 
 	/**
 	 * Check: grades the selected chroma against `targetNotes` (never letter
-	 * strings, per matchChord's contract). A correct play sets `answered`
-	 * (the reveal + Next state); a wrong play never gates - it just shows a
-	 * gentle retry and clears the selection so the learner can play again.
+	 * strings, per matchChord's contract), for whichever stage is currently
+	 * `effectiveStage` (the user-navigable stage, UAT V1). A correct play
+	 * sets `answered` (the reveal + Next state) and plays the revealed
+	 * voicing back as audio (UAT V4) so the learner hears the guide tones,
+	 * not just sees them; a wrong play never gates - it just shows a gentle
+	 * retry and clears the selection so the learner can play again.
 	 *
 	 * Subtract stage only: the ghost-hatched root/fifth are "allowed but not
 	 * required" (PianoKeyboard's ghostKeys contract, SK-019), so playing the
@@ -221,7 +235,7 @@
 		);
 		const result = matchChord(playedChroma, target);
 		let correct = result.correct;
-		if (!correct && stage === 'subtract') {
+		if (!correct && effectiveStage === 'subtract') {
 			const optionalChroma = new Set(
 				optionalMarkers(chord).map((marker) => Note.chroma(toAsciiAccidentals(marker.letter)))
 			);
@@ -232,6 +246,8 @@
 			answered = true;
 			wrongRetry = false;
 			pulseToken += 1;
+			void ensureAudioReady();
+			playChord(targetNotes.map((note) => note.letter));
 		} else {
 			wrongRetry = true;
 			selected = new Set();
@@ -254,7 +270,7 @@
 		answered = false;
 		wrongRetry = false;
 		voicingStyle = 'shell';
-		viewedStage = null;
+		activeStage = null;
 	}
 
 	/** Got it (meet stage): marks the compare intro shown for this chord and re-derives the stage (fades to subtract). */
@@ -348,21 +364,24 @@
 					<PianoKeyboard notes={shellNotes(chord)} inspectable />
 				</div>
 			</div>
-			{#if viewedStage === null}
-				<!-- Got it only advances the REAL meet stage: when this compare
-				     content is showing as a reviewed reference (viewedStage set
-				     while the real stage has already moved on), the action that
-				     mutates the meet-shown mark is hidden - reference only. -->
-				<div class="mt-4">
-					<Button type="button" variant="primary" onclick={gotIt}>
-						{t('voicings.button.gotIt')}
-					</Button>
-				</div>
-			{/if}
+			<!-- Meet is freely user-navigable (UAT V1): Got it stays available
+			     whenever this stage is the one showing, real or revisited - it
+			     is idempotent against an already-met chord. -->
+			<div class="mt-4">
+				<Button type="button" variant="primary" onclick={gotIt}>
+					{t('voicings.button.gotIt')}
+				</Button>
+			</div>
 		</div>
 	{:else}
-		<div data-testid={stage === 'drill' ? 'stage-drill' : 'stage-subtract'}>
-			{#if stage === 'subtract'}
+		<div data-testid={effectiveStage === 'drill' ? 'stage-drill' : 'stage-subtract'}>
+			<!-- Target chord symbol (UAT V2 fix): always visible on both the
+			     subtract and drill stages, before AND after answering, so the
+			     player always knows which chord they are voicing. -->
+			<div class="mt-4 mb-4" data-testid="target-glyph">
+				<ChordGlyph root={chord.root} quality={glyphQuality} />
+			</div>
+			{#if effectiveStage === 'subtract'}
 				<div class="teach-panel" data-testid="teach-panel">
 					<p>{t('voicings.subtract.teach')}</p>
 				</div>
@@ -388,7 +407,7 @@
 			{/if}
 
 			<p class="text-body mt-4">
-				{stage === 'subtract' ? t('voicings.prompt.playShell') : drillPrompt(voicingStyle)}
+				{effectiveStage === 'subtract' ? t('voicings.prompt.playShell') : drillPrompt(voicingStyle)}
 			</p>
 
 			<div class="mt-4">
@@ -397,7 +416,7 @@
 					interactive={!answered}
 					selected={answered ? undefined : selected}
 					onToggle={answered ? undefined : toggleKey}
-					ghostKeys={stage === 'subtract' ? ghostKeys : undefined}
+					ghostKeys={effectiveStage === 'subtract' ? ghostKeys : undefined}
 					pulseToken={answered ? pulseToken : undefined}
 				/>
 			</div>

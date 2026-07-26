@@ -14,11 +14,13 @@ import { setLocale } from '$lib/i18n/locale.svelte';
  */
 
 // The embedded PianoKeyboard's interactive/inspectable keys sound their own
-// key-touch note through PianoKeyboard's own choke point (G1 UAT fix); mock
-// the audio module so no consumer test ever triggers a real AudioContext/tone
+// key-touch note through PianoKeyboard's own choke point (G1 UAT fix), and a
+// correct Check plays the revealed voicing as a chord (UAT V4); mock the
+// audio module so no consumer test ever triggers a real AudioContext/tone
 // import in jsdom (ARCHITECTURE-CONTRACTS.md consumer rule).
 vi.mock('$lib/audio/audio', () => ({
 	playNote: vi.fn(),
+	playChord: vi.fn(),
 	ensureAudioReady: vi.fn()
 }));
 
