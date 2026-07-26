@@ -83,3 +83,21 @@ result: [needs on-device re-check] — confirm the style prompt reads clearly.
 ## Gaps
 
 Round 1 (F1-F4: e8c9f43 / 8a49675 / 5e0b7f6 / 5383eb0) + round 2 (G1-G5: 3da6b09 / 17ce2dc / 88926f4 / 7c362a3 / 6d40199) all on the PR branch. Full suite green (1497), build green. On-device re-check still needed for anything audio/visual/animation (F1, F2, F3, F4, G1, G3, G5) plus the phone-width Test 2. G2/G4 covered by tests.
+
+## Round 3 findings (fixed)
+
+BLOCKER
+- B1 practice register frozen at "21 sur 21" (Math.min of asked/length) so re-enqueued misses looked stuck. Fixed 9482578: register shows live hybridSessionRemaining ("N restantes"); completion unchanged (queue-empty). [needs on-device re-check of the last-stretch feel]
+
+VOICING (ShellVoicingDrill) — commit fe6acd8
+- V1 clicking Retirer jumped to Exo. Fixed: stages now user-navigable (activeStage ?? derived); each tab shows its own stage.
+- V2 Exo did not show the target symbol pre-answer. Fixed: ChordGlyph shown on subtract+drill, before and after answering.
+- V3 switching Fond./Shell/Sans fond. wiped tapped notes. Fixed: style switch preserves `selected`.
+- V4 correct reveal was silent. Fixed: correct check plays the voicing guide tones (ensureAudioReady+playChord).
+- V5 voicing overall UX: largely addressed by V1-V4 (navigable stages + symbol + audio). Deeper redesign still optional.
+
+NAME-IT (PracticeChordDrill) — commit dfac88f
+- E1 wrong answer now shows "Tu as choisi X. C'était Y." beside the correct glyph.
+- E2 after answering, a muted teaching line shows the quality's stacked-thirds pattern (e.g. "m7: m3 · M3 · m3"), reusing stackedThirdsFor (Phase 26 engine). Teaches the invariant shape.
+
+Suite green (1510), build green. On-device re-check: voicing audio + free-nav feel; name-it pattern line readability; B1 last-stretch flow.
