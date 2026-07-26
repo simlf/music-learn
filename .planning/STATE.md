@@ -1,20 +1,20 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.1
-milestone_name: Playability & Comprehension
-current_phase: 1
+milestone: v2.2
+milestone_name: Hub Consolidation + Interval Theory
+current_phase: 2
 status: Awaiting next milestone
-stopped_at: Completed 25-07-PLAN.md
-last_updated: "2026-07-21T20:05:15.877Z"
-last_activity: 2026-07-21
-last_activity_desc: Milestone v2.1 completed and archived
+stopped_at: Completed 30-02-PLAN.md
+last_updated: "2026-07-25T12:00:56.139Z"
+last_activity: 2026-07-25
+last_activity_desc: Milestone v2.2 completed and archived
 progress:
-  total_phases: 24
-  completed_phases: 20
-  total_plans: 98
-  completed_plans: 98
-  percent: 83
-current_phase_name: contextual-learning-from-session-6-sketches-progression-dril
+  total_phases: 6
+  completed_phases: 6
+  total_plans: 26
+  completed_plans: 26
+  percent: 100
+current_phase_name: No-Regression Gate & Test Remap
 ---
 
 # Project State
@@ -24,20 +24,20 @@ current_phase_name: contextual-learning-from-session-6-sketches-progression-dril
 See: .planning/PROJECT.md (updated 2026-07-21)
 
 **Core value:** See a jazz chord symbol and know instantly what to play with the left hand.
-**Current focus:** Planning next milestone (v2.1 shipped 2026-07-21)
+**Current focus:** Phase 31 — no-regression-gate-test-remap (final v2.2 phase)
 
 ## Current Position
 
-Phase: Milestone v2.1 complete
+Phase: Milestone v2.2 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-07-21 — Milestone v2.1 completed and archived
+Last activity: 2026-07-25 — Milestone v2.2 completed and archived
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 68
+- Total plans completed: 94
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -58,6 +58,12 @@ Last activity: 2026-07-21 — Milestone v2.1 completed and archived
 | 20 | 10 | - | - |
 | 24 | 4 | - | - |
 | 25 | 8 | - | - |
+| 26 | 4 | - | - |
+| 27 | 5 | - | - |
+| 28 | 5 | - | - |
+| 29 | 5 | - | - |
+| 30 | 5 | - | - |
+| 31 | 2 | - | - |
 
 **Recent Trend:**
 
@@ -148,6 +154,32 @@ Last activity: 2026-07-21 — Milestone v2.1 completed and archived
 | Phase 25 P06 | 20min | 2 tasks | 3 files |
 | Phase 25 P08 | 15min | 2 tasks | 3 files |
 | Phase 25 P07 | 13min | 3 tasks | 11 files |
+| Phase 26 P01 | 4min | 2 tasks | 2 files |
+| Phase 26 P02 | 2min | 2 tasks | 2 files |
+| Phase 26 P03 | 6min | 2 tasks | 2 files |
+| Phase 26 P04 | 13min | 2 tasks | 3 files |
+| Phase 27 P01 | 5min | 2 tasks | 2 files |
+| Phase 27-practice-hub P02 | 15min | 2 tasks | 5 files |
+| Phase 27-practice-hub P03 | 20min | 2 tasks | 4 files |
+| Phase 27 P04 | 25min | 2 tasks | 5 files |
+| Phase 27-practice-hub P05 | 40min | 2 tasks | 3 files |
+| Phase 28 P01 | 3min | 2 tasks | 2 files |
+| Phase 28 P02 | 5min | 2 tasks | 2 files |
+| Phase 28-learn-hub-theory-scales-explore-interval-reference P03 | 5min | 2 tasks | 3 files |
+| Phase 28 P04 | 8min | 2 tasks | 2 files |
+| Phase 28 P05 | 12min | 2 tasks | 2 files |
+| Phase 29 P01 | 6min | 2 tasks | 3 files |
+| Phase 29 P02 | 5min | 2 tasks | 2 files |
+| Phase 29 P03 | 15min | 2 tasks | 2 files |
+| Phase 29 P04 | 20min | 2 tasks | 2 files |
+| Phase 29 P05 | 12min | 1 tasks | 1 files |
+| Phase 30 P01 | 25min | 3 tasks | 3 files |
+| Phase 30-four-hub-nav-cutover-redirect-shims P02 | 25min | 2 tasks | 2 files |
+| Phase 30 P03 | 12min | 2 tasks | 5 files |
+| Phase 30 P04 | 12min | 2 tasks | 6 files |
+| Phase 30 P05 | 20min | 3 tasks | 18 files |
+| Phase 31 P01 | 35min | 2 tasks | 2 files |
+| Phase 31 P02 | 12min | 2 tasks | 1 files |
 
 ## Deferred Items
 
@@ -168,6 +200,7 @@ Also carried (non-artifact): phase 21 /drills hover recede-reveal eyeball; phase
 
 ### Roadmap Evolution
 
+- v2.2 roadmap created (2026-07-24): 6 phases (26-31) for Hub Consolidation + Interval Theory, continuing numbering from v2.1's Phase 25. Phase 26 Shared IntervalView (foundational); Phase 27 Practice hub — one smart interleaved session (highest-risk, generators-as-modules constraint); Phase 28 Learn hub (theory + Scales Explore + interval reference); Phase 29 Progress hub (stats/streak/review-map/songs); Phase 30 four-hub nav cutover + 8 redirect shims + showcase deletion; Phase 31 no-regression gate + test remap. 16 requirements mapped 1:1, full coverage. UI + routing restructure only — no data-schema migration, no new theory data source.
 - Phase 21 added: Drills Polish — prevent duplicate song selection; make practice-pool container discrete (desktop hover reveal) + persist enabled state; replay played chord as a full chord for memorization.
 - Phase 22 added: Installable PWA — native SvelteKit service worker for offline app-shell caching, mobile installability (Android + iOS add-to-home-screen polish), and a new-version update prompt. Samples excluded from install precache.
 - Phase 23 added: Phase-First UX for Phone — bottom tab bar nav (1A), Drills question-first reflow with folded chrome (1B), glanceable+actionable Progress with 7-day strip and inline accuracy bars (1C). Phone-first; desktop mostly unchanged. Source spec: UX Improvements.dc.html.
@@ -331,6 +364,42 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 25-08]: Calibration section renders outside the pageState machine (like Practice Settings), gated only on confidenceEntries.length > 0 - never depends on the backend stats/streak fetch
 - [Phase ?]: [Phase 25-08]: dangerCardLabel resolves any factKind for display, but the drill CTA only seeds chord-formula symbols (the only kind /drills' seeding path accepts) and hides when zero chord-formula danger cards exist
 - [Phase ?]: [Phase 25-07]: voicingMet mirrors songFilterPref/confidenceLog's total localStorage pattern; a single interactive PianoKeyboard serves as both the ghost-hatch teaching display and the graded play region (ghostKeys is orthogonal to interactive/selected/notes)
+- [Phase ?]: stackedThirdsFor.tones is formulaFor(chord) verbatim (no recompute); gaps derived via intervalBetween on consecutive chord.notes pairs, same naming path WhyTheseNotes uses
+- [Phase ?]: interval-view.ts kept as its own domain file (not folded into chrome.ts or home.ts) since the component is shared cross-hub (Lookup now, Learn Phase 28)
+- [Phase ?]: IntervalView's stacked mode overrides the root tone label to the word 'root' (display-only, never mutating FormulaEntry/stackedThirdsFor data); formula mode keeps 'R' unchanged for REG-01 byte-identical parity
+- [Phase ?]: Gap markers render as plain aria-hidden spans (never IntervalChip, never a button), preserving DESIGN-02's accent-color reservation for tone chips only
+- [Phase 26-04]: tests/lookup.e2e.test.ts (out of plan scope) also queried interval-formula; fixed as Rule 1 auto-fix (toggle to Formula view first) to satisfy REG-02's full-suite gate — Plan's own success criteria require the full vitest suite green, not just the two files it named
+- [Phase 26-04]: IntervalView's toggle Button carries an aria-label distinct from its visible text; e2e toggle clicks target the aria-label accessible name — getByRole resolves accessible name via aria-label, not rendered text
+- [Phase 27]: [Phase 27-01]: composePracticeQueue groups items into one FIFO queue per family and greedily emits, preferring the family with the most remaining items among those that would not extend a same-family run to 3 -- mirrors interleaveQueue's scarcest-breaks-last preference, re-expressed over PracticeFamily instead of chord root
+- [Phase 27]: [Phase 27-01]: Single-family input to composePracticeQueue short-circuits to an identity pass-through rather than entering the weave loop, guaranteeing PRAC-05's single-type-due gate by construction
+- [Phase ?]: [Phase 27-02]: ShellVoicingDrill/ProgressionDrill embed seams read embedSymbol/embedTemplateId+embedKey once via untrack() into init-time state (mirrors BuildSession embedFact), gating only the round-end advance affordance on onComplete presence
+- [Phase ?]: PracticeChordDrill/PracticeIntervalDrill compute their question once at init via untrack(), mirroring BuildSession/ShellVoicingDrill/ProgressionDrill's embed-seam precedent (one component instance per queue item, not reactive re-derivation)
+- [Phase 27]: [Phase 27-04]: completeBuild never re-calls deck.recordGrade for the build-it family - BuildSession's own onComplete already committed the FSRS grade internally via recordConstructionOutcome, mirroring RecallSession's handleModeCNext precedent; a second call would double-apply the FSRS transition
+- [Phase 27]: [Phase 27-04]: added a cardEpoch counter to the in-session {#key} block so an Again-graded item re-enqueued as the sole queue item still force-remounts a fresh drill component instead of freezing on its stale answered state
+- [Phase 27-practice-hub]: Voicing/progression synthetic gating lives in the /practice host's load(), computed from selectedCards, not inside practiceQueue.ts's pure builders — Keeps the pure queue module free of any due/gating policy; the PRAC-05 gate is host-owned state, matching the host-thin architecture
+- [Phase 27-practice-hub]: Progressions are omitted entirely (not partially filtered) under the song filter — Progressions are key/template-based, not single-song-chord based - no principled way to restrict a 4-bar progression to one song's chord
+- [Phase 28]: TheoryLessons.svelte renders as a bare fragment (no chrome); /theory and future /learn hub share one lesson-body source of truth
+- [Phase ?]: ScaleExplorer.svelte (Phase 28-02): exploreOnly prop gates the mode-toggle + Practice branch off, extraction is byte-identical when false
+- [Phase ?]: [Phase 28-03]: learn.ts i18n domain copy taken verbatim from 28-PATTERNS.md's structure pattern (which reconciled UI-SPEC English strings with vetted French translations), rather than re-derived, to guarantee exact alignment with what Wave-2 plans 28-04/28-05 expect
+- [Phase 28]: Interval Reference block kept inline in /learn's +page.svelte (not extracted as a 4th component) since it is five short IntervalView instances plus a small data constant with no other reuse target
+- [Phase ?]: The disclosure's own scaleExpanded/scaleTonic state never touches pageState, the hybrid queue, or the FSRS grade/advance handlers (LEARN-02 kept additive per REG-01)
+- [Phase ?]: Test mocks $lib/srs/deck entirely (empty deck) rather than fake-indexeddb, since no prior /practice route test file existed to mirror
+- [Phase 29-01]: progress-hub.ts domain holds only the 4 new hub-chrome keys (tab.stats/tab.recall/tab.songs/aria.tabs); absorbed progress/recall/songs copy stays untouched, matching the 'only pages move' boundary
+- [Phase 29-02]: SongManager renders as a bare fragment with a heading prop gating only the internal title/subtitle, enabling reuse by both the thin /songs wrapper and the future Progress hub Songs tab with zero copy-paste
+- [Phase ?]: RecallPanel exposes mode via Svelte 5 $bindable prop (not export let); host <main> owns data-review-dock gating, keeping the shared panel dock-agnostic
+- [Phase 29-04]: Hub main gates data-review-dock on activeTab === 'recall' && recallMode === 'review', combining hub tab state with RecallPanel's bindable nested mode, so the dock never leaks onto Stats or Songs
+- [Phase 29-04]: RecallPanel renders unwrapped (owns its own panel); ProgressStats and SongManager each get a host-owned border-ink bg-paper-bright border-2 wrapper for consistent section chrome across all three tabs
+- [Phase 29]: Song-filter write assertion reads the real readSongFilter() (single-key contract), not a nonexistent visual indicator
+- [Phase 29]: data-review-dock assertion walks the full lifecycle (Stats absent -> Recall+Review present -> Recall+Map absent -> Songs absent) in one test
+- [Phase 30]: navLinks reduced to 4 hubs (Lookup/Practice/Learn/Progress); bottomTabLinks stays derived by .filter, More sheet removed entirely — 30-01: chrome-only nav cutover, matches 30-UI-SPEC/30-PATTERNS exactly
+- [Phase 30]: TAB_ICONS: /practice re-keys the former /drills glyph verbatim; /learn gets an open-book glyph; /progress gets ascending-bars, all copied from 30-UI-SPEC — 30-01: keeps TAB_ICONS keyed by href in sync with navLinks
+- [Phase 30]: Seed consumption in /practice's buildSeededItems() drains both localStorage channels at the top of load(), lesson seeds taking precedence over weak-list seeds — 30-02
+- [Phase 30]: Every empty-state early return in /practice's load() is gated behind seededItems.length === 0 so a seeded session always starts even when nothing is FSRS-due — 30-02
+- [Phase ?]: Repointed all 6 Progress/Lookup drill handoffs to /practice; fixed pre-existing masthead nav-link test regression from 30-01's 4-hub nav (scoped query to within(masthead))
+- [Phase ?]: [Phase 30-05]: Redirect-shim +page.ts (prerender=true, throw redirect(308, target)) confirmed prerender-safe under adapter-static; no client goto() fallback needed — Build log printed all 8 308 redirect lines cleanly
+- [Phase ?]: [Phase 30-05]: coverage.test.ts's cross-surface chord-identity test dropped (not rewritten) after losing its Build-surface half; masthead FR-wiring assertion repointed to Practice/Pratiquer — Per plan guidance; Phase 31 re-establishes comprehensive coverage
+- [Phase ?]: Both CONTEXT-flagged thin spots (interval-family presence in the merged Practice mix; single-type-due variety-injection gate) already covered by tests/practice-hub-mix.e2e.test.ts, no gap-fill needed
+- [Phase 31]: Milestone shipping gate confirmed green (build+test+check); v2.2 REQUIREMENTS.md traceability confirmed for all 16 REQ-IDs — REG-01/REG-02 were already marked delivered by Plan 01's own state-update step (its frontmatter also declared requirements: [REG-01, REG-02]); this plan's gate run retroactively substantiates the marking as correct
 
 ### Pending Todos
 
@@ -369,8 +438,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-21T17:02:55.809Z
-Stopped at: Completed 25-07-PLAN.md
+Last session: 2026-07-25T11:42:28.186Z
+Stopped at: Completed 30-02-PLAN.md
 Resume file: 
 None
 

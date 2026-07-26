@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { Note } from 'tonal';
 	import {
 		fullStackNotes,
@@ -15,6 +16,7 @@
 	import { spellChord } from '$lib/theory/chord';
 	import { toAsciiAccidentals } from '$lib/theory/interval';
 	import type { SpelledNote } from '$lib/theory/types';
+	import { ensureAudioReady, playChord } from '$lib/audio/audio';
 	import PianoKeyboard from './PianoKeyboard.svelte';
 	import ChordGlyph from './ChordGlyph.svelte';
 	import Button from './Button.svelte';
@@ -34,6 +36,25 @@
 	 * against 25-02's note-subset exports.
 	 */
 
+	/**
+	 * Embedding seam (27-02): when `embedSymbol` is provided, the drill's
+	 * active chord is that symbol instead of a fresh drawSymbol() draw - the
+	 * stage is still derived internally from that symbol's own deck read
+	 * (voicingStageForChord unchanged, REG-01). `onComplete` (when provided
+	 * alongside) replaces the standalone "Next" fresh-draw behavior: the same
+	 * moment the standalone flow would draw a new chord, the embedded
+	 * component instead calls onComplete() and leaves its own state
+	 * (including the reveal) untouched, mirroring BuildSession's
+	 * embedFact/onComplete precedent. Omitting both props leaves every
+	 * render byte-identical to this component's pre-embedding behavior.
+	 */
+	interface Props {
+		embedSymbol?: string;
+		onComplete?: () => void;
+	}
+
+	let { embedSymbol, onComplete }: Props = $props();
+
 	type VoicingStyle = 'root' | 'shell' | 'rootless';
 
 	/** Draws a fresh 7th-chord symbol from the shared fact catalog's seventh-bearing family (25-02). */
@@ -42,7 +63,10 @@
 		return symbols[Math.floor(Math.random() * symbols.length)];
 	}
 
-	let symbol = $state(drawSymbol());
+	// embedSymbol is read once via untrack (mirrors BuildSession's embedFact
+	// read): a deliberate init-time snapshot, not a reactive dependency - when
+	// present, drawSymbol() is never called, per REG-01/T-27-02-01.
+	let symbol = $state(untrack(() => embedSymbol ?? drawSymbol()));
 	const chord = $derived(spellChord(symbol));
 
 	let cards = $state<CardRecord[]>([]);
@@ -91,6 +115,33 @@
 		return derived;
 	});
 
+	/**
+	 * Step-tab free navigation (UAT V1 fix): the three pedagogy stages are
+	 * user-navigable at any time for the current chord, so the player can
+	 * freely move Voir<->Retirer<->Exo to learn or practice, instead of the
+	 * step tabs only ever reflecting the FSRS-derived `stage`. `null` means
+	 * "no override" - the tabs show the real derived `stage`; a non-null
+	 * value overrides it until the next chord (`next()` resets this to null)
+	 * or another tab click.
+	 */
+	let activeStage = $state<VoicingStage | null>(null);
+
+	/** The stage whose content is currently rendered: the user's override when set, else the real derived `stage`. */
+	const effectiveStage = $derived(activeStage ?? stage);
+
+	/**
+	 * Step-tab click handler: sets the active override to whichever tab was
+	 * clicked (meet/subtract/drill alike), starting the newly-shown stage's
+	 * per-attempt state clean (a stage switch is never mid-question).
+	 */
+	function selectStep(target: VoicingStage) {
+		if (target === effectiveStage) return;
+		activeStage = target;
+		selected = new Set();
+		answered = false;
+		wrongRetry = false;
+	}
+
 	let voicingStyle = $state<VoicingStyle>('shell');
 	let selected = $state<Set<string>>(new Set());
 	/** True only once a CORRECT play has been graded (the reveal + Next state). A wrong play never sets this - it never gates (see wrongRetry). */
@@ -105,8 +156,16 @@
 		return shellNotes(chord);
 	}
 
-	/** The subtract stage always grades the shell (2 notes); only the drill stage's selector varies the target. */
-	const targetNotes = $derived(stage === 'drill' ? noteSetFor(voicingStyle) : shellNotes(chord));
+	/**
+	 * The grading target follows `effectiveStage` (whichever stage the user is
+	 * currently viewing/answering), not the FSRS-derived `stage`: the subtract
+	 * stage always grades the shell (2 notes), the drill stage's selector
+	 * varies the target, and meet is reference-only (never rendered with a
+	 * Check control, so this value is inert there).
+	 */
+	const targetNotes = $derived(
+		effectiveStage === 'drill' ? noteSetFor(voicingStyle) : shellNotes(chord)
+	);
 
 	/**
 	 * PianoKeyboard's base (first-octave) octave. Ghost markers are pinned
@@ -140,18 +199,27 @@
 		selected = next;
 	}
 
+	/**
+	 * Style tab switch (UAT V3 fix): deliberately does NOT clear `selected` -
+	 * the player's already-tapped notes must survive a Fond./Shell/Sans fond.
+	 * switch, since the notes typically overlap across styles and re-tapping
+	 * from scratch after every switch was the reported friction. `wrongRetry`
+	 * still clears since it was surfaced against the previous style's target.
+	 */
 	function selectStyle(style: VoicingStyle) {
-		if (stage !== 'drill' || answered) return;
+		if (effectiveStage !== 'drill' || answered) return;
 		voicingStyle = style;
-		selected = new Set();
 		wrongRetry = false;
 	}
 
 	/**
 	 * Check: grades the selected chroma against `targetNotes` (never letter
-	 * strings, per matchChord's contract). A correct play sets `answered`
-	 * (the reveal + Next state); a wrong play never gates - it just shows a
-	 * gentle retry and clears the selection so the learner can play again.
+	 * strings, per matchChord's contract), for whichever stage is currently
+	 * `effectiveStage` (the user-navigable stage, UAT V1). A correct play
+	 * sets `answered` (the reveal + Next state) and plays the revealed
+	 * voicing back as audio (UAT V4) so the learner hears the guide tones,
+	 * not just sees them; a wrong play never gates - it just shows a gentle
+	 * retry and clears the selection so the learner can play again.
 	 *
 	 * Subtract stage only: the ghost-hatched root/fifth are "allowed but not
 	 * required" (PianoKeyboard's ghostKeys contract, SK-019), so playing the
@@ -167,7 +235,7 @@
 		);
 		const result = matchChord(playedChroma, target);
 		let correct = result.correct;
-		if (!correct && stage === 'subtract') {
+		if (!correct && effectiveStage === 'subtract') {
 			const optionalChroma = new Set(
 				optionalMarkers(chord).map((marker) => Note.chroma(toAsciiAccidentals(marker.letter)))
 			);
@@ -178,19 +246,31 @@
 			answered = true;
 			wrongRetry = false;
 			pulseToken += 1;
+			void ensureAudioReady();
+			playChord(targetNotes.map((note) => note.letter));
 		} else {
 			wrongRetry = true;
 			selected = new Set();
 		}
 	}
 
-	/** Next: draws a fresh chord and fully resets the per-question state. */
+	/**
+	 * Next: draws a fresh chord and fully resets the per-question state. When
+	 * embedded (onComplete provided), the round is over: call onComplete()
+	 * instead and leave the current reveal/state untouched (27-02) - the host
+	 * owns advancing to the next queue item, not a fresh drawSymbol() draw.
+	 */
 	function next() {
+		if (onComplete) {
+			onComplete();
+			return;
+		}
 		symbol = drawSymbol();
 		selected = new Set();
 		answered = false;
 		wrongRetry = false;
 		voicingStyle = 'shell';
+		activeStage = null;
 	}
 
 	/** Got it (meet stage): marks the compare intro shown for this chord and re-derives the stage (fades to subtract). */
@@ -209,6 +289,19 @@
 		if (style === 'rootless') return t('voicings.selector.rootless');
 		return t('voicings.selector.shell');
 	}
+
+	/**
+	 * Drill-stage instruction (G5 UAT fix): names the currently selected
+	 * voicing style, so switching Fond./Shell/Sans fond. visibly changes what
+	 * the player is asked to play, instead of the same vague "Play it." for
+	 * every style. The subtract stage keeps its own fixed shell-only prompt
+	 * (that stage has no style selector).
+	 */
+	function drillPrompt(style: VoicingStyle): string {
+		if (style === 'root') return t('voicings.prompt.playFull');
+		if (style === 'rootless') return t('voicings.prompt.playRootless');
+		return t('voicings.prompt.playShell');
+	}
 </script>
 
 <div data-testid="shell-voicing-drill">
@@ -218,47 +311,62 @@
 	     chord met. -->
 	{#if cardsLoaded}
 	<div class="step-indicator" data-testid="step-indicator" role="group" aria-label={t('voicings.aria.stepGroup')}>
-		<span
+		<button
+			type="button"
 			class="step"
-			class:step--active={stage === 'meet'}
+			class:step--active={effectiveStage === 'meet'}
+			aria-pressed={effectiveStage === 'meet'}
 			data-testid="step-meet"
+			onclick={() => selectStep('meet')}
 		>
 			{t('voicings.step.meet')}
-		</span>
-		<span
+		</button>
+		<button
+			type="button"
 			class="step"
-			class:step--active={stage === 'subtract'}
+			class:step--active={effectiveStage === 'subtract'}
+			aria-pressed={effectiveStage === 'subtract'}
 			data-testid="step-subtract"
+			onclick={() => selectStep('subtract')}
 		>
 			{t('voicings.step.subtract')}
-		</span>
-		<span
+		</button>
+		<button
+			type="button"
 			class="step"
-			class:step--active={stage === 'drill'}
+			class:step--active={effectiveStage === 'drill'}
+			aria-pressed={effectiveStage === 'drill'}
 			data-testid="step-drill"
+			onclick={() => selectStep('drill')}
 		>
 			{t('voicings.step.drill')}
-		</span>
+		</button>
 	</div>
 
-	{#if stage === 'meet'}
+	{#if effectiveStage === 'meet'}
 		<div data-testid="stage-meet">
+			<div class="meet-glyph mb-4" data-testid="meet-glyph">
+				<ChordGlyph root={chord.root} quality={glyphQuality} />
+			</div>
 			<div class="vcards">
 				<div class="vcard" data-testid="compare-know">
 					<div class="vcard__head">
 						<h4 class="vcard__label">{t('voicings.compare.knowLabel')}</h4>
 						<span class="vcard__use">{t('voicings.compare.knowCaption')}</span>
 					</div>
-					<PianoKeyboard notes={fullStackNotes(chord)} />
+					<PianoKeyboard notes={fullStackNotes(chord)} inspectable />
 				</div>
 				<div class="vcard" data-testid="compare-use">
 					<div class="vcard__head">
 						<h4 class="vcard__label">{t('voicings.compare.useLabel')}</h4>
 						<span class="vcard__use">{t('voicings.compare.useCaption')}</span>
 					</div>
-					<PianoKeyboard notes={shellNotes(chord)} />
+					<PianoKeyboard notes={shellNotes(chord)} inspectable />
 				</div>
 			</div>
+			<!-- Meet is freely user-navigable (UAT V1): Got it stays available
+			     whenever this stage is the one showing, real or revisited - it
+			     is idempotent against an already-met chord. -->
 			<div class="mt-4">
 				<Button type="button" variant="primary" onclick={gotIt}>
 					{t('voicings.button.gotIt')}
@@ -266,8 +374,14 @@
 			</div>
 		</div>
 	{:else}
-		<div data-testid={stage === 'drill' ? 'stage-drill' : 'stage-subtract'}>
-			{#if stage === 'subtract'}
+		<div data-testid={effectiveStage === 'drill' ? 'stage-drill' : 'stage-subtract'}>
+			<!-- Target chord symbol (UAT V2 fix): always visible on both the
+			     subtract and drill stages, before AND after answering, so the
+			     player always knows which chord they are voicing. -->
+			<div class="mt-4 mb-4" data-testid="target-glyph">
+				<ChordGlyph root={chord.root} quality={glyphQuality} />
+			</div>
+			{#if effectiveStage === 'subtract'}
 				<div class="teach-panel" data-testid="teach-panel">
 					<p>{t('voicings.subtract.teach')}</p>
 				</div>
@@ -293,7 +407,7 @@
 			{/if}
 
 			<p class="text-body mt-4">
-				{stage === 'subtract' ? t('voicings.prompt.playShell') : t('voicings.prompt.playStyle')}
+				{effectiveStage === 'subtract' ? t('voicings.prompt.playShell') : drillPrompt(voicingStyle)}
 			</p>
 
 			<div class="mt-4">
@@ -302,7 +416,7 @@
 					interactive={!answered}
 					selected={answered ? undefined : selected}
 					onToggle={answered ? undefined : toggleKey}
-					ghostKeys={stage === 'subtract' ? ghostKeys : undefined}
+					ghostKeys={effectiveStage === 'subtract' ? ghostKeys : undefined}
 					pulseToken={answered ? pulseToken : undefined}
 				/>
 			</div>
@@ -348,7 +462,13 @@
 		letter-spacing: 0.06em;
 		text-align: center;
 		padding: var(--spacing-xs) var(--spacing-sm);
+		border: none;
 		border-right: 1px solid var(--color-ink);
+		border-radius: 0;
+		background: var(--color-paper-bright);
+		color: var(--color-ink);
+		min-height: 44px;
+		cursor: pointer;
 	}
 
 	.step:last-child {

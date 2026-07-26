@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { render, cleanup } from '@testing-library/svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { spellChord } from '$lib/theory/chord';
@@ -84,5 +86,19 @@ describe('PianoKeyboard ghost-hatch (ghostKeys, sketch 019 synthesis)', () => {
 		const ghostKeys = container.querySelectorAll('.piano-keyboard__key--ghost');
 		expect(ghostKeys).toHaveLength(1);
 		expect(ghostKeys[0].getAttribute('data-ghost')).toBe('R');
+	});
+
+	it('UAT bug B regression: the ghost rule never overrides position (would drop the key out of the absolute keyboard layer)', () => {
+		// jsdom does not compute cascaded stylesheet layout, so this asserts at
+		// the source level: `.piano-keyboard__key--ghost` must inherit the base
+		// key's `position: absolute` rather than reassert `position: relative`,
+		// which previously pulled ghost keys out of the absolutely-positioned
+		// key layer and dropped them into normal flow below the keyboard row.
+		const source = readFileSync(join(process.cwd(), 'src/lib/components/PianoKeyboard.svelte'), {
+			encoding: 'utf-8'
+		});
+		const ghostRuleMatch = source.match(/\.piano-keyboard__key--ghost\s*\{([^}]*)\}/);
+		expect(ghostRuleMatch).not.toBeNull();
+		expect(ghostRuleMatch?.[1]).not.toMatch(/position\s*:/);
 	});
 });

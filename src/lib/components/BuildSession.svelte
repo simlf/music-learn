@@ -963,7 +963,7 @@
 					<Button type="button" variant="primary" onclick={resetPicker}
 						>{t('build.button.buildAnother')}</Button
 					>
-					<Button variant="ghost" href="/recall">{t('build.button.recallNow')}</Button>
+					<Button variant="ghost" href="/progress">{t('build.button.recallNow')}</Button>
 				{/if}
 			</div>
 		</div>

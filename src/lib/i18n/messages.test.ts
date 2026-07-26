@@ -8,9 +8,13 @@ import { songs } from './messages/songs';
 import { theory } from './messages/theory';
 import { scales } from './messages/scales';
 import { progress } from './messages/progress';
+import { progressHub } from './messages/progress-hub';
 import { home } from './messages/home';
 import { progressions } from './messages/progressions';
 import { voicings } from './messages/voicings';
+import { intervalView } from './messages/interval-view';
+import { practice } from './messages/practice';
+import { learn } from './messages/learn';
 import { setLocale, t } from './locale.svelte';
 
 /**
@@ -59,9 +63,13 @@ describe('domain dictionary key collisions (I18N-02)', () => {
 		['theory', theory.en],
 		['scales', scales.en],
 		['progress', progress.en],
+		['progress-hub', progressHub.en],
 		['home', home.en],
 		['progressions', progressions.en],
-		['voicings', voicings.en]
+		['voicings', voicings.en],
+		['interval-view', intervalView.en],
+		['practice', practice.en],
+		['learn', learn.en]
 	];
 
 	it('has no key defined by more than one domain dictionary', () => {

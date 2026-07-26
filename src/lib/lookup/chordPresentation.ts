@@ -42,6 +42,38 @@ export function formulaFor(chord: ChordResult): FormulaEntry[] {
 	});
 }
 
+/** One gap between two stacked-thirds tones: the connective interval marker and its French long name for tooltip/aria. */
+export interface StackedGap {
+	/** Neutral connective marker between adjacent tones, e.g. "+m3". */
+	label: string;
+	/** French long name for tooltip/aria ("tierce mineure"). */
+	longFr: string;
+}
+
+/** Stacked-thirds derivation: tones keep formulaFor's root-relative role/label; gaps name the distance between adjacent tones. */
+export interface StackedThirds {
+	tones: FormulaEntry[];
+	gaps: StackedGap[];
+}
+
+/**
+ * Stacked-thirds sibling of formulaFor: `tones` is formulaFor's output
+ * verbatim (root-relative role/label/letter/solfege, no recompute), while
+ * `gaps` name the interval between each adjacent pair of chord tones
+ * (structural, not root-relative) via the same shared intervalBetween
+ * WhyTheseNotes already uses - one naming path, no second interval engine.
+ * Total: an unrecognized chord (empty notes) yields empty tones and gaps,
+ * never throws.
+ */
+export function stackedThirdsFor(chord: ChordResult): StackedThirds {
+	const tones = formulaFor(chord);
+	const gaps: StackedGap[] = chord.notes.slice(0, -1).map((note, i) => {
+		const info = intervalBetween(note.letter, chord.notes[i + 1].letter);
+		return { label: '+' + info.short, longFr: info.longFr };
+	});
+	return { tones, gaps };
+}
+
 /**
  * Alias-equivalence line: tonal's ChordResult.aliases are quality suffixes
  * only (e.g. "m7", "min7", "-7"), not full symbols - so each is prefixed

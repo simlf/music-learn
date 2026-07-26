@@ -1,5 +1,21 @@
 # Milestones
 
+## v2.2 Hub Consolidation + Interval Theory (Shipped: 2026-07-25)
+
+**Phases:** 26-31 (6 phases, 26 plans) | **Archive:** milestones/v2.2-ROADMAP.md, milestones/v2.2-REQUIREMENTS.md, milestones/v2.2-MILESTONE-AUDIT.md
+
+**Key accomplishments:**
+
+- Collapsed 10 flat routes into 4 clear hubs (Lookup / Practice / Learn / Progress) on both the desktop masthead and the phone tab bar; removed the More bottom sheet; deleted the orphan showcase route; turned the 8 old routes into prerender-safe 308 redirect shims for bookmark/deep-link safety (Phase 30).
+- Shared IntervalView component: any chord shown as stacked-thirds (default) with a toggle to its intervals-from-root formula, computed from existing tonal data with solfege accidental carry-through; embedded once and reused by both Lookup and the Learn hub (Phase 26).
+- Practice hub: one Start-practice action runs a single FSRS-scheduled interleaved session mixing all five drill families via a hybrid queue (FSRS-carded name-it/build-it/interval woven with synthetic voicing/progression items), no mode-picker, song filter steers it, single-type-due gate holds; two critical FSRS-integrity bugs caught and fixed in review (Phase 27).
+- Learn hub merges the six shape-first theory lessons with Scales Explore and a five-quality interval reference; the scale-keyboard drill relocated to the Practice hub. Progress hub unifies stats/streak/weak-spots, the recall Review + Map, and song management (the sole song-filter writer) into one 3-tab surface; DRY component extractions keep the old routes working (Phases 28-29).
+- Drill-seed handoff preserved across the cutover (Progress danger-cards and Lookup Drill-it now seed the /practice queue); the manual tier/level picker retired in favor of FSRS scheduling.
+- Quality held throughout: every phase verified, cross-phase integration audited clean (single song-filter writer with two readers, intact seed chain, one shared IntervalView, no redirect bounces), milestone gate green (npm run build + 1466 tests + svelte-check 0 errors). Net -606 lines across 84 files.
+
+**Deferred (non-blocking):** on-device visual UAT for the Practice/Learn/Progress hubs (null-origin preview harness cannot exercise; tracked in 27/28/29-UAT.md); follow-up cleanup of redirect-shim route dirs, unused nav.* i18n keys, and BottomSheet.svelte.
+---
+
 ## v2.1 Playability & Comprehension (Shipped: 2026-07-21)
 
 **Phases:** 14-25 (12 phases, 45 plans) | **Closeout:** override_closeout | **Archive:** milestones/v2.1-ROADMAP.md, milestones/v2.1-REQUIREMENTS.md, milestones/v2.1-MILESTONE-AUDIT.md

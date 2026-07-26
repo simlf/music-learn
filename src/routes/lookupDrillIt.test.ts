@@ -2,11 +2,12 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * "Drill it" lookup handoff (quick task 260722-2jy, Task 1): clicking "Drill
- * it" after resolving a chord seeds the resolved symbol into the one-shot
- * drill queue and navigates to /drills, mirroring progress/+page.svelte's
- * setDrillSeeds -> goto('/drills') handoff. goto is mocked because it is
- * unavailable in the vitest SSR/jsdom environment.
+ * "Drill it" lookup handoff (quick task 260722-2jy, Task 1; repointed to
+ * /practice in Phase 30 HUB-03): clicking "Drill it" after resolving a chord
+ * seeds the resolved symbol into the one-shot drill queue and navigates to
+ * /practice, mirroring progress/+page.svelte's setDrillSeeds -> goto('/practice')
+ * handoff. goto is mocked because it is unavailable in the vitest SSR/jsdom
+ * environment.
  */
 
 const setDrillSeedsMock = vi.fn();
@@ -43,7 +44,7 @@ afterEach(() => {
 });
 
 describe('Drill it handoff on the Chord Lookup result', () => {
-	it('seeds the resolved symbol and navigates to /drills', async () => {
+	it('seeds the resolved symbol and navigates to /practice', async () => {
 		renderPage();
 
 		await lookupChord('Cm7');
@@ -52,6 +53,6 @@ describe('Drill it handoff on the Chord Lookup result', () => {
 		await fireEvent.click(drillItButton);
 
 		expect(setDrillSeedsMock).toHaveBeenCalledWith(['Cm7']);
-		expect(gotoMock).toHaveBeenCalledWith('/drills');
+		expect(gotoMock).toHaveBeenCalledWith('/practice');
 	});
 });

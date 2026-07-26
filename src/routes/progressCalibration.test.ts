@@ -103,7 +103,7 @@ describe('Progress confidence calibration (sketch 020-C)', () => {
 		expect(screen.queryByTestId('calibration-miscalibrated-flag')).not.toBeInTheDocument();
 	});
 
-	it('lists the confident-but-wrong danger cards and the drill CTA seeds their symbols + navigates to /drills', async () => {
+	it('lists the confident-but-wrong danger cards and the drill CTA seeds their symbols + navigates to /practice', async () => {
 		logConfidence({
 			factId: 'chord-formula:Cm7',
 			mode: 'formula',
@@ -127,7 +127,7 @@ describe('Progress confidence calibration (sketch 020-C)', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Drill the danger cards' }));
 
 		expect(setDrillSeedsMock).toHaveBeenCalledWith(['Cm7']);
-		expect(gotoMock).toHaveBeenCalledWith('/drills');
+		expect(gotoMock).toHaveBeenCalledWith('/practice');
 	});
 
 	it('hides the calibration section entirely when the confidence log is empty', () => {

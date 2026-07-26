@@ -4,6 +4,7 @@ import { readable } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ProgressPage from '../src/routes/progress/+page.svelte';
 import { setLocale } from '$lib/i18n/locale.svelte';
+import { resetStatsCache } from '$lib/practice/statsCache';
 
 // +layout.svelte reads the `$page` store from $app/stores to mark the active
 // nav link, same mock shape as tests/drills.e2e.test.ts.
@@ -76,6 +77,14 @@ vi.mock('$app/navigation', () => ({
 const { default: RootLayout } = await import('../src/routes/+layout.svelte');
 
 beforeEach(() => {
+	// 29-REVIEW WR-01: ProgressStats now caches the last successful
+	// fetchStats/fetchStreak payload at module scope (keyed by API token) so
+	// a Stats -> Recall -> Stats tab bounce renders instantly instead of
+	// refetching. Reset it here so each `it` still simulates a genuinely
+	// fresh /progress session rather than inheriting a previous test's
+	// mocked network response (the caching behavior itself is covered by a
+	// dedicated describe block below).
+	resetStatsCache();
 	storedToken = '';
 	currentTier = 1;
 	soundOn = true;
@@ -160,7 +169,7 @@ describe('progress page populated state', () => {
 });
 
 describe('progress page empty state', () => {
-	it('renders progress-empty with the exact copy and a Start a Drill link to /drills', async () => {
+	it('renders progress-empty with the exact copy and a Start a Drill link to /practice', async () => {
 		storedToken = 'secret';
 		fetchStatsMock.mockResolvedValue({ items: [], weakest: [] });
 
@@ -170,7 +179,7 @@ describe('progress page empty state', () => {
 		expect(screen.getByText('Nothing on the ledger yet.')).toBeInTheDocument();
 
 		const link = screen.getByRole('link', { name: 'Start a Drill' });
-		expect(link).toHaveAttribute('href', '/drills');
+		expect(link).toHaveAttribute('href', '/practice');
 	});
 });
 
@@ -221,6 +230,55 @@ describe('progress page token-missing state', () => {
 	});
 });
 
+describe('Stats caching across remounts (29-REVIEW WR-01)', () => {
+	it('renders the cached stats/streak immediately on a second mount (no loading skeleton), while still refreshing from the network in the background', async () => {
+		storedToken = 'secret';
+		fetchStatsMock.mockResolvedValue({
+			items: [{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4, needsPractice: true }],
+			weakest: [{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4, needsPractice: true }]
+		});
+		fetchStreakMock.mockResolvedValue({ streak: 3, practicedToday: true });
+
+		const first = render(ProgressPage);
+		await waitFor(() => expect(screen.getByTestId('streak-hero')).toBeInTheDocument());
+		expect(fetchStatsMock).toHaveBeenCalledTimes(1);
+		first.unmount();
+
+		// Second mount (simulates returning to the Stats tab after visiting
+		// Recall/Songs): the cache should render populated content on the
+		// very first render pass, with no 'progress-loading' skeleton frame,
+		// even though a background refresh is still in flight.
+		render(ProgressPage);
+		expect(screen.queryByTestId('progress-loading')).not.toBeInTheDocument();
+		expect(screen.getByTestId('streak-hero')).toBeInTheDocument();
+		expect(screen.getByTestId('weakest-spots')).toBeInTheDocument();
+
+		await waitFor(() => expect(fetchStatsMock).toHaveBeenCalledTimes(2));
+		await waitFor(() => expect(fetchStreakMock).toHaveBeenCalledTimes(2));
+	});
+
+	it('does not cache across a different API token (a token change always refetches)', async () => {
+		storedToken = 'secret';
+		fetchStatsMock.mockResolvedValue({
+			items: [{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4, needsPractice: true }],
+			weakest: []
+		});
+		fetchStreakMock.mockResolvedValue({ streak: 1, practicedToday: true });
+
+		const first = render(ProgressPage);
+		await waitFor(() => expect(screen.getByTestId('streak-hero')).toBeInTheDocument());
+		first.unmount();
+
+		storedToken = 'a-different-token';
+		fetchStatsMock.mockResolvedValue({ items: [], weakest: [] });
+		fetchStreakMock.mockResolvedValue({ streak: 0, practicedToday: false });
+
+		render(ProgressPage);
+		expect(screen.getByTestId('progress-loading')).toBeInTheDocument();
+		await waitFor(() => expect(screen.getByTestId('progress-empty')).toBeInTheDocument());
+	});
+});
+
 describe('progress masthead nav link', () => {
 	it('the masthead exposes a Progress link routing to /progress', () => {
 		const emptyChildren = createRawSnippet(() => ({
@@ -229,7 +287,12 @@ describe('progress masthead nav link', () => {
 
 		render(RootLayout, { params: {}, data: {}, children: emptyChildren });
 
-		const link = screen.getByRole('link', { name: 'Progress' });
+		// Scoped to the masthead (Phase 30-04 nav cutover): the phone bottom
+		// tab bar now also renders a "Progress" link since it shares the same
+		// 4-hub navLinks source, so an unscoped query matches twice in jsdom
+		// (which renders both desktop and phone markup with no media query).
+		const masthead = within(screen.getByTestId('masthead'));
+		const link = masthead.getByRole('link', { name: 'Progress' });
 		expect(link).toBeInTheDocument();
 		expect(link).toHaveAttribute('href', '/progress');
 	});
@@ -329,7 +392,7 @@ describe('French locale (I18N-02)', () => {
 });
 
 describe('Drill all N button (weakest spots -> seeded session)', () => {
-	it('reads "Drill all 2" for two weak chords, seeds the drill session with the weakest chord items, and navigates to /drills', async () => {
+	it('reads "Drill all 2" for two weak chords, seeds the drill session with the weakest chord items, and navigates to /practice', async () => {
 		storedToken = 'secret';
 		fetchStatsMock.mockResolvedValue({
 			items: [
@@ -349,10 +412,10 @@ describe('Drill all N button (weakest spots -> seeded session)', () => {
 		await fireEvent.click(within(weakestSection).getByRole('button', { name: 'Drill all 2' }));
 
 		expect(setDrillSeedsMock).toHaveBeenCalledWith(['Cm7', 'F#m7b5']);
-		expect(gotoMock).toHaveBeenCalledWith('/drills');
+		expect(gotoMock).toHaveBeenCalledWith('/practice');
 	});
 
-	it('the per-row DRILL button seeds only that one symbol and navigates to /drills', async () => {
+	it('the per-row DRILL button seeds only that one symbol and navigates to /practice', async () => {
 		storedToken = 'secret';
 		fetchStatsMock.mockResolvedValue({
 			items: [
@@ -372,7 +435,7 @@ describe('Drill all N button (weakest spots -> seeded session)', () => {
 		await fireEvent.click(within(weakestSection).getByRole('button', { name: 'Drill Cm7' }));
 
 		expect(setDrillSeedsMock).toHaveBeenCalledWith(['Cm7']);
-		expect(gotoMock).toHaveBeenCalledWith('/drills');
+		expect(gotoMock).toHaveBeenCalledWith('/practice');
 	});
 });
 

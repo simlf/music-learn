@@ -69,6 +69,21 @@ export const drills = {
 		'drills.feedback.legendExtra': 'Your extra note',
 		'drills.feedback.hereIsInterval': 'Here is the interval:',
 		'drills.feedback.youTapped': 'You tapped',
+
+		// Name-it (identification) right/wrong affirmation (UAT F4).
+		'drills.feedback.correct': 'Correct',
+		'drills.feedback.incorrect': 'Incorrect',
+
+		// Picked-vs-correct comparison on a name-it miss (E1). {picked}/{correct}
+		// are raw chord symbols (immune, never translated) substituted client-side.
+		'drills.feedback.pickedVsCorrect': 'You picked {picked}. It was {correct}.',
+
+		// Screen-reader label for the per-quality stacked-thirds teaching line
+		// (E2); the visible line itself ("m7: m3 · M3 · m3") is built entirely
+		// from immune quality/interval shorthand and stays identical in both
+		// locales.
+		'drills.aria.chordShape': 'Chord shape',
+
 		'drills.button.next': 'Next',
 		'drills.button.replayChord': 'Hear it again',
 
@@ -157,6 +172,14 @@ export const drills = {
 		'drills.feedback.legendExtra': 'Ta note en trop',
 		'drills.feedback.hereIsInterval': "Voici l'intervalle :",
 		'drills.feedback.youTapped': 'Tu as joué',
+
+		'drills.feedback.correct': 'Bien vu',
+		'drills.feedback.incorrect': 'Pas tout à fait',
+
+		'drills.feedback.pickedVsCorrect': "Tu as choisi {picked}. C'était {correct}.",
+
+		'drills.aria.chordShape': "Forme de l'accord",
+
 		'drills.button.next': 'Suivant',
 		'drills.button.replayChord': 'Réécouter',
 

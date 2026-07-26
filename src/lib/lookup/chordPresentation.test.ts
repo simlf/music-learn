@@ -1,7 +1,14 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { spellChord } from '$lib/theory/chord';
-import { formulaFor, aliasLine, displaySymbol, formulaSentence } from './chordPresentation';
+import {
+	formulaFor,
+	aliasLine,
+	displaySymbol,
+	formulaSentence,
+	stackedThirdsFor
+} from './chordPresentation';
 import { setLocale } from '$lib/i18n/locale.svelte';
+import { intervalBetween } from '$lib/theory/interval';
 
 describe('formulaFor', () => {
 	it('returns R, m3, P5, m7 labels in order for Cm7 with correct letters and solfege', () => {
@@ -154,6 +161,99 @@ describe('formulaSentence: FR locale (Phase 17 copy translated)', () => {
 		setLocale('fr');
 		for (const symbol of ['Cdim', 'Cm7b5', 'Cmaj7', 'Cm', 'C', 'C7']) {
 			expect(formulaSentence(spellChord(symbol))).not.toMatch(/—|–/);
+		}
+	});
+});
+
+describe('stackedThirdsFor', () => {
+	afterEach(() => {
+		setLocale('en');
+	});
+
+	it('returns gaps +m3/+M3/+m3 and tones identical to formulaFor for Cm7', () => {
+		const chord = spellChord('Cm7');
+		const result = stackedThirdsFor(chord);
+		expect(result.gaps.map((g) => g.label)).toEqual(['+m3', '+M3', '+m3']);
+		expect(result.tones).toEqual(formulaFor(chord));
+	});
+
+	it('returns gaps +M3/+m3/+M3 for Cmaj7', () => {
+		const result = stackedThirdsFor(spellChord('Cmaj7'));
+		expect(result.gaps.map((g) => g.label)).toEqual(['+M3', '+m3', '+M3']);
+	});
+
+	it('returns gaps +M3/+m3/+m3 for C7 (dominant 7th)', () => {
+		const result = stackedThirdsFor(spellChord('C7'));
+		expect(result.gaps.map((g) => g.label)).toEqual(['+M3', '+m3', '+m3']);
+	});
+
+	it('returns gaps +m3/+m3/+M3 for Cm7b5 (half-diminished)', () => {
+		const result = stackedThirdsFor(spellChord('Cm7b5'));
+		expect(result.gaps.map((g) => g.label)).toEqual(['+m3', '+m3', '+M3']);
+	});
+
+	it('returns gaps +m3/+m3/+m3 for Cdim7 (fully diminished)', () => {
+		const result = stackedThirdsFor(spellChord('Cdim7'));
+		expect(result.gaps.map((g) => g.label)).toEqual(['+m3', '+m3', '+m3']);
+	});
+
+	it('returns 2 gaps (+m3/+M3) for the Cm triad', () => {
+		const result = stackedThirdsFor(spellChord('Cm'));
+		expect(result.gaps.map((g) => g.label)).toEqual(['+m3', '+M3']);
+		expect(result.tones).toHaveLength(3);
+	});
+
+	it('derives gaps from intervalBetween on consecutive letters for an extended chord (Cmaj9)', () => {
+		const chord = spellChord('Cmaj9');
+		const result = stackedThirdsFor(chord);
+		expect(result.tones).toHaveLength(5);
+		expect(result.gaps).toHaveLength(4);
+		const expectedLabels = chord.notes
+			.slice(0, -1)
+			.map((note, i) => '+' + intervalBetween(note.letter, chord.notes[i + 1].letter).short);
+		expect(result.gaps.map((g) => g.label)).toEqual(expectedLabels);
+		for (const gap of result.gaps) {
+			expect(gap.label.startsWith('+')).toBe(true);
+		}
+	});
+
+	it('carries the E♭ third solfege "Mi♭" and B♭ seventh solfege "Si♭" through for Cm7 (IVW-03)', () => {
+		const result = stackedThirdsFor(spellChord('Cm7'));
+		expect(result.tones[1].letter).toBe('E♭');
+		expect(result.tones[1].solfege).toBe('Mi♭');
+		expect(result.tones[3].letter).toBe('B♭');
+		expect(result.tones[3].solfege).toBe('Si♭');
+	});
+
+	it('gap longFr matches intervalBetween(...).longFr for consecutive letters', () => {
+		const chord = spellChord('Cm7');
+		const result = stackedThirdsFor(chord);
+		expect(result.gaps[0].longFr).toBe(
+			intervalBetween(chord.notes[0].letter, chord.notes[1].letter).longFr
+		);
+		expect(result.gaps[0].longFr).toBe('tierce mineure');
+	});
+
+	it('holds gaps.length === tones.length - 1 for every recognized-chord fixture', () => {
+		for (const symbol of ['Cm7', 'Cmaj7', 'C7', 'Cm7b5', 'Cdim7', 'Cm', 'Cmaj9']) {
+			const result = stackedThirdsFor(spellChord(symbol));
+			expect(result.gaps.length).toBe(result.tones.length - 1);
+		}
+	});
+
+	it('is total: returns empty tones and gaps for an unrecognized chord, never throws', () => {
+		const result = stackedThirdsFor(spellChord('nonsense'));
+		expect(result.tones).toEqual([]);
+		expect(result.gaps).toEqual([]);
+	});
+
+	it('contains no em dashes in any gap label or longFr', () => {
+		for (const symbol of ['Cm7', 'Cmaj7', 'C7', 'Cm7b5', 'Cdim7', 'Cm', 'Cmaj9']) {
+			const result = stackedThirdsFor(spellChord(symbol));
+			for (const gap of result.gaps) {
+				expect(gap.label).not.toMatch(/—|–/);
+				expect(gap.longFr).not.toMatch(/—|–/);
+			}
 		}
 	});
 });

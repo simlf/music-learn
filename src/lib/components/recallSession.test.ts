@@ -170,7 +170,7 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 
 		expect(screen.getByText('Nothing to recall yet.')).toBeInTheDocument();
 		expect(screen.getByText(/Play a few Drills first\./)).toBeInTheDocument();
-		expect(screen.getByRole('link', { name: 'Practice Now' })).toHaveAttribute('href', '/drills');
+		expect(screen.getByRole('link', { name: 'Practice Now' })).toHaveAttribute('href', '/practice');
 	});
 
 	it('renders the empty-none-due state when cards exist but none are due', async () => {
@@ -182,7 +182,7 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 		await waitFor(() => screen.getByTestId('recall-empty-none-due'));
 
 		expect(screen.getByText('Nothing due today.')).toBeInTheDocument();
-		expect(screen.getByRole('link', { name: 'Practice Now' })).toHaveAttribute('href', '/drills');
+		expect(screen.getByRole('link', { name: 'Practice Now' })).toHaveAttribute('href', '/practice');
 	});
 
 	it('renders the error state when a deck call throws, and Try Again re-runs load', async () => {
@@ -1848,11 +1848,12 @@ describe('RecallSession inline keyboard (KBD-01/KBD-03)', () => {
 		renderRecallSession();
 		await waitFor(() => screen.getByTestId('recall-prompt'));
 
+		// Sound is now intrinsic to PianoKeyboard's activation choke point (G1
+		// UAT fix): a single click both sounds the key and toggles selection.
 		const cKey = screen.getAllByRole('button', { name: 'C key' })[0];
-		await fireEvent.pointerDown(cKey);
-		expect(playNoteMock).toHaveBeenCalledWith('C4');
-
 		await fireEvent.click(cKey);
+
+		expect(playNoteMock).toHaveBeenCalledWith('C4');
 		expect(cKey).toHaveAttribute('aria-pressed', 'true');
 	});
 

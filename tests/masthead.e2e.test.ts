@@ -23,13 +23,16 @@ const { default: RootLayout } = await import('../src/routes/+layout.svelte');
 /**
  * jsdom does not evaluate media queries, so +layout.svelte's desktop
  * masthead nav AND the phone-only bottom-tab-bar render simultaneously
- * (Phase 23 1A) - Lookup/Drills/Recall/Songs and the LocaleToggle exist
+ * (Phase 23 1A) - Lookup/Practice/Learn/Progress and the LocaleToggle exist
  * twice in the DOM. Every query below that would otherwise be ambiguous is
  * scoped via `within(getByTestId('masthead'))` to resolve the desktop copy.
+ *
+ * Phase 30 (HUB-01): nav cutover from 10 flat links to 4 hubs; the phone
+ * "More" bottom sheet is removed entirely.
  */
 
-describe('masthead responsive nav (09-06)', () => {
-	it('exposes Lookup, Drills, and Progress links on every viewport', () => {
+describe('masthead responsive nav (30-01, HUB-01)', () => {
+	it('exposes Lookup, Practice, Learn, and Progress links', () => {
 		const emptyChildren = createRawSnippet(() => ({
 			render: () => '<div></div>'
 		}));
@@ -38,11 +41,12 @@ describe('masthead responsive nav (09-06)', () => {
 		const masthead = within(screen.getByTestId('masthead'));
 
 		expect(masthead.getByRole('link', { name: 'Lookup' })).toBeInTheDocument();
-		expect(masthead.getByRole('link', { name: 'Drills' })).toBeInTheDocument();
+		expect(masthead.getByRole('link', { name: 'Practice' })).toBeInTheDocument();
+		expect(masthead.getByRole('link', { name: 'Learn' })).toBeInTheDocument();
 		expect(masthead.getByRole('link', { name: 'Progress' })).toBeInTheDocument();
 	});
 
-	it('exposes the Songs and Theory links and drops Showcase from the nav (v2 contract)', () => {
+	it('resolves the 4 hub hrefs on the desktop masthead in order', () => {
 		const emptyChildren = createRawSnippet(() => ({
 			render: () => '<div></div>'
 		}));
@@ -50,9 +54,10 @@ describe('masthead responsive nav (09-06)', () => {
 		render(RootLayout, { params: {}, data: {}, children: emptyChildren });
 		const masthead = within(screen.getByTestId('masthead'));
 
-		expect(masthead.getByRole('link', { name: 'Songs' })).toHaveAttribute('href', '/songs');
-		expect(masthead.getByRole('link', { name: 'Theory' })).toHaveAttribute('href', '/theory');
-		expect(masthead.queryByRole('link', { name: 'Showcase' })).not.toBeInTheDocument();
+		expect(masthead.getByRole('link', { name: 'Lookup' })).toHaveAttribute('href', '/');
+		expect(masthead.getByRole('link', { name: 'Practice' })).toHaveAttribute('href', '/practice');
+		expect(masthead.getByRole('link', { name: 'Learn' })).toHaveAttribute('href', '/learn');
+		expect(masthead.getByRole('link', { name: 'Progress' })).toHaveAttribute('href', '/progress');
 	});
 });
 
@@ -70,8 +75,8 @@ describe('EN|FR toggle live-flips the nav (I18N-01/02)', () => {
 		render(RootLayout, { params: {}, data: {}, children: emptyChildren });
 		const masthead = within(screen.getByTestId('masthead'));
 
-		expect(masthead.getByRole('link', { name: 'Drills' })).toBeInTheDocument();
-		expect(masthead.getByRole('link', { name: 'Theory' })).toBeInTheDocument();
+		expect(masthead.getByRole('link', { name: 'Practice' })).toBeInTheDocument();
+		expect(masthead.getByRole('link', { name: 'Learn' })).toBeInTheDocument();
 		expect(screen.getByText('MUSIC LEARN')).toBeInTheDocument();
 	});
 
@@ -86,19 +91,19 @@ describe('EN|FR toggle live-flips the nav (I18N-01/02)', () => {
 		const frSegment = masthead.getByRole('button', { name: /français/i });
 		await fireEvent.click(frSegment);
 
-		expect(masthead.getByRole('link', { name: 'Exercices' })).toBeInTheDocument();
-		expect(masthead.getByRole('link', { name: 'Théorie' })).toBeInTheDocument();
+		expect(masthead.getByRole('link', { name: 'Pratiquer' })).toBeInTheDocument();
+		expect(masthead.getByRole('link', { name: 'Apprendre' })).toBeInTheDocument();
 		expect(screen.getByText('MUSIC LEARN')).toBeInTheDocument();
 	});
 });
 
-describe('bottom tab bar + More sheet (23-04, UX-1A)', () => {
+describe('bottom tab bar (30-01, HUB-01: 4 hubs, no More button)', () => {
 	afterEach(() => {
 		cleanup();
 		setLocale('en');
 	});
 
-	it('renders Lookup/Drills/Recall/Songs links plus a More button', () => {
+	it('renders Lookup/Practice/Learn/Progress links and no More button', () => {
 		const emptyChildren = createRawSnippet(() => ({
 			render: () => '<div></div>'
 		}));
@@ -107,13 +112,13 @@ describe('bottom tab bar + More sheet (23-04, UX-1A)', () => {
 		const bar = within(screen.getByTestId('bottom-tab-bar'));
 
 		expect(bar.getByRole('link', { name: 'Lookup' })).toHaveAttribute('href', '/');
-		expect(bar.getByRole('link', { name: 'Drills' })).toHaveAttribute('href', '/drills');
-		expect(bar.getByRole('link', { name: 'Recall' })).toHaveAttribute('href', '/recall');
-		expect(bar.getByRole('link', { name: 'Songs' })).toHaveAttribute('href', '/songs');
-		expect(bar.getByRole('button', { name: 'More' })).toBeInTheDocument();
+		expect(bar.getByRole('link', { name: 'Practice' })).toHaveAttribute('href', '/practice');
+		expect(bar.getByRole('link', { name: 'Learn' })).toHaveAttribute('href', '/learn');
+		expect(bar.getByRole('link', { name: 'Progress' })).toHaveAttribute('href', '/progress');
+		expect(bar.queryByRole('button', { name: 'More' })).not.toBeInTheDocument();
 	});
 
-	it('resolves each of the 4 primary tabs plus More by accessible name even though the visible micro-label may be clipped (24-02, sketch 015-B)', () => {
+	it('resolves each of the 4 tabs by accessible name even though the visible micro-label may be clipped (24-02, sketch 015-B)', () => {
 		// This is the load-bearing accessibility regression test: each tab's
 		// accessible name comes from an explicit aria-label (Task 1), not from
 		// the 9px .bottom-tab-bar__label text node, which may ellipsis-truncate
@@ -127,10 +132,9 @@ describe('bottom tab bar + More sheet (23-04, UX-1A)', () => {
 		const bar = within(screen.getByTestId('bottom-tab-bar'));
 
 		expect(bar.getByRole('link', { name: 'Lookup' })).toHaveAttribute('aria-label', 'Lookup');
-		expect(bar.getByRole('link', { name: 'Drills' })).toHaveAttribute('aria-label', 'Drills');
-		expect(bar.getByRole('link', { name: 'Recall' })).toHaveAttribute('aria-label', 'Recall');
-		expect(bar.getByRole('link', { name: 'Songs' })).toHaveAttribute('aria-label', 'Songs');
-		expect(bar.getByRole('button', { name: 'More' })).toHaveAttribute('aria-label', 'More');
+		expect(bar.getByRole('link', { name: 'Practice' })).toHaveAttribute('aria-label', 'Practice');
+		expect(bar.getByRole('link', { name: 'Learn' })).toHaveAttribute('aria-label', 'Learn');
+		expect(bar.getByRole('link', { name: 'Progress' })).toHaveAttribute('aria-label', 'Progress');
 	});
 
 	it('resolves the FR accessible names live after the locale flip (24-02, I18N-01/02)', async () => {
@@ -145,10 +149,10 @@ describe('bottom tab bar + More sheet (23-04, UX-1A)', () => {
 
 		const bar = within(screen.getByTestId('bottom-tab-bar'));
 		expect(bar.getByRole('link', { name: 'Rechercher' })).toHaveAttribute('href', '/');
-		expect(bar.getByRole('link', { name: 'Exercices' })).toHaveAttribute('href', '/drills');
-		expect(bar.getByRole('link', { name: 'Révision' })).toHaveAttribute('href', '/recall');
-		expect(bar.getByRole('link', { name: 'Morceaux' })).toHaveAttribute('href', '/songs');
-		expect(bar.getByRole('button', { name: 'Plus' })).toBeInTheDocument();
+		expect(bar.getByRole('link', { name: 'Pratiquer' })).toHaveAttribute('href', '/practice');
+		expect(bar.getByRole('link', { name: 'Apprendre' })).toHaveAttribute('href', '/learn');
+		expect(bar.getByRole('link', { name: 'Progrès' })).toHaveAttribute('href', '/progress');
+		expect(bar.queryByRole('button', { name: 'Plus' })).not.toBeInTheDocument();
 	});
 
 	it('renders each tab item as an icon plus a 9px micro-label (24-02, sketch 015-B)', () => {
@@ -168,9 +172,9 @@ describe('bottom tab bar + More sheet (23-04, UX-1A)', () => {
 		expect(label).toBeTruthy();
 		expect(label?.textContent).toBe('Lookup');
 
-		const moreButton = bar.getByRole('button', { name: 'More' });
-		expect(moreButton.querySelector('.bottom-tab-bar__icon svg')).toBeTruthy();
-		expect(moreButton.querySelector('.bottom-tab-bar__label')?.textContent).toBe('More');
+		const practiceTab = bar.getByRole('link', { name: 'Practice' });
+		expect(practiceTab.querySelector('.bottom-tab-bar__icon svg')).toBeTruthy();
+		expect(practiceTab.querySelector('.bottom-tab-bar__label')?.textContent).toBe('Practice');
 	});
 
 	it('marks the active tab with the ink-fill/paper-text treatment, never vermilion', () => {
@@ -185,48 +189,9 @@ describe('bottom tab bar + More sheet (23-04, UX-1A)', () => {
 		expect(bar.getByRole('link', { name: 'Lookup' }).className).toContain(
 			'bottom-tab-bar__item--active'
 		);
-		expect(bar.getByRole('link', { name: 'Drills' }).className).not.toContain(
+		expect(bar.getByRole('link', { name: 'Practice' }).className).not.toContain(
 			'bottom-tab-bar__item--active'
 		);
-		expect(bar.getByRole('button', { name: 'More' }).className).not.toContain(
-			'bottom-tab-bar__item--active'
-		);
-	});
-
-	it('opens the More sheet with Build/Scales/Theory/Progress links plus a LocaleToggle', async () => {
-		const emptyChildren = createRawSnippet(() => ({
-			render: () => '<div></div>'
-		}));
-
-		render(RootLayout, { params: {}, data: {}, children: emptyChildren });
-		const bar = within(screen.getByTestId('bottom-tab-bar'));
-
-		expect(screen.queryByTestId('bottom-sheet')).not.toBeInTheDocument();
-
-		await fireEvent.click(bar.getByRole('button', { name: 'More' }));
-
-		const sheet = within(screen.getByTestId('bottom-sheet'));
-		expect(sheet.getByRole('link', { name: 'Build' })).toHaveAttribute('href', '/build');
-		expect(sheet.getByRole('link', { name: 'Scales' })).toHaveAttribute('href', '/scales');
-		expect(sheet.getByRole('link', { name: 'Theory' })).toHaveAttribute('href', '/theory');
-		expect(sheet.getByRole('link', { name: 'Progress' })).toHaveAttribute('href', '/progress');
-		expect(sheet.getByRole('button', { name: 'EN, English' })).toBeInTheDocument();
-		expect(sheet.getByRole('button', { name: 'FR, Français' })).toBeInTheDocument();
-	});
-
-	it('closes the More sheet after tapping a nav link inside it', async () => {
-		const emptyChildren = createRawSnippet(() => ({
-			render: () => '<div></div>'
-		}));
-
-		render(RootLayout, { params: {}, data: {}, children: emptyChildren });
-		const bar = within(screen.getByTestId('bottom-tab-bar'));
-		await fireEvent.click(bar.getByRole('button', { name: 'More' }));
-
-		const sheet = within(screen.getByTestId('bottom-sheet'));
-		await fireEvent.click(sheet.getByRole('link', { name: 'Build' }));
-
-		expect(screen.queryByTestId('bottom-sheet')).not.toBeInTheDocument();
 	});
 });
 

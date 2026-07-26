@@ -1,7 +1,9 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { Note } from 'tonal';
 	import {
 		PROGRESSION_TEMPLATES,
+		buildProgression,
 		nameChoices,
 		randomProgression,
 		type ProgressionBar,
@@ -35,6 +37,27 @@
 	 * is the locked house rule, see [[keyboard-inline-not-docked]]).
 	 */
 
+	/**
+	 * Embedding seam (27-02): when `embedTemplateId` + `embedKey` are both
+	 * provided, the shown progression is buildProgression(embedTemplateId,
+	 * embedKey) instead of a fresh randomProgression() draw - the two-step
+	 * earn-the-symbol flow and matchChord grading are unchanged (REG-01).
+	 * `onComplete` (when provided alongside) replaces the standalone
+	 * completion card's fresh-draw "Again" control: when the progression
+	 * completes, the embedded component calls onComplete() (advance the host
+	 * queue) instead of drawing a new random progression, mirroring
+	 * BuildSession's embedFact/onComplete precedent. Omitting all three props
+	 * leaves every render byte-identical to this component's pre-embedding
+	 * behavior.
+	 */
+	interface Props {
+		embedTemplateId?: string;
+		embedKey?: string;
+		onComplete?: () => void;
+	}
+
+	let { embedTemplateId, embedKey, onComplete }: Props = $props();
+
 	type Step = 'name' | 'play';
 
 	/** A fresh random progression + its bars, mirroring randomProgression()'s own return shape. */
@@ -42,10 +65,18 @@
 		return randomProgression();
 	}
 
-	/** Plain (non-rune) local so its initial `.bars` read below doesn't trip Svelte's
-	 * state_referenced_locally analysis - `earned`'s length must match this exact
-	 * draw, but only ever needs its INITIAL bar count, never a live/reactive one. */
-	const initialProgression = drawProgression();
+	/**
+	 * Plain (non-rune) local so its initial `.bars` read below doesn't trip
+	 * Svelte's state_referenced_locally analysis - `earned`'s length must
+	 * match this exact draw, but only ever needs its INITIAL bar count, never
+	 * a live/reactive one. embedTemplateId/embedKey are read once via untrack
+	 * (mirrors BuildSession's embedFact read): when both are present,
+	 * randomProgression() is never called, per REG-01/T-27-02-01. */
+	const initialProgression = untrack(() =>
+		embedTemplateId && embedKey
+			? { templateId: embedTemplateId, key: embedKey, bars: buildProgression(embedTemplateId, embedKey) }
+			: drawProgression()
+	);
 
 	let progression = $state(initialProgression);
 	let cursor = $state(0);
@@ -239,9 +270,15 @@
 		<div class="completion-card" data-testid="progression-complete">
 			<h2 class="completion-title">{t('progressions.completion.title')}</h2>
 			<p>{t('progressions.completion.body')}</p>
-			<Button type="button" variant="primary" onclick={again}>
-				{t('progressions.button.again')}
-			</Button>
+			{#if onComplete}
+				<Button type="button" variant="primary" onclick={() => onComplete?.()}>
+					{t('progressions.button.next')}
+				</Button>
+			{:else}
+				<Button type="button" variant="primary" onclick={again}>
+					{t('progressions.button.again')}
+				</Button>
+			{/if}
 		</div>
 	{/if}
 </div>

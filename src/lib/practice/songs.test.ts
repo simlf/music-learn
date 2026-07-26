@@ -124,6 +124,100 @@ describe('songs localStorage persistence', () => {
 		});
 	});
 
+	describe('listSongs dedup by presetId (UAT G4)', () => {
+		it('collapses two stored records sharing the same presetId to one, at the first-occurrence position', () => {
+			saveSong(song({ id: 'custom-1', name: 'My Own Tune', source: 'custom' }));
+			// Simulate a pre-existing storage-level duplicate (e.g. added before
+			// the in-memory add-guard existed) by writing both records directly,
+			// bypassing saveSong's own guard.
+			localStorage.setItem(
+				STORAGE_KEY,
+				JSON.stringify([
+					song({ id: 'custom-1', name: 'My Own Tune', source: 'custom' }),
+					song({ id: 'p1', name: 'Blue Bossa', source: 'preset', presetId: 'blue-bossa-cm' }),
+					song({ id: 'p2', name: 'Blue Bossa', source: 'preset', presetId: 'blue-bossa-cm' })
+				])
+			);
+
+			const names = listSongs().map((s) => s.name);
+			expect(names).toEqual(['My Own Tune', 'Blue Bossa']);
+			expect(listSongs()).toHaveLength(2);
+		});
+
+		it('prefers an active duplicate over an inactive one within a presetId group', () => {
+			localStorage.setItem(
+				STORAGE_KEY,
+				JSON.stringify([
+					song({ id: 'p1', source: 'preset', presetId: 'blue-bossa-cm', active: false }),
+					song({ id: 'p2', source: 'preset', presetId: 'blue-bossa-cm', active: true })
+				])
+			);
+
+			const result = listSongs();
+			expect(result).toHaveLength(1);
+			expect(result[0].id).toBe('p2');
+			expect(result[0].active).toBe(true);
+		});
+
+		it('leaves distinct songs (including custom songs with no presetId) untouched', () => {
+			localStorage.setItem(
+				STORAGE_KEY,
+				JSON.stringify([
+					song({ id: 'c1', source: 'custom' }),
+					song({ id: 'p1', source: 'preset', presetId: 'blue-bossa-cm' }),
+					song({ id: 'p2', source: 'preset', presetId: 'summertime-am' })
+				])
+			);
+
+			expect(listSongs().map((s) => s.id)).toEqual(['c1', 'p1', 'p2']);
+		});
+
+		it('never rewrites localStorage - the raw duplicate stays on disk, only the returned list is deduped', () => {
+			localStorage.setItem(
+				STORAGE_KEY,
+				JSON.stringify([
+					song({ id: 'p1', source: 'preset', presetId: 'blue-bossa-cm' }),
+					song({ id: 'p2', source: 'preset', presetId: 'blue-bossa-cm' })
+				])
+			);
+
+			listSongs();
+
+			const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') as Song[];
+			expect(raw).toHaveLength(2);
+		});
+	});
+
+	describe('saveSong same-presetId add guard (UAT G4 hardening)', () => {
+		it('is a no-op when adding a brand-new song whose presetId already has a stored record', () => {
+			saveSong(song({ id: 'p1', source: 'preset', presetId: 'blue-bossa-cm' }));
+
+			saveSong(song({ id: 'p2', source: 'preset', presetId: 'blue-bossa-cm', name: 'Blue Bossa (again)' }));
+
+			const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') as Song[];
+			expect(raw).toHaveLength(1);
+			expect(raw[0].id).toBe('p1');
+		});
+
+		it('still upserts an existing song in place by id even when it carries a presetId', () => {
+			saveSong(song({ id: 'p1', source: 'preset', presetId: 'blue-bossa-cm', active: true }));
+
+			saveSong(song({ id: 'p1', source: 'preset', presetId: 'blue-bossa-cm', active: false }));
+
+			const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') as Song[];
+			expect(raw).toHaveLength(1);
+			expect(raw[0].active).toBe(false);
+		});
+
+		it('still adds a genuinely new custom song (no presetId) normally', () => {
+			saveSong(song({ id: 'p1', source: 'preset', presetId: 'blue-bossa-cm' }));
+
+			saveSong(song({ id: 'c1', source: 'custom', name: 'My Own Tune' }));
+
+			expect(listSongs().map((s) => s.id)).toEqual(['p1', 'c1']);
+		});
+	});
+
 	describe('findSongByPresetId (DPOL-01)', () => {
 		it('returns undefined for an empty list', () => {
 			expect(findSongByPresetId([], 'blue-bossa-cm')).toBeUndefined();

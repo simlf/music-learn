@@ -55,7 +55,7 @@ describe('Disambiguation chips on the Lookup page (sketch 016-B)', () => {
 
 		expect(screen.queryByTestId('disambig-prompt')).not.toBeInTheDocument();
 		const result = screen.getByTestId('chord-result');
-		const formula = within(result).getByTestId('interval-formula');
+		const formula = within(result).getByTestId('interval-view');
 		expect(within(formula).getByText('A')).toBeInTheDocument();
 		expect(within(formula).getByText('C')).toBeInTheDocument();
 		expect(within(formula).getByText('E')).toBeInTheDocument();
@@ -70,7 +70,7 @@ describe('Disambiguation chips on the Lookup page (sketch 016-B)', () => {
 
 		expect(screen.queryByTestId('disambig-prompt')).not.toBeInTheDocument();
 		const result = screen.getByTestId('chord-result');
-		const formula = within(result).getByTestId('interval-formula');
+		const formula = within(result).getByTestId('interval-view');
 		expect(within(formula).getByText('A')).toBeInTheDocument();
 		expect(within(formula).getByText('C♯')).toBeInTheDocument();
 		expect(within(formula).getByText('E')).toBeInTheDocument();
@@ -115,7 +115,7 @@ describe('WhyTheseNotes mounted on every result (sketch 016-A)', () => {
 		await fireEvent.click(screen.getByTestId('why-escape-hatch'));
 
 		const newResult = screen.getByTestId('chord-result');
-		const formula = within(newResult).getByTestId('interval-formula');
+		const formula = within(newResult).getByTestId('interval-view');
 		expect(within(formula).getByText('C♯')).toBeInTheDocument();
 	});
 });

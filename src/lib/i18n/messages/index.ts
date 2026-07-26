@@ -6,9 +6,13 @@ import { songs } from './songs';
 import { theory } from './theory';
 import { scales } from './scales';
 import { progress } from './progress';
+import { progressHub } from './progress-hub';
 import { home } from './home';
 import { progressions } from './progressions';
 import { voicings } from './voicings';
+import { intervalView } from './interval-view';
+import { practice } from './practice';
+import { learn } from './learn';
 
 /**
  * Shared shape for every per-domain (and the merged) locale dictionary:
@@ -37,9 +41,13 @@ export const messages = {
 		...theory.en,
 		...scales.en,
 		...progress.en,
+		...progressHub.en,
 		...home.en,
 		...progressions.en,
-		...voicings.en
+		...voicings.en,
+		...intervalView.en,
+		...practice.en,
+		...learn.en
 	},
 	fr: {
 		...chrome.fr,
@@ -50,8 +58,12 @@ export const messages = {
 		...theory.fr,
 		...scales.fr,
 		...progress.fr,
+		...progressHub.fr,
 		...home.fr,
 		...progressions.fr,
-		...voicings.fr
+		...voicings.fr,
+		...intervalView.fr,
+		...practice.fr,
+		...learn.fr
 	}
 } satisfies LocaleDict;

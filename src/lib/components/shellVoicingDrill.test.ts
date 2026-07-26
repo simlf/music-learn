@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ShellVoicingDrill from './ShellVoicingDrill.svelte';
 import { newCard, State } from '$lib/srs/scheduler';
@@ -41,6 +41,16 @@ vi.mock('$lib/srs/deck', async (importOriginal) => {
 	};
 });
 
+/** Mirrors PracticeIntervalDrill.test.ts's audio-module mock convention (no real AudioContext/tone import in jsdom). */
+const playNoteMock = vi.fn();
+const playChordMock = vi.fn();
+const ensureAudioReadyMock = vi.fn(async () => {});
+vi.mock('$lib/audio/audio', () => ({
+	playChord: (...args: unknown[]) => playChordMock(...args),
+	playNote: (...args: unknown[]) => playNoteMock(...args),
+	ensureAudioReady: () => ensureAudioReadyMock()
+}));
+
 /** First occurrence of a natural-letter key by its accessible name (mirrors progressionDrill.test.ts's clickKey convention). */
 function clickKey(letter: string) {
 	const keys = screen.getAllByRole('button', { name: `${letter} key` });
@@ -50,6 +60,9 @@ function clickKey(letter: string) {
 beforeEach(() => {
 	localStorage.clear();
 	getAllCardsMock.mockReset();
+	playNoteMock.mockReset();
+	playChordMock.mockReset();
+	ensureAudioReadyMock.mockClear();
 	vi.spyOn(Math, 'random').mockReturnValue(0);
 });
 
@@ -147,6 +160,87 @@ describe('ShellVoicingDrill: stage derived from card maturity', () => {
 		expect(screen.getByRole('button', { name: 'SHELL' })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'ROOTLESS' })).toBeInTheDocument();
 		expect(screen.queryByTestId('teach-panel')).not.toBeInTheDocument();
+	});
+});
+
+describe('ShellVoicingDrill: meet (Voir) stage shows the target symbol and tap-to-hear keys (UAT G3)', () => {
+	it('renders the target chord symbol above the compare keyboards', async () => {
+		getAllCardsMock.mockResolvedValue([]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-meet'));
+		const glyph = screen.getByTestId('meet-glyph');
+		expect(glyph.textContent).toContain('C');
+	});
+
+	it('makes both compare keyboards tap-to-hear: tapping a note sounds it via the shared audio contract', async () => {
+		getAllCardsMock.mockResolvedValue([]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-meet'));
+
+		// Inspect-mode taps play through emitInspect (PianoKeyboard's own
+		// pre-existing inspect path), which calls playNote directly - unlike
+		// interactive/construct mode's playKeyTouch, it doesn't call
+		// ensureAudioReady itself.
+		const knowBoard = screen.getByTestId('compare-know');
+		const cKey = within(knowBoard).getAllByRole('button', { name: 'C key' })[0];
+		await fireEvent.click(cKey);
+
+		expect(playNoteMock).toHaveBeenCalledWith('C4');
+	});
+
+	it('the compare keyboards stay display-only for grading: tapping never toggles selection or affects Got it', async () => {
+		getAllCardsMock.mockResolvedValue([]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-meet'));
+
+		const useBoard = screen.getByTestId('compare-use');
+		const eKey = within(useBoard).getAllByRole('button', { name: 'E key' })[0];
+		await fireEvent.click(eKey);
+
+		// Inspect-mode taps carry no aria-pressed toggle state (unlike
+		// interactive mode's selection), and Got it is still present/untouched.
+		expect(eKey).not.toHaveAttribute('aria-pressed');
+		expect(screen.getByRole('button', { name: 'Got it' })).toBeInTheDocument();
+	});
+});
+
+describe('ShellVoicingDrill: drill (Exo) stage instruction names the selected style (UAT G5)', () => {
+	it('shows a full-voicing instruction for ROOT and switches wording per style tap', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Review)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-drill'));
+
+		await fireEvent.click(screen.getByRole('button', { name: 'ROOT' }));
+		expect(
+			screen.getByText('Play the full voicing: root, third, fifth, seventh.')
+		).toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'SHELL' }));
+		expect(screen.getByText('Play the shell: just the guide tones.')).toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'ROOTLESS' }));
+		expect(
+			screen.getByText('Play it rootless: no root, just third, fifth, seventh.')
+		).toBeInTheDocument();
+	});
+
+	it('the subtract stage keeps its own fixed shell-only prompt regardless of style (no selector there)', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-subtract'));
+
+		expect(screen.getByText('Play the shell: just the guide tones.')).toBeInTheDocument();
+		expect(screen.queryByTestId('voicing-selector')).not.toBeInTheDocument();
 	});
 });
 
@@ -303,5 +397,213 @@ describe('ShellVoicingDrill: grading + advance', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
 
 		expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
+	});
+});
+
+describe('ShellVoicingDrill: step tabs are freely user-navigable (UAT V1)', () => {
+	it('clicking "2 SUBTRACT" while the real stage is meet actually shows the Retirer content, not stuck on Voir', async () => {
+		getAllCardsMock.mockResolvedValue([]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-meet'));
+		await fireEvent.click(screen.getByTestId('step-subtract'));
+
+		expect(screen.getByTestId('stage-subtract')).toBeInTheDocument();
+		expect(screen.getByTestId('teach-panel')).toBeInTheDocument();
+		expect(screen.queryByTestId('stage-meet')).not.toBeInTheDocument();
+		expect(screen.getByTestId('step-subtract')).toHaveClass('step--active');
+	});
+
+	it('clicking "3 DRILL" while the real stage is meet shows the Exo voicing selector', async () => {
+		getAllCardsMock.mockResolvedValue([]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-meet'));
+		await fireEvent.click(screen.getByTestId('step-drill'));
+
+		expect(screen.getByTestId('stage-drill')).toBeInTheDocument();
+		expect(screen.getByTestId('voicing-selector')).toBeInTheDocument();
+	});
+
+	it('clicking "1 MEET" while the real stage is subtract shows the compare reference, with Got it still available', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-subtract'));
+		await fireEvent.click(screen.getByTestId('step-meet'));
+
+		expect(screen.getByTestId('stage-meet')).toBeInTheDocument();
+		expect(screen.getByTestId('compare-know')).toBeInTheDocument();
+		expect(screen.getByTestId('compare-use')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Got it' })).toBeInTheDocument();
+	});
+
+	it('clicking the real stage\'s own tab returns to it from an override', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-subtract'));
+		await fireEvent.click(screen.getByTestId('step-meet'));
+		expect(screen.getByTestId('stage-meet')).toBeInTheDocument();
+
+		await fireEvent.click(screen.getByTestId('step-subtract'));
+
+		expect(screen.getByTestId('stage-subtract')).toBeInTheDocument();
+		expect(screen.queryByTestId('stage-meet')).not.toBeInTheDocument();
+	});
+
+	it('navigating away and back never corrupts grading: Check still grades whichever stage is currently shown (drill)', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Review)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-drill'));
+		await fireEvent.click(screen.getByRole('button', { name: 'SHELL' }));
+
+		await fireEvent.click(screen.getByTestId('step-meet'));
+		expect(screen.getByTestId('stage-meet')).toBeInTheDocument();
+		await fireEvent.click(screen.getByTestId('step-drill'));
+		expect(screen.getByTestId('stage-drill')).toBeInTheDocument();
+
+		clickKey('E');
+		clickKey('B');
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
+	});
+
+	it('a fresh chord (Next) resets any stage override back to the newly-derived stage', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-subtract'));
+		await fireEvent.click(screen.getByTestId('step-drill'));
+		expect(screen.getByTestId('stage-drill')).toBeInTheDocument();
+
+		clickKey('E');
+		clickKey('B');
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+		// The next chord's stage is derived fresh (same Learning cards): back
+		// to subtract, not still pinned to the previous chord's drill override.
+		await waitFor(() => screen.getByTestId('stage-subtract'));
+	});
+});
+
+describe('ShellVoicingDrill: drill/subtract stages show the target chord symbol before answering (UAT V2)', () => {
+	it('renders the target chord symbol above the voicing selector on the drill stage, before any answer', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Review)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-drill'));
+
+		expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
+		expect(screen.getByTestId('target-glyph').textContent).toContain('C');
+	});
+
+	it('renders the target chord symbol above the teach panel on the subtract stage', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-subtract'));
+
+		expect(screen.getByTestId('target-glyph').textContent).toContain('C');
+	});
+});
+
+describe('ShellVoicingDrill: style switch preserves tapped notes (UAT V3)', () => {
+	it('switching Fond./Shell/Sans fond. keeps the already-tapped keys selected', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Review)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-drill'));
+		await fireEvent.click(screen.getByRole('button', { name: 'SHELL' }));
+
+		clickKey('E');
+		clickKey('B');
+		await waitFor(() =>
+			expect(screen.getAllByRole('button', { name: 'E key, selected' })[0]).toBeInTheDocument()
+		);
+		expect(screen.getAllByRole('button', { name: 'B key, selected' })[0]).toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'ROOT' }));
+
+		expect(screen.getAllByRole('button', { name: 'E key, selected' })[0]).toBeInTheDocument();
+		expect(screen.getAllByRole('button', { name: 'B key, selected' })[0]).toBeInTheDocument();
+	});
+});
+
+describe('ShellVoicingDrill: a correct check plays the revealed voicing (UAT V4)', () => {
+	it('plays the target voicing notes as a chord once the answer is correct', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-subtract'));
+
+		clickKey('E');
+		clickKey('B');
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(ensureAudioReadyMock).toHaveBeenCalled();
+		expect(playChordMock).toHaveBeenCalledWith(['E', 'B']);
+	});
+
+	it('does not play anything on a wrong check', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-subtract'));
+
+		clickKey('C');
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(playChordMock).not.toHaveBeenCalled();
+	});
+});
+
+describe('ShellVoicingDrill: key-touch sound (UAT bug A)', () => {
+	it('sounds a note when an interactive voicing key is pressed', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-subtract'));
+
+		// Sound is now intrinsic to PianoKeyboard's activation choke point (G1
+		// UAT fix), fired on click/Enter/Space (the tap that actually selects
+		// the key), not on pointerdown.
+		const eKey = screen.getAllByRole('button', { name: 'E key' })[0];
+		await fireEvent.click(eKey);
+
+		expect(ensureAudioReadyMock).toHaveBeenCalled();
+		expect(playNoteMock).toHaveBeenCalledWith('E4');
+	});
+
+	it('does not sound a note once the question is answered (keyboard is no longer interactive)', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-subtract'));
+
+		clickKey('E');
+		clickKey('B');
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+		playNoteMock.mockClear();
+		ensureAudioReadyMock.mockClear();
+
+		expect(screen.queryByRole('button', { name: 'E key' })).not.toBeInTheDocument();
+		expect(playNoteMock).not.toHaveBeenCalled();
 	});
 });

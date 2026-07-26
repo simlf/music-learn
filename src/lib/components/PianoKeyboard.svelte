@@ -19,7 +19,7 @@
 <script lang="ts">
 	import { Note } from 'tonal';
 	import NoteLabel from './NoteLabel.svelte';
-	import { playNote } from '$lib/audio/audio';
+	import { ensureAudioReady, playNote } from '$lib/audio/audio';
 	import { intervalFromRoot, toAsciiAccidentals, transposeFrom } from '$lib/theory/interval';
 	import { letterToSolfege } from '$lib/theory/solfege';
 	import type { IntervalRole, SpelledNote } from '$lib/theory/types';
@@ -72,9 +72,11 @@
 		/**
 		 * Called on pointerdown with the key's letter (sharp spelling for black
 		 * keys, e.g. "C♯") and its octave number (base octave 4, matching the
-		 * audio engine's voicing) - the Track A key-touch sound hook, fired
-		 * beside the existing haptic pulse. Interactive-only, like every other
-		 * pointer handler; omitting it leaves rendering byte-identical.
+		 * audio engine's voicing), fired beside the existing haptic pulse.
+		 * Interactive-only, like every other pointer handler. Audio-free since
+		 * the G1 UAT fix - the key's own touch sound is now intrinsic to every
+		 * active mode's activation choke point (`playKeyTouch`), not routed
+		 * through this hook. Omitting it leaves rendering byte-identical.
 		 */
 		onPress?: (letter: string, octave: number) => void;
 		/**
@@ -116,11 +118,14 @@
 		 * whether or not it is one of the highlighted `notes` - and fires
 		 * `onConstructTap` with the tapped key's own letter (sharp spelling for
 		 * black keys, matching onPress/onToggle's existing convention) and its
-		 * key-position octave. Unlike inspectable's emitInspect, constructable
-		 * taps never call playNote - the caller owns correct/wrong audio
-		 * feedback. Mutually exclusive with `inspectable` (constructable wins
-		 * when both are passed without interactive); `interactive` still wins
-		 * over both. Omitted keeps the display-only render byte-identical,
+		 * key-position octave. Since the G1 UAT fix, a construct tap ALSO
+		 * sounds its own key-touch note (via `playKeyTouch`, the same choke
+		 * point interactive mode uses) before `onConstructTap` fires - correct
+		 * or wrong, every tap sounds exactly once; the caller still owns
+		 * correct/wrong VISUAL feedback (flash/hint), just not the base
+		 * key-touch sound. Mutually exclusive with `inspectable` (constructable
+		 * wins when both are passed without interactive); `interactive` still
+		 * wins over both. Omitted keeps the display-only render byte-identical,
 		 * following the component's gated-prop compatibility contract.
 		 */
 		constructable?: boolean;
@@ -306,21 +311,45 @@
 	}
 
 	/**
+	 * Key-touch sound (G1 UAT fix, Track A): plays the tapped key's own pitch
+	 * through the shared audio contract. Called from the activation choke
+	 * point below for `interactive` and `constructing` modes only - never for
+	 * `inspecting`, since `emitInspect` already plays the note itself and
+	 * calling this too would double-play. Centralizing here (rather than each
+	 * caller wiring its own audio-only `onPress`/`onConstructTap` handler)
+	 * guarantees every key tap sounds exactly once, app-wide.
+	 */
+	function playKeyTouch(letter: string, octave: number): void {
+		void ensureAudioReady();
+		playNote(`${toAsciiAccidentals(letter)}${octave}`);
+	}
+
+	/**
 	 * One activation path per key: toggle in interactive mode, report-only in
-	 * construct mode (no playNote - the caller owns audio feedback), inspect
-	 * in inspect mode.
+	 * construct mode (the caller still owns correct/wrong VISUAL feedback),
+	 * inspect in inspect mode. Interactive and construct modes both sound the
+	 * tapped key via `playKeyTouch` (G1); inspect mode already sounds it via
+	 * `emitInspect`, so it is deliberately excluded here to avoid double-play.
 	 */
 	function activateWhiteKey(key: WhiteKey) {
-		if (interactive) toggleKey(key.letter);
-		else if (constructing) onConstructTap?.(key.letter, octaveForWhiteIndex(key.index));
-		else inspectWhiteKey(key);
+		if (interactive) {
+			playKeyTouch(key.letter, octaveForWhiteIndex(key.index));
+			toggleKey(key.letter);
+		} else if (constructing) {
+			playKeyTouch(key.letter, octaveForWhiteIndex(key.index));
+			onConstructTap?.(key.letter, octaveForWhiteIndex(key.index));
+		} else inspectWhiteKey(key);
 	}
 
 	function activateBlackKey(key: BlackKey) {
-		if (interactive) toggleKey(key.sharpLetter);
-		else if (constructing)
-			onConstructTap?.(key.sharpLetter, octaveForBlackAfterWhiteIndex(key.position - 1));
-		else inspectBlackKey(key);
+		if (interactive) {
+			playKeyTouch(key.sharpLetter, octaveForBlackAfterWhiteIndex(key.position - 1));
+			toggleKey(key.sharpLetter);
+		} else if (constructing) {
+			const octave = octaveForBlackAfterWhiteIndex(key.position - 1);
+			playKeyTouch(key.sharpLetter, octave);
+			onConstructTap?.(key.sharpLetter, octave);
+		} else inspectBlackKey(key);
 	}
 
 	/**
@@ -335,12 +364,16 @@
 	}
 
 	/**
-	 * Pointerdown press cue + haptic (D-11) + key-touch sound hook (Track A).
+	 * Pointerdown press cue + haptic (D-11) + optional `onPress` hook.
 	 * The press cue and haptic fire in either active mode (interactive or
-	 * inspect); `onPress` stays interactive-only per its contract, since
-	 * inspect taps already play their note through `emitInspect`. The octave
-	 * is derived from key position (base octave 4, one per 7 white keys) so
-	 * consumers can turn letter + octave into a concrete pitch.
+	 * inspect); `onPress` stays interactive-only per its contract. Since the
+	 * G1 UAT fix, the key's own touch SOUND no longer lives here - it fires
+	 * from the activation choke point (`playKeyTouch`, on click/Enter/Space)
+	 * for every active mode except inspect, which already sounds its note via
+	 * `emitInspect`. `onPress` is now a plain, audio-free hook callers may use
+	 * for anything else keyed to the pointerdown moment specifically. The
+	 * octave is derived from key position (base octave 4, one per 7 white
+	 * keys) so consumers can turn letter + octave into a concrete pitch.
 	 */
 	function handlePointerDown(letter: string, octave: number) {
 		pressedKey = { letter, octave };
@@ -932,10 +965,15 @@
 	 * deliberately NOT the gray `--wrong` fill (that treatment reads as an
 	 * error) — a ghost key means "allowed but not required." Mutually
 	 * exclusive with the four reserved interval-color fills (`ghostClass`'s
-	 * `!role` guard, mirroring `.piano-keyboard__key--selected` above).
+	 * `!role` guard, mirroring `.piano-keyboard__key--selected` above). No
+	 * `position` override here (UAT bug B fix): the base `.piano-keyboard__key`
+	 * rule is already `position: absolute`, which is itself a valid
+	 * positioning context for the `::after` marker below - a ghost key
+	 * previously set `position: relative` here, which overrode that absolute
+	 * layer and dropped the key into normal document flow below the keyboard
+	 * row instead of at its assigned `left`/`top` slot.
 	 */
 	.piano-keyboard__key--ghost {
-		position: relative;
 		background-image: repeating-linear-gradient(
 			45deg,
 			transparent,

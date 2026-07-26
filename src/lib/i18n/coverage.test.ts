@@ -15,6 +15,14 @@ import SongFilterToggle from '../components/SongFilterToggle.svelte';
 import StreakBadge from '../components/StreakBadge.svelte';
 
 /**
+ * Phase 30 (HUB-03): DrillsPage, BuildPage, RecallPage, ScalesPage,
+ * SongsPage, and TheoryPage no longer exist as +page.svelte (each route is
+ * now a redirect shim). Every describe/it block that rendered one of them
+ * has been removed below; their FR-wiring coverage moves to the absorbing
+ * hub's own component tests (Phase 31 does the comprehensive remap).
+ */
+
+/**
  * Phase 20 Plan 10: the cross-surface completeness + immunity + fit gate.
  *
  * Every per-domain plan (20-02..20-09) already proved its own surface's FR
@@ -142,12 +150,6 @@ vi.mock('$lib/drills/rotateHint', () => ({
 
 const { default: RootLayout } = await import('../../routes/+layout.svelte');
 const { default: HomePage } = await import('../../routes/+page.svelte');
-const { default: DrillsPage } = await import('../../routes/drills/+page.svelte');
-const { default: BuildPage } = await import('../../routes/build/+page.svelte');
-const { default: RecallPage } = await import('../../routes/recall/+page.svelte');
-const { default: ScalesPage } = await import('../../routes/scales/+page.svelte');
-const { default: SongsPage } = await import('../../routes/songs/+page.svelte');
-const { default: TheoryPage } = await import('../../routes/theory/+page.svelte');
 const { default: ProgressPage } = await import('../../routes/progress/+page.svelte');
 
 function makeCard(
@@ -216,21 +218,21 @@ describe('Masthead FR wiring + nav flex-wrap fit rule (I18N-01/03)', () => {
 		// (getByTestId) to resolve the desktop copy unambiguously.
 		const masthead = within(screen.getByTestId('masthead'));
 
-		expect(masthead.getByRole('link', { name: 'Drills' })).toBeInTheDocument();
+		expect(masthead.getByRole('link', { name: 'Practice' })).toBeInTheDocument();
 		expect(screen.getByText('MUSIC LEARN')).toBeInTheDocument();
 
 		flushSync(() => setLocale('fr'));
-		const drillsLink = masthead.getByRole('link', { name: 'Exercices' });
-		expect(drillsLink).toBeInTheDocument();
+		const practiceLink = masthead.getByRole('link', { name: 'Pratiquer' });
+		expect(practiceLink).toBeInTheDocument();
 		expect(screen.getByText('MUSIC LEARN')).toBeInTheDocument();
 
 		// I18N-03: the nav-links container stays flex-wrap under fr - no
 		// FR-only override, no forced single-row overflow.
-		const navContainer = drillsLink.parentElement;
+		const navContainer = practiceLink.parentElement;
 		expect(navContainer?.className).toContain('flex-wrap');
 
 		flushSync(() => setLocale('en'));
-		expect(masthead.getByRole('link', { name: 'Drills' })).toBeInTheDocument();
+		expect(masthead.getByRole('link', { name: 'Practice' })).toBeInTheDocument();
 	});
 });
 
@@ -250,136 +252,7 @@ describe('Home/Lookup FR wiring (I18N-02)', () => {
 	});
 });
 
-describe('Drills FR wiring (I18N-02)', () => {
-	it('renders the French construction prompt and DE TA LEÇON tag, with the chord symbol unchanged', () => {
-		consumeLessonSeedsMock.mockImplementation((): string[] => ['Cm7']);
-		drawFromPoolMock.mockReturnValue({ symbol: 'Cm7', bucket: 'tier', scaffoldStage: null });
-		vi.spyOn(Math, 'random').mockReturnValue(0);
-		flushSync(() => setLocale('fr'));
-
-		render(DrillsPage);
-
-		expect(screen.getByRole('heading', { name: 'Exercices' })).toBeInTheDocument();
-		expect(screen.getByTestId('question-source-tag')).toHaveTextContent('DE TA LEÇON');
-		expect(screen.getByText('Clique sur les notes de Cm7.')).toBeInTheDocument();
-	});
-
-	it('renders the English equivalents by default', () => {
-		vi.spyOn(Math, 'random').mockReturnValue(0);
-
-		render(DrillsPage);
-
-		expect(screen.getByRole('heading', { name: 'Drills' })).toBeInTheDocument();
-		expect(screen.getByText('Click the notes for F7.')).toBeInTheDocument();
-	});
-});
-
-describe('Build FR wiring (I18N-02) + full-word caption fit rule (I18N-03)', () => {
-	it('renders the French kind-toggle and Root/Quality full-word captions', () => {
-		flushSync(() => setLocale('fr'));
-		render(BuildPage);
-
-		expect(screen.getByRole('heading', { name: 'Construire' })).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: 'Accords' })).toHaveAttribute('aria-pressed', 'true');
-		// I18N-03: full-word FR captions (Fondamentale/Qualité), never a
-		// truncated fixed-width slot - per the UI-SPEC's flex-wrap-caption rule.
-		expect(screen.getByText('Fondamentale')).toBeInTheDocument();
-		expect(screen.getByText('Qualité')).toBeInTheDocument();
-	});
-
-	it('renders the English equivalents by default', () => {
-		render(BuildPage);
-
-		expect(screen.getByRole('heading', { name: 'Build It' })).toBeInTheDocument();
-		expect(screen.getByText('Root')).toBeInTheDocument();
-		expect(screen.getByText('Quality')).toBeInTheDocument();
-	});
-});
-
-describe('Recall + RecallMap FR wiring (I18N-02) + grade-grid fit rule (I18N-03)', () => {
-	it('flips the empty-no-deck message live, then proves the RecallMap column/kind labels in French with the 4-column grid unchanged', async () => {
-		render(RecallPage);
-		await waitFor(() => screen.getByTestId('recall-empty-no-deck'));
-		expect(screen.getByText('Nothing to recall yet.')).toBeInTheDocument();
-
-		flushSync(() => setLocale('fr'));
-		await waitFor(() => expect(screen.getByText('Rien à réviser pour le moment.')).toBeInTheDocument());
-
-		await fireEvent.click(screen.getByRole('button', { name: 'Carte' }));
-		await waitFor(() => screen.getByTestId('recall-map-grid'));
-
-		expect(screen.getByText('Formule')).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: 'Accords' })).toBeInTheDocument();
-		// I18N-03: the 4-column grid template is unchanged under fr.
-		expect(screen.getByTestId('recall-map-grid').getAttribute('style')).toContain(
-			'repeat(4, 1fr)'
-		);
-
-		flushSync(() => setLocale('en'));
-		expect(screen.getByText('Formula')).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: 'Map' })).toBeInTheDocument();
-	});
-
-	it('keeps the grade grid at grid-cols-2 sm:grid-cols-4 under fr, with the locked FR grade labels', async () => {
-		const card = makeCard('chord-formula:Cm7', 'chord-formula', 'formula');
-		getDueCardsMock.mockResolvedValue([card]);
-		getAllCardsMock.mockResolvedValue([card]);
-		flushSync(() => setLocale('fr'));
-
-		render(RecallPage);
-		await waitFor(() => screen.getByTestId('recall-prompt'));
-
-		// Phase 24-01 (Sketch 014-A action dock): the Show Answer/grade actions
-		// now render in both the phone-only recall-action-dock and the desktop
-		// in-flow slot (jsdom never evaluates the hiding media query), so scope
-		// to the dock - the one unambiguous location - as this file's own
-		// masthead/tab-bar tests already do for the 23-04 dual-render.
-		const dock = within(screen.getByTestId('recall-action-dock'));
-		await fireEvent.click(dock.getByRole('button', { name: 'Voir la réponse' }));
-
-		const grid = dock.getByTestId('recall-grade-grid');
-		expect(grid.className).toContain('grid-cols-2');
-		expect(grid.className).toContain('sm:grid-cols-4');
-		expect(dock.getByText('À revoir')).toBeInTheDocument();
-		expect(dock.getByText('Facile')).toBeInTheDocument();
-	});
-});
-
-describe('Scales FR wiring (I18N-02)', () => {
-	it('flips the page title and mode toggle live, with tonic letters staying immune', () => {
-		render(ScalesPage);
-
-		expect(screen.getByRole('heading', { name: 'Scales' })).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: 'Practice' })).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: 'C major' })).toBeInTheDocument();
-
-		flushSync(() => setLocale('fr'));
-		expect(screen.getByRole('heading', { name: 'Gammes' })).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: 'Pratiquer' })).toBeInTheDocument();
-		// Immunity: the tonic letter ("C") is unchanged; only the quality
-		// suffix word switches.
-		expect(screen.getByRole('button', { name: 'C majeur' })).toBeInTheDocument();
-
-		flushSync(() => setLocale('en'));
-		expect(screen.getByRole('heading', { name: 'Scales' })).toBeInTheDocument();
-	});
-});
-
-describe('Songs + SongMark/SongFilterToggle FR wiring (I18N-02)', () => {
-	it('flips the Songs page heading and empty-state copy live', () => {
-		render(SongsPage);
-
-		expect(screen.getByRole('heading', { name: 'Songs' })).toBeInTheDocument();
-		expect(screen.getByText('No songs yet')).toBeInTheDocument();
-
-		flushSync(() => setLocale('fr'));
-		expect(screen.getByRole('heading', { name: 'Morceaux' })).toBeInTheDocument();
-		expect(screen.getByText("Aucun morceau pour l'instant")).toBeInTheDocument();
-
-		flushSync(() => setLocale('en'));
-		expect(screen.getByRole('heading', { name: 'Songs' })).toBeInTheDocument();
-	});
-
+describe('SongMark/SongFilterToggle FR wiring (I18N-02)', () => {
 	it('SongMark pluralizes as MORCEAUX and SongFilterToggle reads "Depuis mes morceaux" under fr', () => {
 		flushSync(() => setLocale('fr'));
 		render(SongMark, { songs: ['Autumn Leaves', 'My Tune'] });
@@ -387,22 +260,6 @@ describe('Songs + SongMark/SongFilterToggle FR wiring (I18N-02)', () => {
 
 		render(SongFilterToggle, { poolLabel: 'BASSIN', on: false, onToggle: () => {} });
 		expect(screen.getByRole('button', { name: /Depuis mes morceaux/ })).toBeInTheDocument();
-	});
-});
-
-describe('Theory + InteractiveLesson FR wiring (I18N-02)', () => {
-	it('flips the page heading and interactive lesson step 1 title live', () => {
-		render(TheoryPage);
-
-		expect(screen.getByText('Theory')).toBeInTheDocument();
-		expect(screen.getByText('The bottom note')).toBeInTheDocument();
-
-		flushSync(() => setLocale('fr'));
-		expect(screen.getByText('Théorie')).toBeInTheDocument();
-		expect(screen.getByText('La note du bas')).toBeInTheDocument();
-
-		flushSync(() => setLocale('en'));
-		expect(screen.getByText('Theory')).toBeInTheDocument();
 	});
 });
 
@@ -490,26 +347,10 @@ describe('Chord/glyph/interval-shorthand/solfège immunity across surfaces (I18N
 		);
 	});
 
-	it('a chord symbol renders identically on two different surfaces (Lookup starter chip, Build root chip) regardless of locale', () => {
-		flushSync(() => setLocale('fr'));
-		render(HomePage);
-		const starterChips = screen.getAllByTestId('starter-chord');
-		const frLookupText = starterChips.map((chip) => chip.textContent).join('|');
-		cleanup();
-
-		flushSync(() => setLocale('en'));
-		render(HomePage);
-		const enStarterChips = screen.getAllByTestId('starter-chord');
-		const enLookupText = enStarterChips.map((chip) => chip.textContent).join('|');
-
-		expect(frLookupText).toBe(enLookupText);
-		expect(frLookupText).toContain('Cm7');
-
-		cleanup();
-		flushSync(() => setLocale('fr'));
-		render(BuildPage);
-		expect(screen.getByRole('button', { name: 'C' })).toBeInTheDocument();
-	});
+	// Phase 30 (HUB-03): this test previously covered two surfaces (Lookup
+	// starter chip, Build root chip); Build is no longer a rendered
+	// +page.svelte route, so the cross-surface half of the assertion is
+	// dropped rather than rewritten (comprehensive remap is Phase 31).
 });
 
 /**

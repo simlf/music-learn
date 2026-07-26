@@ -427,13 +427,6 @@
 		selected = next;
 	}
 
-	/** Key-touch sound (mirrors Drills' pressKey exactly); no-ops once answered. */
-	function pressModeAKey(letter: string, octave: number): void {
-		if (modeAAnswered) return;
-		void ensureAudioReady();
-		playNote(toPitch(letter, octave));
-	}
-
 	/**
 	 * Grades the played chroma set against the target chord (D-03: chroma set
 	 * equality only, never letter strings). Writes the FSRS rating
@@ -924,7 +917,6 @@
 			interactive
 			selected={selected}
 			onToggle={toggleModeAKey}
-			onPress={pressModeAKey}
 			wrongLetters={modeAWrong ? extraLettersPlayed : undefined}
 		/>
 	{:else if currentItem?.mode === 'hear-name'}
@@ -950,7 +942,7 @@
 			{t('recall.empty.no-deck.body')}
 		</p>
 		<div class="mt-6">
-			<Button variant="primary" href="/drills">{t('recall.cta.practice-now')}</Button>
+			<Button variant="primary" href="/practice">{t('recall.cta.practice-now')}</Button>
 		</div>
 	</div>
 {:else if pageState === 'empty-none-due'}
@@ -960,7 +952,7 @@
 			{t('recall.empty.none-due.body')}
 		</p>
 		<div class="mt-6">
-			<Button variant="ghost" href="/drills">{t('recall.cta.practice-now')}</Button>
+			<Button variant="ghost" href="/practice">{t('recall.cta.practice-now')}</Button>
 		</div>
 	</div>
 {:else if pageState === 'empty-filtered-none-due'}
@@ -973,7 +965,7 @@
 				: t('recall.empty.filtered.plural')}
 		</p>
 		<div class="mt-6">
-			<Button variant="ghost" href="/drills">{t('recall.cta.practice-now')}</Button>
+			<Button variant="ghost" href="/practice">{t('recall.cta.practice-now')}</Button>
 		</div>
 	</div>
 {:else if pageState === 'error'}
@@ -992,7 +984,7 @@
 			{reviewedCount} {t('recall.register.reviewed-today')}
 		</p>
 		<div class="mt-6">
-			<Button variant="primary" href="/drills">{t('recall.cta.practice-now')}</Button>
+			<Button variant="primary" href="/practice">{t('recall.cta.practice-now')}</Button>
 			{#if onViewMap}
 				<Button type="button" variant="ghost" onclick={onViewMap}>{t('recall.cta.view-map')}</Button>
 			{/if}

@@ -37,6 +37,7 @@ export const progressions = {
 
 		'progressions.button.check': 'Check',
 		'progressions.button.again': 'Again',
+		'progressions.button.next': 'Next',
 
 		'progressions.function.kicker': 'FUNCTION:',
 		'progressions.function.tonic': 'TONIC',
@@ -66,6 +67,7 @@ export const progressions = {
 
 		'progressions.button.check': 'Vérifier',
 		'progressions.button.again': 'Encore',
+		'progressions.button.next': 'Suivant',
 
 		'progressions.function.kicker': 'FONCTION :',
 		'progressions.function.tonic': 'TONIQUE',
