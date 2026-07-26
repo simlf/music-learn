@@ -282,6 +282,64 @@ describe('carded grade commit (PRAC-03/REG-01/T-27-04-01)', () => {
 	});
 });
 
+describe('in-session register reflects the live queue, not a frozen fraction (B1)', () => {
+	it('does not freeze when a miss is re-enqueued: shows live remaining, then completes only once the queue truly empties', async () => {
+		const cardA = makeCard('chord-formula:Cm7', 'chord-formula', 'see-play');
+		const cardB = makeCard('chord-formula:G7', 'chord-formula', 'see-play');
+		getDueCardsMock.mockResolvedValue([cardA, cardB]);
+
+		render(PracticePage);
+		await screen.findByTestId('practice-pre-start');
+		await fireEvent.click(screen.getByRole('button', { name: 'Start practice' }));
+
+		expect(screen.getByTestId('practice-register')).toHaveTextContent('2 LEFT');
+
+		function currentCorrectSymbol(): string {
+			const choiceGrid = screen.getByTestId('choice-grid');
+			const labels = within(choiceGrid)
+				.getAllByRole('button')
+				.map((button) => button.textContent?.trim());
+			return labels.includes('Cm7') ? 'Cm7' : 'G7';
+		}
+
+		// Answer the first-shown card WRONG: advanceHybridQueue's D-10 contract
+		// re-enqueues it to the back rather than dropping it, so the live queue
+		// still holds BOTH the still-untouched other card and the re-enqueued
+		// miss - the register must honestly still read "2 LEFT", never a
+		// Math.min(asked+1, initialLength) fraction that would freeze here.
+		const firstSymbol = currentCorrectSymbol();
+		const wrong = within(screen.getByTestId('choice-grid'))
+			.getAllByRole('button')
+			.find((button) => button.textContent?.trim() !== firstSymbol);
+		expect(wrong).toBeDefined();
+		await fireEvent.click(wrong!);
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+		expect(screen.queryByTestId('session-end-card')).not.toBeInTheDocument();
+		expect(screen.getByTestId('practice-register')).toHaveTextContent('2 LEFT');
+
+		// The current item is now the OTHER (still-untouched) card - answer it
+		// correctly: one item is fully consumed, one (the re-enqueued miss)
+		// remains, so the register drops to "1 LEFT".
+		const secondSymbol = currentCorrectSymbol();
+		expect(secondSymbol).not.toBe(firstSymbol);
+		await fireEvent.click(screen.getByRole('button', { name: `Answer: ${secondSymbol}` }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+		expect(screen.queryByTestId('session-end-card')).not.toBeInTheDocument();
+		expect(screen.getByTestId('practice-register')).toHaveTextContent('1 LEFT');
+
+		// Clear the re-enqueued miss correctly this time: the queue empties and
+		// the end-card is reached (isHybridSessionComplete).
+		const thirdSymbol = currentCorrectSymbol();
+		expect(thirdSymbol).toBe(firstSymbol);
+		await fireEvent.click(screen.getByRole('button', { name: `Answer: ${thirdSymbol}` }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+		expect(screen.getByTestId('session-end-card')).toHaveTextContent('ROUND COMPLETE');
+	});
+});
+
 describe('mixed carded families: routing, family cue, and session drain', () => {
 	it('routes name-it/interval/build-it to their own component with a correctly-labeled family cue, and drains to the reused end-card', async () => {
 		vi.spyOn(Math, 'random').mockReturnValue(0.1);

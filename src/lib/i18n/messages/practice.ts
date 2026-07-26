@@ -28,6 +28,11 @@ export const practice = {
 		'practice.pre.dueSingular': '1 CARD DUE TODAY',
 		'practice.pre.duePlural': '{N} CARDS DUE TODAY',
 
+		// In-session register (B1 fix, 30-CONTEXT UAT): driven off the LIVE
+		// queue (hybridSessionRemaining), not a frozen initial-size fraction -
+		// mirrors recall.register.left-today's "N LEFT" convention.
+		'practice.register.left': 'LEFT',
+
 		// Empty: no deck yet.
 		'practice.empty.no-deck.heading': 'Nothing to practice yet.',
 		'practice.empty.no-deck.body':
@@ -61,6 +66,8 @@ export const practice = {
 
 		'practice.pre.dueSingular': "1 CARTE À REVOIR AUJOURD'HUI",
 		'practice.pre.duePlural': "{N} CARTES À REVOIR AUJOURD'HUI",
+
+		'practice.register.left': 'RESTANTES',
 
 		'practice.empty.no-deck.heading': 'Rien à pratiquer pour le moment.',
 		'practice.empty.no-deck.body':

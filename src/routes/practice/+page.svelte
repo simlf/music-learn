@@ -5,6 +5,7 @@
 		cardsToQueueItems,
 		advanceHybridQueue,
 		isHybridSessionComplete,
+		hybridSessionRemaining,
 		syntheticVoicingItems,
 		syntheticProgressionItems,
 		filterVoicingsBySong,
@@ -319,6 +320,20 @@
 	const currentItem = $derived(queue[0]);
 
 	/**
+	 * B1 fix: the in-session register was previously `Math.min(asked+1, length)
+	 * of length`, where `length` is the queue's INITIAL size and `asked` only
+	 * ever increments. A missed (Again-graded) carded item is re-enqueued to
+	 * the back of `queue` (advanceHybridQueue), so the live queue can hold
+	 * MORE unresolved items than `length - asked` implies - the fraction
+	 * saturates at "N of N" while re-enqueued misses still remain, reading as
+	 * a stuck/frozen session. Drive the register off the LIVE queue instead
+	 * (mirrors RecallSession's own `remaining = sessionRemaining(queue)`
+	 * convention) so a re-enqueued miss is honestly reflected as still-
+	 * remaining work, not silently absorbed into a frozen total.
+	 */
+	const remaining = $derived(hybridSessionRemaining(queue));
+
+	/**
 	 * Per-item telemetry clock (mirrors RecallSession's questionShownAt): a
 	 * plain, non-reactive variable - drives no rendering, only the
 	 * fire-and-forget durationMs computation at grade time. Set when the
@@ -530,7 +545,7 @@
 		</div>
 	{:else if pageState === 'reviewing' && currentItem}
 		<p class="text-label mt-6 font-mono uppercase" aria-live="polite" data-testid="practice-register">
-			{Math.min(asked + 1, length)} {t('drills.score.of')} {length} ·
+			{remaining} {t('practice.register.left')} ·
 			{score.correct} {t('drills.score.right')} · {score.streak}
 			{t('drills.score.streak')}
 		</p>
