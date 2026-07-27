@@ -200,17 +200,31 @@
 	}
 
 	/**
-	 * Style tab switch (UAT V3 fix): deliberately does NOT clear `selected` -
-	 * the player's already-tapped notes must survive a Fond./Shell/Sans fond.
-	 * switch, since the notes typically overlap across styles and re-tapping
-	 * from scratch after every switch was the reported friction. `wrongRetry`
-	 * still clears since it was surfaced against the previous style's target.
+	 * Nudge toggle (VOICE-01, sketch 022 variant A): the drill-stage nudges
+	 * replace the former Fond./Shell/Sans fond. 3-way selector. Style becomes
+	 * a by-product of what the player adds/removes rather than a mode they
+	 * pick up front - the drill starts on the shell, and each nudge toggles
+	 * between shell and its target voicing (tapping an already-active nudge
+	 * returns to shell). Deliberately does NOT clear `selected` (UAT V3 fix
+	 * preserved) - the player's already-tapped notes must survive a nudge tap,
+	 * since the notes typically overlap across voicings and re-tapping from
+	 * scratch after every switch was the reported friction. `wrongRetry` still
+	 * clears since it was surfaced against the previous voicing's target.
 	 */
-	function selectStyle(style: VoicingStyle) {
+	function setVoicing(style: VoicingStyle) {
 		if (effectiveStage !== 'drill' || answered) return;
-		voicingStyle = style;
+		voicingStyle = voicingStyle === style ? 'shell' : style;
 		wrongRetry = false;
 	}
+
+	/** The i18n key naming the current by-product voicing (shell/full/rootless), for the current-voicing line. */
+	const currentVoicingNameKey = $derived(
+		voicingStyle === 'root'
+			? 'voicings.voicing.full'
+			: voicingStyle === 'rootless'
+				? 'voicings.voicing.rootless'
+				: 'voicings.voicing.shell'
+	);
 
 	/**
 	 * Check: grades the selected chroma against `targetNotes` (never letter
@@ -281,14 +295,6 @@
 	}
 
 	const glyphQuality = $derived(chord.symbol.slice(chord.root.length));
-
-	const VOICING_STYLES: VoicingStyle[] = ['root', 'shell', 'rootless'];
-
-	function styleLabel(style: VoicingStyle): string {
-		if (style === 'root') return t('voicings.selector.root');
-		if (style === 'rootless') return t('voicings.selector.rootless');
-		return t('voicings.selector.shell');
-	}
 
 	/**
 	 * Drill-stage instruction (G5 UAT fix): names the currently selected
@@ -387,23 +393,35 @@
 				</div>
 			{:else}
 				<div
-					class="voicing-row"
-					data-testid="voicing-selector"
+					class="voicing-nudges"
+					data-testid="voicing-nudges"
 					role="group"
-					aria-label={t('voicings.aria.selectorGroup')}
+					aria-label={t('voicings.aria.nudgeGroup')}
 				>
-					{#each VOICING_STYLES as style (style)}
-						<button
-							type="button"
-							class="vchip"
-							class:vchip--on={voicingStyle === style}
-							aria-pressed={voicingStyle === style}
-							onclick={() => selectStyle(style)}
-						>
-							{styleLabel(style)}
-						</button>
-					{/each}
+					<button
+						type="button"
+						class="nudge"
+						class:nudge--on={voicingStyle === 'root'}
+						aria-pressed={voicingStyle === 'root'}
+						onclick={() => setVoicing('root')}
+					>
+						<span class="op" aria-hidden="true">+</span>
+						{t('voicings.nudge.addRoot')}
+					</button>
+					<button
+						type="button"
+						class="nudge"
+						class:nudge--on={voicingStyle === 'rootless'}
+						aria-pressed={voicingStyle === 'rootless'}
+						onclick={() => setVoicing('rootless')}
+					>
+						<span class="op" aria-hidden="true">&minus;</span>
+						{t('voicings.nudge.removeBass')}
+					</button>
 				</div>
+				<p class="layers" data-testid="current-voicing">
+					{t('voicings.current.label')} {t(currentVoicingNameKey)}
+				</p>
 			{/if}
 
 			<p class="text-body mt-4">
@@ -520,32 +538,43 @@
 		padding: var(--spacing-sm) var(--spacing-md);
 	}
 
-	.voicing-row {
+	.voicing-nudges {
 		display: flex;
-		border: 1px solid var(--color-ink);
+		flex-wrap: wrap;
+		gap: var(--spacing-sm);
+		margin-top: var(--spacing-md);
 	}
 
-	.vchip {
-		flex: 1;
+	.nudge {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--spacing-xs);
 		font-family: var(--font-mono);
-		font-size: 11px;
+		font-size: var(--text-label);
 		font-weight: 700;
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
-		padding: var(--spacing-sm) 2px;
-		border-right: 1px solid var(--color-ink);
+		padding: var(--spacing-sm) var(--spacing-md);
+		border: 1px solid var(--color-ink);
+		border-radius: 0;
 		background: var(--color-paper-bright);
 		color: var(--color-ink);
 		min-height: 44px;
 	}
 
-	.vchip:last-child {
-		border-right: none;
-	}
-
-	.vchip--on {
+	.nudge--on {
 		background: var(--color-ink);
 		color: var(--color-paper-bright);
+	}
+
+	.op {
+		font-size: 1.1em;
+	}
+
+	.layers {
+		font-family: var(--font-mono);
+		color: var(--color-muted);
+		margin-top: var(--spacing-sm);
 	}
 
 	.retry {

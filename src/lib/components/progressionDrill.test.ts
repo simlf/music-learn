@@ -1,8 +1,10 @@
-import { render, screen, fireEvent, cleanup } from '@testing-library/svelte';
+import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ProgressionDrill from './ProgressionDrill.svelte';
 import { setLocale } from '$lib/i18n/locale.svelte';
 import { saveSong, type Song } from '$lib/practice/songs';
+import { newCard, State } from '$lib/srs/scheduler';
+import type { CardRecord } from '$lib/srs/deck';
 
 /**
  * Component test for ProgressionDrill (Phase 25 Plan 05, sketch-017
@@ -17,12 +19,41 @@ import { saveSong, type Song } from '$lib/practice/songs';
  * their own key-touch note through its own choke point (G1 UAT fix), so no
  * consumer test may let a real AudioContext/tone import happen in jsdom
  * (ARCHITECTURE-CONTRACTS.md consumer rule).
+ *
+ * Phase 34 Plan 01 (SCAF-02): also mocks $lib/srs/deck's getAllCards (there
+ * is no global fake-indexeddb in this project's jsdom setup), mirroring
+ * shellVoicingDrill.test.ts's deck-mock shape - the new per-bar maturity
+ * read would otherwise fail in every test.
  */
 
 vi.mock('$lib/audio/audio', () => ({
 	playNote: vi.fn(),
 	ensureAudioReady: vi.fn()
 }));
+
+const getAllCardsMock = vi.fn();
+vi.mock('$lib/srs/deck', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('$lib/srs/deck')>();
+	return {
+		...actual,
+		getAllCards: (...args: unknown[]) => getAllCardsMock(...args)
+	};
+});
+
+const now0 = new Date('2026-07-20T00:00:00.000Z');
+
+/** Bar 0's symbol in the deterministic draw is Dm7 (ii, major-ii-V-I in C). */
+function makeCard(state: State): CardRecord {
+	return {
+		...newCard(now0),
+		factId: 'chord-formula:Dm7',
+		factKind: 'chord-formula',
+		mode: 'formula',
+		lastRating: null,
+		masteryDayCount: 0,
+		state
+	};
+}
 
 function song(overrides: Partial<Song> = {}): Song {
 	return {
@@ -55,8 +86,18 @@ async function playBar(letters: string[]) {
 	await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
 }
 
+/** Clicks the hint ladder's single reveal control (SCAF-01, Phase 34 Plan 02). */
+async function revealHint() {
+	const cta = screen.getByTestId('progression-hint-cta');
+	const button = cta.querySelector('button');
+	if (!button) throw new Error('progression-hint-cta has no button');
+	await fireEvent.click(button);
+}
+
 beforeEach(() => {
 	localStorage.clear();
+	getAllCardsMock.mockReset();
+	getAllCardsMock.mockResolvedValue([]);
 	vi.spyOn(Math, 'random').mockReturnValue(0);
 });
 
@@ -162,5 +203,186 @@ describe('ProgressionDrill: completion', () => {
 		expect(screen.queryByTestId('progression-complete')).not.toBeInTheDocument();
 		expect(screen.getByTestId('symbol-0')).toHaveTextContent('?');
 		expect(screen.getByTestId('step-register')).toHaveTextContent('STEP 1');
+	});
+});
+
+describe('ProgressionDrill: beginner keyboard span from per-bar card maturity (SCAF-02)', () => {
+	it('an empty deck resolves to one octave with the beginner caption shown', async () => {
+		render(ProgressionDrill);
+
+		await nameBar('Dm7');
+
+		await waitFor(() => {
+			expect(screen.getByRole('img', { name: 'Piano keyboard, one octave' })).toBeInTheDocument();
+		});
+		expect(screen.getByTestId('beginner-caption')).toBeInTheDocument();
+	});
+
+	it('a State.Review card for the current bar resolves to two octaves with no beginner caption', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Review)]);
+		render(ProgressionDrill);
+
+		await nameBar('Dm7');
+
+		await waitFor(() => {
+			expect(screen.getByRole('img', { name: 'Piano keyboard, two octaves' })).toBeInTheDocument();
+		});
+		expect(screen.queryByTestId('beginner-caption')).not.toBeInTheDocument();
+	});
+
+	it('a State.Learning card for the current bar resolves to one octave with the beginner caption shown', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);
+		render(ProgressionDrill);
+
+		await nameBar('Dm7');
+
+		await waitFor(() => {
+			expect(screen.getByRole('img', { name: 'Piano keyboard, one octave' })).toBeInTheDocument();
+		});
+		expect(screen.getByTestId('beginner-caption')).toBeInTheDocument();
+	});
+});
+
+describe('ProgressionDrill: escalating hint ladder (SCAF-01)', () => {
+	it('reveals degree -> count -> ghost one rung at a time, then shows the closing note with the control gone', async () => {
+		render(ProgressionDrill);
+
+		await nameBar('Dm7');
+		await waitFor(() => {
+			expect(screen.getByTestId('progression-hint-cta')).toBeInTheDocument();
+		});
+		expect(screen.queryByTestId('progression-hint-layer')).not.toBeInTheDocument();
+
+		await revealHint();
+		let layers = screen.getAllByTestId('progression-hint-layer');
+		expect(layers).toHaveLength(1);
+		expect(layers[0]).toHaveAttribute('data-layer', 'degree');
+
+		await revealHint();
+		layers = screen.getAllByTestId('progression-hint-layer');
+		expect(layers).toHaveLength(2);
+		expect(layers[1]).toHaveAttribute('data-layer', 'count');
+		expect(layers[1].querySelector('[data-testid="counting-chip-row"]')).toBeInTheDocument();
+
+		await revealHint();
+		layers = screen.getAllByTestId('progression-hint-layer');
+		expect(layers).toHaveLength(3);
+		expect(layers[2]).toHaveAttribute('data-layer', 'ghost');
+
+		// All 3 rungs offered at 'meet' stage are now revealed: the control is
+		// gone and the closing note shows, with already-revealed rungs intact.
+		expect(screen.queryByTestId('progression-hint-cta')).not.toBeInTheDocument();
+		expect(screen.getByTestId('progression-hint-closing-line')).toBeInTheDocument();
+		expect(screen.getAllByTestId('progression-hint-layer')).toHaveLength(3);
+	});
+
+	it('never renders the current bar\'s chord symbol inside the ladder at any depth', async () => {
+		render(ProgressionDrill);
+
+		await nameBar('Dm7');
+		await waitFor(() => {
+			expect(screen.getByTestId('progression-hint-cta')).toBeInTheDocument();
+		});
+
+		await revealHint();
+		await revealHint();
+		await revealHint();
+
+		const ladder = screen.getByTestId('progression-hint-ladder');
+		expect(ladder.textContent).not.toContain('Dm7');
+	});
+
+	it('a subtract-stage card (State.Learning) offers only 2 rungs (count, ghost), tags renumbered from 1', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);
+		render(ProgressionDrill);
+
+		await nameBar('Dm7');
+		await waitFor(() => {
+			expect(screen.getByTestId('progression-hint-cta')).toBeInTheDocument();
+		});
+
+		await revealHint();
+		let layers = screen.getAllByTestId('progression-hint-layer');
+		expect(layers).toHaveLength(1);
+		expect(layers[0]).toHaveAttribute('data-layer', 'count');
+		expect(layers[0].querySelector('p')).toHaveTextContent('1');
+
+		await revealHint();
+		layers = screen.getAllByTestId('progression-hint-layer');
+		expect(layers).toHaveLength(2);
+		expect(layers[1]).toHaveAttribute('data-layer', 'ghost');
+		expect(layers[1].querySelector('p')).toHaveTextContent('2');
+
+		expect(screen.queryByTestId('progression-hint-cta')).not.toBeInTheDocument();
+		expect(screen.getByTestId('progression-hint-closing-line')).toBeInTheDocument();
+	});
+
+	it('a drill-stage card (State.Review) renders no hint ladder at all', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Review)]);
+		render(ProgressionDrill);
+
+		await nameBar('Dm7');
+		await waitFor(() => {
+			expect(screen.getByRole('img', { name: 'Piano keyboard, two octaves' })).toBeInTheDocument();
+		});
+		expect(screen.queryByTestId('progression-hint-ladder')).not.toBeInTheDocument();
+	});
+
+	it('resets the ladder to closed when the cursor advances to the next bar', async () => {
+		render(ProgressionDrill);
+
+		await nameBar('Dm7');
+		await waitFor(() => {
+			expect(screen.getByTestId('progression-hint-cta')).toBeInTheDocument();
+		});
+		await revealHint();
+		expect(screen.getAllByTestId('progression-hint-layer')).toHaveLength(1);
+
+		await playBar(['D', 'F', 'A', 'C']);
+		await nameBar('G7');
+
+		await waitFor(() => {
+			expect(screen.getByTestId('progression-hint-cta')).toBeInTheDocument();
+		});
+		expect(screen.queryByTestId('progression-hint-layer')).not.toBeInTheDocument();
+	});
+
+	it('preserves already-revealed rungs across a wrong Check within the same bar', async () => {
+		render(ProgressionDrill);
+
+		await nameBar('Dm7');
+		await waitFor(() => {
+			expect(screen.getByTestId('progression-hint-cta')).toBeInTheDocument();
+		});
+		await revealHint();
+		expect(screen.getAllByTestId('progression-hint-layer')).toHaveLength(1);
+
+		clickKey('C');
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(screen.getByTestId('play-retry')).toBeInTheDocument();
+		expect(screen.getAllByTestId('progression-hint-layer')).toHaveLength(1);
+	});
+
+	it('populates ghost keys on the keyboard only after the ghost rung is revealed', async () => {
+		const { container } = render(ProgressionDrill);
+
+		await nameBar('Dm7');
+		await waitFor(() => {
+			expect(screen.getByTestId('progression-hint-cta')).toBeInTheDocument();
+		});
+		expect(container.querySelectorAll('.piano-keyboard__key--ghost')).toHaveLength(0);
+
+		await revealHint(); // degree
+		expect(container.querySelectorAll('.piano-keyboard__key--ghost')).toHaveLength(0);
+
+		await revealHint(); // count
+		expect(container.querySelectorAll('.piano-keyboard__key--ghost')).toHaveLength(0);
+
+		await revealHint(); // ghost
+		const ghostKeys = container.querySelectorAll('.piano-keyboard__key--ghost');
+		expect(ghostKeys.length).toBeGreaterThan(0);
+		const markers = [...ghostKeys].map((key) => key.getAttribute('data-ghost')).sort();
+		expect(markers).toEqual(['3', '5', '7', 'R']);
 	});
 });

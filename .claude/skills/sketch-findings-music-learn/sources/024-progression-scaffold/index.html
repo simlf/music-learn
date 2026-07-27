@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sketch 024 — Progression Scaffold</title>
+<link rel="stylesheet" href="../themes/default.css" />
+<style>
+  body { margin:0; background:var(--color-paper); color:var(--color-ink); font-family:var(--font-sans); padding-top:52px; }
+  #variant-nav { position:fixed; top:0; left:0; right:0; z-index:99; background:var(--color-paper-bright);
+    border-bottom:1px solid var(--color-ink); padding:8px 12px; display:flex; gap:8px; flex-wrap:wrap; }
+  .variant-tab { font-family:var(--font-mono); font-size:12px; font-weight:700; text-transform:uppercase;
+    letter-spacing:.04em; padding:6px 10px; border:1px solid var(--color-ink); background:var(--color-paper-bright);
+    color:var(--color-ink); cursor:pointer; }
+  .variant-tab.active { background:var(--color-ink); color:var(--color-paper-bright); }
+  .stage { max-width:660px; margin:0 auto; padding:20px 16px 64px; }
+  .reg { font-family:var(--font-mono); font-size:12px; color:var(--color-muted); text-transform:uppercase; letter-spacing:.06em; }
+  .reg b { color:var(--color-ink); }
+  .key-line { font-family:var(--font-mono); font-size:12px; color:var(--color-muted); text-transform:uppercase; letter-spacing:.06em; margin:6px 0 14px; }
+  .bars { display:flex; gap:14px; margin:8px 0 6px; }
+  .bar { flex:1; border-left:3px solid var(--color-ink); padding:10px 12px 22px; position:relative; min-height:44px; }
+  .bar.active { border-left-color:var(--color-vermilion); background:var(--color-paper-bright); }
+  .bar .q { font-family:var(--font-serif); font-size:28px; color:var(--color-faint); }
+  .bar .rn { position:absolute; bottom:6px; left:12px; font-family:var(--font-mono); font-size:12px; color:var(--color-faint); }
+  .step { font-family:var(--font-mono); font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--color-faint); margin:16px 0 8px; }
+
+  .kb { position:relative; height:130px; display:flex; border:1px solid var(--color-ink); background:#fff; }
+  .wk { flex:1; border-right:1px solid var(--color-ink); position:relative; }
+  .wk:last-child { border-right:none; }
+  .bk { position:absolute; top:0; width:6%; height:60%; background:var(--color-ink); z-index:2; transform:translateX(-50%); }
+  .lbl-k { position:absolute; bottom:4px; left:0; right:0; text-align:center; font-family:var(--font-serif); font-size:10px; pointer-events:none; }
+  .hint-fill { position:absolute; inset:0; z-index:3; display:flex; align-items:flex-end; justify-content:center; padding-bottom:4px; font-family:var(--font-mono); font-size:9px; font-weight:700; }
+  .fill-root { background:var(--color-root); color:#fff; }
+  .fill-third { background:var(--color-third); color:#fff; }
+  .fill-fifth { background:var(--color-fifth); color:var(--color-ink); }
+  .fill-seventh { background:var(--color-seventh); color:var(--color-ink); }
+  .anchor { outline:3px solid var(--color-vermilion); outline-offset:-3px; z-index:4; }
+  .ghost { background:repeating-linear-gradient(45deg,transparent,transparent 4px,var(--color-faint) 4px,var(--color-faint) 5px); outline:2px dashed var(--color-faint); outline-offset:-3px; }
+
+  .btn { font-family:var(--font-sans); font-weight:700; font-size:14px; padding:11px 16px; border:2px solid var(--color-ink); background:var(--color-paper-bright); color:var(--color-ink); cursor:pointer; }
+  .btn.primary { background:var(--color-vermilion); color:#fff; border-color:var(--color-vermilion); width:100%; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; align-items:center; }
+
+  /* hint ladder */
+  .hint-btn { font-family:var(--font-mono); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    padding:9px 14px; border:1px solid var(--color-ink); background:var(--color-paper-bright); cursor:pointer; }
+  .rung { border:1px solid var(--color-ink); border-top:none; padding:10px 14px; font-size:14px; background:var(--color-paper-bright); }
+  .rung:first-of-type { border-top:1px solid var(--color-ink); }
+  .rung .tag { font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:var(--color-muted); display:block; margin-bottom:4px; }
+  .chiprow { display:flex; gap:5px; margin-top:6px; flex-wrap:wrap; }
+  .tone-chip { min-width:46px; padding:6px; text-align:center; border:1px solid var(--color-ink); font-family:var(--font-mono); font-size:10px; font-weight:700; }
+  .tone-chip.root { background:var(--color-root); color:#fff; }
+  .tone-chip.third { background:var(--color-third); color:#fff; }
+  .tone-chip.fifth { background:var(--color-fifth); color:var(--color-ink); }
+  .tone-chip.seventh { background:var(--color-seventh); color:var(--color-ink); }
+  .gap-chip { display:flex; align-items:center; padding:6px 8px; font-family:var(--font-mono); font-size:11px; font-weight:700; }
+  .gap-chip.m3 { background:var(--color-ink); color:#fff; }
+  .gap-chip.M3 { border:2px solid var(--color-ink); }
+  .retry { color:var(--color-vermilion); font-size:14px; margin-top:10px; }
+  .note-sm { font-size:13px; color:var(--color-muted); }
+  h3 { font-family:var(--font-mono); font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--color-faint); margin:22px 0 8px; }
+</style>
+</head>
+<body>
+<div id="variant-nav">
+  <button class="variant-tab active" onclick="show('a',event)">A: Counting-hint ladder ★</button>
+  <button class="variant-tab" onclick="show('b',event)">B: Reveal the root</button>
+  <button class="variant-tab" onclick="show('c',event)">C: Count-the-semitones cue</button>
+</div>
+
+<!-- shared header snippet repeated per variant for standalone realism -->
+
+<!-- VARIANT A: escalating counting-hint ladder (reuses 010-A / build "indice de comptage") -->
+<section id="v-a" class="stage">
+  <p class="reg"><b>13 restantes</b> · 24 bonnes · 5 série</p>
+  <p class="key-line">Progression · ton : Si♭ majeur · mesure 1/3</p>
+  <div class="bars">
+    <div class="bar active"><span class="q">?</span><span class="rn">ii</span></div>
+    <div class="bar"><span class="q">?</span><span class="rn">V</span></div>
+    <div class="bar"><span class="q">?</span><span class="rn">I</span></div>
+  </div>
+  <p class="step">Étape 2 : joue-le · <span style="color:var(--color-muted)">clavier réduit à 1 octave (niveau débutant)</span></p>
+  <div class="kb">
+    <div class="wk"><span class="lbl-k">Si♭</span></div>
+    <div class="wk"><span class="lbl-k">Do</span></div>
+    <div class="wk"><span class="lbl-k">Ré</span></div>
+    <div class="wk"><span class="lbl-k">Mi♭</span></div>
+    <div class="wk"><span class="lbl-k">Fa</span></div>
+    <div class="wk"><span class="lbl-k">Sol</span></div>
+    <div class="wk"><span class="lbl-k">La</span></div>
+    <div class="wk"><span class="lbl-k">Si♭</span></div>
+    <div class="bk" style="left:12.5%"></div><div class="bk" style="left:37.5%"></div>
+    <div class="bk" style="left:62.5%"></div><div class="bk" style="left:75%"></div><div class="bk" style="left:87.5%"></div>
+  </div>
+  <div class="row"><button class="btn primary">Vérifier</button></div>
+  <p class="retry">Pas tout à fait. Rejoue-le.</p>
+
+  <h3>Débloqué : indice de comptage escaladé (comme les autres exos)</h3>
+  <div class="row" style="margin-top:6px"><button class="hint-btn">Afficher un indice ▾</button></div>
+  <div style="margin-top:10px">
+    <div class="rung"><span class="tag">Indice 1 · le degré</span>
+      Le <b>ii</b> se construit sur la <b>2ᵉ note</b> de Si♭ majeur → fondamentale <b>Do</b>.</div>
+    <div class="rung"><span class="tag">Indice 2 · la qualité + le compte</span>
+      Sur le ii, l'accord est <b>mineur 7</b>. Empile en comptant les demi-tons :
+      <div class="chiprow">
+        <div class="tone-chip root">Do</div><div class="gap-chip m3">+3</div>
+        <div class="tone-chip third">Mi♭</div><div class="gap-chip M3">+4</div>
+        <div class="tone-chip fifth">Sol</div><div class="gap-chip m3">+3</div>
+        <div class="tone-chip seventh">Si♭</div>
+      </div>
+    </div>
+    <div class="rung"><span class="tag">Indice 3 · montre-moi</span>
+      Les touches en fantôme sur le clavier — joue-les, puis Vérifie.</div>
+  </div>
+  <p class="note-sm" style="margin-top:12px">Le symbole (Cm7) reste caché — on le gagne toujours. L'indice s'estompe quand la carte mûrit (règle 005/010).</p>
+  <p class="note-sm" style="margin-top:6px"><b>Débutant :</b> clavier réduit à l'octave de la tonique (moins de touches = moins déroutant) ; il s'élargit à 2 octaves quand le niveau monte.</p>
+</section>
+
+<!-- VARIANT B: simplify — reveal the root, drill from an anchor -->
+<section id="v-b" class="stage" style="display:none">
+  <p class="reg"><b>13 restantes</b> · 24 bonnes · 5 série</p>
+  <p class="key-line">Progression · ton : Si♭ majeur · mesure 1/3</p>
+  <div class="bars">
+    <div class="bar active"><span class="q">?</span><span class="rn">ii · fond. Do</span></div>
+    <div class="bar"><span class="q">?</span><span class="rn">V</span></div>
+    <div class="bar"><span class="q">?</span><span class="rn">I</span></div>
+  </div>
+  <p class="step">Étape 2 : joue-le · départ depuis <b>Do</b></p>
+  <div class="kb">
+    <div class="wk"><span class="lbl-k">Si♭</span></div>
+    <div class="wk"><div class="hint-fill anchor" style="background:transparent"></div><span class="lbl-k">Do</span></div>
+    <div class="wk"><span class="lbl-k">Ré</span></div>
+    <div class="wk"><span class="lbl-k">Mi♭</span></div>
+    <div class="wk"><span class="lbl-k">Fa</span></div>
+    <div class="wk"><span class="lbl-k">Sol</span></div>
+    <div class="wk"><span class="lbl-k">La</span></div>
+    <div class="wk"><span class="lbl-k">Si♭</span></div>
+    <div class="bk" style="left:12.5%"></div><div class="bk" style="left:37.5%"></div>
+    <div class="bk" style="left:62.5%"></div><div class="bk" style="left:75%"></div><div class="bk" style="left:87.5%"></div>
+  </div>
+  <p class="note-sm" style="margin-top:10px">La fondamentale du degré est donnée + ancrée en vermillon sur le clavier. Plus « déduire de zéro » — c'est « construis depuis Do ». Jamais bloqué.</p>
+  <div class="row"><button class="btn primary">Vérifier</button></div>
+  <p class="note-sm" style="margin-top:12px">Payoff plus faible (on donne la basse), mais le débutant avance. Se retire quand la carte progresse.</p>
+</section>
+
+<!-- VARIANT C: count-the-semitones cue, always inline (gamified) -->
+<section id="v-c" class="stage" style="display:none">
+  <p class="reg"><b>13 restantes</b> · 24 bonnes · 5 série</p>
+  <p class="key-line">Progression · ton : Si♭ majeur · mesure 1/3</p>
+  <div class="bars">
+    <div class="bar active"><span class="q">?</span><span class="rn">ii</span></div>
+    <div class="bar"><span class="q">?</span><span class="rn">V</span></div>
+    <div class="bar"><span class="q">?</span><span class="rn">I</span></div>
+  </div>
+  <p class="step">Étape 2 : joue-le · <b>compte les demi-tons</b></p>
+  <div class="chiprow" style="margin:8px 0 12px">
+    <div class="tone-chip root">R</div><div class="gap-chip m3">+3</div>
+    <div class="tone-chip third">3</div><div class="gap-chip M3">+4</div>
+    <div class="tone-chip fifth">5</div><div class="gap-chip m3">+3</div>
+    <div class="tone-chip seventh">7</div>
+  </div>
+  <div class="kb">
+    <div class="wk"><span class="lbl-k">Si♭</span></div>
+    <div class="wk"><div class="hint-fill ghost">R</div><span class="lbl-k">Do</span></div>
+    <div class="wk"><span class="lbl-k">Ré</span></div>
+    <div class="wk"><div class="hint-fill ghost">3</div><span class="lbl-k">Mi♭</span></div>
+    <div class="wk"><div class="hint-fill ghost">5</div><span class="lbl-k">Sol</span></div>
+    <div class="wk"><span class="lbl-k">La</span></div>
+    <div class="wk"><div class="hint-fill ghost">7</div><span class="lbl-k">Si♭</span></div>
+    <div class="bk" style="left:12.5%"></div><div class="bk" style="left:37.5%"></div>
+    <div class="bk" style="left:62.5%"></div><div class="bk" style="left:75%"></div><div class="bk" style="left:87.5%"></div>
+  </div>
+  <p class="note-sm" style="margin-top:10px">Même grammaire de comptage que Build-it / « afficher l'indice de comptage ». Les chips + fantômes montrent où atterrir sans nommer l'accord.</p>
+  <div class="row"><button class="btn primary">Vérifier</button></div>
+</section>
+
+<script>
+function show(id, e){
+  ['a','b','c'].forEach(k => document.getElementById('v-'+k).style.display = (k===id?'block':'none'));
+  document.querySelectorAll('.variant-tab').forEach(t=>t.classList.remove('active'));
+  e.target.classList.add('active');
+}
+</script>
+</body>
+</html>

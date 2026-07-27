@@ -6,15 +6,20 @@ import {
 	cardsToQueueItems,
 	syntheticVoicingItems,
 	syntheticProgressionItems,
+	syntheticInversionItems,
 	composePracticeQueue,
+	SCAFFOLD_HEAVY,
+	isLowMasterySession,
 	advanceHybridQueue,
 	filterVoicingsBySong,
+	filterInversionsBySong,
 	familiesInQueue,
 	hybridSessionRemaining,
 	isHybridSessionComplete,
 	type CardedQueueItem,
 	type VoicingQueueItem,
 	type ProgressionQueueItem,
+	type InversionQueueItem,
 	type HybridQueueItem
 } from './practiceQueue';
 import { seventhChordSymbols } from './shellVoicing';
@@ -199,6 +204,39 @@ describe('syntheticProgressionItems', () => {
 	});
 });
 
+describe('syntheticInversionItems', () => {
+	it('draws distinct, valid, stable-id {symbol, inversionIndex} pairs from the candidate symbols', () => {
+		// Cm7 (seventh, 4 inversions) + C (triad, 3 inversions) = 7 total pairs.
+		const items = syntheticInversionItems(['Cm7', 'C'], 5, seededRng(1));
+		expect(items).toHaveLength(5);
+		const ids = new Set(items.map((item) => item.id));
+		expect(ids.size).toBe(5);
+		for (const item of items) {
+			expect(item.family).toBe('inversion');
+			expect(item.id).toBe(`inversion:${item.symbol}:${item.inversionIndex}`);
+			expect(['Cm7', 'C']).toContain(item.symbol);
+			const maxIndex = item.symbol === 'Cm7' ? 4 : 3;
+			expect(item.inversionIndex).toBeGreaterThanOrEqual(0);
+			expect(item.inversionIndex).toBeLessThan(maxIndex);
+		}
+	});
+
+	it('respects `count`, returning at most that many items', () => {
+		const items = syntheticInversionItems(['Cm7'], 2, seededRng(2));
+		expect(items).toHaveLength(2);
+	});
+
+	it('returns [] for an empty candidate list (single-type-due gate preserved)', () => {
+		expect(syntheticInversionItems([], 5, seededRng(3))).toEqual([]);
+	});
+
+	it('is deterministic for a given seeded rng', () => {
+		const a = syntheticInversionItems(['Cm7', 'C'], 4, seededRng(42));
+		const b = syntheticInversionItems(['Cm7', 'C'], 4, seededRng(42));
+		expect(a).toEqual(b);
+	});
+});
+
 /** Test-only fixture builder for a CardedQueueItem, mirroring cardsToQueueItems' own id/shape. */
 function makeCarded(
 	family: 'name-it' | 'build-it' | 'interval',
@@ -229,6 +267,11 @@ function makeVoicing(symbol: string): VoicingQueueItem {
 /** Test-only fixture builder for a ProgressionQueueItem. */
 function makeProgression(templateId: string, key: string): ProgressionQueueItem {
 	return { id: `prog:${templateId}:${key}`, family: 'progression', templateId, key };
+}
+
+/** Test-only fixture builder for an InversionQueueItem. */
+function makeInversion(symbol: string, inversionIndex: number): InversionQueueItem {
+	return { id: `inversion:${symbol}:${inversionIndex}`, family: 'inversion', symbol, inversionIndex };
 }
 
 /** True iff `queue` contains 3+ consecutive items from the same family. */
@@ -364,6 +407,197 @@ describe('composePracticeQueue', () => {
 	});
 });
 
+	describe('inversion family in composePracticeQueue (Phase 35, INV-03)', () => {
+		it('passes through unchanged when inversion is the only family present (single-type-due gate)', () => {
+			const inversions: InversionQueueItem[] = [
+				makeInversion('Cm7', 0),
+				makeInversion('Cm7', 1),
+				makeInversion('Cm7', 2)
+			];
+			const composed = composePracticeQueue([], inversions, seededRng(5));
+			expect(composed).toEqual(inversions);
+		});
+
+		it('interleaves inversion items with the existing five without a 3-in-a-row of one family', () => {
+			const carded: CardedQueueItem[] = Array.from({ length: 6 }, (_, i) =>
+				makeCarded('name-it', `C${i}m7`)
+			);
+			const synthetic: HybridQueueItem[] = [
+				makeVoicing('Cmaj7'),
+				makeVoicing('Dmaj7'),
+				makeProgression('major-ii-V-I', 'C'),
+				makeInversion('Em7', 0),
+				makeInversion('Em7', 1)
+			];
+			for (const seed of [1, 2, 3, 4, 5]) {
+				const composed = composePracticeQueue(carded, synthetic, seededRng(seed));
+				const inputIds = [...carded, ...synthetic].map((item) => item.id).sort();
+				expect(composed.map((item) => item.id).sort()).toEqual(inputIds);
+				expect(hasThreeInARow(composed)).toBe(false);
+			}
+		});
+
+		it('is a faithful permutation including inversion items (none dropped or duplicated)', () => {
+			const carded: CardedQueueItem[] = [makeCarded('interval', 'M3')];
+			const synthetic: HybridQueueItem[] = [makeInversion('Cm7', 0), makeInversion('Cm7', 1)];
+			const composed = composePracticeQueue(carded, synthetic, seededRng(6));
+			const inputIds = [...carded, ...synthetic].map((item) => item.id).sort();
+			expect(composed.map((item) => item.id).sort()).toEqual(inputIds);
+		});
+	});
+
+	describe('REG-parity: existing-five ordering unchanged with no inversion items present', () => {
+		it('produces the frozen baseline order for a fixed rng (byte-identical weave for the existing five, REG-01)', () => {
+			const carded: CardedQueueItem[] = [
+				makeCarded('name-it', 'Cm7'),
+				makeCarded('build-it', 'Dm7'),
+				makeCarded('interval', 'M3')
+			];
+			const synthetic: HybridQueueItem[] = [
+				makeVoicing('Cmaj7'),
+				makeVoicing('Dmaj7'),
+				makeProgression('major-ii-V-I', 'C')
+			];
+			const composed = composePracticeQueue(carded, synthetic, seededRng(13));
+
+			// Frozen baseline: captured from composePracticeQueue's own weave
+			// output for this exact input+seed. Any future change to the weave
+			// algorithm that changes this order (with zero inversion items
+			// present) is a REG-01 regression and must fail this test.
+			expect(composed.map((item) => item.id)).toEqual([
+				'voicing:Cmaj7',
+				'voicing:Dmaj7',
+				'prog:major-ii-V-I:C',
+				'fsrs:chord-formula:Cm7:formula',
+				'fsrs:chord-formula:Dm7:formula-build',
+				'fsrs:interval-size:M3:formula'
+			]);
+		});
+	});
+
+	describe('cold-session first-item ordering (QUEUE-01)', () => {
+		it("never leads with 'progression' or 'inversion' when a simpler family is present, across seeds", () => {
+			const carded: CardedQueueItem[] = [
+				makeCarded('name-it', 'Cm7'),
+				makeCarded('name-it', 'Dm7')
+			];
+			const synthetic: HybridQueueItem[] = [
+				makeVoicing('Cmaj7'),
+				makeProgression('major-ii-V-I', 'C'),
+				makeInversion('Em7', 0),
+				makeInversion('Em7', 1)
+			];
+			for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+				const composed = composePracticeQueue(carded, synthetic, seededRng(seed), { lowMastery: true });
+				expect(SCAFFOLD_HEAVY.has(composed[0].family)).toBe(false);
+				const inputIds = [...carded, ...synthetic].map((item) => item.id).sort();
+				expect(composed.map((item) => item.id).sort()).toEqual(inputIds);
+				expect(hasThreeInARow(composed)).toBe(false);
+			}
+		});
+
+		it('is byte-identical to the warm result when only scaffold-heavy families are present (no simpler family to prefer)', () => {
+			const synthetic: HybridQueueItem[] = [
+				makeProgression('major-ii-V-I', 'C'),
+				makeProgression('major-ii-V-I', 'D'),
+				makeInversion('Em7', 0),
+				makeInversion('Em7', 1)
+			];
+			for (const seed of [1, 2, 3, 4, 5]) {
+				const cold = composePracticeQueue([], synthetic, seededRng(seed), { lowMastery: true });
+				const warm = composePracticeQueue([], synthetic, seededRng(seed), { lowMastery: false });
+				expect(cold).toEqual(warm);
+			}
+		});
+
+		it('preserves the single-type-due gate for a scaffold-heavy-only single family under the cold signal', () => {
+			const inversions: InversionQueueItem[] = [
+				makeInversion('Cm7', 0),
+				makeInversion('Cm7', 1),
+				makeInversion('Cm7', 2)
+			];
+			const composed = composePracticeQueue([], inversions, seededRng(5), { lowMastery: true });
+			expect(composed).toEqual(inversions);
+		});
+
+		it('defaults to the warm result when options are omitted (3-arg call)', () => {
+			const carded: CardedQueueItem[] = [makeCarded('name-it', 'Cm7'), makeCarded('name-it', 'Dm7')];
+			const synthetic: HybridQueueItem[] = [
+				makeVoicing('Cmaj7'),
+				makeProgression('major-ii-V-I', 'C'),
+				makeInversion('Em7', 0)
+			];
+			for (const seed of [1, 2, 3]) {
+				const threeArg = composePracticeQueue(carded, synthetic, seededRng(seed));
+				const explicitWarm = composePracticeQueue(carded, synthetic, seededRng(seed), { lowMastery: false });
+				expect(threeArg).toEqual(explicitWarm);
+			}
+		});
+
+		it('preserves within-family relative order and no-3-in-a-row for a skewed multi-family input under the cold signal', () => {
+			const carded: CardedQueueItem[] = Array.from({ length: 6 }, (_, i) => makeCarded('name-it', `C${i}m7`));
+			const synthetic: HybridQueueItem[] = [
+				makeVoicing('Cmaj7'),
+				makeProgression('major-ii-V-I', 'C'),
+				makeInversion('Em7', 0),
+				makeInversion('Em7', 1)
+			];
+			for (const seed of [1, 2, 3, 4, 5]) {
+				const composed = composePracticeQueue(carded, synthetic, seededRng(seed), { lowMastery: true });
+				const nameItOrder = composed.filter((item) => item.family === 'name-it').map((item) => item.id);
+				expect(nameItOrder).toEqual(carded.map((item) => item.id));
+				expect(hasThreeInARow(composed)).toBe(false);
+			}
+		});
+	});
+
+describe('isLowMasterySession', () => {
+	it('returns false for an empty array (no basis - REG-01-safe warm default)', () => {
+		expect(isLowMasterySession([])).toBe(false);
+	});
+
+	it('returns true for three State.New cards (all-New is cold)', () => {
+		const cards = [makeCardRecord({ state: State.New }), makeCardRecord({ state: State.New }), makeCardRecord({ state: State.New })];
+		expect(isLowMasterySession(cards)).toBe(true);
+	});
+
+	it('returns true for three State.Learning cards (Learning counts as not-mature)', () => {
+		const cards = [
+			makeCardRecord({ state: State.Learning }),
+			makeCardRecord({ state: State.Learning }),
+			makeCardRecord({ state: State.Learning })
+		];
+		expect(isLowMasterySession(cards)).toBe(true);
+	});
+
+	it('returns true when mature (State.Review) cards are a minority (1 of 3)', () => {
+		const cards = [
+			makeCardRecord({ state: State.Review }),
+			makeCardRecord({ state: State.New }),
+			makeCardRecord({ state: State.New })
+		];
+		expect(isLowMasterySession(cards)).toBe(true);
+	});
+
+	it('returns false when mature (State.Review) cards are a majority (2 of 3)', () => {
+		const cards = [
+			makeCardRecord({ state: State.Review }),
+			makeCardRecord({ state: State.Review }),
+			makeCardRecord({ state: State.New })
+		];
+		expect(isLowMasterySession(cards)).toBe(false);
+	});
+
+	it('returns false for three State.Review cards (fully warm)', () => {
+		const cards = [
+			makeCardRecord({ state: State.Review }),
+			makeCardRecord({ state: State.Review }),
+			makeCardRecord({ state: State.Review })
+		];
+		expect(isLowMasterySession(cards)).toBe(false);
+	});
+});
+
 describe('advanceHybridQueue', () => {
 	it('re-enqueues an Again-graded carded item to the back', () => {
 		const first = makeCarded('name-it', 'Cm7');
@@ -388,6 +622,20 @@ describe('advanceHybridQueue', () => {
 		const advanced = advanceHybridQueue([first, second], Rating.Again);
 		expect(advanced).toEqual([second]);
 	});
+
+	it('consumes an inversion item on Again without re-enqueue (synthetic, matches voicing/progression)', () => {
+		const first = makeInversion('Cm7', 0);
+		const second = makeCarded('interval', 'M3');
+		const advanced = advanceHybridQueue([first, second], Rating.Again);
+		expect(advanced).toEqual([second]);
+	});
+
+	it('consumes an inversion item on Good without re-enqueue', () => {
+		const first = makeInversion('Cm7', 0);
+		const second = makeCarded('interval', 'M3');
+		const advanced = advanceHybridQueue([first, second], Rating.Good);
+		expect(advanced).toEqual([second]);
+	});
 });
 
 describe('filterVoicingsBySong', () => {
@@ -395,6 +643,18 @@ describe('filterVoicingsBySong', () => {
 		const items: VoicingQueueItem[] = [makeVoicing('Cmaj7'), makeVoicing('Dmaj7'), makeVoicing('Emaj7')];
 		const filtered = filterVoicingsBySong(items, (symbol) => symbol === 'Dmaj7');
 		expect(filtered.map((item) => item.symbol)).toEqual(['Dmaj7']);
+	});
+});
+
+describe('filterInversionsBySong', () => {
+	it('restricts inversion items by the song predicate', () => {
+		const items: InversionQueueItem[] = [
+			makeInversion('Cm7', 0),
+			makeInversion('Dm7', 0),
+			makeInversion('Em7', 0)
+		];
+		const filtered = filterInversionsBySong(items, (symbol) => symbol === 'Dm7');
+		expect(filtered.map((item) => item.symbol)).toEqual(['Dm7']);
 	});
 });
 

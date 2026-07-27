@@ -101,7 +101,7 @@ describe('ShellVoicingDrill: stage derived from card maturity', () => {
 		expect(screen.getByTestId('teach-panel')).toBeInTheDocument();
 		expect(container.querySelectorAll('[data-ghost="R"]')).toHaveLength(1);
 		expect(container.querySelectorAll('[data-ghost="5"]')).toHaveLength(1);
-		expect(screen.queryByTestId('voicing-selector')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('voicing-nudges')).not.toBeInTheDocument();
 	});
 
 	it('ghost-hatches the root + fifth of a FLAT-rooted chord (Ebmaj7): chroma matching, never letter strings', async () => {
@@ -155,10 +155,9 @@ describe('ShellVoicingDrill: stage derived from card maturity', () => {
 		render(ShellVoicingDrill);
 
 		await waitFor(() => screen.getByTestId('stage-drill'));
-		expect(screen.getByTestId('voicing-selector')).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: 'ROOT' })).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: 'SHELL' })).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: 'ROOTLESS' })).toBeInTheDocument();
+		expect(screen.getByTestId('voicing-nudges')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Add the root' })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Remove the bass' })).toBeInTheDocument();
 		expect(screen.queryByTestId('teach-panel')).not.toBeInTheDocument();
 	});
 });
@@ -211,28 +210,29 @@ describe('ShellVoicingDrill: meet (Voir) stage shows the target symbol and tap-t
 });
 
 describe('ShellVoicingDrill: drill (Exo) stage instruction names the selected style (UAT G5)', () => {
-	it('shows a full-voicing instruction for ROOT and switches wording per style tap', async () => {
+	it('starts on the shell, then switches wording per nudge tap (VOICE-01)', async () => {
 		getAllCardsMock.mockResolvedValue([makeCard(State.Review)]);
 
 		render(ShellVoicingDrill);
 
 		await waitFor(() => screen.getByTestId('stage-drill'));
 
-		await fireEvent.click(screen.getByRole('button', { name: 'ROOT' }));
+		expect(screen.getByText('Play the shell: just the guide tones.')).toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Add the root' }));
 		expect(
 			screen.getByText('Play the full voicing: root, third, fifth, seventh.')
 		).toBeInTheDocument();
+		expect(screen.getByTestId('current-voicing')).toHaveTextContent('Full');
 
-		await fireEvent.click(screen.getByRole('button', { name: 'SHELL' }));
-		expect(screen.getByText('Play the shell: just the guide tones.')).toBeInTheDocument();
-
-		await fireEvent.click(screen.getByRole('button', { name: 'ROOTLESS' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Remove the bass' }));
 		expect(
 			screen.getByText('Play it rootless: no root, just third, fifth, seventh.')
 		).toBeInTheDocument();
+		expect(screen.getByTestId('current-voicing')).toHaveTextContent('Rootless');
 	});
 
-	it('the subtract stage keeps its own fixed shell-only prompt regardless of style (no selector there)', async () => {
+	it('the subtract stage keeps its own fixed shell-only prompt regardless of style (no nudges there)', async () => {
 		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);
 
 		render(ShellVoicingDrill);
@@ -240,7 +240,7 @@ describe('ShellVoicingDrill: drill (Exo) stage instruction names the selected st
 		await waitFor(() => screen.getByTestId('stage-subtract'));
 
 		expect(screen.getByText('Play the shell: just the guide tones.')).toBeInTheDocument();
-		expect(screen.queryByTestId('voicing-selector')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('voicing-nudges')).not.toBeInTheDocument();
 	});
 });
 
@@ -373,7 +373,6 @@ describe('ShellVoicingDrill: grading + advance', () => {
 		render(ShellVoicingDrill);
 
 		await waitFor(() => screen.getByTestId('stage-drill'));
-		await fireEvent.click(screen.getByRole('button', { name: 'SHELL' }));
 
 		clickKey('C');
 		clickKey('E');
@@ -384,13 +383,12 @@ describe('ShellVoicingDrill: grading + advance', () => {
 		expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
 	});
 
-	it('grades the drill stage against the selected voicing style (shell = 2 notes)', async () => {
+	it('grades the drill stage against the selected voicing style (shell = 2 notes, the default)', async () => {
 		getAllCardsMock.mockResolvedValue([makeCard(State.Review)]);
 
 		render(ShellVoicingDrill);
 
 		await waitFor(() => screen.getByTestId('stage-drill'));
-		await fireEvent.click(screen.getByRole('button', { name: 'SHELL' }));
 
 		clickKey('E');
 		clickKey('B');
@@ -415,7 +413,7 @@ describe('ShellVoicingDrill: step tabs are freely user-navigable (UAT V1)', () =
 		expect(screen.getByTestId('step-subtract')).toHaveClass('step--active');
 	});
 
-	it('clicking "3 DRILL" while the real stage is meet shows the Exo voicing selector', async () => {
+	it('clicking "3 DRILL" while the real stage is meet shows the Exo nudge controls', async () => {
 		getAllCardsMock.mockResolvedValue([]);
 
 		render(ShellVoicingDrill);
@@ -424,7 +422,7 @@ describe('ShellVoicingDrill: step tabs are freely user-navigable (UAT V1)', () =
 		await fireEvent.click(screen.getByTestId('step-drill'));
 
 		expect(screen.getByTestId('stage-drill')).toBeInTheDocument();
-		expect(screen.getByTestId('voicing-selector')).toBeInTheDocument();
+		expect(screen.getByTestId('voicing-nudges')).toBeInTheDocument();
 	});
 
 	it('clicking "1 MEET" while the real stage is subtract shows the compare reference, with Got it still available', async () => {
@@ -462,7 +460,6 @@ describe('ShellVoicingDrill: step tabs are freely user-navigable (UAT V1)', () =
 		render(ShellVoicingDrill);
 
 		await waitFor(() => screen.getByTestId('stage-drill'));
-		await fireEvent.click(screen.getByRole('button', { name: 'SHELL' }));
 
 		await fireEvent.click(screen.getByTestId('step-meet'));
 		expect(screen.getByTestId('stage-meet')).toBeInTheDocument();
@@ -520,13 +517,12 @@ describe('ShellVoicingDrill: drill/subtract stages show the target chord symbol 
 });
 
 describe('ShellVoicingDrill: style switch preserves tapped notes (UAT V3)', () => {
-	it('switching Fond./Shell/Sans fond. keeps the already-tapped keys selected', async () => {
+	it('tapping a nudge keeps the already-tapped keys selected', async () => {
 		getAllCardsMock.mockResolvedValue([makeCard(State.Review)]);
 
 		render(ShellVoicingDrill);
 
 		await waitFor(() => screen.getByTestId('stage-drill'));
-		await fireEvent.click(screen.getByRole('button', { name: 'SHELL' }));
 
 		clickKey('E');
 		clickKey('B');
@@ -535,7 +531,7 @@ describe('ShellVoicingDrill: style switch preserves tapped notes (UAT V3)', () =
 		);
 		expect(screen.getAllByRole('button', { name: 'B key, selected' })[0]).toBeInTheDocument();
 
-		await fireEvent.click(screen.getByRole('button', { name: 'ROOT' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Add the root' }));
 
 		expect(screen.getAllByRole('button', { name: 'E key, selected' })[0]).toBeInTheDocument();
 		expect(screen.getAllByRole('button', { name: 'B key, selected' })[0]).toBeInTheDocument();
@@ -605,5 +601,105 @@ describe('ShellVoicingDrill: key-touch sound (UAT bug A)', () => {
 
 		expect(screen.queryByRole('button', { name: 'E key' })).not.toBeInTheDocument();
 		expect(playNoteMock).not.toHaveBeenCalled();
+	});
+});
+
+describe('ShellVoicingDrill: lean nudge flow replaces the 3-way selector (VOICE-01)', () => {
+	it('starts on the shell: neither nudge pressed, current voicing reads Shell, and the shell grades correct with no nudge tapped', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Review)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-drill'));
+
+		expect(screen.getByRole('button', { name: 'Add the root' })).toHaveAttribute(
+			'aria-pressed',
+			'false'
+		);
+		expect(screen.getByRole('button', { name: 'Remove the bass' })).toHaveAttribute(
+			'aria-pressed',
+			'false'
+		);
+		expect(screen.getByTestId('current-voicing')).toHaveTextContent('Shell');
+
+		clickKey('E');
+		clickKey('B');
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
+	});
+
+	it('"Add the root" reaches the full voicing', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Review)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-drill'));
+		await fireEvent.click(screen.getByRole('button', { name: 'Add the root' }));
+
+		expect(screen.getByRole('button', { name: 'Add the root' })).toHaveAttribute(
+			'aria-pressed',
+			'true'
+		);
+		expect(screen.getByTestId('current-voicing')).toHaveTextContent('Full');
+
+		clickKey('C');
+		clickKey('E');
+		clickKey('G');
+		clickKey('B');
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
+	});
+
+	it('"Remove the bass" reaches the rootless voicing', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Review)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-drill'));
+		await fireEvent.click(screen.getByRole('button', { name: 'Remove the bass' }));
+
+		expect(screen.getByRole('button', { name: 'Remove the bass' })).toHaveAttribute(
+			'aria-pressed',
+			'true'
+		);
+		expect(screen.getByTestId('current-voicing')).toHaveTextContent('Rootless');
+
+		clickKey('E');
+		clickKey('G');
+		clickKey('B');
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
+	});
+
+	it('the old 3-way selector is gone from the drill stage', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Review)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-drill'));
+
+		expect(screen.queryByTestId('voicing-selector')).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'ROOT' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'ROOTLESS' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'SHELL' })).not.toBeInTheDocument();
+	});
+
+	it('reads the nudge labels and current-voicing line in French', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Review)]);
+		setLocale('fr');
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-drill'));
+
+		expect(screen.getByRole('button', { name: 'Poser la fondamentale' })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Retirer la basse' })).toBeInTheDocument();
+		expect(screen.getByTestId('current-voicing')).toHaveTextContent('Voicing actuel :');
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Poser la fondamentale' }));
+		expect(screen.getByTestId('current-voicing')).toHaveTextContent('Complet');
 	});
 });

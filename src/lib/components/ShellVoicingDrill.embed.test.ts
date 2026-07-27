@@ -78,7 +78,6 @@ describe('ShellVoicingDrill: embed seam (27-02)', () => {
 		render(ShellVoicingDrill, { props: { embedSymbol: 'Cmaj7', onComplete } });
 
 		await waitFor(() => screen.getByTestId('stage-drill'));
-		await fireEvent.click(screen.getByRole('button', { name: 'SHELL' }));
 
 		clickKey('E');
 		clickKey('B');

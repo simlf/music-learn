@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sketch 023 — Inversion Drill</title>
+<link rel="stylesheet" href="../themes/default.css" />
+<style>
+  body { margin:0; background:var(--color-paper); color:var(--color-ink); font-family:var(--font-sans); padding-top:52px; }
+  #variant-nav { position:fixed; top:0; left:0; right:0; z-index:99; background:var(--color-paper-bright);
+    border-bottom:1px solid var(--color-ink); padding:8px 12px; display:flex; gap:8px; flex-wrap:wrap; }
+  .variant-tab { font-family:var(--font-mono); font-size:12px; font-weight:700; text-transform:uppercase;
+    letter-spacing:.04em; padding:6px 10px; border:1px solid var(--color-ink); background:var(--color-paper-bright);
+    color:var(--color-ink); cursor:pointer; }
+  .variant-tab.active { background:var(--color-ink); color:var(--color-paper-bright); }
+  .stage { max-width:600px; margin:0 auto; padding:24px 16px 64px; }
+  .caption { font-family:var(--font-mono); font-size:12px; color:var(--color-muted); text-transform:uppercase; letter-spacing:.08em; margin:0 0 12px; }
+  .glyph { font-family:var(--font-serif); font-size:44px; line-height:1; }
+  .glyph sub { font-size:.42em; }
+  .prompt { font-size:16px; margin:14px 0; }
+  .note-sm { font-size:13px; color:var(--color-muted); }
+  h3 { font-family:var(--font-mono); font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--color-faint); margin:22px 0 8px; }
+  .btn { font-family:var(--font-sans); font-weight:700; font-size:14px; padding:10px 16px; border:2px solid var(--color-ink);
+    background:var(--color-paper-bright); color:var(--color-ink); cursor:pointer; }
+  .btn.primary { background:var(--color-vermilion); color:#fff; border-color:var(--color-vermilion); }
+  .row { display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; align-items:center; }
+  .invtag { font-family:var(--font-mono); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.05em;
+    background:var(--color-ink); color:#fff; padding:4px 8px; display:inline-block; }
+
+  /* mini keyboard row */
+  .kb { position:relative; height:96px; display:flex; border:1px solid var(--color-ink); background:#fff; }
+  .kb.big { height:140px; }
+  .wk { flex:1; border-right:1px solid var(--color-ink); position:relative; }
+  .wk:last-child { border-right:none; }
+  .bk { position:absolute; top:0; width:8%; height:60%; background:var(--color-ink); z-index:2; transform:translateX(-50%); }
+  .lbl-k { position:absolute; bottom:4px; left:0; right:0; text-align:center; font-family:var(--font-serif); font-size:11px; pointer-events:none; }
+  .key-fill { position:absolute; inset:0; z-index:3; display:flex; align-items:flex-end; justify-content:center; padding-bottom:4px;
+    font-family:var(--font-mono); font-size:9px; font-weight:700; }
+  .fill-root { background:var(--color-root); color:#fff; }
+  .fill-third { background:var(--color-third); color:#fff; }
+  .fill-fifth { background:var(--color-fifth); color:var(--color-ink); }
+  .fill-seventh { background:var(--color-seventh); color:var(--color-ink); }
+  .bass-ring { outline:3px solid var(--color-ink); outline-offset:-3px; z-index:4; }
+  .bass-badge { position:absolute; top:2px; left:2px; z-index:5; font-family:var(--font-mono); font-size:8px; font-weight:700;
+    background:var(--color-ink); color:#fff; padding:1px 3px; }
+
+  /* A: ladder */
+  .ladder { display:flex; flex-direction:column; gap:10px; margin-top:14px; }
+  .rung { border:1px solid var(--color-ink); padding:8px 10px; display:grid; grid-template-columns:96px 1fr; gap:12px; align-items:center; }
+  .rung.target { border:2px solid var(--color-vermilion); box-shadow:0 0 0 3px rgba(200,80,46,.12); }
+  .rung .meta { font-family:var(--font-mono); font-size:11px; }
+  .rung .meta b { display:block; font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+  .rung .meta span { color:var(--color-muted); }
+
+  /* B: single prompt */
+  .invpick { display:flex; border:1px solid var(--color-ink); max-width:420px; margin-top:8px; }
+  .invpick span { flex:1; text-align:center; padding:8px 4px; font-family:var(--font-mono); font-size:11px; font-weight:700;
+    text-transform:uppercase; border-right:1px solid var(--color-ink); }
+  .invpick span:last-child { border-right:none; }
+  .invpick .on { background:var(--color-vermilion); color:#fff; }
+
+  /* C: slot shift */
+  .slots { display:flex; flex-direction:column-reverse; gap:6px; margin-top:14px; max-width:300px; }
+  .slot { display:flex; align-items:center; gap:10px; }
+  .chipn { width:60px; text-align:center; font-family:var(--font-serif); font-size:18px; font-weight:700; padding:8px 0; border:1px solid var(--color-ink); }
+  .chipn.root { background:var(--color-root); color:#fff; }
+  .chipn.third { background:var(--color-third); color:#fff; }
+  .chipn.fifth { background:var(--color-fifth); color:var(--color-ink); }
+  .chipn.seventh { background:var(--color-seventh); color:var(--color-ink); }
+  .octup { font-family:var(--font-mono); font-size:10px; color:var(--color-vermilion); font-weight:700; }
+  .bassmark { font-family:var(--font-mono); font-size:10px; color:var(--color-muted); text-transform:uppercase; }
+  .shiftbtns { display:flex; gap:8px; margin-top:14px; }
+
+  /* B graft: escalating hint ladder (from 024-A) */
+  .hint-btn { font-family:var(--font-mono); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    padding:9px 14px; border:1px solid var(--color-ink); background:var(--color-paper-bright); cursor:pointer; }
+  .rung { border:1px solid var(--color-ink); border-top:none; padding:10px 14px; font-size:14px; background:var(--color-paper-bright); }
+  .rung:first-of-type { border-top:1px solid var(--color-ink); }
+  .rung .tag { font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:var(--color-muted); display:block; margin-bottom:4px; }
+  .hrow { display:flex; gap:5px; margin-top:6px; flex-wrap:wrap; align-items:center; }
+  .hchip { min-width:44px; padding:6px; text-align:center; border:1px solid var(--color-ink); font-family:var(--font-mono); font-size:10px; font-weight:700; }
+  .hchip.fifth { background:var(--color-fifth); color:var(--color-ink); }
+  .hchip.seventh { background:var(--color-seventh); color:var(--color-ink); }
+  .hchip.root { background:var(--color-root); color:#fff; }
+  .hchip.third { background:var(--color-third); color:#fff; }
+</style>
+</head>
+<body>
+<div id="variant-nav">
+  <button class="variant-tab active" onclick="show('a',event)">A: Inversion ladder</button>
+  <button class="variant-tab" onclick="show('b',event)">B: Play-it prompt ★</button>
+  <button class="variant-tab" onclick="show('c',event)">C: Slot-shift mechanic</button>
+</div>
+
+<!-- VARIANT A -->
+<section id="v-a" class="stage">
+  <p class="caption">Renversements · nouveau</p>
+  <div class="glyph">C<sub>m7</sub></div>
+  <p class="prompt">Joue le <b>2ᵉ renversement</b>. La note la plus grave doit être la <b>quinte (Sol)</b>.</p>
+
+  <div class="ladder">
+    <div class="rung">
+      <div class="meta"><b>Fondamental</b><span>basse : Do</span></div>
+      <div class="kb"><div class="wk"><div class="key-fill fill-root bass-ring">R</div><div class="bass-badge">B</div><span class="lbl-k">Do</span></div><div class="wk"><div class="key-fill fill-third">3</div><span class="lbl-k">Mi♭</span></div><div class="wk"><span class="lbl-k">Fa</span></div><div class="wk"><div class="key-fill fill-fifth">5</div><span class="lbl-k">Sol</span></div><div class="wk"><div class="key-fill fill-seventh">7</div><span class="lbl-k">Si♭</span></div><div class="wk"><span class="lbl-k">Do</span></div><div class="bk" style="left:16.6%"></div><div class="bk" style="left:83.3%"></div></div>
+    </div>
+    <div class="rung">
+      <div class="meta"><b>1ᵉ renv.</b><span>basse : Mi♭</span></div>
+      <div class="kb"><div class="wk"><div class="key-fill fill-third bass-ring">3</div><div class="bass-badge">B</div><span class="lbl-k">Mi♭</span></div><div class="wk"><div class="key-fill fill-fifth">5</div><span class="lbl-k">Sol</span></div><div class="wk"><div class="key-fill fill-seventh">7</div><span class="lbl-k">Si♭</span></div><div class="wk"><div class="key-fill fill-root">R</div><span class="lbl-k">Do</span></div><div class="wk"><span class="lbl-k">Ré</span></div><div class="wk"><span class="lbl-k">Mi♭</span></div><div class="bk" style="left:66.6%"></div></div>
+    </div>
+    <div class="rung target">
+      <div class="meta"><b>2ᵉ renv.</b><span>basse : Sol · à jouer</span></div>
+      <div class="kb"><div class="wk"><div class="key-fill fill-fifth bass-ring">5</div><div class="bass-badge">B</div><span class="lbl-k">Sol</span></div><div class="wk"><div class="key-fill fill-seventh">7</div><span class="lbl-k">Si♭</span></div><div class="wk"><div class="key-fill fill-root">R</div><span class="lbl-k">Do</span></div><div class="wk"><div class="key-fill fill-third">3</div><span class="lbl-k">Mi♭</span></div><div class="wk"><span class="lbl-k">Fa</span></div><div class="wk"><span class="lbl-k">Sol</span></div><div class="bk" style="left:33.3%"></div><div class="bk" style="left:50%"></div></div>
+    </div>
+    <div class="rung">
+      <div class="meta"><b>3ᵉ renv.</b><span>basse : Si♭</span></div>
+      <div class="kb"><div class="wk"><div class="key-fill fill-seventh bass-ring">7</div><div class="bass-badge">B</div><span class="lbl-k">Si♭</span></div><div class="wk"><div class="key-fill fill-root">R</div><span class="lbl-k">Do</span></div><div class="wk"><div class="key-fill fill-third">3</div><span class="lbl-k">Mi♭</span></div><div class="wk"><span class="lbl-k">Fa</span></div><div class="wk"><div class="key-fill fill-fifth">5</div><span class="lbl-k">Sol</span></div><div class="wk"><span class="lbl-k">La</span></div><div class="bk" style="left:33.3%"></div><div class="bk" style="left:83.3%"></div></div>
+    </div>
+  </div>
+  <p class="note-sm" style="margin-top:12px">Toute la famille est visible : on voit que le renversement = même 4 notes, basse différente.</p>
+  <div class="row"><button class="btn primary">Vérifier</button></div>
+</section>
+
+<!-- VARIANT B -->
+<section id="v-b" class="stage" style="display:none">
+  <p class="caption">Renversements · nouveau</p>
+  <div class="glyph">C<sub>m7</sub></div>
+  <span class="invtag" style="background:var(--color-vermilion)">2ᵉ renversement</span>
+  <p class="prompt" style="margin-top:12px">Joue Cm7 avec la <b>quinte (Sol) à la basse</b>. Une inversion à la fois — comme les autres drills.</p>
+
+  <div class="kb big">
+    <div class="wk"><span class="lbl-k">Fa</span></div>
+    <div class="wk"><span class="lbl-k">Sol</span></div>
+    <div class="wk"><span class="lbl-k">La</span></div>
+    <div class="wk"><span class="lbl-k">Si♭</span></div>
+    <div class="wk"><span class="lbl-k">Do</span></div>
+    <div class="wk"><span class="lbl-k">Ré</span></div>
+    <div class="wk"><span class="lbl-k">Mi♭</span></div>
+    <div class="bk" style="left:28.5%"></div>
+    <div class="bk" style="left:85.7%"></div>
+  </div>
+  <p class="note-sm" style="margin-top:12px">Tu tapes les notes. On grade la <b>note de basse</b> + l'ensemble. La révélation empile l'accord comme d'habitude (glyph + audio).</p>
+
+  <h3>Le drill fait tourner les 4 renversements</h3>
+  <div class="invpick"><span>Fondamental</span><span class="on">2ᵉ renv.</span><span>1ᵉ renv.</span><span>3ᵉ renv.</span></div>
+  <div class="row"><button class="btn primary">Vérifier</button><button class="btn">Entendre</button></div>
+
+  <h3>Au début : indices escaladés (greffe du 024-A)</h3>
+  <div class="row" style="margin-top:4px"><button class="hint-btn">Afficher un indice ▾</button></div>
+  <div style="margin-top:10px">
+    <div class="rung"><span class="tag">Indice 1 · la basse</span>
+      2ᵉ renversement → la <b>quinte (Sol)</b> est la note la plus grave.</div>
+    <div class="rung"><span class="tag">Indice 2 · l'ordre depuis la basse</span>
+      À partir de Sol, empile l'accord :
+      <div class="hrow">
+        <div class="hchip fifth">Sol</div><div class="hchip seventh">Si♭</div>
+        <div class="hchip root">Do</div><div class="hchip third">Mi♭</div>
+      </div>
+    </div>
+    <div class="rung"><span class="tag">Indice 3 · montre-moi</span>
+      Les 4 touches en fantôme sur le clavier — joue-les, puis Vérifie.</div>
+  </div>
+  <p class="note-sm" style="margin-top:12px">L'indice s'estompe quand la carte mûrit (règle 005/010) : guidé au début, froid ensuite.</p>
+</section>
+
+<!-- VARIANT C -->
+<section id="v-c" class="stage" style="display:none">
+  <p class="caption">Renversements · nouveau · mécanique</p>
+  <div class="glyph">C<sub>m7</sub></div>
+  <p class="prompt">Le renversement, senti : la note la plus grave monte d'une octave et passe au sommet.</p>
+
+  <span class="invtag">Position : 1ᵉ renversement</span>
+  <div class="slots">
+    <div class="slot"><div class="chipn third">Mi♭</div><span class="bassmark">← basse</span></div>
+    <div class="slot"><div class="chipn fifth">Sol</div></div>
+    <div class="slot"><div class="chipn seventh">Si♭</div></div>
+    <div class="slot"><div class="chipn root">Do</div><span class="octup">↑ montée d'octave (était la basse)</span></div>
+  </div>
+
+  <div class="shiftbtns">
+    <button class="btn">◂ Renv. précédent</button>
+    <button class="btn primary">Renv. suivant ▸</button>
+  </div>
+  <p class="note-sm" style="margin-top:14px">À chaque pas, la basse actuelle saute au sommet (+1 octave). Après 4 pas on retombe sur le fondamental. La couleur de rôle ne bouge jamais — seul l'ordre change.</p>
+</section>
+
+<script>
+function show(id, e){
+  ['a','b','c'].forEach(k => document.getElementById('v-'+k).style.display = (k===id?'block':'none'));
+  document.querySelectorAll('.variant-tab').forEach(t=>t.classList.remove('active'));
+  e.target.classList.add('active');
+}
+</script>
+</body>
+</html>

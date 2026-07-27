@@ -71,7 +71,24 @@ Extends the 005 fading-scaffold rule from label hints to voicing pedagogy. One f
 - Rendering optional voicing notes with the wrong-extra gray ✕: reads as an error, not permission.
 - Showing the voicing compare intro on every encounter: once per NEW card only, then it is scaffolding to fade.
 
+## Evolution — 022 voicing lean flow (session 7, 2026-07-26)
+
+The 019 shell-voicing drill's `Fond. · Shell · Sans fond.` 3-way toggle read as heavy chrome
+(UAT V5: "cassée et pas très intuitive"). **Winner 022-A (add/drop nudges):** kill the always-on
+toggle; start on the shell (the core), and let variation emerge from two contextual buttons —
+"+ poser la fondamentale" (→ full) and "− retirer la basse" (→ rootless). Style becomes a
+by-product of what you add/remove, not a mode you pick, while keeping the variation/"racing"
+practice value. Rejected: B single-cycle button (still a mode picker, just smaller); C ghost-
+layer-no-toggle (blends best but risks confusing "optional" ghost with the "wrong-extra" gray).
+
+```html
+<!-- 022-A: no toggle; contextual add/drop nudges beside the shell keyboard -->
+<button class="nudge"><span class="op">＋</span> Poser la fondamentale</button>
+<button class="nudge"><span class="op">－</span> Retirer la basse</button>
+<p class="layers">Voicing actuel : <b>Shell</b> — +fond. → <b>Complet</b> · −basse → <b>Sans fondamentale</b></p>
+```
+
 ## Origin
 
-Synthesized from sketches: 017, 019, 020
-Source files available in: sources/017-progression-drill/, sources/019-shell-voicings/, sources/020-confidence-calibration/
+Synthesized from sketches: 017, 019, 020, 022
+Source files available in: sources/017-progression-drill/, sources/019-shell-voicings/, sources/020-confidence-calibration/, sources/022-voicing-lean-flow/

@@ -181,6 +181,19 @@
 		 * ever applied).
 		 */
 		ghostKeys?: { letter: string; octave: number; marker: string }[];
+		/**
+		 * The single key that should carry the bass ink-ring + "B" badge
+		 * (Phase 35, INV-01): matched by CHROMA + octave, like `ghostKeys`, so
+		 * an enharmonic spelling still lands on the right key. UNLIKE
+		 * `ghostKeys`/`selectedClass`/`pendingClass`, this is NOT gated on
+		 * `!role` — the bass ring must render whether the matching key already
+		 * carries an interval-role fill (reveal state), a ghost hatch (hint
+		 * state), or neither (rung-1-only hint state), since "which of the 4
+		 * already-colored notes is the bass" is exactly the thing being taught.
+		 * Omitting it (undefined/null) leaves rendering byte-identical to
+		 * today.
+		 */
+		bassHint?: { letter: string; octave: number } | null;
 	}
 
 	let {
@@ -199,7 +212,8 @@
 		flashWrongKey,
 		pulseToken,
 		pendingKeys,
-		ghostKeys
+		ghostKeys,
+		bassHint
 	}: Props = $props();
 
 	/** Interval-from-root short label for a highlighted note (sketch 003). "R" for the root. */
@@ -333,7 +347,14 @@
 	 */
 	function activateWhiteKey(key: WhiteKey) {
 		if (interactive) {
-			playKeyTouch(key.letter, octaveForWhiteIndex(key.index));
+			const octave = octaveForWhiteIndex(key.index);
+			playKeyTouch(key.letter, octave);
+			// Emit the pressed octave from the activation choke point too, not just
+			// from handlePointerDown (WR-01): Enter/Space activation routes through
+			// here without ever firing pointerdown, so keyboard/AT users would
+			// otherwise never record an octave and bass detection would degenerate
+			// to "lowest chroma among selected letters."
+			onPress?.(key.letter, octave);
 			toggleKey(key.letter);
 		} else if (constructing) {
 			playKeyTouch(key.letter, octaveForWhiteIndex(key.index));
@@ -343,7 +364,11 @@
 
 	function activateBlackKey(key: BlackKey) {
 		if (interactive) {
-			playKeyTouch(key.sharpLetter, octaveForBlackAfterWhiteIndex(key.position - 1));
+			const octave = octaveForBlackAfterWhiteIndex(key.position - 1);
+			playKeyTouch(key.sharpLetter, octave);
+			// See activateWhiteKey (WR-01): record the octave for keyboard/AT
+			// activation, which never fires pointerdown.
+			onPress?.(key.sharpLetter, octave);
 			toggleKey(key.sharpLetter);
 		} else if (constructing) {
 			const octave = octaveForBlackAfterWhiteIndex(key.position - 1);
@@ -643,6 +668,38 @@
 	function ghostMarker(letter: string, octave: number): string | undefined {
 		return ghostEntryFor(letter, octave)?.marker;
 	}
+
+	/**
+	 * Whether this physical key is the one identified by `bassHint`, compared
+	 * by CHROMA + octave (same idiom as `ghostEntryFor`) — never by letter
+	 * string, so an enharmonic-spelled bassHint letter lands on the same
+	 * physical black key as its sharp spelling.
+	 */
+	function bassHintEntryFor(letter: string, octave: number): boolean {
+		if (!bassHint) return false;
+		const keyChroma = Note.chroma(toAsciiAccidentals(letter));
+		if (keyChroma === undefined) return false;
+		return (
+			Note.chroma(toAsciiAccidentals(bassHint.letter)) === keyChroma && bassHint.octave === octave
+		);
+	}
+
+	/**
+	 * Bass ink-ring class (Phase 35, INV-01). Deliberate deviation from every
+	 * other gated-prop convention in this file (`ghostClass`/`selectedClass`/
+	 * `pendingClass`): NOT gated on `!role` — the ring must layer on top of a
+	 * role fill, a ghost hatch, or a plain key, since "which of the 4
+	 * already-colored notes is the bass" is the pedagogy this prop exists to
+	 * teach.
+	 */
+	function bassHintClass(letter: string, octave: number): string {
+		return bassHintEntryFor(letter, octave) ? 'piano-keyboard__key--bass-ring' : '';
+	}
+
+	/** The literal "B" badge text when this key matches `bassHint`, else undefined (mirrors `ghostMarker`'s data-attribute idiom). */
+	function bassBadge(letter: string, octave: number): string | undefined {
+		return bassHintEntryFor(letter, octave) ? 'B' : undefined;
+	}
 </script>
 
 <div
@@ -674,13 +731,14 @@
 				key.note?.letter ?? key.letter,
 				octaveForWhiteIndex(key.index),
 				key.note?.role
-			)}"
+			)} {bassHintClass(key.note?.letter ?? key.letter, octaveForWhiteIndex(key.index))}"
 			style="left: {key.leftPct}%; width: {whiteKeyWidthPct}%;"
 			role={keysActive ? 'button' : undefined}
 			tabindex={keysActive ? 0 : undefined}
 			aria-pressed={interactive ? (selected?.has(key.letter) ?? false) : undefined}
 			aria-label={keysActive ? keyAriaLabel(key.letter) : undefined}
 			data-ghost={ghostMarker(key.note?.letter ?? key.letter, octaveForWhiteIndex(key.index))}
+			data-bass={bassBadge(key.note?.letter ?? key.letter, octaveForWhiteIndex(key.index))}
 			onclick={keysActive ? () => activateWhiteKey(key) : undefined}
 			onkeydown={keysActive
 				? (event: KeyboardEvent) => handleKeydown(event, () => activateWhiteKey(key))
@@ -731,6 +789,9 @@
 				key.note?.letter ?? key.sharpLetter,
 				octaveForBlackAfterWhiteIndex(key.position - 1),
 				key.note?.role
+			)} {bassHintClass(
+				key.note?.letter ?? key.sharpLetter,
+				octaveForBlackAfterWhiteIndex(key.position - 1)
 			)}"
 			style="left: {key.leftPct}%; width: {blackKeyWidthPct}%;"
 			role={keysActive ? 'button' : undefined}
@@ -738,6 +799,10 @@
 			aria-pressed={interactive ? (selected?.has(key.sharpLetter) ?? false) : undefined}
 			aria-label={keysActive ? keyAriaLabel(key.sharpLetter) : undefined}
 			data-ghost={ghostMarker(
+				key.note?.letter ?? key.sharpLetter,
+				octaveForBlackAfterWhiteIndex(key.position - 1)
+			)}
+			data-bass={bassBadge(
 				key.note?.letter ?? key.sharpLetter,
 				octaveForBlackAfterWhiteIndex(key.position - 1)
 			)}
@@ -1008,6 +1073,34 @@
 
 	.piano-keyboard__key--black.piano-keyboard__key--ghost::after {
 		color: var(--color-paper-bright);
+	}
+
+	/*
+	 * Bass emphasis (Phase 35, INV-01): a neutral ink ring + "B" badge marking
+	 * which of the chord's already-colored keys is the bass. LOCKED CSS from
+	 * counting-hint-grammar.md, mirroring the `data-ghost`/`::after` idiom
+	 * above. Deliberately NOT role-gated (see `bassHintClass`) - layers on top
+	 * of a role fill, a ghost hatch, or a plain key. Neutral ink only, never a
+	 * role color or vermilion.
+	 */
+	.piano-keyboard__key--bass-ring {
+		outline: 3px solid var(--color-ink);
+		outline-offset: -3px;
+		z-index: 4;
+	}
+
+	.piano-keyboard__key--bass-ring::after {
+		content: attr(data-bass);
+		position: absolute;
+		top: 2px;
+		left: 2px;
+		z-index: 5;
+		font-family: var(--font-mono);
+		font-size: 8px;
+		font-weight: 700;
+		background: var(--color-ink);
+		color: #fff;
+		padding: 1px 3px;
 	}
 
 	/*

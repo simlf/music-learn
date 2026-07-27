@@ -51,13 +51,15 @@ export const practice = {
 			"Couldn't open the practice queue. Reload the page, mon ami. If it keeps happening, your browser's storage might be full or blocked.",
 
 		// Per-question family cue (27-UI-SPEC "Family Cue Between Questions").
-		// Added for all five families now, even though voicing/progression
-		// items only appear once Plan 05 lands, so i18n stays in this plan only.
+		// Added for all six families now (voicing/progression/inversion), even
+		// though those synthetic items only appear once their own host-wiring
+		// plans land, so i18n stays additive and each wiring plan lands clean.
 		'practice.cue.nameIt': 'NAME IT',
 		'practice.cue.buildIt': 'BUILD IT',
 		'practice.cue.voicing': 'VOICING',
 		'practice.cue.interval': 'INTERVAL',
-		'practice.cue.progression': 'PROGRESSION'
+		'practice.cue.progression': 'PROGRESSION',
+		'practice.cue.inversion': 'INVERSION'
 	},
 	fr: {
 		'practice.page.title': 'Pratique',
@@ -86,6 +88,7 @@ export const practice = {
 		'practice.cue.buildIt': 'CONSTRUIRE',
 		'practice.cue.voicing': 'VOICING',
 		'practice.cue.interval': 'INTERVALLE',
-		'practice.cue.progression': 'PROGRESSION'
+		'practice.cue.progression': 'PROGRESSION',
+		'practice.cue.inversion': 'INVERSION'
 	}
 } satisfies LocaleDict;

@@ -19,12 +19,15 @@ import { MAJOR_SCALE_ROOTS } from '$lib/theory/scale';
 /** Harmonic function of a progression bar, mapped to i18n copy by the caller. */
 export type RomanFunction = 'tonic' | 'subdominant' | 'dominant';
 
-/** One bar of a built progression: its roman numeral, resolved symbol, and function. */
+/** One bar of a built progression: its roman numeral, resolved symbol, function, scale degree, and quality suffix. */
 export interface ProgressionBar {
 	index: number;
 	roman: string;
 	symbol: string;
 	functionLabel: RomanFunction;
+	degree: number;
+	/** The engine's own fixed quality suffix (maj7 / m7 / 7 / m7b5), NOT tonal's canonical re-spelling. */
+	quality: string;
 }
 
 /** One degree slot in a progression template, before being keyed to a tonic. */
@@ -163,7 +166,14 @@ export function buildProgression(templateId: string, key: string): ProgressionBa
 		const root = transposeFrom(key, degreeIntervals[slot.degree]);
 		const symbol = `${root}${slot.quality}`;
 		if (!spellChord(symbol).recognized) continue;
-		bars.push({ index: bars.length, roman: slot.roman, symbol, functionLabel: slot.functionLabel });
+		bars.push({
+			index: bars.length,
+			roman: slot.roman,
+			symbol,
+			functionLabel: slot.functionLabel,
+			degree: slot.degree,
+			quality: slot.quality
+		});
 	}
 
 	return bars;

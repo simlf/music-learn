@@ -11,6 +11,7 @@ import { progress } from './messages/progress';
 import { progressHub } from './messages/progress-hub';
 import { home } from './messages/home';
 import { progressions } from './messages/progressions';
+import { inversions } from './messages/inversions';
 import { voicings } from './messages/voicings';
 import { intervalView } from './messages/interval-view';
 import { practice } from './messages/practice';
@@ -66,6 +67,7 @@ describe('domain dictionary key collisions (I18N-02)', () => {
 		['progress-hub', progressHub.en],
 		['home', home.en],
 		['progressions', progressions.en],
+		['inversions', inversions.en],
 		['voicings', voicings.en],
 		['interval-view', intervalView.en],
 		['practice', practice.en],

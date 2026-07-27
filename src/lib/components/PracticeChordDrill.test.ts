@@ -190,17 +190,21 @@ describe('PracticeChordDrill: picked-vs-correct on a miss (E1)', () => {
 	});
 });
 
-describe('PracticeChordDrill: per-quality stacked-thirds pattern (E2)', () => {
-	it('shows the m7 stacked-thirds shape after a correct answer', async () => {
+describe('PracticeChordDrill: counting-chip row (E2, SHAPE-01)', () => {
+	it('shows the m7 counting-chip row (m3/M3/m3 gap-class order) after a correct answer', async () => {
 		render(PracticeChordDrill, { props: { symbol: 'Cm7', onComplete: vi.fn() } });
 
 		await fireEvent.click(choiceButton('Cm7'));
 
-		const shape = screen.getByTestId('chord-drill-shape');
-		expect(shape).toHaveTextContent('m7: m3 · M3 · m3');
+		const row = screen.getByTestId('counting-chip-row');
+		const gapChips = row.querySelectorAll('.gap-chip');
+		expect(gapChips.length).toBe(3);
+		expect(gapChips[0].classList.contains('m3')).toBe(true);
+		expect(gapChips[1].classList.contains('M3')).toBe(true);
+		expect(gapChips[2].classList.contains('m3')).toBe(true);
 	});
 
-	it('shows the m7 stacked-thirds shape after a wrong answer too', async () => {
+	it('shows the m7 counting-chip row after a wrong answer too', async () => {
 		render(PracticeChordDrill, { props: { symbol: 'Cm7', onComplete: vi.fn() } });
 
 		const choiceGrid = screen.getByTestId('choice-grid');
@@ -211,12 +215,36 @@ describe('PracticeChordDrill: per-quality stacked-thirds pattern (E2)', () => {
 
 		await fireEvent.click(wrong!);
 
-		expect(screen.getByTestId('chord-drill-shape')).toHaveTextContent('m7: m3 · M3 · m3');
+		const row = screen.getByTestId('counting-chip-row');
+		const gapChips = row.querySelectorAll('.gap-chip');
+		expect(gapChips.length).toBe(3);
+		expect(gapChips[0].classList.contains('m3')).toBe(true);
+		expect(gapChips[1].classList.contains('M3')).toBe(true);
+		expect(gapChips[2].classList.contains('m3')).toBe(true);
 	});
 
-	it('does not leak the stacked-thirds shape before the user answers', () => {
+	it('does not leak the counting-chip row before the user answers', () => {
 		render(PracticeChordDrill, { props: { symbol: 'Cm7', onComplete: vi.fn() } });
 
-		expect(screen.queryByTestId('chord-drill-shape')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('counting-chip-row')).not.toBeInTheDocument();
+	});
+
+	it('removes the old grey mono shape line, replaced by the counting-chip row (Success Criterion 4, IN-04)', async () => {
+		// The old grey mono line (removed in commit 769afa7) rendered
+		// "{targetQuality}: {stackedThirdsPattern}" where the gap labels were
+		// joined by " · " (U+00B7 middot), e.g. Cm7 -> "m7: m3 · M3 · m3".
+		// Asserting queryByTestId('chord-drill-shape') is absent is vacuous -
+		// that testid never existed on this component. The real fingerprint
+		// of the removed line is the middot-joined run itself; its absence
+		// plus counting-chip-row's presence is genuine regression protection.
+		const { container } = render(PracticeChordDrill, {
+			props: { symbol: 'Cm7', onComplete: vi.fn() }
+		});
+
+		await fireEvent.click(choiceButton('Cm7'));
+
+		expect(container.textContent).not.toContain('m3 · M3 · m3');
+		expect(container.textContent ?? '').not.toMatch(/·/);
+		expect(screen.getByTestId('counting-chip-row')).toBeInTheDocument();
 	});
 });

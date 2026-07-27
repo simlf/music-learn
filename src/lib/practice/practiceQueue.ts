@@ -1,8 +1,9 @@
-import { Rating } from '$lib/srs/scheduler';
+import { Rating, State } from '$lib/srs/scheduler';
 import type { CardRecord, Mode, FactKind } from '$lib/srs/deck';
 import { factById } from '$lib/srs/facts';
 import { seventhChordSymbols, voicingStageForChord, type VoicingStage } from './shellVoicing';
 import { PROGRESSION_TEMPLATES, PROGRESSION_KEYS, buildProgression } from './progressions';
+import { inversionCountFor } from './inversions';
 
 /**
  * The pure, DOM-free HYBRID queue composer (27-CONTEXT "Queue model =
@@ -39,11 +40,55 @@ import { PROGRESSION_TEMPLATES, PROGRESSION_KEYS, buildProgression } from './pro
  * 27-CONTEXT's "read the global pref once via readSongFilter()").
  */
 
-/** The five practice-hub drill families (27-CONTEXT domain boundary). */
-export type PracticeFamily = 'name-it' | 'build-it' | 'interval' | 'voicing' | 'progression';
+/** The six practice-hub drill families (27-CONTEXT domain boundary; 'inversion' added by Phase 35, INV-03 - synthetic, not carded). */
+export type PracticeFamily = 'name-it' | 'build-it' | 'interval' | 'voicing' | 'progression' | 'inversion';
 
 /** The three FSRS-backed families this module maps from a CardRecord. */
 export type CardedFamily = 'name-it' | 'build-it' | 'interval';
+
+/**
+ * The two "scaffold-heavy" families (Phase 36's QUEUE-01 term, 36-CONTEXT):
+ * progression and inversion both lean on a prior family's foundation
+ * (spelling/voicing) rather than being answerable cold - a bad first item
+ * for a low-mastery session. Their complement, the "simpler" families, is
+ * name-it/build-it/interval/voicing. Single source of truth: reused by
+ * composePracticeQueue's first-pick guard below AND by the host/tests -
+ * never re-listed as a duplicated string literal elsewhere.
+ */
+export const SCAFFOLD_HEAVY: ReadonlySet<PracticeFamily> = new Set(['progression', 'inversion']);
+
+/**
+ * The optional signal composePracticeQueue accepts as its 4th argument
+ * (QUEUE-01). `lowMastery: true` tells the composer the host has detected a
+ * cold/low-mastery session (see isLowMasterySession below) and the FIRST
+ * emitted item should avoid a scaffold-heavy family when a simpler one is
+ * available. Absent or `false` is today's warm/default behavior -
+ * byte-identical output (REG-01).
+ */
+export interface ComposeOptions {
+	lowMastery?: boolean;
+}
+
+/**
+ * Pure signal helper (QUEUE-01): given the CardRecord[] a host has already
+ * fetched for the session (Dexie read stays entirely the host's
+ * responsibility - this function never reads Dexie or the FSRS engine
+ * itself), returns whether the session counts as "low-mastery" (cold) for
+ * composePracticeQueue's options.lowMastery.
+ *
+ * "Mature" reuses shellVoicing.ts's voicingStageForChord notion: a card has
+ * reached State.Review. A session is low-mastery when it has at least one
+ * card AND mature cards are a strict minority (`matureCount * 2 <
+ * cards.length` - integer comparison, no float threshold, so the boundary
+ * is exact: 1-of-3 is low-mastery, 2-of-3 is not). An empty array returns
+ * false - no basis to call a session "cold" defaults to warm, the
+ * REG-01-safe choice.
+ */
+export function isLowMasterySession(cards: CardRecord[]): boolean {
+	if (cards.length === 0) return false;
+	const matureCount = cards.filter((card) => card.state === State.Review).length;
+	return matureCount * 2 < cards.length;
+}
 
 /** A queue item backed by a real FSRS CardRecord - the host commits its grade via srs/deck.recordGrade. */
 export interface CardedQueueItem {
@@ -75,8 +120,16 @@ export interface ProgressionQueueItem {
 	key: string;
 }
 
+/** A synthetic (non-persisted) inversion queue item: one symbol+inversionIndex pair (Phase 35, INV-03). */
+export interface InversionQueueItem {
+	id: string;
+	family: 'inversion';
+	symbol: string;
+	inversionIndex: number;
+}
+
 /** The discriminated union every composed queue slot is one of. */
-export type HybridQueueItem = CardedQueueItem | VoicingQueueItem | ProgressionQueueItem;
+export type HybridQueueItem = CardedQueueItem | VoicingQueueItem | ProgressionQueueItem | InversionQueueItem;
 
 /**
  * Maps a CardRecord to its practice family. 'build-it' for chord-formula in
@@ -192,6 +245,42 @@ export function syntheticProgressionItems(
 }
 
 /**
+ * Draws up to `count` distinct {symbol, inversionIndex} pairs from every
+ * candidate symbol's valid inversion range (0 to inversionCountFor(symbol) -
+ * 1, from Plan 35-01's inversions.ts - never re-derived here), via the
+ * injected rng, mirroring syntheticProgressionItems' enumerate-shuffle-take
+ * idiom. A symbol with inversionCountFor === 0 (unrecognized) contributes no
+ * pairs. An empty `candidateSymbols` yields [] (PRAC-05's single-type-due
+ * gate: no inversions drawn when none are due).
+ */
+export function syntheticInversionItems(
+	candidateSymbols: string[],
+	count: number,
+	rng: () => number = Math.random
+): InversionQueueItem[] {
+	const allPairs: { symbol: string; inversionIndex: number }[] = [];
+	for (const symbol of candidateSymbols) {
+		const total = inversionCountFor(symbol);
+		for (let inversionIndex = 0; inversionIndex < total; inversionIndex++) {
+			allPairs.push({ symbol, inversionIndex });
+		}
+	}
+
+	const shuffled = shuffleWithRng(allPairs, rng);
+	const items: InversionQueueItem[] = [];
+	for (const pair of shuffled) {
+		if (items.length >= count) break;
+		items.push({
+			id: `inversion:${pair.symbol}:${pair.inversionIndex}`,
+			family: 'inversion',
+			symbol: pair.symbol,
+			inversionIndex: pair.inversionIndex
+		});
+	}
+	return items;
+}
+
+/**
  * The `symbol` a HybridQueueItem carries, or undefined for a
  * ProgressionQueueItem (which has no symbol field at all). Narrows on the
  * `family` discriminant rather than a structural check, mirroring
@@ -241,7 +330,8 @@ function itemSymbol(item: HybridQueueItem): string | undefined {
 export function composePracticeQueue(
 	cardedItems: HybridQueueItem[],
 	syntheticItems: HybridQueueItem[],
-	rng: () => number = Math.random
+	rng: () => number = Math.random,
+	options: ComposeOptions = {}
 ): HybridQueueItem[] {
 	const all = [...cardedItems, ...syntheticItems];
 
@@ -285,9 +375,26 @@ export function composePracticeQueue(
 		});
 		const candidateFamilies = nonRepeating.length > 0 ? nonRepeating : eligible;
 
+		// QUEUE-01 first-pick guard: scoped to output.length === 0 (the very
+		// first emitted item only) because the cold-session guarantee only
+		// constrains the session's opening item - every later pick, and the
+		// entire warm/default path, must stay byte-identical (REG-01). When a
+		// simpler (non-scaffold-heavy) family is among candidateFamilies,
+		// restrict the pick to that subset; when every candidate is
+		// scaffold-heavy (no simpler family due yet), fall through to the full
+		// candidateFamilies unchanged - a cold session with only
+		// progression/inversion due leads with one of them, same as today.
+		let pickFrom = candidateFamilies;
+		if (options.lowMastery === true && output.length === 0) {
+			const simpler = candidateFamilies.filter((family) => !SCAFFOLD_HEAVY.has(family));
+			if (simpler.length > 0) {
+				pickFrom = simpler;
+			}
+		}
+
 		let bestFamily: PracticeFamily | undefined;
 		let bestScore = -1;
-		for (const family of candidateFamilies) {
+		for (const family of pickFrom) {
 			const items = byFamily.get(family);
 			if (items === undefined) continue;
 			const score = items.length;
@@ -365,6 +472,14 @@ export function filterVoicingsBySong(
 	items: VoicingQueueItem[],
 	predicate: (symbol: string) => boolean
 ): VoicingQueueItem[] {
+	return items.filter((item) => predicate(item.symbol));
+}
+
+/** Keeps only inversion items whose symbol satisfies `predicate` (PRAC-04's synthetic-half restriction, mirrors filterVoicingsBySong). */
+export function filterInversionsBySong(
+	items: InversionQueueItem[],
+	predicate: (symbol: string) => boolean
+): InversionQueueItem[] {
 	return items.filter((item) => predicate(item.symbol));
 }
 

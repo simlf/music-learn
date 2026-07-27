@@ -257,3 +257,40 @@ describe('stackedThirdsFor', () => {
 		}
 	});
 });
+
+describe('stackedThirdsFor: startRole rotation (Phase 35, INV-02)', () => {
+	it('is byte-identical to the unrotated call when startRole is omitted', () => {
+		const chord = spellChord('Cm7');
+		expect(stackedThirdsFor(chord, undefined)).toEqual(stackedThirdsFor(chord));
+	});
+
+	it('rotates Cm7 to lead with the fifth (G), preserving role/letter per tone, only order changes', () => {
+		const chord = spellChord('Cm7');
+		const result = stackedThirdsFor(chord, 'fifth');
+		expect(result.tones.map((t) => t.role)).toEqual(['fifth', 'seventh', 'root', 'third']);
+		expect(result.tones.map((t) => t.letter)).toEqual(['G', 'B♭', 'C', 'E♭']);
+		// Unrotated tone entries are preserved verbatim per-note, just reordered.
+		const unrotated = formulaFor(chord);
+		expect(result.tones[0]).toEqual(unrotated.find((t) => t.role === 'fifth'));
+		expect(result.tones[2]).toEqual(unrotated.find((t) => t.role === 'root'));
+	});
+
+	it('recomputes gaps between the rotated consecutive pairs via intervalBetween, surfacing a genuine non-third gap mid-row', () => {
+		const chord = spellChord('Cm7');
+		const result = stackedThirdsFor(chord, 'fifth');
+		// Rotated order: G -> Bb -> C -> Eb: m3, M2, m3 (a genuine non-third gap
+		// (M2) appears in the middle, not just at the wrap edge).
+		expect(result.gaps.map((g) => g.label)).toEqual(['+m3', '+M2', '+m3']);
+	});
+
+	it('falls back to the unrotated notes when no tone carries the requested role (e.g. seventh on a triad)', () => {
+		const chord = spellChord('Cm');
+		const result = stackedThirdsFor(chord, 'seventh');
+		expect(result).toEqual(stackedThirdsFor(chord));
+	});
+
+	it('rotating by the current leading role (root) is a no-op', () => {
+		const chord = spellChord('Cm7');
+		expect(stackedThirdsFor(chord, 'root')).toEqual(stackedThirdsFor(chord));
+	});
+});

@@ -11,13 +11,17 @@
 	} from '$lib/practice/progressions';
 	import { matchChord } from '$lib/drills/matchChord';
 	import { spellChord } from '$lib/theory/chord';
+	import type { SpelledNote } from '$lib/theory/types';
 	import { toAsciiAccidentals } from '$lib/theory/interval';
 	import { buildProvenanceIndex, songsForSymbol } from '$lib/practice/songProvenance';
+	import { getAllCards, type CardRecord } from '$lib/srs/deck';
+	import { voicingStageForChord, type VoicingStage } from '$lib/practice/shellVoicing';
 	import PianoKeyboard from './PianoKeyboard.svelte';
 	import ChordGlyph from './ChordGlyph.svelte';
 	import Button from './Button.svelte';
 	import SongMark from './SongMark.svelte';
-	import { t } from '$lib/i18n/locale.svelte';
+	import CountingChipRow from './CountingChipRow.svelte';
+	import { t, currentLocale } from '$lib/i18n/locale.svelte';
 
 	/**
 	 * Sketch-017 synthesis (LOCKED, SK-017): "earn-the-symbol" lead-sheet
@@ -93,6 +97,51 @@
 
 	const currentBar = $derived(progression.bars[cursor] as ProgressionBar | undefined);
 	const complete = $derived(progression.bars.length > 0 && earned.every((bar) => bar));
+
+	/**
+	 * Self-contained FSRS maturity read (SCAF-02), mirroring
+	 * ShellVoicingDrill's proven pattern: read-only (getAllCards is the only
+	 * new deck call - no write/recordGrade/advanceQueue), staleness-guarded,
+	 * and keyed off the CURRENT BAR's own symbol (not a single top-level
+	 * symbol) so a cursor advance re-reads maturity for the new bar.
+	 */
+	let cards = $state<CardRecord[]>([]);
+	/** False while the current bar's deck read is in flight; gates only the beginner caption's visibility (the octave count reads `stage` directly, an unloaded deck resolving to "meet" -> one octave, the correct cold-beginner default). */
+	let cardsLoaded = $state(false);
+
+	/**
+	 * Loads the deck records for `forSymbol` (the bar that was current when
+	 * this call started), guarded against staleness: by the time getAllCards
+	 * resolves, the cursor may have advanced to a different bar, so a
+	 * response for a symbol that no longer matches the current bar's symbol
+	 * is dropped.
+	 */
+	async function loadCards(forSymbol: string) {
+		cardsLoaded = false;
+		try {
+			const all = await getAllCards();
+			if (forSymbol !== currentBar?.symbol) return; // stale response: the cursor moved on
+			cards = all.filter((card) => card.factId === `chord-formula:${forSymbol}`);
+		} catch {
+			// A rejected Dexie/IndexedDB read (quota, blocked upgrade, private-mode
+			// restrictions) fails closed to the cold-beginner default: one octave,
+			// all rungs. Never an unhandled rejection.
+			if (forSymbol === currentBar?.symbol) cards = [];
+		} finally {
+			// A stale response must NOT flip cardsLoaded (the current bar's own read
+			// is still in flight); only the read for the current bar marks it loaded.
+			if (forSymbol === currentBar?.symbol) cardsLoaded = true;
+		}
+	}
+
+	$effect(() => {
+		const symbol = currentBar?.symbol;
+		if (symbol === undefined) return;
+		void loadCards(symbol);
+	});
+
+	/** The current bar's pedagogy/span stage (voicingStageForChord reused verbatim, no parallel maturity function). */
+	const stage = $derived.by((): VoicingStage => voicingStageForChord(cards));
 	const currentTemplate = $derived(
 		PROGRESSION_TEMPLATES.find((template) => template.id === progression.templateId)
 	);
@@ -103,6 +152,124 @@
 	const keyModeWord = $derived(
 		currentTemplate?.mode === 'minor' ? t('progressions.key.minor') : t('progressions.key.major')
 	);
+	/** Lowercase in-sentence mode word for the hint ladder's degree rung (distinct from the uppercase banner word above). */
+	const hintModeWord = $derived(
+		currentTemplate?.mode === 'minor' ? t('progressions.hint.mode.minor') : t('progressions.hint.mode.major')
+	);
+
+	/**
+	 * Escalating optional hint ladder (SCAF-01, Phase 34 Plan 02): inline in
+	 * this component (not an extension of the shared HintLadder.svelte, per
+	 * 34-UI-SPEC §1 - that component's fixed family/formula/keyboard/spelling
+	 * layer kinds don't fit this drill's degree->count->ghost rungs). Reuses
+	 * HintLadder's proven escalating-cumulative interaction grammar and CSS
+	 * verbatim, and CountingChipRow (Phase 32) as the single count-rung
+	 * source. Never touches checkPlay grading, the roman display, the
+	 * function reveal, or the completion/embed seam (REG-01).
+	 */
+	type HintLayer = 'degree' | 'count' | 'ghost';
+
+	const ORDINALS_EN = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th'];
+	const ORDINALS_FR = ['1ʳᵉ', '2ᵉ', '3ᵉ', '4ᵉ', '5ᵉ', '6ᵉ', '7ᵉ'];
+
+	/** Locale-aware ordinal word for a 1-7 scale degree; empty string for an out-of-range/unmapped roman. */
+	function ordinalWord(degree: number): string {
+		const table = currentLocale() === 'fr' ? ORDINALS_FR : ORDINALS_EN;
+		return table[degree - 1] ?? '';
+	}
+
+	/**
+	 * Keyed quality word for the current bar's quality suffix, superseding
+	 * 34-UI-SPEC's mnemonicFor suggestion for sentence fit and en/fr parity
+	 * (per the plan's explicit discretion grant). Reads the ENGINE's own fixed
+	 * suffix vocabulary (maj7 / m7 / 7 / m7b5 on ProgressionBar.quality), never
+	 * a suffix sliced off tonal's canonical re-spelling. An unmapped suffix is
+	 * a programming error (a new engine quality without matching copy), not a
+	 * runtime input, so it is surfaced loudly in dev rather than silently
+	 * collapsed to the dominant wording.
+	 */
+	function qualityWord(qualitySuffix: string): string {
+		switch (qualitySuffix) {
+			case 'maj7':
+				return t('progressions.hint.quality.maj7');
+			case 'm7':
+				return t('progressions.hint.quality.m7');
+			case 'm7b5':
+				return t('progressions.hint.quality.m7b5');
+			case '7':
+				return t('progressions.hint.quality.dom7');
+			default:
+				if (import.meta.env.DEV) {
+					console.warn(`qualityWord: unmapped engine quality suffix "${qualitySuffix}"`);
+				}
+				return t('progressions.hint.quality.dom7');
+		}
+	}
+
+	/** The current bar's spelled chord, or undefined before a bar exists. */
+	const currentChord = $derived(currentBar ? spellChord(currentBar.symbol) : undefined);
+
+	const KEYBOARD_BASE_OCTAVE = 4;
+	const GHOST_MARKER_BY_ROLE: Partial<Record<SpelledNote['role'], string>> = {
+		root: 'R',
+		third: '3',
+		fifth: '5',
+		seventh: '7'
+	};
+
+	/** R/3/5/7 ghost markers for the current bar's chord tones, pinned to the keyboard's fixed base octave (extends shellVoicing.ts's R/5-only vocabulary to all four roles). */
+	const ghostKeysForCurrentBar = $derived.by(() => {
+		if (!currentChord?.recognized) return [];
+		return currentChord.notes.flatMap((note) => {
+			const marker = GHOST_MARKER_BY_ROLE[note.role];
+			return marker ? [{ letter: note.letter, octave: KEYBOARD_BASE_OCTAVE, marker }] : [];
+		});
+	});
+
+	/** The rungs offered at the current bar's maturity stage (34-UI-SPEC §4): meet offers all 3, subtract drops the degree rung, drill offers none. */
+	const offeredRungs = $derived.by((): HintLayer[] => {
+		if (stage === 'meet') return ['degree', 'count', 'ghost'];
+		if (stage === 'subtract') return ['count', 'ghost'];
+		return [];
+	});
+
+	/** How many of `offeredRungs` are currently revealed; reset to 0 whenever the cursor (current bar) changes, but NOT on a wrong Check within the same bar. */
+	let hintDepth = $state(0);
+
+	$effect(() => {
+		void cursor;
+		hintDepth = 0;
+	});
+
+	/** Reveals the next offered rung, capped at the number actually offered at this stage. */
+	function revealHint(): void {
+		hintDepth = Math.min(hintDepth + 1, offeredRungs.length);
+	}
+
+	const HINT_TIER_TITLE: Record<HintLayer, string> = $derived({
+		degree: t('progressions.hint.tier.degree'),
+		count: t('progressions.hint.tier.count'),
+		ghost: t('progressions.hint.tier.ghost')
+	});
+
+	/** Tier tags renumber sequentially from whichever rungs are actually offered (mirrors HintLadder's tierLabel/renumbering precedent). */
+	function hintTierLabel(index: number): string {
+		return `${t('progressions.hint.tier.prefix')} ${index + 1} · ${HINT_TIER_TITLE[offeredRungs[index]]}`;
+	}
+
+	const HINT_REVEAL_LABEL: Record<HintLayer, string> = $derived({
+		degree: t('progressions.hint.reveal.start'),
+		count: t('progressions.hint.reveal.count'),
+		ghost: t('progressions.hint.reveal.ghost')
+	});
+
+	/** Depth-0 is always the "show a hint" control; after that, the label names the next rung to reveal. */
+	const hintControlLabel = $derived(
+		hintDepth === 0 ? t('progressions.hint.reveal.start') : HINT_REVEAL_LABEL[offeredRungs[hintDepth] ?? 'degree']
+	);
+
+	/** True once the ghost rung (always last in offeredRungs) has actually been revealed - gates ghostKeys so no ghost hint ever shows before that tap. */
+	const ghostHintRevealed = $derived(offeredRungs.includes('ghost') && hintDepth >= offeredRungs.length);
 
 	/** Maps a bar's RomanFunction enum value to its keyed display word. */
 	function functionWord(functionLabel: RomanFunction): string {
@@ -229,6 +396,12 @@
 		{/if}
 	</div>
 
+	{#if !complete && currentBar && step === 'play' && cardsLoaded && stage !== 'drill'}
+		<p class="beginner-caption" data-testid="beginner-caption">
+			{t('progressions.keyboard.beginnerCaption')}
+		</p>
+	{/if}
+
 	{#if functionReveal}
 		<div class="function-reveal" data-testid="function-reveal">
 			{t('progressions.function.kicker')} {functionWord(functionReveal)}
@@ -255,13 +428,61 @@
 			{/if}
 		{:else}
 			<div class="play-step">
-				<PianoKeyboard notes={[]} interactive {selected} onToggle={toggleKey} />
+				<PianoKeyboard
+					notes={[]}
+					interactive
+					{selected}
+					onToggle={toggleKey}
+					octaves={stage === 'drill' ? 2 : 1}
+					ghostKeys={ghostHintRevealed ? ghostKeysForCurrentBar : []}
+				/>
 				<Button type="button" variant="primary" onclick={checkPlay}>
 					{t('progressions.button.check')}
 				</Button>
 			</div>
 			{#if playRetry}
 				<p class="retry" data-testid="play-retry">{t('progressions.retry.wrongPlay')}</p>
+			{/if}
+
+			{#if cardsLoaded && offeredRungs.length > 0 && currentBar && currentChord}
+				<div class="hint-ladder" data-testid="progression-hint-ladder">
+					<div class="hints">
+						{#each offeredRungs.slice(0, hintDepth) as layer, index (layer)}
+							<div class="hint stamp" data-testid="progression-hint-layer" data-layer={layer}>
+								<p class="text-label text-muted font-mono uppercase">{hintTierLabel(index)}</p>
+								{#if layer === 'degree'}
+									<p class="text-body mt-2">
+										{t('progressions.hint.degree.lead')} {currentBar.roman}
+										{t('progressions.hint.degree.builtOn')} {ordinalWord(currentBar.degree)}
+										{t('progressions.hint.degree.noteOf')} {progression.key} {hintModeWord}.
+										{t('progressions.hint.degree.rootLabel')} {currentChord.root}.
+									</p>
+								{:else if layer === 'count'}
+									<p class="text-body mt-2">
+										{t('progressions.hint.count.lead')} {currentBar.roman}, {t(
+											'progressions.hint.count.mid'
+										)} {qualityWord(currentBar.quality)}. {t('progressions.hint.count.closing')}
+									</p>
+									<div class="mt-2">
+										<CountingChipRow chord={currentChord} />
+									</div>
+								{:else if layer === 'ghost'}
+									<p class="text-body mt-2">{t('progressions.hint.ghost.body')}</p>
+								{/if}
+							</div>
+						{/each}
+					</div>
+
+					{#if hintDepth < offeredRungs.length}
+						<div class="hint-cta mt-6" data-testid="progression-hint-cta">
+							<Button type="button" variant="ghost" onclick={revealHint}>{hintControlLabel}</Button>
+						</div>
+					{:else}
+						<p class="hint-closing-line text-label mt-6" data-testid="progression-hint-closing-line">
+							{t('progressions.hint.closing')}
+						</p>
+					{/if}
+				</div>
 			{/if}
 		{/if}
 	{/if}
@@ -357,6 +578,12 @@
 		min-height: 1em;
 	}
 
+	.beginner-caption {
+		font-family: var(--font-mono);
+		font-size: var(--text-label);
+		color: var(--color-muted);
+	}
+
 	.function-reveal {
 		border: 2px solid var(--color-ink);
 		background: var(--color-paper-bright);
@@ -404,5 +631,46 @@
 		font-family: var(--font-mono);
 		font-weight: 700;
 		letter-spacing: 0.08em;
+	}
+
+	/* Escalating hint ladder (SCAF-01): interaction/CSS mirrored verbatim from
+	   HintLadder.svelte's proven shape (34-UI-SPEC §1), not imported - this
+	   drill's rungs (degree/count/ghost) don't fit that shared component's
+	   fixed layer-kind API. */
+	.hint-ladder {
+		margin-top: var(--spacing-lg);
+	}
+
+	.stamp {
+		animation: stamp-in 240ms ease-out;
+	}
+
+	.hints {
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+	}
+
+	.hint {
+		background: var(--color-paper-bright);
+		padding: var(--spacing-md);
+	}
+
+	.hint-closing-line {
+		color: var(--color-muted);
+		font-style: italic;
+	}
+
+	.hint-cta :global(.ps-button--ghost) {
+		border-style: dashed;
+		border-color: var(--color-faint);
+		color: var(--color-muted);
+		width: 100%;
+	}
+	.hint-cta:hover :global(.ps-button--ghost),
+	.hint-cta:focus-within :global(.ps-button--ghost) {
+		border-style: solid;
+		border-color: var(--color-ink);
+		color: var(--color-ink);
 	}
 </style>

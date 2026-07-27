@@ -131,7 +131,19 @@ export const drills = {
 		// Phone compact strip (Phase 23 1B): open/close the sheet holding the
 		// full LevelPicker + mode tabs + SongFilterToggle + rotate hint.
 		'drills.strip.ariaOpen': 'Open level and mode settings',
-		'drills.strip.ariaClose': 'Close level and mode settings'
+		'drills.strip.ariaClose': 'Close level and mode settings',
+
+		// CountingChipRow legend (SHAPE-01, Phase 32): the +m3/+M3/3/4 shorthand
+		// stays immune (never routed through t()); only the "semitones" word
+		// itself is translated.
+		'drills.chip.semitones': 'semitones',
+		'drills.chip.legendAria': 'Gap legend',
+
+		// CountingChipRow neutral non-third gap legend row (WR-02, Phase 32
+		// Plan 02 gap closure): explains the neutral gap-chip state that
+		// renders for non-tertian drill-pool qualities (sus/6/9/13), whose
+		// gaps are not m3/M3. The +P4/+M2-style shorthand stays immune.
+		'drills.chip.otherGap': 'other gaps show their own interval'
 	},
 	fr: {
 		'drills.page.title': 'Exercices',
@@ -220,6 +232,11 @@ export const drills = {
 		'drills.scaffold.caption': 'Cet accord est',
 
 		'drills.strip.ariaOpen': 'Ouvrir les réglages de niveau et de mode',
-		'drills.strip.ariaClose': 'Fermer les réglages de niveau et de mode'
+		'drills.strip.ariaClose': 'Fermer les réglages de niveau et de mode',
+
+		'drills.chip.semitones': 'demi-tons',
+		'drills.chip.legendAria': 'Légende des écarts',
+
+		'drills.chip.otherGap': 'les autres écarts affichent leur propre intervalle'
 	}
 } satisfies LocaleDict;
