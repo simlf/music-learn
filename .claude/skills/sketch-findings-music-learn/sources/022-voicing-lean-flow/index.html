@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sketch 022 — Voicing Lean Flow</title>
+<link rel="stylesheet" href="../themes/default.css" />
+<style>
+  body { margin:0; background:var(--color-paper); color:var(--color-ink); font-family:var(--font-sans); padding-top:52px; }
+  #variant-nav { position:fixed; top:0; left:0; right:0; z-index:99; background:var(--color-paper-bright);
+    border-bottom:1px solid var(--color-ink); padding:8px 12px; display:flex; gap:8px; flex-wrap:wrap; }
+  .variant-tab { font-family:var(--font-mono); font-size:12px; font-weight:700; text-transform:uppercase;
+    letter-spacing:.04em; padding:6px 10px; border:1px solid var(--color-ink); background:var(--color-paper-bright);
+    color:var(--color-ink); cursor:pointer; }
+  .variant-tab.active { background:var(--color-ink); color:var(--color-paper-bright); }
+  .stage { max-width:560px; margin:0 auto; padding:24px 16px 64px; }
+  .caption { font-family:var(--font-mono); font-size:12px; color:var(--color-muted); text-transform:uppercase; letter-spacing:.08em; margin:0 0 12px; }
+  .glyph { font-family:var(--font-serif); font-size:44px; line-height:1; }
+  .glyph sub { font-size:.42em; }
+  h3 { font-family:var(--font-mono); font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--color-faint); margin:24px 0 8px; }
+  .prompt { font-size:16px; margin:14px 0; }
+  .note-sm { font-size:13px; color:var(--color-muted); }
+  .before-box { border:1px dashed var(--color-faint); padding:10px 12px; margin:6px 0 20px; background:var(--color-paper-bright); }
+  .before-box .lbl { font-family:var(--font-mono); font-size:10px; color:var(--color-faint); text-transform:uppercase; letter-spacing:.1em; display:block; margin-bottom:6px; }
+  .old-toggle { display:flex; border:1px solid var(--color-ink); max-width:320px; }
+  .old-toggle span { flex:1; text-align:center; padding:8px 4px; font-family:var(--font-mono); font-size:11px; font-weight:700;
+    text-transform:uppercase; border-right:1px solid var(--color-ink); }
+  .old-toggle span:last-child { border-right:none; }
+  .old-toggle .on { background:var(--color-ink); color:#fff; }
+
+  /* piano */
+  .kb { position:relative; height:150px; max-width:100%; display:flex; border:1px solid var(--color-ink); background:#fff; user-select:none; }
+  .wk { flex:1; border-right:1px solid var(--color-ink); position:relative; }
+  .wk:last-child { border-right:none; }
+  .bk { position:absolute; top:0; width:9%; height:60%; background:var(--color-ink); z-index:2; transform:translateX(-50%); }
+  .lbl-k { position:absolute; bottom:6px; left:0; right:0; text-align:center; font-family:var(--font-serif); font-size:13px; pointer-events:none; }
+  .key-fill { position:absolute; inset:0; z-index:3; display:flex; align-items:flex-end; justify-content:center; padding-bottom:6px;
+    font-family:var(--font-mono); font-size:10px; font-weight:700; }
+  .fill-root { background:var(--color-root); color:#fff; }
+  .fill-third { background:var(--color-third); color:#fff; }
+  .fill-fifth { background:var(--color-fifth); color:var(--color-ink); }
+  .fill-seventh { background:var(--color-seventh); color:var(--color-ink); }
+  .ghost { background:repeating-linear-gradient(45deg,transparent,transparent 4px,var(--color-faint) 4px,var(--color-faint) 5px);
+    outline:2px dashed var(--color-faint); outline-offset:-3px; }
+  .ghost.on-black { opacity:.85; }
+
+  .btn { font-family:var(--font-sans); font-weight:700; font-size:14px; padding:10px 16px; border:2px solid var(--color-ink);
+    background:var(--color-paper-bright); color:var(--color-ink); cursor:pointer; }
+  .btn.primary { background:var(--color-vermilion); color:#fff; border-color:var(--color-vermilion); }
+  .btn.ghostbtn { background:transparent; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; align-items:center; }
+
+  /* A: add/drop nudges */
+  .nudge { font-family:var(--font-mono); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.03em;
+    padding:8px 12px; border:1px solid var(--color-ink); background:var(--color-paper-bright); cursor:pointer; display:inline-flex; gap:6px; align-items:center; }
+  .nudge .op { font-size:15px; }
+  .layers { font-family:var(--font-mono); font-size:11px; color:var(--color-muted); margin-top:10px; }
+  .layers b { color:var(--color-ink); }
+
+  /* B: cycle chip */
+  .cycle { display:inline-flex; flex-direction:column; align-items:flex-start; gap:2px; padding:10px 16px;
+    border:2px solid var(--color-ink); background:var(--color-paper-bright); cursor:pointer; min-width:200px; }
+  .cycle .now { font-family:var(--font-serif); font-size:20px; font-weight:700; }
+  .cycle .next { font-family:var(--font-mono); font-size:10px; color:var(--color-muted); text-transform:uppercase; letter-spacing:.06em; }
+  .dots { display:flex; gap:6px; margin-top:12px; }
+  .dot { width:8px; height:8px; border:1px solid var(--color-ink); }
+  .dot.on { background:var(--color-ink); }
+</style>
+</head>
+<body>
+<div id="variant-nav">
+  <button class="variant-tab active" onclick="show('a',event)">A: Add / drop nudges ★</button>
+  <button class="variant-tab" onclick="show('b',event)">B: Single cycle chip</button>
+  <button class="variant-tab" onclick="show('c',event)">C: Ghost-layer, no toggle</button>
+</div>
+
+<!-- The problem being replaced -->
+<template id="problem"></template>
+
+<!-- VARIANT A -->
+<section id="v-a" class="stage">
+  <p class="caption">Voicing · Sol m7</p>
+  <div class="before-box">
+    <span class="lbl">Ce qu'on remplace — toggle 3-voies toujours affiché</span>
+    <div class="old-toggle"><span class="on">Fond.</span><span>Shell</span><span>Sans fond.</span></div>
+  </div>
+
+  <div class="glyph">G<sub>m7</sub></div>
+  <p class="prompt">Joue la <b>shell</b> (3ᵉ + 7ᵉ) : le cœur de l'accord.</p>
+  <div class="kb" id="kbA">
+    <div class="wk"><span class="lbl-k">Sol</span></div>
+    <div class="wk"><div class="key-fill fill-third">3</div><span class="lbl-k">Si♭</span></div>
+    <div class="wk"><span class="lbl-k">Do</span></div>
+    <div class="wk"><span class="lbl-k">Ré</span></div>
+    <div class="wk"><div class="key-fill fill-seventh">7</div><span class="lbl-k">Fa</span></div>
+    <div class="wk"><span class="lbl-k">Sol</span></div>
+    <div class="wk"><span class="lbl-k">La</span></div>
+    <div class="bk" style="left:14.3%"></div>
+    <div class="bk" style="left:71.5%"></div>
+    <div class="bk" style="left:85.8%"></div>
+  </div>
+
+  <p class="note-sm" style="margin-top:14px">Pas de menu. Tu ajoutes ou retires une couche quand tu veux — c'est ça, varier.</p>
+  <div class="row">
+    <button class="nudge"><span class="op">＋</span> Poser la fondamentale</button>
+    <button class="nudge"><span class="op">－</span> Retirer la basse</button>
+  </div>
+  <p class="layers">Voicing actuel : <b>Shell</b> (Si♭ · Fa) — +fond. → <b>Complet</b> · −basse → <b>Sans fondamentale</b></p>
+
+  <div class="row"><button class="btn primary">Vérifier</button></div>
+</section>
+
+<!-- VARIANT B -->
+<section id="v-b" class="stage" style="display:none">
+  <p class="caption">Voicing · Sol m7</p>
+  <div class="before-box"><span class="lbl">Ce qu'on remplace</span>
+    <div class="old-toggle"><span class="on">Fond.</span><span>Shell</span><span>Sans fond.</span></div></div>
+
+  <div class="glyph">G<sub>m7</sub></div>
+  <p class="prompt">Un seul bouton fait défiler les variations. Tape pour passer à la suivante.</p>
+  <div class="kb">
+    <div class="wk"><div class="key-fill fill-root">R</div><span class="lbl-k">Sol</span></div>
+    <div class="wk"><div class="key-fill fill-third">3</div><span class="lbl-k">Si♭</span></div>
+    <div class="wk"><span class="lbl-k">Do</span></div>
+    <div class="wk"><span class="lbl-k">Ré</span></div>
+    <div class="wk"><div class="key-fill fill-seventh">7</div><span class="lbl-k">Fa</span></div>
+    <div class="wk"><span class="lbl-k">Sol</span></div>
+    <div class="wk"><span class="lbl-k">La</span></div>
+    <div class="bk" style="left:14.3%"></div>
+    <div class="bk" style="left:71.5%"></div>
+    <div class="bk" style="left:85.8%"></div>
+  </div>
+  <div class="row">
+    <button class="cycle">
+      <span class="now">Complet</span>
+      <span class="next">tape → Shell</span>
+    </button>
+  </div>
+  <div class="dots"><span class="dot on"></span><span class="dot"></span><span class="dot"></span></div>
+  <p class="note-sm" style="margin-top:8px">Complet · Shell · Sans fondamentale — une seule commande, pas trois.</p>
+  <div class="row"><button class="btn primary">Vérifier</button></div>
+</section>
+
+<!-- VARIANT C -->
+<section id="v-c" class="stage" style="display:none">
+  <p class="caption">Voicing · Sol m7</p>
+  <div class="before-box"><span class="lbl">Ce qu'on remplace</span>
+    <div class="old-toggle"><span class="on">Fond.</span><span>Shell</span><span>Sans fond.</span></div></div>
+
+  <div class="glyph">G<sub>m7</sub></div>
+  <p class="prompt">Aucun toggle. La shell est solide ; fondamentale + quinte sont fantômes. Tape un fantôme pour l'intégrer.</p>
+  <div class="kb">
+    <div class="wk"><div class="key-fill ghost">R</div><span class="lbl-k">Sol</span></div>
+    <div class="wk"><div class="key-fill fill-third">3</div><span class="lbl-k">Si♭</span></div>
+    <div class="wk"><div class="key-fill ghost">5</div><span class="lbl-k">Ré</span></div>
+    <div class="wk"><div class="key-fill fill-seventh">7</div><span class="lbl-k">Fa</span></div>
+    <div class="wk"><span class="lbl-k">Sol</span></div>
+    <div class="wk"><span class="lbl-k">La</span></div>
+    <div class="wk"><span class="lbl-k">Si</span></div>
+    <div class="bk" style="left:14.3%"></div>
+    <div class="bk" style="left:42.9%"></div>
+    <div class="bk" style="left:57.2%"></div>
+  </div>
+  <p class="note-sm" style="margin-top:14px">Solide = obligatoire (la shell). Hachuré = optionnel. Ce que tu intègres <b>est</b> ta variation — la « racing » se fait à même le clavier.</p>
+  <div class="row"><button class="btn primary">Vérifier</button></div>
+</section>
+
+<script>
+function show(id, e){
+  ['a','b','c'].forEach(k => document.getElementById('v-'+k).style.display = (k===id?'block':'none'));
+  document.querySelectorAll('.variant-tab').forEach(t=>t.classList.remove('active'));
+  e.target.classList.add('active');
+}
+</script>
+</body>
+</html>

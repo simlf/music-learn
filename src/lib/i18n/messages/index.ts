@@ -9,6 +9,7 @@ import { progress } from './progress';
 import { progressHub } from './progress-hub';
 import { home } from './home';
 import { progressions } from './progressions';
+import { inversions } from './inversions';
 import { voicings } from './voicings';
 import { intervalView } from './interval-view';
 import { practice } from './practice';
@@ -44,6 +45,7 @@ export const messages = {
 		...progressHub.en,
 		...home.en,
 		...progressions.en,
+		...inversions.en,
 		...voicings.en,
 		...intervalView.en,
 		...practice.en,
@@ -61,6 +63,7 @@ export const messages = {
 		...progressHub.fr,
 		...home.fr,
 		...progressions.fr,
+		...inversions.fr,
 		...voicings.fr,
 		...intervalView.fr,
 		...practice.fr,

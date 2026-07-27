@@ -128,18 +128,21 @@ vi.mock('$lib/practice/levelState', () => ({
 
 // The Practice flow drives exactly one due card (a build-it item) so the
 // round completes after one question. The synthetic builders (voicing/
-// progression) are stubbed to `[]` here, isolating this test to the one
-// carded family under test - the REAL five-family weave, the single-
-// type-due gate, and the synthetic grade-commit split are already proven
-// end-to-end in tests/practice-hub-mix.e2e.test.ts.
+// progression/inversion) are stubbed to `[]` here, isolating this test to
+// the one carded family under test - the REAL five-family weave, the
+// single-type-due gate, and the synthetic grade-commit split are already
+// proven end-to-end in tests/practice-hub-mix.e2e.test.ts (and the sixth,
+// inversion, family in src/routes/practiceInversionsReg.test.ts, 35-06).
 const syntheticVoicingItemsMock = vi.fn((..._args: unknown[]) => [] as unknown[]);
 const syntheticProgressionItemsMock = vi.fn((..._args: unknown[]) => [] as unknown[]);
+const syntheticInversionItemsMock = vi.fn((..._args: unknown[]) => [] as unknown[]);
 vi.mock('$lib/practice/practiceQueue', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('$lib/practice/practiceQueue')>();
 	return {
 		...actual,
 		syntheticVoicingItems: (...args: unknown[]) => syntheticVoicingItemsMock(...args),
-		syntheticProgressionItems: (...args: unknown[]) => syntheticProgressionItemsMock(...args)
+		syntheticProgressionItems: (...args: unknown[]) => syntheticProgressionItemsMock(...args),
+		syntheticInversionItems: (...args: unknown[]) => syntheticInversionItemsMock(...args)
 	};
 });
 
@@ -196,6 +199,7 @@ beforeEach(() => {
 	setStudyModeEnabledMock.mockReset();
 	syntheticVoicingItemsMock.mockReset().mockReturnValue([]);
 	syntheticProgressionItemsMock.mockReset().mockReturnValue([]);
+	syntheticInversionItemsMock.mockReset().mockReturnValue([]);
 	fetchStatsMock.mockReset().mockResolvedValue({ items: [], weakest: [] });
 	fetchStreakMock.mockReset().mockResolvedValue({ streak: 0, practicedToday: false });
 });

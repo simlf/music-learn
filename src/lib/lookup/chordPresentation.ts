@@ -57,6 +57,18 @@ export interface StackedThirds {
 }
 
 /**
+ * Rotates a chord's spelled notes so the note whose role === startRole leads
+ * (wraps the tail around to the front). Falls back to the original,
+ * unrotated array when no note carries that role (e.g. a triad has no
+ * 'seventh'). Pure array rotation - no semitone math, no mutation.
+ */
+function rotateNotesToRole(notes: ChordResult['notes'], startRole: IntervalRole) {
+	const startIndex = notes.findIndex((note) => note.role === startRole);
+	if (startIndex <= 0) return notes;
+	return [...notes.slice(startIndex), ...notes.slice(0, startIndex)];
+}
+
+/**
  * Stacked-thirds sibling of formulaFor: `tones` is formulaFor's output
  * verbatim (root-relative role/label/letter/solfege, no recompute), while
  * `gaps` name the interval between each adjacent pair of chord tones
@@ -64,11 +76,24 @@ export interface StackedThirds {
  * WhyTheseNotes already uses - one naming path, no second interval engine.
  * Total: an unrecognized chord (empty notes) yields empty tones and gaps,
  * never throws.
+ *
+ * Optional `startRole` (Phase 35, INV-02) rotates the tone/gap row to start
+ * at the note carrying that role instead of the canonical root-first order -
+ * used by the inversion drill's "stack from the bass" hint rung. Tone
+ * role/letter/solfege are preserved per note (only order changes): the
+ * rotated notes are run back through formulaFor (root-relative labels stay
+ * correct since chord.root is untouched) and gaps are recomputed via the
+ * SAME intervalBetween loop over the rotated notes' consecutive pairs, so a
+ * genuine non-third gap can appear mid-row and falls into the existing
+ * 'other' neutral gap state - no hand-rolled semitone math. Omitting
+ * startRole (or passing a role no note carries, e.g. 'seventh' on a triad)
+ * executes the exact unrotated code path - byte-identical to before.
  */
-export function stackedThirdsFor(chord: ChordResult): StackedThirds {
-	const tones = formulaFor(chord);
-	const gaps: StackedGap[] = chord.notes.slice(0, -1).map((note, i) => {
-		const info = intervalBetween(note.letter, chord.notes[i + 1].letter);
+export function stackedThirdsFor(chord: ChordResult, startRole?: IntervalRole): StackedThirds {
+	const notes = startRole ? rotateNotesToRole(chord.notes, startRole) : chord.notes;
+	const tones = formulaFor({ ...chord, notes });
+	const gaps: StackedGap[] = notes.slice(0, -1).map((note, i) => {
+		const info = intervalBetween(note.letter, notes[i + 1].letter);
 		return { label: '+' + info.short, longFr: info.longFr };
 	});
 	return { tones, gaps };

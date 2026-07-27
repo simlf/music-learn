@@ -11,6 +11,11 @@ import { setLocale } from '$lib/i18n/locale.svelte';
  * drawing a new random progression, and (b) with no embed props the
  * standalone /progressions completion "Again" fresh-draw is unchanged
  * (REG-01).
+ *
+ * Phase 34 Plan 01 (SCAF-02): also mocks $lib/srs/deck's getAllCards (there
+ * is no global fake-indexeddb in this project's jsdom setup), mirroring
+ * shellVoicingDrill.test.ts's deck-mock shape - the new per-bar maturity
+ * read would otherwise fail in every test.
  */
 
 // The embedded PianoKeyboard's interactive keys sound their own key-touch
@@ -21,6 +26,15 @@ vi.mock('$lib/audio/audio', () => ({
 	playNote: vi.fn(),
 	ensureAudioReady: vi.fn()
 }));
+
+const getAllCardsMock = vi.fn();
+vi.mock('$lib/srs/deck', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('$lib/srs/deck')>();
+	return {
+		...actual,
+		getAllCards: (...args: unknown[]) => getAllCardsMock(...args)
+	};
+});
 
 /** First occurrence of a natural-letter key by its accessible name (mirrors progressionDrill.test.ts's clickKey convention). */
 function clickKey(letter: string) {
@@ -43,6 +57,8 @@ async function playBar(letters: string[]) {
 
 beforeEach(() => {
 	localStorage.clear();
+	getAllCardsMock.mockReset();
+	getAllCardsMock.mockResolvedValue([]);
 	// Set high so, if randomProgression() were ever invoked, it would draw a
 	// DIFFERENT template/key than the embedded 'major-ii-V-I' in 'C' (drawn
 	// only by a 0 return per the existing progressionDrill.test.ts

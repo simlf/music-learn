@@ -27,6 +27,12 @@ import { saveSong } from '$lib/practice/songs';
  * interleave, the PRAC-05 single-type-due gate, and the synthetic
  * grade-commit split are covered end-to-end (with the REAL builders) in
  * tests/practice-hub-mix.e2e.test.ts.
+ *
+ * Phase 35 (INV-03) note: syntheticInversionItems is stubbed to `[]` here
+ * too, for the exact same isolation reason - a due seventh-chord card
+ * (Cm7/Dm7/G7 in this file's fixtures) would otherwise also earn a real
+ * inversion item now that the host weaves inversions in on the same
+ * due-chord gate as voicing (REG-01: this file's scope stays carded-only).
  */
 
 const introduceNewCardsMock = vi.fn();
@@ -48,7 +54,8 @@ vi.mock('$lib/practice/practiceQueue', async (importOriginal) => {
 	return {
 		...actual,
 		syntheticVoicingItems: () => [],
-		syntheticProgressionItems: () => []
+		syntheticProgressionItems: () => [],
+		syntheticInversionItems: () => []
 	};
 });
 

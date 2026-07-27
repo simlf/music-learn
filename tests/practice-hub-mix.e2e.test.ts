@@ -25,6 +25,14 @@ import { saveSong } from '$lib/practice/songs';
  * 3. The song filter (PRAC-04) steering BOTH halves of the merged queue.
  * 4. The grade-commit split: carded items commit an FSRS grade via
  *    deck.recordGrade; synthetic (voicing/progression) items never do.
+ *
+ * Phase 35 (INV-03) note: syntheticInversionItems is ALSO stubbed to `[]`
+ * here, deliberately - this file's scope is the pre-existing FIVE-family
+ * REG-02 guarantee (unaffected, additive-only, by the new inversion family),
+ * mirroring the same isolation the syntheticProgressionItems stub already
+ * provides. The sixth-family guarantee (inversions woven in for REAL,
+ * alongside proof that these five stay byte-unchanged) is covered by
+ * src/routes/practiceInversionsReg.test.ts (35-06).
  */
 
 const introduceNewCardsMock = vi.fn();
@@ -70,7 +78,8 @@ vi.mock('$lib/practice/practiceQueue', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('$lib/practice/practiceQueue')>();
 	return {
 		...actual,
-		syntheticProgressionItems: (...args: unknown[]) => syntheticProgressionItemsMock(...args)
+		syntheticProgressionItems: (...args: unknown[]) => syntheticProgressionItemsMock(...args),
+		syntheticInversionItems: () => []
 	};
 });
 
@@ -117,10 +126,9 @@ async function completeBuildIt(letters: string[]): Promise<void> {
 	await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 }
 
-/** Drives an embedded ShellVoicingDrill round: the chord's card is pre-seeded to State.Review (getAllCardsMock), so the drill mounts straight into 'drill' stage (shell style, the default) - no meet/subtract steps needed. */
+/** Drives an embedded ShellVoicingDrill round: the chord's card is pre-seeded to State.Review (getAllCardsMock), so the drill mounts straight into 'drill' stage on the shell (the default, VOICE-01) - no style click, no meet/subtract steps needed. */
 async function completeVoicing(shellLetters: [string, string]): Promise<void> {
 	await waitFor(() => screen.getByTestId('stage-drill'));
-	await fireEvent.click(screen.getByRole('button', { name: 'SHELL' }));
 	await clickKey(shellLetters[0]);
 	await clickKey(shellLetters[1]);
 	await fireEvent.click(screen.getByRole('button', { name: 'Check' }));

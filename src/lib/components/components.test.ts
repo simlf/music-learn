@@ -457,11 +457,15 @@ describe('PianoKeyboard', () => {
 				await fireEvent.pointerDown(cKey);
 				await fireEvent.click(cKey);
 
-				// onPress (pointerdown) and the choke-point sound (click) both fire
-				// from the same single tap gesture, but the sound itself still only
-				// plays once - onPress carries no audio of its own (G1: callers no
+				// onPress fires from BOTH the pointerdown moment and the activation
+				// choke point (WR-01): a pointer tap therefore reports the octave
+				// twice (idempotent, same letter+octave), and keyboard/AT activation -
+				// which never fires pointerdown - still reports it once via the choke
+				// point. The key-touch SOUND, however, only ever plays once from the
+				// choke point - onPress carries no audio of its own (G1: callers no
 				// longer wire audio-only onPress handlers).
-				expect(onPress).toHaveBeenCalledTimes(1);
+				expect(onPress).toHaveBeenCalledTimes(2);
+				expect(onPress).toHaveBeenCalledWith('C', 4);
 				expect(playNoteMock).toHaveBeenCalledTimes(1);
 			});
 

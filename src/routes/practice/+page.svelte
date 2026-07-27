@@ -8,9 +8,12 @@
 		hybridSessionRemaining,
 		syntheticVoicingItems,
 		syntheticProgressionItems,
+		syntheticInversionItems,
 		filterVoicingsBySong,
+		isLowMasterySession,
 		type HybridQueueItem,
 		type VoicingQueueItem,
+		type InversionQueueItem,
 		type CardedQueueItem
 	} from '$lib/practice/practiceQueue';
 	import {
@@ -36,6 +39,7 @@
 	import BuildSession from '$lib/components/BuildSession.svelte';
 	import ShellVoicingDrill from '$lib/components/ShellVoicingDrill.svelte';
 	import ProgressionDrill from '$lib/components/ProgressionDrill.svelte';
+	import InversionDrill from '$lib/components/InversionDrill.svelte';
 	import ScaleKeyboardDrill from '$lib/components/ScaleKeyboardDrill.svelte';
 	import { MAJOR_SCALE_ROOTS, majorScaleNotes } from '$lib/theory/scale';
 
@@ -130,6 +134,15 @@
 	 * not a flood that crowds out the carded half.
 	 */
 	const SYNTHETIC_PROGRESSION_COUNT = 2;
+
+	/**
+	 * The small, session-scaled count of synthetic inversion items woven into
+	 * one round when at least one chord-formula card is due (Phase 35, INV-03).
+	 * Inversions are one carded-symbol-per-item (lighter than a progression's
+	 * 4-bar grid), so a small fixed count keeps variety without crowding the
+	 * carded half - mirrors SYNTHETIC_PROGRESSION_COUNT's own rationale.
+	 */
+	const SYNTHETIC_INVERSION_COUNT = 2;
 
 	/**
 	 * REG-01 seed handoff: consumes both one-shot channels and builds
@@ -243,6 +256,7 @@
 
 			let voicingItems: VoicingQueueItem[] = [];
 			let progressionItems: HybridQueueItem[] = [];
+			let inversionItems: InversionQueueItem[] = [];
 			if (dueChordSymbols.size > 0) {
 				// Voicing synthetics: one item per DUE seventh chord only - a
 				// chord card that isn't due never surfaces its voicing item,
@@ -281,10 +295,48 @@
 				if (!(songFilterOn && provenanceIndex.size > 0)) {
 					progressionItems = syntheticProgressionItems(SYNTHETIC_PROGRESSION_COUNT, Math.random);
 				}
+
+				// Inversion synthetics (Phase 35, INV-03): drawn from the same
+				// due chord-formula symbols as voicing, gated identically on the
+				// due-chord signal (PRAC-05's single-type-due gate). Unlike
+				// progressions, inversions DO carry a single chord symbol of
+				// their own, so they are song-filterable exactly like voicing
+				// rather than omitted entirely under the filter.
+				let inversionCandidates = [...dueChordSymbols];
+				if (songFilterOn && provenanceIndex.size > 0) {
+					inversionCandidates = inversionCandidates.filter((symbol) =>
+						symbolHasProvenance(symbol, provenanceIndex)
+					);
+				}
+				inversionItems = syntheticInversionItems(
+					inversionCandidates,
+					SYNTHETIC_INVERSION_COUNT,
+					Math.random
+				);
 			}
 
-			const syntheticItems: HybridQueueItem[] = [...voicingItems, ...progressionItems];
-			const composed = composePracticeQueue(cardedItems, syntheticItems, Math.random);
+			const syntheticItems: HybridQueueItem[] = [
+				...voicingItems,
+				...progressionItems,
+				...inversionItems
+			];
+			/**
+			 * QUEUE-01 (36-CONTEXT): a session is cold/low-mastery when the
+			 * carded half actually entering the weave is overwhelmingly
+			 * New/Learning, with mature (State.Review) cards a minority -
+			 * isLowMasterySession reads cardedItems (not selectedCards) so
+			 * scale-family cards already dropped by cardsToQueueItems never
+			 * skew the signal. When set and a simpler family (name-it/
+			 * build-it/interval/voicing) is present, the composer keeps a
+			 * scaffold-heavy progression/inversion item out of the very
+			 * first slot only; seeded items are prepended after composition
+			 * and always lead regardless. The warm path (majority-mature or
+			 * empty carded half) is unchanged (REG-01).
+			 */
+			const lowMastery = isLowMasterySession(cardedItems.map((item) => item.card));
+			const composed = composePracticeQueue(cardedItems, syntheticItems, Math.random, {
+				lowMastery
+			});
 
 			if (composed.length === 0 && seededItems.length === 0) {
 				// Every due card belonged to an excluded family (scale
@@ -358,7 +410,8 @@
 			'build-it': t('practice.cue.buildIt'),
 			voicing: t('practice.cue.voicing'),
 			interval: t('practice.cue.interval'),
-			progression: t('practice.cue.progression')
+			progression: t('practice.cue.progression'),
+			inversion: t('practice.cue.inversion')
 		})
 	);
 
@@ -459,21 +512,26 @@
 	}
 
 	/**
-	 * Grades + advances a synthetic (voicing/progression) item. These items
-	 * carry no FSRS card at all (HYBRID model, non-persisted per
+	 * Grades + advances a synthetic (voicing/progression/inversion) item.
+	 * These items carry no FSRS card at all (HYBRID model, non-persisted per
 	 * 27-CONTEXT's "no persisted-schema change") - recordGrade must NEVER be
-	 * called for them (T-27-05-01). onComplete only ever fires after a
-	 * correct play/earn in both ShellVoicingDrill and ProgressionDrill (they
-	 * never gate to completion on a wrong answer), so the round counter
-	 * always finishes the item as correct. The host only advances the local
-	 * queue/score register here - no telemetry event is recorded for
-	 * synthetic completions (the embedded components own their own internal
-	 * behavior; adding a host-level recordPracticeAnswer call here would be
-	 * new surface not required by any family's own contract).
+	 * called for them (T-27-05-01, extended to inversions by T-35-06-02).
+	 * onComplete only ever fires after a correct play/earn in ShellVoicingDrill,
+	 * ProgressionDrill, and InversionDrill alike (they never gate to completion
+	 * on a wrong answer), so the round counter always finishes the item as
+	 * correct. The host only advances the local queue/score register here - no
+	 * telemetry event is recorded for synthetic completions (the embedded
+	 * components own their own internal behavior; adding a host-level
+	 * recordPracticeAnswer call here would be new surface not required by any
+	 * family's own contract).
 	 */
 	function completeSynthetic(): void {
 		const item = currentItem;
-		if (item === undefined || (item.family !== 'voicing' && item.family !== 'progression')) return;
+		if (
+			item === undefined ||
+			(item.family !== 'voicing' && item.family !== 'progression' && item.family !== 'inversion')
+		)
+			return;
 		finishItem(item, true);
 		queue = advanceHybridQueue(queue, Rating.Good);
 		questionShownAt = Date.now();
@@ -572,6 +630,12 @@
 				<ProgressionDrill
 					embedTemplateId={currentItem.templateId}
 					embedKey={currentItem.key}
+					onComplete={() => completeSynthetic()}
+				/>
+			{:else if currentItem.family === 'inversion'}
+				<InversionDrill
+					symbol={currentItem.symbol}
+					inversionIndex={currentItem.inversionIndex}
 					onComplete={() => completeSynthetic()}
 				/>
 			{/if}

@@ -1,12 +1,13 @@
 import type { LocaleDict } from './index';
 
 /**
- * Voicings domain (Phase 25 Plan 07, sketch-019 synthesis, SK-019): every
- * literal the /voicings staged shell-voicing drill renders - the page
- * title/subtitle, the 1 Meet / 2 Subtract / 3 Drill step-indicator chips,
- * the compare-intro "what you know"/"what players use" vcard labels and
- * captions plus its "Got it" advance, the subtraction-stage teach-panel
- * body, the Root/Shell/Rootless voicing-selector chip labels, the
+ * Voicings domain (Phase 25 Plan 07, sketch-019 synthesis, SK-019; Phase 33
+ * Plan 01, sketch-022 variant A, VOICE-01): every literal the /voicings
+ * staged shell-voicing drill renders - the page title/subtitle, the 1 Meet /
+ * 2 Subtract / 3 Drill step-indicator chips, the compare-intro "what you
+ * know"/"what players use" vcard labels and captions plus its "Got it"
+ * advance, the subtraction-stage teach-panel body, the drill-stage
+ * add-root/remove-bass nudges and the current-voicing by-product label, the
  * play/Check/Next controls, and the wrong-retry/correct-confirm feedback
  * lines.
  *
@@ -17,12 +18,12 @@ import type { LocaleDict } from './index';
  * identical in en/fr, mirroring chrome.ts's nav.progressions precedent for a
  * technical jazz term without an established French equivalent.
  *
- * French register-slot abbreviation (013 fit rule): the voicing-selector
- * chips are a fixed-width mono strip, so ROOT/ROOTLESS abbreviate to
- * FOND./SANS FOND. (mirrors the documented FONDAMENTALE-vs-ROOT case) and
- * the step-indicator chips abbreviate 1 MEET/3 DRILL to 1 VOIR/3 EXO so all
- * three still fit their chip width under fr. No em dashes anywhere in this
- * file's copy (periods/colons only).
+ * French register-slot abbreviation (013 fit rule): the step-indicator
+ * chips abbreviate 1 MEET/3 DRILL to 1 VOIR/3 EXO so all three still fit
+ * their chip width under fr. The drill-stage nudges (variant A) render in a
+ * wrapping row rather than a fixed-width strip, so the full fr nudge labels
+ * fit without abbreviation. No em dashes anywhere in this file's copy
+ * (periods/colons/commas only).
  */
 export const voicings = {
 	en: {
@@ -44,10 +45,13 @@ export const voicings = {
 		'voicings.subtract.teach':
 			'Drop what the symbol already tells you: root is named, fifth adds no color; keep the 3rd + 7th tritone.',
 
-		'voicings.selector.root': 'ROOT',
-		'voicings.selector.shell': 'SHELL',
-		'voicings.selector.rootless': 'ROOTLESS',
-		'voicings.aria.selectorGroup': 'Voicing style',
+		'voicings.nudge.addRoot': 'Add the root',
+		'voicings.nudge.removeBass': 'Remove the bass',
+		'voicings.aria.nudgeGroup': 'Voicing controls',
+		'voicings.current.label': 'Current voicing:',
+		'voicings.voicing.shell': 'Shell',
+		'voicings.voicing.full': 'Full',
+		'voicings.voicing.rootless': 'Rootless',
 
 		'voicings.prompt.playShell': 'Play the shell: just the guide tones.',
 		'voicings.prompt.playFull': 'Play the full voicing: root, third, fifth, seventh.',
@@ -78,10 +82,13 @@ export const voicings = {
 		'voicings.subtract.teach':
 			"Laisse tomber ce que le symbole te dit déjà : la fondamentale est nommée, la quinte n'ajoute pas de couleur. Garde le triton tierce et septième.",
 
-		'voicings.selector.root': 'FOND.',
-		'voicings.selector.shell': 'SHELL',
-		'voicings.selector.rootless': 'SANS FOND.',
-		'voicings.aria.selectorGroup': 'Style de voicing',
+		'voicings.nudge.addRoot': 'Poser la fondamentale',
+		'voicings.nudge.removeBass': 'Retirer la basse',
+		'voicings.aria.nudgeGroup': 'Contrôles du voicing',
+		'voicings.current.label': 'Voicing actuel :',
+		'voicings.voicing.shell': 'Shell',
+		'voicings.voicing.full': 'Complet',
+		'voicings.voicing.rootless': 'Sans fondamentale',
 
 		'voicings.prompt.playShell': 'Joue le shell : juste les tons de guidage.',
 		'voicings.prompt.playFull': 'Joue le voicing complet : fondamentale, tierce, quinte, septième.',

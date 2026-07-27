@@ -2,10 +2,10 @@
 	import { untrack } from 'svelte';
 	import { generateQuestion, type ChordQuestion } from '$lib/drills/generateQuestion';
 	import { spellChord } from '$lib/theory/chord';
-	import { stackedThirdsFor } from '$lib/lookup/chordPresentation';
 	import { ensureAudioReady, playChord } from '$lib/audio/audio';
 	import PianoKeyboard from './PianoKeyboard.svelte';
 	import ChordGlyph from './ChordGlyph.svelte';
+	import CountingChipRow from './CountingChipRow.svelte';
 	import Button from './Button.svelte';
 	import { t } from '$lib/i18n/locale.svelte';
 
@@ -43,12 +43,12 @@
 	 * now renders an explicit "you picked X, it was Y" line beside the
 	 * existing correct-symbol ChordGlyph.
 	 *
-	 * E2 fix (per-quality stacked-thirds pattern, 30-CONTEXT): after EITHER
-	 * outcome, a short teaching line shows the answer chord's stacked-thirds
-	 * gap pattern (stackedThirdsFor's `gaps[].label`, e.g. "+m3"/"+M3"/"+m3"
-	 * for a m7 chord) so a beginner learns the invariant shape per quality
-	 * ("if it's m7, the shape is m3 . M3 . m3") rather than only memorizing
-	 * one symbol at a time. Rendered muted/mono, visually subordinate to the
+	 * E2/SHAPE-01 (Phase 32 Plan 01): after EITHER outcome, a CountingChipRow
+	 * renders the answer chord's stacked-thirds gap pattern as role-tinted
+	 * tone chips + fill/outline gap chips (replacing the old illegible grey
+	 * uppercase mono shape line, "{quality}: {pattern}") so a beginner reads
+	 * the invariant SHAPE per quality (m7 = small-big-small) at a glance
+	 * instead of decoding letters. Rendered visually subordinate to the
 	 * correct/incorrect affirmation above it - never competing with it.
 	 */
 	interface Props {
@@ -75,15 +75,6 @@
 
 	/** The answer chord's quality suffix ("m7", "m7b5", ...) - same slice ChordGlyph's quality prop already uses below. */
 	const targetQuality = target.symbol.slice(target.root.length);
-	/**
-	 * E2: the invariant stacked-thirds shape for this quality, e.g. "m3 . M3
-	 * . m3" for m7 - stackedThirdsFor's gap labels ("+m3") with the leading
-	 * "+" stripped, joined with a middot (matches the fix spec's own
-	 * "m7: m3 · M3 · m3" example verbatim).
-	 */
-	const stackedThirdsPattern = stackedThirdsFor(target)
-		.gaps.map((gap) => gap.label.replace(/^\+/, ''))
-		.join(' · ');
 
 	let answered = $state(false);
 	let correct = $state(false);
@@ -156,13 +147,9 @@
 				</p>
 			{/if}
 
-			<p
-				class="text-label text-muted mt-2 font-mono uppercase"
-				data-testid="chord-drill-shape"
-				aria-label={t('drills.aria.chordShape')}
-			>
-				{targetQuality}: {stackedThirdsPattern}
-			</p>
+			<div class="mt-2">
+				<CountingChipRow chord={target} ariaLabel={t('drills.aria.chordShape')} />
+			</div>
 		</div>
 
 		<div class="mt-4">
