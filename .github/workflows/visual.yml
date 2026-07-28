@@ -42,6 +42,12 @@ jobs:
 
       # The suite's own webServer runs `npm run build` before serving build/,
       # so there is no separate build step here.
+      #
+      # `test:e2e` runs `svelte-kit sync` first. That is load-bearing on a fresh
+      # runner: tsconfig.json extends ./.svelte-kit/tsconfig.json, which only
+      # exists after sync, and Playwright loads tsconfig before it ever starts
+      # the webServer. Without it the run dies with "Failed to resolve extends
+      # path". It passed locally only because .svelte-kit was already present.
       - name: Visual checks
         run: npm run test:e2e
 
