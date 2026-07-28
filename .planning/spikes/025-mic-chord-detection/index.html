@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+		<title>Spike 025 · Mic Chord Verification</title>
+		<style>
+			:root {
+				--paper: #f2ecdd;
+				--paper-bright: #faf6ea;
+				--ink: #221e17;
+				--vermilion: #c8502e;
+				--verdigris: #3e7d6b;
+				--mustard: #f0c948;
+				--wrong: #b8b0a0;
+				--wrong-deep: #8f877a;
+				--mono: ui-monospace, 'SF Mono', Menlo, monospace;
+				--serif: 'Iowan Old Style', Georgia, serif;
+				--sans: system-ui, -apple-system, sans-serif;
+			}
+			* {
+				box-sizing: border-box;
+			}
+			body {
+				margin: 0;
+				background: var(--paper);
+				color: var(--ink);
+				font-family: var(--sans);
+				-webkit-tap-highlight-color: transparent;
+			}
+			main {
+				max-width: 560px;
+				margin: 0 auto;
+				padding: 20px 12px 60px;
+			}
+			h1 {
+				font-family: var(--serif);
+				font-size: 24px;
+				margin: 0 0 2px;
+			}
+			.sub {
+				font-family: var(--mono);
+				font-size: 11px;
+				text-transform: uppercase;
+				letter-spacing: 0.08em;
+				opacity: 0.6;
+				margin: 0 0 18px;
+			}
+			button {
+				font-family: var(--mono);
+				font-size: 12px;
+				border: 2px solid var(--ink);
+				background: var(--paper-bright);
+				color: var(--ink);
+				padding: 8px 10px;
+				cursor: pointer;
+				min-height: 40px;
+			}
+			button[aria-pressed='true'] {
+				background: var(--ink);
+				color: var(--paper-bright);
+			}
+			.start {
+				width: 100%;
+				font-size: 15px;
+				min-height: 52px;
+				background: var(--mustard);
+			}
+			.row {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 5px;
+				margin-bottom: 10px;
+			}
+			.row button {
+				flex: 1 0 auto;
+				min-width: 40px;
+				padding: 8px 6px;
+			}
+			.label {
+				font-family: var(--mono);
+				font-size: 10px;
+				text-transform: uppercase;
+				letter-spacing: 0.08em;
+				opacity: 0.55;
+				margin: 14px 0 5px;
+			}
+			.card {
+				border: 2px solid var(--ink);
+				background: var(--paper-bright);
+				padding: 14px 12px;
+				margin: 14px 0;
+			}
+			.target {
+				font-family: var(--serif);
+				font-size: 34px;
+				line-height: 1;
+				margin: 0 0 4px;
+			}
+			.targetnotes {
+				font-family: var(--mono);
+				font-size: 12px;
+				opacity: 0.7;
+			}
+			.verdict {
+				font-family: var(--mono);
+				font-size: 16px;
+				font-weight: 700;
+				letter-spacing: 0.06em;
+				padding: 12px;
+				border: 2px solid var(--ink);
+				text-align: center;
+				margin-top: 12px;
+			}
+			.verdict.wait {
+				background: var(--paper);
+				color: var(--wrong-deep);
+			}
+			.verdict.no {
+				background: var(--paper);
+				border-color: var(--wrong-deep);
+				color: var(--wrong-deep);
+			}
+			.verdict.near {
+				background: var(--mustard);
+			}
+			.verdict.yes {
+				background: var(--verdigris);
+				color: var(--paper-bright);
+			}
+			.bars {
+				display: flex;
+				align-items: flex-end;
+				gap: 3px;
+				height: 150px;
+				margin-top: 6px;
+			}
+			.bin {
+				flex: 1;
+				display: flex;
+				flex-direction: column;
+				justify-content: flex-end;
+				height: 100%;
+			}
+			.bar {
+				background: var(--wrong);
+				height: 0%;
+				transition: height 60ms linear;
+				min-height: 2px;
+			}
+			.bin.expected .bar {
+				background: var(--verdigris);
+			}
+			.bin.hot .bar {
+				background: var(--vermilion);
+			}
+			.pc {
+				font-family: var(--mono);
+				font-size: 9px;
+				text-align: center;
+				padding-top: 3px;
+				opacity: 0.6;
+			}
+			.bin.expected .pc {
+				opacity: 1;
+				font-weight: 700;
+			}
+			.thresh {
+				position: relative;
+				height: 0;
+			}
+			table {
+				width: 100%;
+				border-collapse: collapse;
+				font-family: var(--mono);
+				font-size: 11px;
+			}
+			td {
+				padding: 3px 0;
+				border-bottom: 1px solid rgba(34, 30, 23, 0.12);
+			}
+			td:last-child {
+				text-align: right;
+			}
+			.note {
+				font-family: var(--mono);
+				font-size: 11px;
+				line-height: 1.6;
+				opacity: 0.75;
+			}
+			.warn {
+				border: 2px solid var(--vermilion);
+				background: #f8ded6;
+				padding: 12px;
+				font-family: var(--mono);
+				font-size: 12px;
+				line-height: 1.5;
+			}
+			.meter {
+				height: 6px;
+				background: var(--wrong);
+				margin-top: 8px;
+			}
+			.meter > div {
+				height: 100%;
+				background: var(--ink);
+				width: 0%;
+			}
+		</style>
+	</head>
+	<body>
+		<main>
+			<h1>Does the mic hear the right chord?</h1>
+			<p class="sub">Spike 025 · put this phone on the music desk and play</p>
+
+			<div id="insecure" class="warn" hidden>
+				Microphone capture needs a secure context. Open this page over https, or over
+				http://localhost. On the phone, either serve it from the deployed app's https origin or
+				use an https tunnel. A plain http://192.168.x.x address will not grant the mic.
+			</div>
+
+			<button class="start" id="start">Enable microphone</button>
+
+			<p class="label">target root</p>
+			<div class="row" id="roots"></div>
+			<p class="label">target quality</p>
+			<div class="row" id="qualities"></div>
+
+			<div class="card">
+				<p class="target" id="symbol">Cm7</p>
+				<p class="targetnotes" id="expected">expects C Eb G Bb</p>
+				<div class="verdict wait" id="verdict">waiting for audio</div>
+				<div class="meter"><div id="level"></div></div>
+			</div>
+
+			<p class="label">live chromagram (12 pitch classes, harmonically weighted)</p>
+			<div class="bars" id="bars"></div>
+
+			<p class="label">what the detector currently sees</p>
+			<table>
+				<tr>
+					<td>notes picked</td>
+					<td id="picked">-</td>
+				</tr>
+				<tr>
+					<td>lowest note (bass estimate)</td>
+					<td id="bass">-</td>
+				</tr>
+				<tr>
+					<td>weakest expected chroma</td>
+					<td id="minTarget">-</td>
+				</tr>
+				<tr>
+					<td>strongest unexpected chroma</td>
+					<td id="maxOther">-</td>
+				</tr>
+				<tr>
+					<td>consecutive agreeing frames</td>
+					<td id="run">0</td>
+				</tr>
+				<tr>
+					<td>audio pipeline</td>
+					<td id="rate">-</td>
+				</tr>
+			</table>
+
+			<p class="label">how to read it</p>
+			<p class="note">
+				Green bars are the pitch classes the target chord expects. Red bars are pitch classes
+				that should not be there. A verdict needs every green bar above 0.20, every red bar
+				below 0.25, and the weakest green beating the strongest red by 0.15, held for 3
+				consecutive frames (about 460 ms). Chroma is octave blind on purpose: playing the chord
+				an octave lower reads identically. Echo cancellation, noise suppression and auto gain
+				are all requested off, because phone voice processing mangles a piano.
+			</p>
+		</main>
+
+		<script>
+			// ---------------------------------------------------------------- theory
+			const PC = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+			const QUALITIES = {
+				maj7: [0, 4, 7, 11],
+				7: [0, 4, 7, 10],
+				m7: [0, 3, 7, 10],
+				m7b5: [0, 3, 6, 10],
+				dim7: [0, 3, 6, 9],
+				6: [0, 4, 7, 9],
+				maj: [0, 4, 7],
+				min: [0, 3, 7],
+				dim: [0, 3, 6],
+				'shell 7': [0, 4, 10],
+				'shell m7': [0, 3, 10],
+				'shell maj7': [0, 4, 11]
+			};
+			let root = 0;
+			let quality = 'm7';
+
+			function targetSet() {
+				return new Set(QUALITIES[quality].map((s) => (root + s) % 12));
+			}
+			function symbolText() {
+				const q = quality.startsWith('shell') ? ` ${quality}` : quality === 'maj' ? '' : quality;
+				return `${PC[root]}${q}`;
+			}
+
+			// ------------------------------------------------------------- detector
+			// Same algorithm as harness/detect.mjs. Kernels are built for whatever
+			// rate the browser gives us, divided by four.
+			const HARM_OFFSETS = [0, 12, 19.0196, 24, 27.8631, 31.0196, 33.6883, 36];
+			const HARM_WEIGHTS = [1.0, 0.778, 0.352, 0.173, 0.226, 0.186, 0.132, 0.027];
+			const MIDI_LO = 36;
+			const MIDI_HI = 103;
+			const N_BINS = MIDI_HI - MIDI_LO + 1;
+			const Q_FACTOR = 45;
+			const MAX_N = 4096;
+			const SUB_PENALTY = 0.6;
+			const MAX_CANDIDATE_BIN = N_BINS - 20;
+			const PARAMS = { tPresent: 0.2, tExtra: 0.25, margin: 0.15, stability: 3, smooth: 5 };
+
+			let kernels = [];
+			let longestKernel = 0;
+			let inBandWeight = new Float32Array(N_BINS);
+
+			function buildKernels(fs) {
+				kernels = [];
+				for (let b = 0; b < N_BINS; b++) {
+					const f = 440 * Math.pow(2, (MIDI_LO + b - 69) / 12);
+					const n = Math.max(128, Math.min(MAX_N, Math.round((Q_FACTOR * fs) / f)));
+					const cos = new Float32Array(n);
+					const sin = new Float32Array(n);
+					const w = (2 * Math.PI * f) / fs;
+					for (let i = 0; i < n; i++) {
+						const han = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (n - 1));
+						cos[i] = (han * Math.cos(w * i)) / n;
+						sin[i] = (han * Math.sin(w * i)) / n;
+					}
+					kernels.push({ midi: MIDI_LO + b, n, cos, sin });
+				}
+				longestKernel = Math.max(...kernels.map((k) => k.n));
+				for (let b = 0; b < N_BINS; b++) {
+					let wsum = 0;
+					for (let h = 0; h < HARM_OFFSETS.length; h++) {
+						if (Math.round(b + HARM_OFFSETS[h]) < N_BINS) wsum += HARM_WEIGHTS[h];
+					}
+					inBandWeight[b] = wsum;
+				}
+			}
+
+			function partialMax(spec, idx) {
+				let best = 0;
+				for (let d = 0; d <= 1; d++) {
+					const i = idx + d;
+					if (i >= 0 && i < N_BINS && spec[i] > best) best = spec[i];
+				}
+				return best;
+			}
+
+			function salience(spec, b) {
+				if (b >= N_BINS) return 0;
+				let acc = HARM_WEIGHTS[0] * spec[b];
+				for (let h = 1; h < HARM_OFFSETS.length; h++) {
+					const idx = Math.round(b + HARM_OFFSETS[h]);
+					if (idx >= N_BINS) break;
+					acc += HARM_WEIGHTS[h] * partialMax(spec, idx);
+				}
+				if (b >= 12) acc -= SUB_PENALTY * spec[b - 12];
+				return Math.max(0, acc) / inBandWeight[b];
+			}
+
+			function pickNotes(spec) {
+				const R = Float32Array.from(spec);
+				const sal = new Float32Array(N_BINS);
+				const notes = [];
+				let firstMax = 0;
+				for (let iter = 0; iter < 10; iter++) {
+					for (let b = 0; b < N_BINS; b++) sal[b] = salience(R, b);
+					let bestB = -1;
+					let bestS = 0;
+					for (let b = 0; b <= MAX_CANDIDATE_BIN; b++) {
+						if (b > 0 && sal[b] < sal[b - 1]) continue;
+						if (b + 1 < N_BINS && sal[b] < sal[b + 1]) continue;
+						if (sal[b] > bestS) {
+							bestS = sal[b];
+							bestB = b;
+						}
+					}
+					if (bestB < 0) break;
+					if (iter === 0) firstMax = bestS;
+					if (bestS < 0.1 * firstMax) break;
+					notes.push({ midi: MIDI_LO + bestB, strength: bestS });
+					for (let h = 0; h < HARM_OFFSETS.length; h++) {
+						const centre = Math.round(bestB + HARM_OFFSETS[h]);
+						const spread = h === 0 ? [[0, 0.95]] : [
+							[0, 0.95],
+							[1, 0.6]
+						];
+						for (const [d, strength] of spread) {
+							const i = centre + d;
+							if (i < 0 || i >= N_BINS) continue;
+							R[i] *= Math.max(0, 1 - strength * HARM_WEIGHTS[h]);
+						}
+					}
+					R[bestB] = 0;
+					for (const d of [-1, 1]) {
+						const i = bestB + d;
+						if (i >= 0 && i < N_BINS) R[i] *= 0.5;
+					}
+				}
+				return notes;
+			}
+
+			// ------------------------------------------------------------- pipeline
+			let ctx = null;
+			let analyser = null;
+			let raw = null;
+			let decimated = null;
+			let spec = new Float32Array(N_BINS);
+			const history = [];
+			let run = 0;
+			let latched = false;
+			let latchAt = 0;
+
+			// 4th-order lowpass, run fresh over each block (block length far exceeds
+			// the filter's settling time, so per-block state is not worth carrying).
+			function lowpass4(x, f0, fs) {
+				const w0 = (2 * Math.PI * f0) / fs;
+				const cw = Math.cos(w0);
+				const alpha = Math.sin(w0) / (2 * 0.7071);
+				const a0 = 1 + alpha;
+				const b0 = (1 - cw) / 2 / a0;
+				const b1 = (1 - cw) / a0;
+				const b2 = b0;
+				const a1 = (-2 * cw) / a0;
+				const a2 = (1 - alpha) / a0;
+				let cur = x;
+				for (let pass = 0; pass < 2; pass++) {
+					const y = new Float32Array(cur.length);
+					let x1 = 0,
+						x2 = 0,
+						y1 = 0,
+						y2 = 0;
+					for (let i = 0; i < cur.length; i++) {
+						const v = b0 * cur[i] + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+						x2 = x1;
+						x1 = cur[i];
+						y2 = y1;
+						y1 = v;
+						y[i] = v;
+					}
+					cur = y;
+				}
+				return cur;
+			}
+
+			async function start() {
+				try {
+					const stream = await navigator.mediaDevices.getUserMedia({
+						audio: {
+							echoCancellation: false,
+							noiseSuppression: false,
+							autoGainControl: false,
+							channelCount: 1
+						}
+					});
+					ctx = new (window.AudioContext || window.webkitAudioContext)();
+					await ctx.resume();
+					const src = ctx.createMediaStreamSource(stream);
+					analyser = ctx.createAnalyser();
+					analyser.fftSize = 32768;
+					analyser.smoothingTimeConstant = 0;
+					src.connect(analyser);
+					raw = new Float32Array(analyser.fftSize);
+					buildKernels(ctx.sampleRate / 4);
+					const winMs = ((longestKernel * 4) / ctx.sampleRate) * 1000;
+					document.getElementById('rate').textContent =
+						`${ctx.sampleRate} Hz in, ${Math.round(ctx.sampleRate / 4)} Hz analysis, ${Math.round(winMs)} ms window`;
+					document.getElementById('start').textContent = 'Microphone live';
+					document.getElementById('start').disabled = true;
+					requestAnimationFrame(tick);
+				} catch (err) {
+					document.getElementById('verdict').textContent = `mic refused: ${err.name}`;
+					document.getElementById('verdict').className = 'verdict no';
+				}
+			}
+
+			let lastAt = 0;
+			function tick(now) {
+				requestAnimationFrame(tick);
+				if (now - lastAt < 45) return;
+				lastAt = now;
+				analyser.getFloatTimeDomainData(raw);
+				let peak = 0;
+				for (let i = 0; i < raw.length; i++) if (Math.abs(raw[i]) > peak) peak = Math.abs(raw[i]);
+				document.getElementById('level').style.width = `${Math.min(100, peak * 180).toFixed(0)}%`;
+
+				const filtered = lowpass4(raw, 4600, ctx.sampleRate);
+				const dn = Math.floor(filtered.length / 4);
+				if (!decimated || decimated.length !== dn) decimated = new Float32Array(dn);
+				for (let i = 0; i < dn; i++) decimated[i] = filtered[i * 4];
+
+				// Constant-Q frame ending at the newest sample.
+				const end = decimated.length;
+				for (let b = 0; b < N_BINS; b++) {
+					const k = kernels[b];
+					const startAt = end - k.n;
+					if (startAt < 0) {
+						spec[b] = 0;
+						continue;
+					}
+					let re = 0;
+					let im = 0;
+					for (let i = 0; i < k.n; i++) {
+						const v = decimated[startAt + i];
+						re += v * k.cos[i];
+						im -= v * k.sin[i];
+					}
+					spec[b] = Math.sqrt(re * re + im * im);
+				}
+
+				const notes = pickNotes(spec);
+				const chroma = new Float32Array(12);
+				for (const n of notes) chroma[n.midi % 12] += n.strength;
+				let mx = 0;
+				for (let c = 0; c < 12; c++) if (chroma[c] > mx) mx = chroma[c];
+				if (mx > 0) for (let c = 0; c < 12; c++) chroma[c] /= mx;
+
+				history.push(chroma);
+				while (history.length > PARAMS.smooth) history.shift();
+				const sm = new Float32Array(12);
+				for (const h of history) for (let c = 0; c < 12; c++) sm[c] += h[c];
+				let smx = 0;
+				for (let c = 0; c < 12; c++) if (sm[c] > smx) smx = sm[c];
+				if (smx > 0) for (let c = 0; c < 12; c++) sm[c] /= smx;
+
+				render(sm, notes, peak);
+			}
+
+			function render(chroma, notes, peak) {
+				const target = targetSet();
+				let minTarget = Infinity;
+				let maxOther = 0;
+				let maxOtherPc = -1;
+				for (let c = 0; c < 12; c++) {
+					if (target.has(c)) minTarget = Math.min(minTarget, chroma[c]);
+					else if (chroma[c] > maxOther) {
+						maxOther = chroma[c];
+						maxOtherPc = c;
+					}
+				}
+				const quiet = peak < 0.01;
+				const ok =
+					!quiet &&
+					minTarget >= PARAMS.tPresent &&
+					maxOther <= PARAMS.tExtra &&
+					minTarget >= maxOther + PARAMS.margin;
+				run = ok ? run + 1 : 0;
+				if (run >= PARAMS.stability && !latched) {
+					latched = true;
+					latchAt = performance.now();
+				}
+				if (latched && performance.now() - latchAt > 1600) latched = false;
+
+				for (let c = 0; c < 12; c++) {
+					const bin = bins[c];
+					const isTarget = target.has(c);
+					bin.el.className = `bin${isTarget ? ' expected' : ''}${
+						!isTarget && chroma[c] > PARAMS.tExtra ? ' hot' : ''
+					}`;
+					bin.bar.style.height = `${Math.min(100, chroma[c] * 100).toFixed(1)}%`;
+				}
+
+				const v = document.getElementById('verdict');
+				if (latched) {
+					v.textContent = 'YES. that is the chord';
+					v.className = 'verdict yes';
+				} else if (quiet) {
+					v.textContent = 'listening';
+					v.className = 'verdict wait';
+				} else if (ok) {
+					v.textContent = `holding... ${run}/${PARAMS.stability}`;
+					v.className = 'verdict near';
+				} else if (minTarget < PARAMS.tPresent) {
+					const missing = [...target].filter((c) => chroma[c] < PARAMS.tPresent).map((c) => PC[c]);
+					v.textContent = `not yet. missing ${missing.join(' ')}`;
+					v.className = 'verdict no';
+				} else {
+					v.textContent = `not yet. extra ${maxOtherPc >= 0 ? PC[maxOtherPc] : '?'}`;
+					v.className = 'verdict no';
+				}
+
+				document.getElementById('picked').textContent = notes.length
+					? notes
+							.slice(0, 6)
+							.map((n) => `${PC[n.midi % 12]}${Math.floor(n.midi / 12) - 1}`)
+							.join(' ')
+					: '-';
+				const bassNote = notes.length ? notes.reduce((a, b) => (b.midi < a.midi ? b : a)) : null;
+				document.getElementById('bass').textContent = bassNote
+					? `${PC[bassNote.midi % 12]}${Math.floor(bassNote.midi / 12) - 1}`
+					: '-';
+				document.getElementById('minTarget').textContent = Number.isFinite(minTarget)
+					? minTarget.toFixed(2)
+					: '-';
+				document.getElementById('maxOther').textContent = `${maxOther.toFixed(2)}${
+					maxOtherPc >= 0 ? ` (${PC[maxOtherPc]})` : ''
+				}`;
+				document.getElementById('run').textContent = String(run);
+			}
+
+			// ------------------------------------------------------------------- ui
+			const bins = [];
+			const barsEl = document.getElementById('bars');
+			for (let c = 0; c < 12; c++) {
+				const el = document.createElement('div');
+				el.className = 'bin';
+				const bar = document.createElement('div');
+				bar.className = 'bar';
+				const pc = document.createElement('div');
+				pc.className = 'pc';
+				pc.textContent = PC[c];
+				el.append(bar, pc);
+				barsEl.append(el);
+				bins.push({ el, bar });
+			}
+
+			function paintTarget() {
+				document.getElementById('symbol').textContent = symbolText();
+				document.getElementById('expected').textContent = `expects ${[...targetSet()]
+					.sort((a, b) => a - b)
+					.map((c) => PC[c])
+					.join(' ')}`;
+				run = 0;
+				latched = false;
+			}
+
+			const rootsEl = document.getElementById('roots');
+			PC.forEach((name, i) => {
+				const b = document.createElement('button');
+				b.textContent = name;
+				b.setAttribute('aria-pressed', String(i === root));
+				b.onclick = () => {
+					root = i;
+					[...rootsEl.children].forEach((c, j) => c.setAttribute('aria-pressed', String(j === i)));
+					paintTarget();
+				};
+				rootsEl.append(b);
+			});
+
+			const qEl = document.getElementById('qualities');
+			Object.keys(QUALITIES).forEach((name) => {
+				const b = document.createElement('button');
+				b.textContent = name;
+				b.setAttribute('aria-pressed', String(name === quality));
+				b.onclick = () => {
+					quality = name;
+					[...qEl.children].forEach((c) =>
+						c.setAttribute('aria-pressed', String(c.textContent === name))
+					);
+					paintTarget();
+				};
+				qEl.append(b);
+			});
+
+			paintTarget();
+			if (!window.isSecureContext) document.getElementById('insecure').hidden = false;
+			document.getElementById('start').onclick = start;
+		</script>
+	</body>
+</html>

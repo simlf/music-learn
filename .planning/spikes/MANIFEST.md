@@ -59,3 +59,21 @@ Key findings:
 - Song weighting: 60/25/15 song/tier/review, 35% per-item cap; above-tier song chords scaffold (2 formula-first exposures, hints, graduate after 5 cold correct).
 - Mnemonics shipped for maj7/7/m7/m7b5/dim7 only; triads deliberately return null (quality bar).
 - Server schema v1 migration (kind 'interval', duration_ms, given) ships in repo; production redeploy is a user UAT item. Client degrades gracefully against the old server.
+
+## Session 3: Microphone input feasibility (2026-07-29)
+
+Web MIDI is dead for this user (no Safari/iOS support, and nowhere to put a laptop near the piano). A phone can sit on the music desk. Question: can the phone mic verify that he played the right notes?
+
+| # | Name | Type | Validates | Verdict | Tags |
+|---|------|------|-----------|---------|------|
+| 025 | mic-chord-detection | feasibility | Chromagram detector verifies the expected chroma set from phone-mic audio, measured on the repo's real Salamander samples, clean and degraded | GO WITH LIMITS | input, audio, mic, drills |
+
+### Requirements emerged (locked by spiking, 2026-07-29)
+
+- **Mic input is a VERIFIER, not an input device.** It cannot independently produce a chroma set, so it does not slot into `matchChord.ts` as a note-set producer. The seam is `verifyTargetChroma(target: Set<number>)` sitting beside `matchChord`, not feeding it. Grading stays chroma-only (D-01/D-02 preserved).
+- **App audio MUST be gated while listening.** With the app playing the answer through the speaker and the user playing nothing, the detector accepts 97.2% of the time: the app grades itself. Browser echo cancellation cannot be used, because it has to be off for the piano to survive.
+- **The perfect fifth cannot be verified present-or-absent.** It is the root's own 3rd partial, so a shell voicing that omits the fifth still shows a fifth. A dropped fifth goes unnoticed 25% to 75% of the time. An EXTRA fifth is always caught (0.0%).
+- **Inversions stay keyboard-only.** Bass chroma is 88.5% accurate degraded, and end-to-end inversion grading is 73.4% true accept. Not a grader.
+- **Usable register is roughly C2 to B3 for chord roots**, degrading above middle C, useless above G5, because the harmonic sum needs about three octaves of headroom below the anti-alias ceiling.
+- **Latency floor is 464 ms and is not tunable**: distinguishing G from Gb at C3 (7.8 Hz apart) needs a third of a second of signal. Fine for hold-a-chord, unusable for anything rhythmic.
+- Sustain pedal down costs recall, never precision: correct answers drop to 44.4% while the previous chord never false-accepts. The drill has to tell him to lift the pedal.
