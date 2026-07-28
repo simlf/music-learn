@@ -47,9 +47,6 @@ function sameChromaSet(a: Set<number>, b: Set<number>): boolean {
 	return a.size === b.size && [...a].every((chroma) => b.has(chroma));
 }
 
-/** Bounded attempt cap so a degenerate matrix state can never spin forever (T-03-02). */
-const MAX_DISTRACTOR_ATTEMPTS = 200;
-
 /**
  * Draws `count` plausible, parseable distractors for a multiple-choice
  * identification question (D-05, D-06).
@@ -98,11 +95,16 @@ export function pickDistractors(correctSymbol: string, count = 3): string[] {
 
 	const orderedCandidates = [...shuffle(sameRoot), ...shuffle(crossRoot)];
 
+	// `orderedCandidates` is the finite sameRoot + crossRoot matrix, so this loop
+	// is already bounded by the array length and needs no iteration cap. The
+	// former MAX_DISTRACTOR_ATTEMPTS = 200 was not just redundant, it was a
+	// latent bug: the matrix is ROOTS x QUALITY_SUFFIXES, currently 12 x 8 = 104
+	// candidates, so growing the quality vocabulary past ~16 qualities would make
+	// the cap trip before `count` distractors were gathered and silently return a
+	// short list, turning a 4-option question into a 3-option one.
 	const chosen: string[] = [];
-	let attempts = 0;
 	for (const candidate of orderedCandidates) {
-		if (chosen.length >= count || attempts >= MAX_DISTRACTOR_ATTEMPTS) break;
-		attempts++;
+		if (chosen.length >= count) break;
 		if (candidate === correctSymbol) continue;
 		if (chosen.includes(candidate)) continue;
 		const chord = spellChord(candidate);

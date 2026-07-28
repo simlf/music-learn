@@ -224,3 +224,40 @@ describe('pickQuestionFamily', () => {
 		vi.restoreAllMocks();
 	});
 });
+
+describe('pickDistractors is bounded by the candidate matrix, not an iteration cap', () => {
+	it('returns exactly 3 valid distractors for every symbol in the 12x8 matrix', () => {
+		for (const root of ROOTS) {
+			for (const quality of QUALITY_SUFFIXES) {
+				const correct = `${root}${quality}`;
+				const distractors = pickDistractors(correct);
+				expect(distractors, `${correct} distractor count`).toHaveLength(3);
+				expect(new Set(distractors).size, `${correct} distinct`).toBe(3);
+				expect(distractors, `${correct} excludes itself`).not.toContain(correct);
+				const correctChroma = chromaSetFor(correct);
+				for (const distractor of distractors) {
+					expect(spellChord(distractor).recognized, `${distractor} parses`).toBe(true);
+					const chroma = chromaSetFor(distractor);
+					const identical =
+						chroma.size === correctChroma.size && [...chroma].every((c) => correctChroma.has(c));
+					expect(identical, `${distractor} vs ${correct} chroma identity`).toBe(false);
+				}
+			}
+		}
+	});
+
+	it('honors a count that walks deep into the cross-root fallback pool', () => {
+		// The old MAX_DISTRACTOR_ATTEMPTS = 200 never tripped at 12x8 = 104
+		// candidates, but it would have silently truncated a larger matrix. This
+		// pins the contract that the loop is bounded only by the pool itself.
+		expect(pickDistractors('Cm7', 30)).toHaveLength(30);
+		expect(new Set(pickDistractors('Cm7', 30)).size).toBe(30);
+	});
+
+	it('returns the whole viable pool rather than looping when count exceeds it', () => {
+		const huge = pickDistractors('Cm7', 5000);
+		expect(huge.length).toBeGreaterThan(50);
+		expect(new Set(huge).size, 'no repeats').toBe(huge.length);
+		expect(huge).not.toContain('Cm7');
+	});
+});
