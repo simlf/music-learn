@@ -1,6 +1,7 @@
 import type * as ToneNS from 'tone';
 import { toAsciiPitchClass, toAscendingPitches } from './voicing';
 import { SALAMANDER_BASE_URL, SALAMANDER_URLS } from './samples';
+import { BEATS_PER_BAR, nextBarIndex, secondsPerBeat } from './loopTiming';
 
 /**
  * The app's single audio engine (Track A contract, ARCHITECTURE-CONTRACTS.md).
@@ -23,6 +24,11 @@ import { SALAMANDER_BASE_URL, SALAMANDER_URLS } from './samples';
  * - Sound toggle: persisted to localStorage "music-learn:sound" (default
  *   true); while disabled every play call is a silent no-op and nothing is
  *   ever loaded.
+ * - Comping loop (startCompLoop / stopCompLoop): the ONE repeating-playback
+ *   path, scheduled on Tone's Transport rather than setTimeout, since a
+ *   timer-driven loop drifts audibly within a few bars. At most one loop runs
+ *   at a time, and turning sound off kills it. This engine schedules pitches
+ *   and nothing else: it knows no chords, no progressions, and no theory.
  */
 
 export type InstrumentKind = 'sampled' | 'synth';
@@ -43,6 +49,14 @@ const CHORD_DURATION = '2n';
 const RETRIGGER_WINDOW_MS = 50;
 const MAX_HELD_VOICES = 16;
 const SAMPLER_RELEASE_SEC = 0.8;
+/**
+ * Comp velocity, deliberately under CHORD_VELOCITY: the loop is an
+ * accompaniment the player improvises OVER, so it must sit below whatever the
+ * player is doing rather than compete with it.
+ */
+const COMP_VELOCITY = 0.62;
+/** Fraction of the bar a comped chord is held for, leaving a small gap before the next bar lands. */
+const COMP_HOLD_RATIO = 0.92;
 
 type ToneModule = typeof ToneNS;
 type Instrument = ToneNS.PolySynth | ToneNS.Sampler;
@@ -67,6 +81,15 @@ let studyMode: boolean | null = null;
 const lastAttackAt = new Map<string, number>();
 /** Held (noteOn without noteOff) pitches in attack order, for the voice cap. */
 const heldNotes: string[] = [];
+/** The single running comping loop, or null. See startCompLoop. */
+let activeLoop: ActiveLoop | null = null;
+/**
+ * Monotonic loop generation. Bumped by every start AND every stop, so an
+ * in-flight `startCompLoop` whose awaits resolve after the component unmounted
+ * (or after a newer loop started) sees a stale token and never touches the
+ * Transport. This is the guard that keeps a loop from outliving its page.
+ */
+let loopToken = 0;
 
 function readStoredEnabled(): boolean {
 	try {
@@ -84,8 +107,10 @@ export function soundEnabled(): boolean {
 
 /**
  * Flips app sound on or off, persisting to localStorage (write failures
- * degrade to a session-only toggle). Turning sound off also releases any
- * currently ringing notes so nothing sustains into the silence.
+ * degrade to a session-only toggle). Turning sound off also kills the comping
+ * loop and releases any currently ringing notes, so nothing keeps playing or
+ * sustains into the silence. The loop is stopped BEFORE the release, so the
+ * Transport cannot schedule one more bar after the voices were cut.
  */
 export function setSoundEnabled(value: boolean): void {
 	enabled = value;
@@ -94,7 +119,10 @@ export function setSoundEnabled(value: boolean): void {
 	} catch {
 		// Storage disabled or full: keep the in-memory toggle working.
 	}
-	if (!value) releaseAll();
+	if (!value) {
+		stopCompLoop();
+		releaseAll();
+	}
 }
 
 function readStoredStudyMode(): boolean {
@@ -327,6 +355,218 @@ export function releaseAll(): void {
 	}
 }
 
+/**
+ * ---- Comping loop ----
+ *
+ * A repeating, Transport-scheduled accompaniment: one bar of pitches per
+ * measure, on loop, until stopped. Used by the /learn play-along companion.
+ * Nothing here grades or records anything; it is playback only.
+ */
+
+/** One bar of the loop: the already-voiced, Tone-ready ASCII pitches to strike. */
+export interface CompLoopBar {
+	pitches: string[];
+}
+
+export interface CompLoopOptions {
+	/** The bars, in order. An empty list is refused (the loop would be silent). */
+	bars: CompLoopBar[];
+	/** Starting tempo in BPM. */
+	bpm: number;
+	/** Beats per bar. Defaults to 4; the loop strikes one chord per bar. */
+	beatsPerBar?: number;
+	/**
+	 * Called with each bar's index as that bar SOUNDS, synchronised to the
+	 * audio clock via Tone's Draw (not at schedule time, which runs ahead of
+	 * the sound), so the on-screen chord symbol changes when the chord lands.
+	 */
+	onBar?: (barIndex: number) => void;
+	/**
+	 * Study mode: roll each bar's notes one at a time (a sixteenth apart)
+	 * instead of striking them together, so the voices are separable by ear.
+	 */
+	roll?: boolean;
+}
+
+/** Live control of a running loop. Returned by startCompLoop; null means no loop started. */
+export interface CompLoopHandle {
+	/** Stops the loop, clears the Transport, and releases every ringing voice. Idempotent. */
+	stop(): void;
+	/** Changes tempo without interrupting the loop. Takes effect on the next bar boundary. */
+	setTempo(bpm: number): void;
+	/** Whether this handle's loop is still the running one. */
+	isRunning(): boolean;
+}
+
+interface ActiveLoop {
+	token: number;
+	tone: ToneModule;
+	repeatId: number;
+	barIndex: number;
+}
+
+/**
+ * Tears down whatever loop is running: clears the repeat, stops and rewinds
+ * the Transport, drops any pending Draw callbacks, and releases every ringing
+ * voice. Every failure is swallowed - teardown must never throw into UI code,
+ * because it runs from component destroy paths.
+ *
+ * Does NOT bump loopToken; callers that need to invalidate in-flight starts
+ * bump it themselves (stopCompLoop does, a supersede-on-start does not need
+ * to because it already bumped).
+ */
+function teardownActiveLoop(): void {
+	const loop = activeLoop;
+	activeLoop = null;
+	if (!loop) return;
+	try {
+		const transport = loop.tone.getTransport();
+		transport.clear(loop.repeatId);
+		transport.stop();
+		transport.cancel(0);
+		transport.position = 0;
+		loop.tone.getDraw().cancel(0);
+	} catch {
+		// Never throw from teardown.
+	}
+	releaseAll();
+}
+
+/**
+ * Stops the comping loop, if one is running, and invalidates any start that
+ * is still awaiting its samples. Safe to call when nothing is playing and
+ * safe to call before Tone has ever loaded.
+ */
+export function stopCompLoop(): void {
+	loopToken += 1;
+	teardownActiveLoop();
+}
+
+/** Whether a comping loop is currently running. */
+export function compLoopRunning(): boolean {
+	return activeLoop !== null;
+}
+
+/**
+ * Starts (or restarts) the comping loop and resolves with a handle, or null
+ * when no loop started: sound is off, there are no bars, Tone failed to load,
+ * or the caller was superseded/stopped while samples were loading.
+ *
+ * Timing is Tone's Transport (`scheduleRepeat` at one measure), never
+ * setTimeout: a timer-driven chord loop accumulates audible drift within a few
+ * bars, which would make the feature useless to play along with. The visual
+ * bar change is dispatched through Tone's Draw so it lands with the sound
+ * rather than with the scheduling, which runs ahead of it.
+ *
+ * At most one loop exists at a time: a second start tears the first one down.
+ */
+export async function startCompLoop(opts: CompLoopOptions): Promise<CompLoopHandle | null> {
+	if (!soundEnabled()) return null;
+	if (opts.bars.length === 0) return null;
+
+	// Claim this generation first, so any earlier in-flight start is already
+	// stale by the time it resolves, then tear down whatever is playing.
+	const token = (loopToken += 1);
+	teardownActiveLoop();
+
+	const beatsPerBar =
+		Number.isFinite(opts.beatsPerBar) && (opts.beatsPerBar ?? 0) > 0
+			? Math.floor(opts.beatsPerBar as number)
+			: BEATS_PER_BAR;
+
+	try {
+		const t = await loadTone();
+		await t.start();
+		beginSampleLoad(t);
+		// Wait for the sampled piano the same way every other play path does,
+		// so the loop's first bar sounds on the real piano.
+		if (samplerReady) await samplerReady;
+		// Unmounted, stopped, or superseded while loading: never start.
+		if (token !== loopToken) return null;
+
+		const transport = t.getTransport();
+		transport.stop();
+		transport.cancel(0);
+		transport.position = 0;
+		transport.timeSignature = beatsPerBar;
+		transport.bpm.value = clampBpm(opts.bpm);
+
+		const repeatId = transport.scheduleRepeat((time) => {
+			const loop = activeLoop;
+			if (!loop || loop.token !== token) return;
+
+			const barIndex = loop.barIndex;
+			const bar = opts.bars[barIndex];
+			loop.barIndex = nextBarIndex(barIndex, opts.bars.length);
+			if (!bar) return;
+
+			const barSec = secondsPerBeat(transport.bpm.value) * beatsPerBar;
+			const instrument = activeInstrument();
+			if (instrument) {
+				if (opts.roll) {
+					const stagger = secondsPerBeat(transport.bpm.value) / 4;
+					bar.pitches.forEach((pitch, i) => {
+						instrument.triggerAttackRelease(
+							pitch,
+							Math.max(0.1, barSec * COMP_HOLD_RATIO - i * stagger),
+							time + i * stagger,
+							COMP_VELOCITY
+						);
+					});
+				} else {
+					instrument.triggerAttackRelease(
+						bar.pitches,
+						barSec * COMP_HOLD_RATIO,
+						time,
+						COMP_VELOCITY
+					);
+				}
+			}
+
+			// Draw runs the visual update on the animation frame that matches
+			// `time`, so the symbol on screen is the chord in the speakers.
+			t.getDraw().schedule(() => {
+				if (loopToken === token) opts.onBar?.(barIndex);
+			}, time);
+		}, '1m');
+
+		activeLoop = { token, tone: t, repeatId, barIndex: 0 };
+		transport.start();
+
+		return {
+			stop() {
+				if (activeLoop?.token === token) stopCompLoop();
+			},
+			setTempo(bpm: number) {
+				if (activeLoop?.token !== token) return;
+				try {
+					t.getTransport().bpm.value = clampBpm(bpm);
+				} catch {
+					// Never throw into UI code.
+				}
+			},
+			isRunning() {
+				return activeLoop?.token === token;
+			}
+		};
+	} catch {
+		// Autoplay policy, chunk fetch, decode: audio is an enhancement.
+		if (token === loopToken) teardownActiveLoop();
+		return null;
+	}
+}
+
+/**
+ * Defensive BPM floor/ceiling for the Transport itself. The UI already clamps
+ * to the learner range via loopTiming.clampTempo; this only guarantees the
+ * Transport never receives 0 or a non-finite value, which would stall or
+ * throw.
+ */
+function clampBpm(bpm: number): number {
+	if (!Number.isFinite(bpm)) return 70;
+	return Math.min(300, Math.max(20, bpm));
+}
+
 /** Current engine snapshot: which instrument plays and whether samples are in. */
 export function audioState(): { instrument: InstrumentKind; samplesLoaded: boolean } {
 	return {
@@ -341,6 +581,8 @@ export function audioState(): { instrument: InstrumentKind; samplesLoaded: boole
  * contract; never call from app code.
  */
 export function _resetForTests(): void {
+	teardownActiveLoop();
+	loopToken = 0;
 	tonePromise = null;
 	toneModule = null;
 	synth = null;

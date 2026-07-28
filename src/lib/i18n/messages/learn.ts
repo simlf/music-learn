@@ -33,6 +33,34 @@ export const learn = {
 		'learn.interval.m7b5': 'M7♭5',
 		'learn.interval.dim7': 'DIM7',
 
+		// Comping loop (the play-along companion). IMMUNITY: the roman-numeral
+		// form shapes ("ii V I"), the 12 key letters, the chord symbols and the
+		// BPM figure are all immune display values, assembled in
+		// CompingLoop.svelte from the progression engine, never routed through
+		// t(). Only the surrounding words are keyed here.
+		'learn.comping.label': 'PLAY ALONG',
+		'learn.comping.heading': 'Comping loop',
+		'learn.comping.intro':
+			'The app comps the changes on repeat and you improvise over them. Nothing here is graded, scored, or added to your practice queue. There is no right answer. It is a loop to play over.',
+		'learn.comping.formLabel': 'FORM',
+		'learn.comping.keyLabel': 'KEY',
+		'learn.comping.tempoLabel': 'TEMPO',
+		'learn.comping.tempoUnit': 'BPM',
+		'learn.comping.tempoDown': 'Slower',
+		'learn.comping.tempoUp': 'Faster',
+		'learn.comping.start': 'Start the loop',
+		'learn.comping.starting': 'Starting',
+		'learn.comping.stop': 'Stop',
+		'learn.comping.voicingCaption':
+			'The loop plays the root low, then the guide tones above it: the 3rd, which says major or minor, and the 7th, which says which seventh. Everything above them is yours.',
+		'learn.comping.voicingCaption-flat5':
+			'On this bar the ♭5 stays in too. On a ♭5 symbol the fifth is the chord identity, not filler.',
+		'learn.comping.keyboardCaption': 'The lit keys are what the loop plays on this bar.',
+		'learn.comping.soundOff':
+			'Sound is off, so the loop has nothing to play. Turn it back on in Progress, under Practice Settings.',
+		'learn.comping.studyNote':
+			'Study mode is on, so each bar rolls one note at a time instead of landing as a block.',
+
 		// Footer CTA
 		'learn.footer.practiceButton': 'Go to Practice',
 
@@ -59,6 +87,29 @@ export const learn = {
 		'learn.interval.m7': 'M7',
 		'learn.interval.m7b5': 'M7♭5',
 		'learn.interval.dim7': 'DIM7',
+		'learn.comping.label': 'JOUER DESSUS',
+		'learn.comping.heading': "Boucle d'accompagnement",
+		'learn.comping.intro':
+			"L'app joue la grille en boucle et tu improvises dessus. Rien n'est noté ici, rien n'est compté, rien ne rejoint ta file de pratique. Il n'y a pas de bonne réponse. C'est une boucle sur laquelle jouer.",
+		'learn.comping.formLabel': 'FORME',
+		'learn.comping.keyLabel': 'TON',
+		'learn.comping.tempoLabel': 'TEMPO',
+		'learn.comping.tempoUnit': 'BPM',
+		'learn.comping.tempoDown': 'Plus lent',
+		'learn.comping.tempoUp': 'Plus vite',
+		'learn.comping.start': 'Lancer la boucle',
+		'learn.comping.starting': 'Démarrage',
+		'learn.comping.stop': 'Arrêter',
+		'learn.comping.voicingCaption':
+			"La boucle joue la fondamentale en bas, puis les tons de guidage au-dessus : la tierce, qui dit majeur ou mineur, et la septième, qui dit quelle septième c'est. Tout ce qui est au-dessus est à toi.",
+		'learn.comping.voicingCaption-flat5':
+			"Sur cette mesure la ♭5 reste aussi. Sur un symbole en ♭5, la quinte fait l'identité de l'accord, ce n'est pas du remplissage.",
+		'learn.comping.keyboardCaption': 'Les touches allumées sont ce que la boucle joue sur cette mesure.',
+		'learn.comping.soundOff':
+			'Le son est coupé, la boucle n\'a donc rien à jouer. Réactive-le dans Progrès, dans les réglages de pratique.',
+		'learn.comping.studyNote':
+			"Le mode étude est activé : chaque mesure est arpégée note par note au lieu d'être plaquée.",
+
 		'learn.footer.practiceButton': 'Direction la pratique',
 		'learn.scale-practice.toggle': 'Pratique de gamme',
 		'learn.scale-practice.close': 'Masquer la pratique de gamme',

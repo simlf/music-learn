@@ -1,5 +1,6 @@
 <script lang="ts">
 	import TheoryLessons from '$lib/components/TheoryLessons.svelte';
+	import CompingLoop from '$lib/components/CompingLoop.svelte';
 	import ScaleExplorer from '$lib/components/ScaleExplorer.svelte';
 	import IntervalView from '$lib/components/IntervalView.svelte';
 	import ChordGlyph from '$lib/components/ChordGlyph.svelte';
@@ -39,6 +40,20 @@
 				{t('learn.page.subtitle')}
 			</p>
 		</header>
+
+		<!--
+			The comping loop leads the page deliberately: it is the one block here
+			you open with the intent to USE it at the piano, and burying it under
+			seven lesson sections would mean scrolling past all of them on a phone
+			every time. It is a peer of the lesson blocks, never a drill: it enters
+			no practice queue, creates no card, and grades nothing.
+		-->
+		<section
+			data-testid="learn-comping"
+			class="border-ink bg-paper-bright flex flex-col gap-4 border-2 px-4 py-6"
+		>
+			<CompingLoop />
+		</section>
 
 		<section data-testid="learn-theory" class="flex flex-col gap-4">
 			<p class="text-label font-mono uppercase" style="letter-spacing: 0.08em;">

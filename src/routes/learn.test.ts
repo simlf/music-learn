@@ -17,7 +17,12 @@ vi.mock('$lib/audio/audio', () => ({
 	playChord: vi.fn(),
 	playNote: vi.fn(),
 	ensureAudioReady: async () => {},
-	soundEnabled: () => true
+	soundEnabled: () => true,
+	// The comping-loop block reads the study-mode preference and owns the one
+	// Transport-scheduled playback path. Its behaviour is covered in
+	// compingLoop.test.ts; on this page it only has to mount.
+	studyModeEnabled: () => false,
+	startCompLoop: async () => null
 }));
 
 const { playChord } = await import('$lib/audio/audio');
@@ -37,6 +42,21 @@ describe('/learn: hub structure and section presence', () => {
 	it('renders the Learn hub page title', () => {
 		renderPage();
 		expect(screen.getByRole('heading', { name: 'Learn' })).toBeInTheDocument();
+	});
+
+	it('renders the comping loop as a peer block, ahead of the lesson scroll', () => {
+		renderPage();
+		const comping = screen.getByTestId('learn-comping');
+
+		expect(comping).toBeInTheDocument();
+		expect(within(comping).getByRole('heading', { name: 'Comping loop' })).toBeInTheDocument();
+		// A peer of the lesson blocks, not nested inside one, and not a drill.
+		expect(within(screen.getByTestId('learn-theory')).queryByTestId('learn-comping')).toBeNull();
+
+		const blocks = Array.from(
+			document.querySelectorAll<HTMLElement>('[data-testid^="learn-"]')
+		).map((element) => element.dataset.testid);
+		expect(blocks.indexOf('learn-comping')).toBeLessThan(blocks.indexOf('learn-theory'));
 	});
 
 	it('renders the Theory section with the extracted lesson sections', () => {

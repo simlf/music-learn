@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { toAsciiPitchClass, toAscendingPitches, toPitch } from './voicing';
+import { Note } from 'tonal';
+import { toAsciiPitchClass, toAscendingPitches, toCompPitches, toPitch } from './voicing';
 
 describe('toAsciiPitchClass', () => {
 	it('converts display glyph accidentals to ASCII', () => {
@@ -52,6 +53,49 @@ describe('toAscendingPitches', () => {
 	it('voices double flats by sounding pitch (Ddim7 plays D4-F4-Ab4-Cbb5)', () => {
 		// Cbb5 sounds Bb4 (midi 70), above Ab4 (68): ascending root position.
 		expect(toAscendingPitches(['D', 'F', 'A♭', 'C♭♭'])).toEqual(['D4', 'F4', 'Ab4', 'Cbb5']);
+	});
+});
+
+describe('toCompPitches', () => {
+	it('drops the root an octave under the guide tones (Dm7 comps D3-F4-C5)', () => {
+		expect(toCompPitches('D', ['F', 'C'])).toEqual(['D3', 'F4', 'C5']);
+	});
+
+	it('leaves the register above the guide tones empty for the player', () => {
+		const pitches = toCompPitches('C', ['E', 'B']);
+		expect(pitches).toEqual(['C3', 'E4', 'B4']);
+		expect(Note.midi(pitches[pitches.length - 1]) as number).toBeLessThan(
+			Note.midi('C5') as number
+		);
+	});
+
+	it('handles glyph accidentals in both the bass and the guide tones', () => {
+		expect(toCompPitches('E♭', ['G', 'D♭'])).toEqual(['Eb3', 'G4', 'Db5']);
+		expect(toCompPitches('F♯', ['A', 'E'])).toEqual(['F#3', 'A4', 'E5']);
+	});
+
+	it('keeps three guide tones ascending for a ♭5 chord (Dm7♭5 comps D3-F4-Ab4-C5)', () => {
+		expect(toCompPitches('D', ['F', 'A♭', 'C'])).toEqual(['D3', 'F4', 'Ab4', 'C5']);
+	});
+
+	it('stays strictly ascending for a bass that sounds high inside its octave (B♯3 sounds C4)', () => {
+		// B#3 SOUNDS midi 60, the same as C4, so a naive "upper notes always
+		// start at octave 4" rule would voice a unison or a crossed voice. The
+		// floor is the bass's own sounding midi, so C moves up to C5.
+		const pitches = toCompPitches('B♯', ['C', 'E']);
+		const midis = pitches.map((pitch) => Note.midi(pitch) as number);
+		expect(midis[0]).toBe(60);
+		for (let i = 1; i < midis.length; i++) {
+			expect(midis[i]).toBeGreaterThan(midis[i - 1]);
+		}
+	});
+
+	it('falls back to a plain root-position voicing when there is no root (total)', () => {
+		expect(toCompPitches('', ['E', 'B'])).toEqual(['E4', 'B4']);
+	});
+
+	it('voices the bass alone when there are no guide tones', () => {
+		expect(toCompPitches('C', [])).toEqual(['C3']);
 	});
 });
 
