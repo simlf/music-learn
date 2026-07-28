@@ -23,3 +23,11 @@ vite.config.ts.timestamp-*
 
 # Docker compose SQLite volume (Phase 8 backend)
 /data/
+
+# Playwright visual-verification output. Screenshots are artifacts to eyeball,
+# never committed pixel baselines (see playwright.config.ts).
+/screenshots/
+/test-results/
+/playwright-report/
+/blob-report/
+/.playwright/

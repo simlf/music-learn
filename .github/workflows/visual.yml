@@ -1,0 +1,59 @@
+name: visual
+
+# Rendered-UI verification: phone layout, tap-target sizes, WCAG contrast, and
+# deterministic entry into every drill surface. Runs real Chromium against the
+# production build. See docs/VISUAL-VERIFICATION.md.
+#
+# Deliberately a separate workflow rather than another job in ci.yml: this one
+# needs a browser download and a full `npm run build`, so keeping it apart lets
+# the fast unit/type checks report independently.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: visual-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install deps
+        run: npm ci
+
+      # --with-deps pulls the shared libraries headless Chromium needs on a
+      # bare ubuntu runner; the local script omits it since macOS does not.
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # The suite's own webServer runs `npm run build` before serving build/,
+      # so there is no separate build step here.
+      - name: Visual checks
+        run: npm run test:e2e
+
+      # Screenshots and traces are how a human reviews what changed without
+      # holding a phone. Only useful when something failed or a layout moved.
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-artifacts
+          path: |
+            screenshots/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
