@@ -1,72 +1,58 @@
-# Requirements — v2.2 Hub Consolidation + Interval Theory
+# Requirements — v2.3 Beginner On-Ramp & Inversions
 
-**Source:** approved design `docs/superpowers/specs/2026-07-24-hub-consolidation-design.md`.
-**Nature:** UI + routing restructure of already-built features + one new presentation component. No data-schema migration, no new music-theory data source.
+**Source:** v2.2 post-ship on-device UAT (PR #27). Session-7 sketches locked at `.planning/sketches/021-024`; design decisions in `.claude/skills/sketch-findings-music-learn/references/counting-hint-grammar.md`. Existing stack only — no new library, no data-schema migration.
 
-## Milestone v2.2 Requirements
+## Milestone v2.3 Requirements
 
-### Navigation Hubs (HUB)
+### Shape Legibility (SHAPE)
 
-- [x] **HUB-01**: User sees exactly 4 top-level hubs (Lookup, Practice, Learn, Progress) in the desktop nav and the phone tab bar, replacing the 10 flat links; the phone "More" bottom sheet is removed.
-- [x] **HUB-02**: The orphan `showcase` route is deleted (it duplicated Lookup and was not in nav).
-- [x] **HUB-03**: Each old route (`/drills`, `/scales`, `/voicings`, `/build`, `/progressions`, `/recall`, `/songs`, `/theory`) redirects to the hub that now owns it, so existing bookmarks and deep-links still land somewhere correct for one release.
+- [x] **SHAPE-01**: After a user answers a name-it (nomme cet accord) question, the chord's quality pattern is shown as role-tinted tone chips with fill/outline gap chips between them (minor third = solid ink fill, major third = outline), replacing the illegible grey mono `M7: M3·M3·M3` feedback line. Reuses the LOCKED interval color language (root vermilion, third verdigris, fifth tan, seventh mustard). (sketch 021-A)
 
-### Interval View (IVW)
+### Voicing UX (VOICE)
 
-- [x] **IVW-01**: For any chord, the user can see its **stacked-thirds** bottom-up adjacent gaps (e.g. `Cm7 = root +m3 ♭3 +M3 5 +m3 ♭7`), rendered by default, computed from the chord's existing `tonal` intervals with no new data.
-- [x] **IVW-02**: The user can toggle the same chord to a **formula** view of intervals-from-root (e.g. `Cm7 = R, ♭3, 5, ♭7`).
-- [x] **IVW-03**: The interval view is a single shared component embedded in both the Lookup hub (per looked-up chord) and the Learn hub (as an interval reference block), and its solfège carries accidentals through (e.g. `Mi♭`).
+- [x] **VOICE-01**: The voicing drill's always-on 3-way `Fond. · Shell · Sans fond.` toggle is removed. The player starts on the shell (the core) and reaches the full and rootless voicings via contextual add/drop controls ("+ poser la fondamentale" / "− retirer la basse"); style becomes a by-product of what is added/removed, not a mode picked. The from-memory recall grading and staged-by-card-state behavior are preserved. (sketch 022-A)
 
-### Practice Hub (PRAC)
+### Inversions (INV) — new drill family
 
-- [x] **PRAC-01**: From the Practice hub the user starts practice with a single "Start practice" action — no mode-picker grid.
-- [x] **PRAC-02**: One practice session interleaves questions from all five drill generators (name-it, build-it, voicings, intervals, progressions) in a single queue hosted by the existing drills engine (tiers, grading, telemetry preserved).
-- [x] **PRAC-03**: The queue is built by the FSRS scheduler drawing from all generators weighted by due-date and weakness (no regression in SRS scheduling behavior).
-- [x] **PRAC-04**: The song filter (owned by Progress → Songs) still steers which questions the Practice queue surfaces.
-- [x] **PRAC-05**: When only one drill type is due, the session surfaces only that type — no artificial variety injection (single-type-due quality gate).
+- [x] **INV-01**: The user can drill a chord in a named inversion (root / 1st / 2nd / 3rd), playing the notes with the correct bass note, graded by chroma plus the required bass (never letter strings). Role colors stay fixed across inversions — only the order changes. (sketch 023-B)
+- [x] **INV-02**: The inversion drill guides a beginner with an escalating, optional hint ladder (bass note → stack order from the bass → ghost keys) that fades as the FSRS card matures, following the locked fold-into-deepest-rung / fading-scaffold pattern. (sketch 023-B + 024-A graft)
+- [x] **INV-03**: The inversion drill participates in the Practice hybrid queue as its own FSRS-scheduled family alongside the existing five (name-it, build-it, voicings, intervals, progressions), with no regression to their scheduling, grading, or telemetry.
 
-### Learn Hub (LEARN)
+### Progression Scaffold (SCAF)
 
-- [x] **LEARN-01**: The Learn hub presents the existing shape-first theory lessons together with the Scales "Explore" content (major-scale degrees/intervals) and the shared interval reference, in one surface.
-- [x] **LEARN-02**: The Scales "Practice" tab is reachable through the Practice hub, while only "Explore" remains in Learn.
+- [x] **SCAF-01**: On the earn-the-symbol progression drill, a beginner can reveal an escalating, optional counting-hint ladder (degree → root note → semitone-count chips → ghost keys) without the earned chord symbol being given away; the hint fades as the card matures. (sketch 024-A)
+- [x] **SCAF-02**: At beginner level the progression drill's keyboard is reduced to the tonic's one octave (fewer keys, less overwhelming) and widens to the full span as the level rises. (sketch 024-A)
 
-### Progress Hub (PROG)
+### Queue Ordering (QUEUE)
 
-- [x] **PROG-01**: The Progress hub presents stats, streak, weak spots, the SRS review map, and song management (absorbing the former `progress`, `recall`, and `songs` routes) in one surface.
+- [x] **QUEUE-01**: A cold, low-mastery practice session does not lead with a scaffold-heavy progression or inversion item; the hybrid-queue composer (`composePracticeQueue`) orders simpler families first when mastery is low, so the first item is never a hard block.
 
 ### No Regression (REG)
 
-- [x] **REG-01**: Existing drills, SRS scheduling, progress/streak stats, and song-filter behavior work exactly as before the restructure — only the pages that display state move between routes.
-- [x] **REG-02**: Per-route test files are remapped to the absorbing hub; new tests cover the merged Practice queue interleaving (incl. single-type-due gate), the IntervalView (stacked vs formula per chord quality + accidental carry-through), and each redirect shim; full suite + `svelte-check` stay green.
+- [x] **REG-01**: Existing drill grading (chroma/MIDI, never letter strings), FSRS scheduling, tiers, telemetry, song-filter behavior, and the multiple-choice-never-gates ear-naming rule work exactly as before; only the named surfaces change. Full suite + `svelte-check` stay green; every new surface (chip grammar, nudges, inversion family, hint ladders, queue ordering) is covered by tests.
 
 ## Out of Scope (this milestone)
 
-- **Data-schema migration** — SRS facts, song-filter pref, progress/streak stats keep their current schema.
-- **New music-theory data source** — IntervalView is pure presentation over existing `tonal` chord data.
-- **Removing the redirect shims** — shims live for one release; their deletion is a deferred follow-up.
-- **Auth / multi-user / cross-device sync** — unchanged from prior milestones; still single-user local-first.
+- Upper-structure / altered voicings — shells and rootless remain the ceiling until fundamentals stick (carried from v2.2 out-of-scope).
+- MIDI play-to-answer (Phase 4 carry-over) — needs hardware-in-the-loop.
+- New theory data source or data-schema migration — all four features compute from existing `tonal` data and the existing FSRS/queue infra.
+- Metronome / tempo-fluency drill (sketch 018, I-03) — stays in the improvement backlog.
 
 ## Future Requirements (deferred)
 
-- Delete the old-route redirect shims once the release has settled (follow-up cleanup).
+- Inversion practice for the lookup companion / voicing "Voir" stage (the shape-teaching grammar could later appear beyond name-it).
+- Extending the counting-hint grammar to the Learn hub interval reference.
 
 ## Traceability
 
 | REQ-ID | Phase |
 |--------|-------|
-| HUB-01 | Phase 30 |
-| HUB-02 | Phase 30 |
-| HUB-03 | Phase 30 |
-| IVW-01 | Phase 26 |
-| IVW-02 | Phase 26 |
-| IVW-03 | Phase 26 |
-| PRAC-01 | Phase 27 |
-| PRAC-02 | Phase 27 |
-| PRAC-03 | Phase 27 |
-| PRAC-04 | Phase 27 |
-| PRAC-05 | Phase 27 |
-| LEARN-01 | Phase 28 |
-| LEARN-02 | Phase 28 |
-| PROG-01 | Phase 29 |
-| REG-01 | Phase 31 |
-| REG-02 | Phase 31 |
+| SHAPE-01 | Phase 32 |
+| VOICE-01 | Phase 33 |
+| INV-01 | Phase 35 |
+| INV-02 | Phase 35 |
+| INV-03 | Phase 35 |
+| SCAF-01 | Phase 34 |
+| SCAF-02 | Phase 34 |
+| QUEUE-01 | Phase 36 |
+| REG-01 | Phase 37 |

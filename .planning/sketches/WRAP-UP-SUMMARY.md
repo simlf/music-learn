@@ -44,3 +44,36 @@ Print Shop, phone-first. Serif ChordGlyph + 240ms stamp-in reveal are locked hou
 - **Staged-by-card-state (session 6):** rich pedagogy (compare intros, subtraction teaching) only while a card is NEW/LEARNING; cold drill at REVIEW (019 synthesis, extends 005 fading rule).
 - **Earn-the-symbol (session 6):** progression drill hides lead-sheet chord symbols until named from the numeral and played; sheet fills verdigris (017 synthesis).
 - **Optional confidence dots (session 6):** ? ~ ! serif dots under the glyph, never block Reveal, skip logs unrated (020-B); calibration payoff view on /progress (bar vs 3x2 matrix still open).
+
+---
+
+# Session 7 pass (2026-07-26)
+
+**Sketches processed:** 4 (021–024) — post-v2.2 on-device UAT (PR #27)
+**Design areas:** Counting-Hint Grammar & Inversions (new: references/counting-hint-grammar.md); Contextual Learning & Metacognition (022 appended)
+
+## Included Sketches
+| # | Name | Winner | Design Area |
+|---|------|--------|-------------|
+| 021 | shape-pattern-chips | A: Colored gap-chips | Counting-Hint Grammar & Inversions |
+| 022 | voicing-lean-flow | A: Add/drop nudges | Contextual Learning & Metacognition (evolution) |
+| 023 | inversion-drill | B: Play-it prompt + 024-A hint graft | Counting-Hint Grammar & Inversions |
+| 024 | progression-scaffold | A: Counting-hint ladder + 1-octave beginner keyboard | Counting-Hint Grammar & Inversions |
+
+## Excluded Sketches
+None.
+
+## Design Direction (session 7)
+One shared thread across four UAT asks: teaching a beginner *how to find the notes*. The
+unifying win is a **counting-hint grammar** — tone chips tinted by interval role + gap chips
+whose fill (minor third) vs outline (major third) show the chord's shape and semitone count at
+a glance — reused on name-it feedback, the progression on-ramp, and the new inversion drill.
+Hints stay escalating, optional, and fade with FSRS card maturity; a cold beginner keyboard
+shrinks to one octave. Separately, the voicing drill sheds its 3-way toggle for add/drop nudges.
+
+## Key Decisions (session 7)
+- **021-A** colored gap-chips replace the illegible grey mono shape line (`M7: M3·M3·M3`).
+- **022-A** kill the Fond./Shell/Sans fond. toggle; shell default + "+ fondamentale" / "− basse" nudges.
+- **023-B** inversion drill one-at-a-time (fits the hybrid queue), bass ring + badge, role colors fixed across inversions, grafted with an escalating hint ladder.
+- **024-A** escalating counting-hint ladder (degree → semitone chips → ghost keys), symbol still earned, beginner keyboard reduced to one octave.
+- **Non-visual follow-up:** hybrid-queue ordering should not lead a cold low-mastery session with a scaffold-heavy progression/inversion item.

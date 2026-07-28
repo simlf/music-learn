@@ -2,9 +2,9 @@
 
 ## Overview
 
-Music Learn takes a returning classical pianist from "I freeze when I see `F♯ø7` in the sheet music" to "I know instantly what my left hand plays." Three shipped milestones: v1.0 built the chord-fluency core (theory engine, lookup companion, drill loop, progress backend, HTTPS deploy), v2.0 turned the app into a memory trainer (FSRS spaced repetition, Build-it construction, multi-modal recall), and v2.1 made it playable and self-explaining (keyboard everywhere, audio reveals, hint ladders, song provenance, guided theory, French, PWA, phone-first UX, contextual learning drills).
+Music Learn takes a returning classical pianist from "I freeze when I see `F♯ø7` in the sheet music" to "I know instantly what my left hand plays." Five shipped milestones: v1.0 built the chord-fluency core (theory engine, lookup companion, drill loop, progress backend, HTTPS deploy), v2.0 turned the app into a memory trainer (FSRS spaced repetition, Build-it construction, multi-modal recall), v2.1 made it playable and self-explaining (keyboard everywhere, audio reveals, hint ladders, song provenance, guided theory, French, PWA, phone-first UX, contextual learning drills), and v2.2 consolidated 10 flat routes into 4 hubs (Lookup / Practice / Learn / Progress) with one interleaved Practice session and a shared interval view (stacked-thirds + formula), no regression.
 
-Milestone **v2.2 Hub Consolidation + Interval Theory** (in progress, Phases 26-31) is a UI + routing restructure of already-built features plus one new presentation component: collapse 10 flat routes into 4 clear hubs (Lookup / Practice / Learn / Progress) and add a shared interval view that shows any chord's stacked-thirds and its formula — with no regression in drills, SRS, stats, or song filtering. No data-schema migration, no new theory data source.
+Milestone **v2.3 Beginner On-Ramp & Inversions** (shipped 2026-07-28, Phases 32-37) makes the drills legible and unblockable for a theory-beginner and adds inversion practice — all within the existing stack, no schema change. A shared counting-chip grammar (role-tinted tone chips + fill/outline gap chips) lands first on the name-it feedback surface, then is reused by a new escalating progression hint ladder and a brand-new inversion drill family; a leaner add/drop voicing flow replaces the 3-way toggle; and the hybrid-queue composer stops leading cold, low-mastery sessions with scaffold-heavy items. No new library, no data-schema migration.
 
 Full phase details for everything shipped through v2.1: [milestones/v2.1-ROADMAP.md](milestones/v2.1-ROADMAP.md).
 
@@ -13,11 +13,22 @@ Full phase details for everything shipped through v2.1: [milestones/v2.1-ROADMAP
 - ✅ **v1.0 Chord Fluency Core** — Phases 1-3, 8-9 (shipped 2026-07-13)
 - ✅ **v2.0 Learning Upgrade** — Phases 10-13 (shipped 2026-07-15)
 - ✅ **v2.1 Playability & Comprehension** — Phases 14-25 (shipped 2026-07-21)
-- 🚧 **v2.2 Hub Consolidation + Interval Theory** — Phases 26-31 (in progress)
+- ✅ **v2.2 Hub Consolidation + Interval Theory** — Phases 26-31 (shipped 2026-07-25)
+- ✅ **v2.3 Beginner On-Ramp & Inversions** — Phases 32-37 (shipped 2026-07-28, PR #28)
 
 ## Phases
 
-### 🚧 v2.2 Hub Consolidation + Interval Theory (Phases 26-31)
+### ✅ v2.3 Beginner On-Ramp & Inversions (Phases 32-37) — SHIPPED 2026-07-28
+
+- [x] **Phase 32: Shape Legibility — Counting-Chip Grammar** - Name-it feedback shows the chord's third pattern as role-tinted tone chips with fill/outline gap chips, replacing the illegible grey mono line. (completed 2026-07-26)
+- [x] **Phase 33: Voicing Lean Flow** - The voicing drill drops the 3-way toggle: start on the shell, reach full/rootless via contextual add/drop nudges. (completed 2026-07-26)
+- [x] **Phase 34: Progression Scaffold & Beginner Keyboard** - An escalating optional counting-hint ladder (symbol still earned) plus a one-octave beginner keyboard so the earn-the-symbol drill never hard-blocks. (completed 2026-07-27; code verified 4/4 + 1538 tests green; on-device visual UAT run 2026-07-28: 1 passed low-confidence, 2 blocked on no deterministic progression-bar entry point, no code defects — see 34-UAT.md and 34-VERIFICATION.md "Acknowledged Gaps")
+- [x] **Phase 35: Inversions — New Drill Family** - Drill a chord in a named inversion with the correct bass and a fading hint ladder, joined into the Practice queue as its own FSRS family. (completed 2026-07-27; code verified 12/12 + 1597 tests green; synthetic family for REG-01 safety; 1 blocker + 1 warning found and fixed in review; on-device visual UAT deferred, see 35-UAT.md)
+- [x] **Phase 36: Cold-Session Queue Ordering** - A cold, low-mastery session never leads with a scaffold-heavy progression or inversion item. (completed 2026-07-27; verification PASSED 8/8, no human items; 1611 tests green, svelte-check clean)
+- [x] **Phase 37: No-Regression Gate** - The milestone ships green: existing grading, FSRS, tiers, telemetry, song-filter, and ear-naming rules intact; every new surface covered by tests. (completed 2026-07-27; green gate PASSED: build 0 errors, 1620 tests 0 failures, svelte-check 0 errors; REG-01 delivered, all 9 v2.3 REQ-IDs traceable)
+
+<details>
+<summary>✅ v2.2 Hub Consolidation + Interval Theory (Phases 26-31) — SHIPPED 2026-07-25</summary>
 
 - [x] **Phase 26: Shared IntervalView Component** - Any looked-up chord reveals its stacked-thirds and its formula, from existing chord data. (completed 2026-07-24)
 - [x] **Phase 27: Practice Hub — One Smart Interleaved Session** - A single "Start practice" action runs one FSRS-scheduled session mixing all five drill types. (completed 2026-07-25)
@@ -25,6 +36,8 @@ Full phase details for everything shipped through v2.1: [milestones/v2.1-ROADMAP
 - [x] **Phase 29: Progress Hub — Stats, Streak, Review Map, Songs** - One Progress surface for stats, streak, weak spots, the SRS review map, and song management. (completed 2026-07-25)
 - [x] **Phase 30: Four-Hub Nav Cutover + Redirect Shims** - The app shows exactly 4 hubs everywhere; old bookmarks still land correctly; the orphan route is gone. (completed 2026-07-25)
 - [x] **Phase 31: No-Regression Gate & Test Remap** - The whole restructure ships green: prior behavior intact, every route's tests remapped, new tests covering the merges. (completed 2026-07-25)
+
+</details>
 
 <details>
 <summary>✅ v1.0 Chord Fluency Core (Phases 1-9) — SHIPPED 2026-07-13</summary>
@@ -71,6 +84,151 @@ Full phase details for everything shipped through v2.1: [milestones/v2.1-ROADMAP
 
 ## Phase Details
 
+### Phase 32: Shape Legibility — Counting-Chip Grammar
+
+**Goal**: After answering a name-it question, a beginner can read the chord's third-pattern as role-tinted tone chips with fill/outline gap chips, instead of the illegible grey mono line — and this chip grammar becomes the shared visual primitive the later hint-ladder phases reuse.
+**Depends on**: Nothing (first phase of the milestone)
+**Requirements**: SHAPE-01
+**Success Criteria** (what must be TRUE):
+
+  1. After answering a name-it (nomme cet accord) question, the correct chord's quality pattern renders as a row of role-tinted tone chips (root vermilion, third verdigris, fifth tan, seventh mustard) with a gap chip between each adjacent pair.
+  2. Each gap chip renders a minor third as a solid ink fill and a major third as outline-only, so the shape reads at a glance (small-big-small = m7) without reading letters.
+  3. A short legend maps the gap chips to their semitone counts (+m3 = 3 semitones, +M3 = 4 semitones).
+  4. The old grey uppercase mono shape line (`M7: M3 · M3 · M3`) no longer appears on the name-it feedback surface.
+
+**Plans**: 2/2 plans complete
+
+- [x] 32-01-PLAN.md — Create the reusable CountingChipRow primitive (role-tinted tone chips + fill/outline gap chips + semitone legend) and wire it into the name-it feedback, removing the old grey mono shape line.
+
+**UI hint**: yes
+**Notes**: Foundational — sequenced FIRST so Phases 34 (progression hint ladder) and 35 (inversion hint ladder) embed the same tone-chip + gap-chip primitive rather than re-authoring it, mirroring how v2.2 shipped the shared IntervalView (Phase 26) before its consumers. Reuses the LOCKED interval color language (4 reserved tokens, never repurposed). Extract the chip row as a reusable component (the design doc's `.chiprow` / `.tone-chip` / `.gap-chip` grammar) so Phases 34-35 consume one source of truth. Design source: sketch 021-A + `counting-hint-grammar.md`. REG-01 binding: only the name-it feedback shape line changes; grading and scheduling stay untouched.
+
+### Phase 33: Voicing Lean Flow
+
+**Goal**: The voicing drill starts on the shell and reaches the full and rootless voicings through contextual add/drop nudges, with no always-on mode picker.
+**Depends on**: Nothing (independent refactor of ShellVoicingDrill.svelte)
+**Requirements**: VOICE-01
+**Success Criteria** (what must be TRUE):
+
+  1. The voicing drill's always-on `Fond. · Shell · Sans fond.` 3-way toggle is gone.
+  2. The player starts on the shell (the core) and reaches the full voicing via "+ poser la fondamentale" and the rootless voicing via "− retirer la basse".
+  3. The current voicing (Shell / Complet / Sans fondamentale) is shown as a by-product of what was added or removed, not as a mode picked up front.
+  4. From-memory recall grading and staged-by-card-state (Meet / Subtract / Drill) behavior work exactly as before.
+
+**Plans**: 1/1 plans complete
+
+- [x] 33-01-PLAN.md — Kill the drill-stage 3-way `Fond. · Shell · Sans fond.` selector in ShellVoicingDrill.svelte; start on the shell, reach full/rootless via "+ poser la fondamentale" / "− retirer la basse" nudges with a current-voicing by-product label; preserve chroma grading + staged-by-card-state + embed seam (VOICE-01). [wave 1]
+
+**UI hint**: yes
+**Notes**: Independent of the chip grammar and of inversions — can be planned and executed any time after the milestone opens without blocking them. Scoped to `ShellVoicingDrill.svelte`; no other drill surface is touched. Design source: sketch 022-A (voicing lean flow) in `contextual-learning-metacognition.md`. REG-01 binding: preserve the from-memory recall grading (chroma, never letter strings) and the FSRS staged-by-card-state behavior; only the mode chrome changes. French register: abbreviate the nudge labels per the 013 fit rule if they overflow.
+
+### Phase 34: Progression Scaffold & Beginner Keyboard
+
+**Goal**: A beginner can climb an escalating optional counting-hint ladder on the earn-the-symbol progression drill without the symbol being given away, and drill on a one-octave keyboard that widens as level rises.
+**Depends on**: Phase 32 (reuses the shared counting-chip grammar for the ladder's quality+count rung)
+**Requirements**: SCAF-01, SCAF-02
+**Success Criteria** (what must be TRUE):
+
+  1. On the earn-the-symbol progression drill, the user can reveal an escalating, optional hint ladder rung by rung (degree → root note → semitone-count chips → ghost keys).
+  2. The chord symbol stays hidden while the ladder is used — the earn-the-symbol payoff is preserved.
+  3. The hint ladder fades as the FSRS card matures (fewer rungs offered as mastery rises), following the locked fold-into-deepest-rung / fading-scaffold pattern.
+  4. At beginner level the progression keyboard shows only the tonic's one octave, widening to the full span as the level rises.
+
+**Plans**: 2/2 plans complete
+**Wave 1**
+
+- [x] 34-01-PLAN.md — Self-contained per-bar FSRS maturity read (reuse `voicingStageForChord`) + explicit beginner keyboard span (1 octave until the card reaches Review, then 2) + beginner caption; add the mandatory `$lib/srs/deck` mock to the existing ProgressionDrill tests (SCAF-02). [wave 1]
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 34-02-PLAN.md — Inline escalating optional counting-hint ladder (degree → count `CountingChipRow` → ghost keys), symbol stays hidden, rungs fade by stage (meet 3 / subtract 2 / drill 0), ghost keys on the live keyboard (SCAF-01). [wave 2, depends 34-01]
+
+**UI hint**: yes
+**Notes**: Consumes the Phase 32 counting-chip component (one source of truth, not a second copy); establishes the escalating hint-ladder rung pattern that Phase 35 then reuses. Scoped to `ProgressionDrill.svelte`. Avoid the anti-patterns flagged in the design doc: no always-on inline hint (kills the earn-the-symbol payoff), no full 2-octave keyboard for a cold beginner item. Design source: sketch 024-A + `counting-hint-grammar.md`. REG-01 binding: the earn-the-symbol grading, roman-numeral display, and progression scheduling stay unchanged; only the optional hint ladder and beginner keyboard span are added.
+
+### Phase 35: Inversions — New Drill Family
+
+**Goal**: The user can drill a chord in a named inversion (root / 1st / 2nd / 3rd) with the correct bass, guided by a fading hint ladder, scheduled as its own FSRS family inside the Practice hybrid queue.
+**Depends on**: Phase 32 (reuses the shared counting-chip grammar for its hint ladder); Phase 34 (reuses the escalating hint-ladder rung pattern)
+**Requirements**: INV-01, INV-02, INV-03
+**Success Criteria** (what must be TRUE):
+
+  1. The user can drill a chord in a named inversion (root / 1st / 2nd / 3rd), playing the notes with the correct bass, graded by chroma plus the required bass (never letter strings).
+  2. Role colors stay fixed across all inversions — only the note order changes — so the learner sees "same four notes, different bass" (the bass note carries an ink ring + "B" badge).
+  3. An escalating, optional hint ladder (bass note → stack order from the bass → ghost keys) guides a beginner and fades as the FSRS card matures.
+  4. The inversion drill runs inside the Practice hybrid queue as its own FSRS-scheduled family alongside the existing five (name-it, build-it, voicings, intervals, progressions), with no regression to their scheduling, grading, or telemetry.
+
+**Plans**: 6/6 plans complete
+
+**Wave 1** (parallel foundations)
+
+- [x] 35-01-PLAN.md — Pure inversion engine (`inversions.ts`: count/bass-role/bass-note/ascending voicing from tonal) + chroma+bass grading (`matchInversion.ts`, composes `matchChord`) + tests. [INV-01, wave 1]
+- [x] 35-02-PLAN.md — Shared-primitive extensions: `stackedThirdsFor` `startRole` param + `CountingChipRow` `rotateFromRole` prop + `PianoKeyboard` `bassHint` prop (ink ring + "B" badge, chroma+octave, not role-gated) + tests. [INV-01, INV-02, wave 1]
+- [x] 35-03-PLAN.md — New `inversions.*` i18n domain (FR primary, Symbol Immunity, no em dashes) registered in index.ts + collision list. [INV-01, wave 1]
+
+**Wave 2** (blocked on Wave 1)
+
+- [x] 35-04-PLAN.md — Synthetic inversion family in `practiceQueue.ts` (`PracticeFamily 'inversion'`, `InversionQueueItem`, `syntheticInversionItems`, `filterInversionsBySong`; weave algorithm unchanged) + frozen-order REG-parity test. [INV-03, wave 2, depends 35-01]
+- [x] 35-05-PLAN.md — `InversionDrill.svelte` (symbol shown, passive strip, 2-octave keyboard, chroma+bass grading, bass emphasis, inline fading hint ladder bass→stack→ghost via `voicingStageForChord`) + tests. [INV-01, INV-02, wave 2, depends 35-01/02/03]
+
+**Wave 3** (blocked on Wave 2)
+
+- [x] 35-06-PLAN.md — `/practice` host weave (gated + song-filtered like voicing/progression) + `InversionDrill` render branch + `completeSynthetic` (no FSRS write) + `practice.cue.inversion` + host integration test + REG gate (existing five byte-unchanged). [INV-03, wave 3, depends 35-04/05]
+
+**Planner decision (Claude's Discretion, 35-CONTEXT carded-vs-synthetic):** the inversion family is SYNTHETIC (mirrors voicing/progression) — NO new `FactKind`, NO `chord-inversion` card, NO Dexie/Zod schema change — chosen for REG-01 safety in this highest-risk phase. INV-02's fade reads the drilled chord's own `chord-formula:{symbol}` cards via `voicingStageForChord` (ProgressionDrill precedent). Cold-session ordering stays untouched (Phase 36 owns `composePracticeQueue` reordering; this phase must not race it).
+
+**UI hint**: yes
+**Notes**: HIGHEST-RISK phase — a NEW drill family. Hard constraints: reuse the existing `PianoKeyboard`, `composePracticeQueue`, and FSRS card infra — do NOT introduce a new scheduler or a data-schema migration; derive the inversion note-rotation from existing `tonal` data; grade by chroma + required bass, never letter strings. SHARED-FILE COUPLING: INV-03 extends `composePracticeQueue` (adds the inversion family) — the SAME pure composer Phase 36 (QUEUE-01) then reorders. Phase 36 depends on this phase so the two never edit the composer in parallel: land the family here, tune cold-session ordering there. Design source: sketch 023-B + 024-A graft in `counting-hint-grammar.md`. REG-01 binding: the existing five families' scheduling, grading, and telemetry must be byte-for-byte unaffected.
+
+### Phase 36: Cold-Session Queue Ordering
+
+**Goal**: A cold, low-mastery practice session never leads with a scaffold-heavy progression or inversion item, so the first item is never a hard block.
+**Depends on**: Phase 35 (extends the same `composePracticeQueue`, after the inversion family is added; also governs the Phase 34 progression family)
+**Requirements**: QUEUE-01
+**Success Criteria** (what must be TRUE):
+
+  1. When mastery is low, the hybrid-queue composer (`composePracticeQueue`) orders simpler families first so a cold session's first item is never a scaffold-heavy progression or inversion item.
+  2. The first item of a cold, low-mastery session is never a hard block for a beginner.
+  3. Existing interleaving, the single-type-due gate, and song-filter steering still hold exactly as before after the ordering change.
+
+**Plans**: 2/2 plans complete
+
+Plans:
+**Wave 1**
+
+- [x] 36-01-PLAN.md — Pure composer: add options.lowMastery signal + first-pick guard + isLowMasterySession helper, with unit tests (warm/frozen-order preserved)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 36-02-PLAN.md — /practice host wiring: compute lowMastery from card state, pass it to composePracticeQueue, prove cold vs warm signal + green REG suite
+
+**Notes**: SHARED-FILE COUPLING (flagged): this phase reorders `composePracticeQueue`, the same pure composer Phase 35's INV-03 extends. It is sequenced AFTER Phase 35 and depends on it so the two never race on the composer — the inversion family lands first, cold-session ordering is tuned here. Non-visual (pure module + tests), so no UI-SPEC and no UI hint. Design source: the "Non-visual follow-up" flag in `counting-hint-grammar.md` (the real reason a scaffold-heavy item "popped first" and stalled the session). REG-01 binding: interleaving, single-type-due gating, and song-filter behavior are preserved; only cold-session family ordering changes.
+
+### Phase 37: No-Regression Gate
+
+**Goal**: The whole milestone ships green — existing grading, FSRS scheduling, tiers, telemetry, song-filter, and ear-naming rules intact; every new surface covered by tests.
+**Depends on**: Phases 32-36 (the full milestone must be in place)
+**Requirements**: REG-01
+**Success Criteria** (what must be TRUE):
+
+  1. Existing drill grading (chroma/MIDI, never letter strings), FSRS scheduling, tiers, telemetry, and song-filter behavior work exactly as they did before v2.3.
+  2. The multiple-choice-never-gates ear-naming rule still holds.
+  3. Every new surface (chip grammar, voicing add/drop nudges, inversion family, hint ladders, cold-session queue ordering) is covered by tests.
+  4. The full test suite and `svelte-check` both pass with zero errors.
+
+**Plans**: 2/2 plans complete
+
+Plans:
+**Wave 1**
+
+- [x] 37-01-PLAN.md — Audit REG-01 coverage matrix (preserved behaviors + every new v2.3 surface -> proving test file), fill only genuine gaps, and add the six-family cross-surface capstone integration test. [wave 1]
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 37-02-PLAN.md — Run the full milestone green gate (build + test + check, zero errors), confirm v2.3 REQUIREMENTS traceability, and mark REG-01 delivered. [wave 2, depends 37-01]
+
+**Notes**: Matches the established milestone pattern (v2.2's Phase 31 was a dedicated final No-Regression gate). REG-01 is a binding constraint throughout Phases 32-36 (each feature phase preserves behavior and covers its own new surface as it goes); this phase is the milestone-wide green gate that consolidates coverage and confirms no behavior regression. No net-new visual surface — no UI-SPEC, no UI hint.
+
 ### Phase 26: Shared IntervalView Component
 
 **Goal**: Any looked-up chord reveals its interval structure two ways, computed from the chord's existing `tonal` data.
@@ -85,6 +243,8 @@ Full phase details for everything shipped through v2.1: [milestones/v2.1-ROADMAP
 
 **Plans**: 4/4 plans complete
 Plans:
+
+- [x] 32-02-PLAN.md
 
 - [x] 26-01-PLAN.md — Pure `stackedThirdsFor` derivation + unit tests (per-quality gap patterns + E♭→Mi♭ carry-through) [wave 1]
 - [x] 26-02-PLAN.md — `interval-view` i18n keys (EN/FR toggle + aria labels), merged into the catalog [wave 1]
@@ -222,4 +382,5 @@ Plans:
 | v1.0 Chord Fluency Core | 1-3, 8-9 | 21 | Complete | 2026-07-13 |
 | v2.0 Learning Upgrade | 10-13 | 20 | Complete | 2026-07-15 |
 | v2.1 Playability & Comprehension | 14-25 | 45 | Complete | 2026-07-21 |
-| v2.2 Hub Consolidation + Interval Theory | 26-31 | TBD | In progress | — |
+| v2.2 Hub Consolidation + Interval Theory | 26-31 | 26 | Complete | 2026-07-25 |
+| v2.3 Beginner On-Ramp & Inversions | 32-37 | TBD | In progress | — |

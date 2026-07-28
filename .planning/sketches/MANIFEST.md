@@ -66,6 +66,19 @@ Frontier pass from the v2.1 improvement backlog (research-derived). User picked 
 
 **Session 6 round 2 (2026-07-20):** user picked B-or-C on 017 and wanted all three of 019 mixed into the drill; synthesis variants built for both. 020-B inline dots locked for capture (optional, never blocks Reveal, skip logs "unrated"); 020-C stats view remains the companion payoff surface, bar-chart vs 3x2-matrix choice still open.
 
+## Session 7 (2026-07-26): v2.2 on-device UAT — legibility, voicing weight, inversions, progression on-ramp
+
+Four asks from the user's post-v2.2 on-device pass (PR #27). 021/022/024 refine existing surfaces; 023 is a net-new drill family.
+
+| # | Name | Design Question | Winner | Tags |
+|---|------|----------------|--------|------|
+| 021 | shape-pattern-chips | How does the per-quality stacked-thirds pattern read at a glance so a beginner instantly sees minor/major/dim shape? | A: Colored gap-chips | drills, name-it, intervals, teaching, feedback |
+| 022 | voicing-lean-flow | How to drop the heavy always-on Fond./Shell/Sans fond. 3-way toggle but keep full/shell/rootless variation practice? | A: Add/drop nudges | voicings, layout, ux, drills |
+| 023 | inversion-drill | How does a new inversion drill present a chord's inversions and let the user practice moving notes through them? | B + 024-A hint graft | inversions, drills, new-feature, keyboard, teaching |
+| 024 | progression-scaffold | How does a beginner get unblocked on the earn-the-symbol progression drill when they can't derive the chord from the roman numeral? | A + beginner 1-octave keyboard | progressions, scaffold, hints, beginner, drills |
+
+**Session 7 winners locked (2026-07-26):** 021-A colored gap-chips (tone chips role-tinted, `+m3` filled / `+M3` outline — replaces the illegible grey mono `M7: M3·M3·M3` feedback line, borrows the Build-it chip language). 022-A add/drop nudges (start on the shell, contextual "+ poser la fondamentale" / "− retirer la basse" — kills the 3-way toggle, keeps variation practice). 023-B play-it prompt (one inversion at a time, fits the hybrid queue), **grafted** with 024-A's escalating hint ladder so beginners are guided at first (bass note → stack-from-bass order → ghost keys) and it goes cold as the card matures. 024-A counting-hint ladder (degree → semitone-count chips → ghost keys, symbol still earned), refined: **beginner keyboard reduced to the tonic's one octave**, widening to two octaves as level rises. Non-visual follow-up (noted, not sketched): the hybrid-queue ordering should not lead a cold low-mastery session with a scaffold-heavy progression.
+
 **Session 6 winners locked (2026-07-20):** 017 synthesis (lead-sheet grid as container, symbols hidden until earned, numerals visible; each cursor bar = name-from-numeral then play; sheet fills verdigris). 019 synthesis, flagged "very good for beginners": voicing help staged by FSRS card state — NEW gets C compare intro once, LEARNING gets B subtraction drain, REVIEW gets A cold selector drill (extends the 005 fading-scaffold rule to voicings). 020-B inline ? ~ ! dots. Open: 020 stats display bar-chart vs 3x2 matrix; 018 tempo-fluency (I-03) unsketched in backlog.
 
 **Session 5 winners locked (2026-07-20):** 014-A action dock — structural guarantee like 008-A docked keyboard; C's auto-scroll acceptable as day-one micro-fix only. 015-B icon + 9px micro-label at 56px bar (from 64px), stable across FR/EN. 016 composes: B disambiguation chips at input (ambiguous casing only), A "Pourquoi ces notes ?" expandable on every result, C's side-by-side duo folded into A's panel as the deepest m-vs-maj content (same pattern as 010's dossier-in-deepest-rung).

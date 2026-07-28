@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sketch 021 — Shape Pattern Chips</title>
+<link rel="stylesheet" href="../themes/default.css" />
+<style>
+  body { margin:0; background:var(--color-paper); color:var(--color-ink); font-family:var(--font-sans); padding-top:52px; }
+  #variant-nav { position:fixed; top:0; left:0; right:0; z-index:99; background:var(--color-paper-bright);
+    border-bottom:1px solid var(--color-ink); padding:8px 12px; display:flex; gap:8px; flex-wrap:wrap; }
+  .variant-tab { font-family:var(--font-mono); font-size:12px; font-weight:700; text-transform:uppercase;
+    letter-spacing:.04em; padding:6px 10px; border:1px solid var(--color-ink); background:var(--color-paper-bright);
+    color:var(--color-ink); cursor:pointer; }
+  .variant-tab.active { background:var(--color-ink); color:var(--color-paper-bright); }
+  .stage { max-width:640px; margin:0 auto; padding:24px 16px 64px; }
+  .caption { font-family:var(--font-mono); font-size:12px; color:var(--color-muted); text-transform:uppercase;
+    letter-spacing:.08em; margin:0 0 16px; }
+  .glyph { font-family:var(--font-serif); font-size:52px; line-height:1; }
+  .glyph sub { font-size:.42em; }
+  .feedback-old { font-family:var(--font-mono); font-size:12px; color:var(--color-muted); text-transform:uppercase;
+    letter-spacing:.06em; }
+  h3 { font-family:var(--font-mono); font-size:12px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--color-faint); margin:28px 0 10px; }
+  .before-box { border:1px dashed var(--color-faint); padding:12px 14px; margin:8px 0 24px; background:var(--color-paper-bright); }
+  .before-box .lbl { font-family:var(--font-mono); font-size:10px; color:var(--color-faint); text-transform:uppercase; letter-spacing:.1em; display:block; margin-bottom:6px; }
+
+  /* ---- Variant A: colored gap-chips row (borrows screenshot-2 build chips) ---- */
+  .chiprow { display:flex; align-items:stretch; gap:6px; margin-top:14px; flex-wrap:wrap; }
+  .tone-chip { min-width:56px; padding:10px 8px; text-align:center; border:1px solid var(--color-ink); }
+  .tone-chip .role { font-family:var(--font-mono); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
+  .tone-chip .note { font-family:var(--font-serif); font-size:20px; font-weight:700; margin-top:2px; }
+  .tone-chip.root { background:var(--color-root); color:var(--color-on-root); }
+  .tone-chip.third { background:var(--color-third); color:var(--color-on-third); }
+  .tone-chip.fifth { background:var(--color-fifth); color:var(--color-on-fifth); }
+  .tone-chip.seventh { background:var(--color-seventh); color:var(--color-on-seventh); }
+  .gap-chip { display:flex; align-items:center; justify-content:center; min-width:46px; padding:6px;
+    font-family:var(--font-mono); font-size:13px; font-weight:700; letter-spacing:.03em; }
+  .gap-chip.m3 { background:var(--color-ink); color:var(--color-paper-bright); }
+  .gap-chip.M3 { background:var(--color-paper-bright); color:var(--color-ink); border:2px solid var(--color-ink); }
+  .gap-legend { display:flex; gap:16px; margin-top:14px; font-family:var(--font-mono); font-size:11px; color:var(--color-muted); }
+  .gap-legend b { color:var(--color-ink); }
+
+  /* ---- Variant B: glyph + shape strip + plain tag ---- */
+  .shape-strip { display:flex; margin-top:16px; border:2px solid var(--color-ink); }
+  .seg { flex:1; text-align:center; padding:12px 4px; font-family:var(--font-mono); font-weight:700;
+    font-size:15px; letter-spacing:.04em; border-right:1px solid var(--color-ink); }
+  .seg:last-child { border-right:none; }
+  .seg.min { background:var(--color-ink); color:var(--color-paper-bright); }
+  .seg.maj { background:var(--color-paper-bright); color:var(--color-ink); }
+  .shape-tag { display:inline-block; margin-top:12px; font-family:var(--font-mono); font-size:13px; font-weight:700;
+    text-transform:uppercase; letter-spacing:.05em; background:var(--color-verdigris); color:#fff; padding:5px 10px; }
+
+  /* ---- Variant C: label-boxed stacked thirds (vertical) ---- */
+  .stack { display:flex; flex-direction:column-reverse; gap:0; margin-top:16px; max-width:280px; }
+  .stack-row { display:flex; align-items:center; gap:10px; }
+  .stack-note { width:64px; text-align:center; font-family:var(--font-serif); font-size:20px; font-weight:700;
+    padding:8px 0; border:1px solid var(--color-ink); }
+  .stack-note.root { background:var(--color-root); color:#fff; }
+  .stack-note.third { background:var(--color-third); color:#fff; }
+  .stack-note.fifth { background:var(--color-fifth); color:var(--color-ink); }
+  .stack-note.seventh { background:var(--color-seventh); color:var(--color-ink); }
+  .gap-tick { font-family:var(--font-mono); font-size:12px; font-weight:700; padding:3px 8px; }
+  .gap-tick.m3 { background:var(--color-ink); color:#fff; }
+  .gap-tick.M3 { border:2px solid var(--color-ink); background:var(--color-paper-bright); }
+  .gap-col { display:flex; flex-direction:column; align-items:flex-start; gap:2px; padding-left:2px; }
+</style>
+</head>
+<body>
+<div id="variant-nav">
+  <button class="variant-tab active" onclick="show('a',event)">A: Colored gap-chips ★</button>
+  <button class="variant-tab" onclick="show('b',event)">B: Glyph + shape strip</button>
+  <button class="variant-tab" onclick="show('c',event)">C: Stacked-thirds boxes</button>
+</div>
+
+<!-- VARIANT A -->
+<section id="v-a" class="stage">
+  <p class="caption">Nommer · retour après réponse</p>
+  <div class="glyph">C<sub>m7</sub></div>
+
+  <div class="before-box">
+    <span class="lbl">Avant (illisible aujourd'hui)</span>
+    <span class="feedback-old">M7: M3 · M3 · M3</span>
+  </div>
+
+  <h3>Après — chips d'intervalle colorés</h3>
+  <p style="font-size:14px;color:var(--color-muted);margin:0 0 4px">La forme se lit d'un coup : chaque marche = une tierce, mineure (pleine) ou majeure (contour).</p>
+  <div class="chiprow">
+    <div class="tone-chip root"><div class="role">R</div><div class="note">Do</div></div>
+    <div class="gap-chip m3">+m3</div>
+    <div class="tone-chip third"><div class="role">m3</div><div class="note">Mi♭</div></div>
+    <div class="gap-chip M3">+M3</div>
+    <div class="tone-chip fifth"><div class="role">5</div><div class="note">Sol</div></div>
+    <div class="gap-chip m3">+m3</div>
+    <div class="tone-chip seventh"><div class="role">m7</div><div class="note">Si♭</div></div>
+  </div>
+  <div class="gap-legend">
+    <span><b style="background:var(--color-ink);color:#fff;padding:2px 6px">+m3</b> tierce mineure (3 demi-tons)</span>
+    <span><b style="border:2px solid var(--color-ink);padding:1px 5px">+M3</b> tierce majeure (4 demi-tons)</span>
+  </div>
+
+  <h3>Autres qualités — même grammaire</h3>
+  <div class="chiprow" style="opacity:.95">
+    <div class="tone-chip root"><div class="role">R</div><div class="note">Do</div></div>
+    <div class="gap-chip M3">+M3</div>
+    <div class="tone-chip third"><div class="role">3</div><div class="note">Mi</div></div>
+    <div class="gap-chip m3">+m3</div>
+    <div class="tone-chip fifth"><div class="role">5</div><div class="note">Sol</div></div>
+    <div class="gap-chip M3">+M3</div>
+    <div class="tone-chip seventh"><div class="role">M7</div><div class="note">Si</div></div>
+  </div>
+  <p style="font-family:var(--font-mono);font-size:11px;color:var(--color-muted);margin:6px 0 0">CMaj7 — M3 · m3 · M3</p>
+  <div class="chiprow">
+    <div class="tone-chip root"><div class="role">R</div><div class="note">Do</div></div>
+    <div class="gap-chip m3">+m3</div>
+    <div class="tone-chip third"><div class="role">m3</div><div class="note">Mi♭</div></div>
+    <div class="gap-chip m3">+m3</div>
+    <div class="tone-chip fifth"><div class="role">♭5</div><div class="note">Sol♭</div></div>
+    <div class="gap-chip M3">+M3</div>
+    <div class="tone-chip seventh"><div class="role">m7</div><div class="note">Si♭</div></div>
+  </div>
+  <p style="font-family:var(--font-mono);font-size:11px;color:var(--color-muted);margin:6px 0 0">Cm7♭5 — m3 · m3 · M3</p>
+</section>
+
+<!-- VARIANT B -->
+<section id="v-b" class="stage" style="display:none">
+  <p class="caption">Nommer · retour après réponse</p>
+  <div class="glyph">C<sub>m7</sub></div>
+
+  <div class="before-box"><span class="lbl">Avant</span><span class="feedback-old">M7: M3 · M3 · M3</span></div>
+
+  <h3>Après — bande de forme + étiquette claire</h3>
+  <div class="shape-strip">
+    <div class="seg min">m3</div>
+    <div class="seg maj">M3</div>
+    <div class="seg min">m3</div>
+  </div>
+  <div><span class="shape-tag">forme mineur 7</span></div>
+  <p style="font-size:14px;color:var(--color-muted);margin-top:14px">Plein = tierce mineure, creux = tierce majeure. L'alternance <b>petit-grand-petit</b> = accord mineur 7.</p>
+
+  <div style="margin-top:28px">
+    <div class="glyph" style="font-size:34px">C<sub>Maj7</sub></div>
+    <div class="shape-strip"><div class="seg maj">M3</div><div class="seg min">m3</div><div class="seg maj">M3</div></div>
+    <div><span class="shape-tag" style="background:var(--color-mustard);color:var(--color-ink)">forme majeur 7</span></div>
+  </div>
+</section>
+
+<!-- VARIANT C -->
+<section id="v-c" class="stage" style="display:none">
+  <p class="caption">Nommer · retour après réponse</p>
+  <div class="glyph">C<sub>m7</sub></div>
+  <div class="before-box"><span class="lbl">Avant</span><span class="feedback-old">M7: M3 · M3 · M3</span></div>
+
+  <h3>Après — thirds empilées, lues du bas vers le haut</h3>
+  <div class="stack">
+    <div class="stack-row"><div class="stack-note root">Do</div><span style="font-family:var(--font-mono);font-size:11px;color:var(--color-muted)">fondamentale</span></div>
+    <div class="stack-row"><div class="gap-col"><span class="gap-tick m3">m3</span></div></div>
+    <div class="stack-row"><div class="stack-note third">Mi♭</div><span style="font-family:var(--font-mono);font-size:11px;color:var(--color-muted)">tierce</span></div>
+    <div class="stack-row"><div class="gap-col"><span class="gap-tick M3">M3</span></div></div>
+    <div class="stack-row"><div class="stack-note fifth">Sol</div><span style="font-family:var(--font-mono);font-size:11px;color:var(--color-muted)">quinte</span></div>
+    <div class="stack-row"><div class="gap-col"><span class="gap-tick m3">m3</span></div></div>
+    <div class="stack-row"><div class="stack-note seventh">Si♭</div><span style="font-family:var(--font-mono);font-size:11px;color:var(--color-muted)">septième</span></div>
+  </div>
+  <p style="font-size:14px;color:var(--color-muted);margin-top:18px">Chaque saut est une tierce ; sa couleur/forme dit mineure ou majeure. Vertical = on voit littéralement l'empilement.</p>
+</section>
+
+<script>
+function show(id, e){
+  ['a','b','c'].forEach(k => document.getElementById('v-'+k).style.display = (k===id?'block':'none'));
+  document.querySelectorAll('.variant-tab').forEach(t=>t.classList.remove('active'));
+  e.target.classList.add('active');
+}
+</script>
+</body>
+</html>

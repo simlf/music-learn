@@ -1,20 +1,20 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.2
-milestone_name: Hub Consolidation + Interval Theory
-current_phase: 2
-status: Awaiting next milestone
-stopped_at: Completed 30-02-PLAN.md
-last_updated: "2026-07-25T12:00:56.139Z"
-last_activity: 2026-07-25
-last_activity_desc: Milestone v2.2 completed and archived
+milestone: v2.3
+milestone_name: Beginner On-Ramp & Inversions
+current_phase: 37
+current_phase_name: no-regression-gate
+status: milestone_shipped
+stopped_at: "v2.3 shipped and merged to main as PR #28 (commit 1925637) on 2026-07-28. Awaiting next milestone. Two on-device visual UAT batches (phases 34, 35) still open."
+last_updated: "2026-07-28T00:00:00Z"
+last_activity: 2026-07-28
+last_activity_desc: v2.3 merged to main via PR #28; planning history for phases 32-37 reconciled onto main
 progress:
   total_phases: 6
   completed_phases: 6
-  total_plans: 26
-  completed_plans: 26
+  total_plans: 15
+  completed_plans: 15
   percent: 100
-current_phase_name: No-Regression Gate & Test Remap
 ---
 
 # Project State
@@ -24,20 +24,29 @@ current_phase_name: No-Regression Gate & Test Remap
 See: .planning/PROJECT.md (updated 2026-07-21)
 
 **Core value:** See a jazz chord symbol and know instantly what to play with the left hand.
-**Current focus:** Phase 31 — no-regression-gate-test-remap (final v2.2 phase)
+**Current focus:** v2.3 shipped. Awaiting next milestone.
 
 ## Current Position
 
-Phase: Milestone v2.2 complete
-Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-07-25 — Milestone v2.2 completed and archived
+Phase: 37 (no-regression-gate) — COMPLETE (PASSED 8/8)
+Milestone: v2.3 Beginner On-Ramp & Inversions — all 6 phases (32-37) complete; green gate PASSED
+Status: SHIPPED. PR #28 merged to main on 2026-07-28 (merge commit 1925637). The code landed via a squashed code-only branch, so the phases 32-37 planning history was reconciled onto main separately. On-device visual UAT for phases 34 and 35 remains open.
+Last activity: 2026-07-28 — v2.3 merged; planning history reconciled onto main
+
+## Deferred Verification
+
+Autonomous away-run (2026-07-27): human_needed on-device VISUAL UAT items recorded per phase, not blocking the run per the user's standing instruction to run all leftover phases. Code-level verification passed for each. Run these batches on-device when back.
+
+| Phase | State | Resume |
+|-------|-------|--------|
+| 34 | verification_deferred_human (3 visual items: 1-octave keyboard + caption, hint-ladder rungs/chip/ghost visuals, mature-card widen) | /gsd-verify-work 34 (see 34-UAT.md) |
+| 35 | verification_deferred_human (2 visual items: bass ink-ring + "B" badge legibility, 2-octave keyboard tap targets on phone) | /gsd-verify-work 35 (see 35-UAT.md) |
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 94
+- Total plans completed: 97
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -64,6 +73,8 @@ Last activity: 2026-07-25 — Milestone v2.2 completed and archived
 | 29 | 5 | - | - |
 | 30 | 5 | - | - |
 | 31 | 2 | - | - |
+| 32 | 2 | - | - |
+| 33 | 1 | - | - |
 
 **Recent Trend:**
 
@@ -180,6 +191,21 @@ Last activity: 2026-07-25 — Milestone v2.2 completed and archived
 | Phase 30 P05 | 20min | 3 tasks | 18 files |
 | Phase 31 P01 | 35min | 2 tasks | 2 files |
 | Phase 31 P02 | 12min | 2 tasks | 1 files |
+| Phase 32 P01 | 7min | 2 tasks | 5 files |
+| Phase 32 P02 | 9min | 2 tasks | 4 files |
+| Phase 33 P01 | 20min | 3 tasks | 5 files |
+| Phase 34 P01 | 20min | 3 tasks | 4 files |
+| Phase 34 P02 | 15min | 3 tasks | 3 files |
+| Phase 35-inversions-new-drill-family P01 | 12min | 3 tasks | 4 files |
+| Phase 35 P02 | 20min | 2 tasks | 6 files |
+| Phase 35 P03 | 15min | 2 tasks | 3 files |
+| Phase 35 P04 | 17min | 2 tasks | 4 files |
+| Phase 35 P05 | 45min | 3 tasks | 2 files |
+| Phase 35 P06 | 19min | 3 tasks | 7 files |
+| Phase 36 P01 | 20min | 2 tasks | 2 files |
+| Phase 36 P02 | 7min | 2 tasks | 2 files |
+| Phase 37 P01 | 8min | 2 tasks | 2 files |
+| Phase 37 P02 | 15min | 2 tasks | 1 files |
 
 ## Deferred Items
 
@@ -200,6 +226,7 @@ Also carried (non-artifact): phase 21 /drills hover recede-reveal eyeball; phase
 
 ### Roadmap Evolution
 
+- v2.3 roadmap created (2026-07-26): 6 phases (32-37) for Beginner On-Ramp & Inversions, continuing numbering from v2.2's Phase 31. Phase 32 Shape Legibility ships the shared counting-chip grammar (role-tinted tone chips + fill/outline gap chips) on the name-it feedback surface (foundational, sequenced first like v2.2's IntervalView); Phase 33 Voicing Lean Flow (independent ShellVoicingDrill refactor — kill the 3-way toggle, add/drop nudges); Phase 34 Progression Scaffold & Beginner Keyboard (escalating hint ladder reusing the chip grammar + 1-octave beginner keyboard); Phase 35 Inversions (NEW drill family, highest-risk, reuses PianoKeyboard + composePracticeQueue + FSRS, grades by chroma + required bass); Phase 36 Cold-Session Queue Ordering (composePracticeQueue — the same file Phase 35 extends, sequenced after it and depending on it to avoid a composer race); Phase 37 No-Regression Gate (final green gate, matching v2.2's Phase 31). 9 requirements mapped 1:1, full coverage. Existing stack only — no new library, no data-schema migration.
 - v2.2 roadmap created (2026-07-24): 6 phases (26-31) for Hub Consolidation + Interval Theory, continuing numbering from v2.1's Phase 25. Phase 26 Shared IntervalView (foundational); Phase 27 Practice hub — one smart interleaved session (highest-risk, generators-as-modules constraint); Phase 28 Learn hub (theory + Scales Explore + interval reference); Phase 29 Progress hub (stats/streak/review-map/songs); Phase 30 four-hub nav cutover + 8 redirect shims + showcase deletion; Phase 31 no-regression gate + test remap. 16 requirements mapped 1:1, full coverage. UI + routing restructure only — no data-schema migration, no new theory data source.
 - Phase 21 added: Drills Polish — prevent duplicate song selection; make practice-pool container discrete (desktop hover reveal) + persist enabled state; replay played chord as a full chord for memorization.
 - Phase 22 added: Installable PWA — native SvelteKit service worker for offline app-shell caching, mobile installability (Android + iOS add-to-home-screen polish), and a new-version update prompt. Samples excluded from install precache.
@@ -400,6 +427,30 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 30-05]: coverage.test.ts's cross-surface chord-identity test dropped (not rewritten) after losing its Build-surface half; masthead FR-wiring assertion repointed to Practice/Pratiquer — Per plan guidance; Phase 31 re-establishes comprehensive coverage
 - [Phase ?]: Both CONTEXT-flagged thin spots (interval-family presence in the merged Practice mix; single-type-due variety-injection gate) already covered by tests/practice-hub-mix.e2e.test.ts, no gap-fill needed
 - [Phase 31]: Milestone shipping gate confirmed green (build+test+check); v2.2 REQUIREMENTS.md traceability confirmed for all 16 REQ-IDs — REG-01/REG-02 were already marked delivered by Plan 01's own state-update step (its frontmatter also declared requirements: [REG-01, REG-02]); this plan's gate run retroactively substantiates the marking as correct
+- [Phase 32-01]: CountingChipRow is a new standalone component, not an IntervalView extension - IntervalView's DESIGN-02 invariant reserves colored chips for role labels only and forbids colored gap markers
+- [Phase 32-01]: Neutral non-third gap fallback is defensive-only: every chord in the app's v1 quality matrix is genuinely tertian (Cdim7's top gap resolves to m3, not d3), proven via a synthetic ChordResult rather than a real symbol
+- [Phase ?]: [Phase 32-02] gapModifier() returns the literal string 'other' for non-m3/M3 gaps (not empty string), giving the CSS an explicit greppable modifier class matching the m3/M3 pattern
+- [Phase ?]: [Phase 32-02] .gap-chip.other neutral treatment is a dashed --color-faint border + --color-muted text with no background fill, distinct from both the m3 solid-fill and M3 outline states
+- [Phase ?]: [Phase 33-01] setVoicing(style) is a single shared toggle handler for both nudges (add-root/remove-bass), toggling the tapped style on/off against shell, rather than two bespoke handlers, since both need identical guard and preserve-selected (UAT V3) semantics
+- [Phase ?]: [Phase 34-01] voicingStageForChord(cards) reused verbatim for ProgressionDrill's per-bar maturity read; no parallel maturity function, no hasVoicingMet-equivalent override
+- [Phase ?]: [Phase 34-01] octaves prop passed explicitly to PianoKeyboard (stage === 'drill' ? 2 : 1) rather than relying on width self-measurement, so the beginner span holds regardless of viewport width
+- [Phase 34-02]: The hint ladder is inline markup in ProgressionDrill.svelte, not an extension of the shared HintLadder.svelte or a new standalone component — HintLadder's fixed family/formula/keyboard/spelling layer kinds don't fit this drill's degree/count/ghost rungs; grafting a 5th kind onto it would risk regressing RecallSession/BuildSession outside this phase's REG-01 scope
+- [Phase 34-02]: qualityWord resolves through dedicated progressions.hint.quality.* i18n keys rather than mnemonicFor/familyLineFor — Those helpers' prose doesn't fit this sentence shape; the UI-SPEC explicitly supersedes that suggestion for sentence fit and en/fr parity
+- [Phase ?]: bassRoleForIndex is the single source of the inversion-index-to-bass-role table (0 root, 1 third, 2 fifth, 3 seventh); no parallel table — Phase-wide architecture note: prompt copy and grading both derive bass role from this one function
+- [Phase 35]: stackedThirdsFor owns rotation (not CountingChipRow locally): one source of truth for tone labels + gap loop
+- [Phase 35]: bassHint is NOT gated on !role (deliberate deviation from ghostKeys/pendingKeys convention), per UI-SPEC section 3
+- [Phase 35]: inversions.* i18n domain: split-key composition keeps the bass letter immune, arrow glyph replaced with colon-joined structure (no-em-dash rule), bassRole words kept article-free with one shared article key.
+- [Phase ?]: syntheticInversionItems mirrors syntheticProgressionItems' enumerate-shuffle-take idiom for structural distinctness/determinism
+- [Phase ?]: Added minimal 'inversion' cue label (i18n + CUE_LABELS) as a Rule 3 fix to keep npm run check clean after widening HybridQueueItem; no InversionDrill UI wiring added (owned by 35-05/35-06)
+- [Phase ?]: InversionDrill onComplete is () => void (not (correct: boolean) => void): a wrong play always retries and never completes, matching ProgressionDrill/ShellVoicingDrill's onComplete shape
+- [Phase ?]: InversionDrill forces PianoKeyboard octaves=2 (not self-measuring): the bass must be able to sit below the stack
+- [Phase ?]: 35-06: inversion candidates filtered by symbolHasProvenance before syntheticInversionItems (candidate-list filter, not post-build filterInversionsBySong)
+- [Phase ?]: 35-06: REG-01 gate test runs syntheticVoicingItems/syntheticInversionItems REAL (full host render) rather than stopping at the composePracticeQueue seam
+- [Phase ?]: First-pick guard scoped via output.length === 0 inside the existing weave loop; isLowMasterySession reuses voicingStageForChord's State.Review maturity notion
+- [Phase 36-02]: lowMastery computed from cardedItems (post cardsToQueueItems), not selectedCards, so scale-family cards never skew the signal
+- [Phase 36-02]: Seeded items excluded from the lowMastery computation - they lead the queue post-composition regardless of the signal
+- [Phase ?]: REG-01 coverage matrix is a dedicated file mirroring v2.2 Phase 31; capstone is a new pure-composer test file (practiceQueueCapstone.test.ts) rather than extending the host-level REG test.
+- [Phase ?]: REG-01 flipped only after all three gate commands (build, test, check) were independently confirmed green in this session (T-37-02-01 mitigation).
 
 ### Pending Todos
 
@@ -426,7 +477,6 @@ Recent decisions affecting current work:
 | 260720-vm6 | Deploy CI: skip on doc-only pushes, skip gate tests on already-tested merges | 2026-07-20 | 9845fca | [260720-vm6-deploy-ci-md-filter-and-test-skip](./quick/260720-vm6-deploy-ci-md-filter-and-test-skip/) |
 | 260723-dkp | Deploy CI: docker prune on failed deploy (disk-full recovery), removed invalid script_stop input | 2026-07-23 | d9d36ae | [260723-dkp-docker-prune-on-deploy-failure](./quick/260723-dkp-docker-prune-on-deploy-failure/) |
 | 260720-v9u | Move "From my songs" filter to Songs page as single global preference | 2026-07-20 | eec9db4 | [260720-v9u-move-the-from-my-songs-review-pool-filte](./quick/260720-v9u-move-the-from-my-songs-review-pool-filte/) |
-| 260725-1j9 | nginx: no-cache header for /service-worker.js so PWA update detection works on mobile | 2026-07-25 | 139d0c4 | [260725-1j9-service-worker-no-cache-header](./quick/260725-1j9-service-worker-no-cache-header/) |
 
 ## Deferred Items
 
@@ -438,11 +488,11 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-25T11:42:28.186Z
-Stopped at: Completed 30-02-PLAN.md
+Last session: 2026-07-27T03:16:54.376Z
+Stopped at: Completed 37-02-PLAN.md
 Resume file: 
 None
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Plan the first v2.3 phase with /gsd-plan-phase 32
