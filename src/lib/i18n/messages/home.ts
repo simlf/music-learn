@@ -9,6 +9,12 @@ import type { LocaleDict } from './index';
  * {symbol}-style placeholder tokens, note letters, and interval shorthand
  * are NEVER keyed here - they render verbatim from the theory engine
  * regardless of locale (20-UI-SPEC "Chord Glyph & Symbol Immunity").
+ *
+ * No em dashes anywhere in this file's copy (periods/colons/commas only, per
+ * the project's standing copy rule). The duo labels and the disambiguation
+ * chip suffixes used to carry them; both now read with a colon, in en and fr
+ * alike. French keeps its spaced colon convention (" : "), matching the
+ * placeholder and third-step copy above.
  */
 export const home = {
 	en: {
@@ -34,17 +40,17 @@ export const home = {
 		'home.why.key-signature':
 			'builds the chord from the root using its own interval formula. The scale/key signature does not impose accidentals here.',
 		'home.why.duo-heading': 'Do not mix up:',
-		'home.why.duo-minor-label': 'minor — low third',
-		'home.why.duo-major-label': 'major — high third',
+		'home.why.duo-minor-label': 'minor: low third',
+		'home.why.duo-major-label': 'major: high third',
 		'home.why.duo-closing': 'The key of the scale never changes the notes of the symbol.',
 		'home.why.escape-hatch-prefix': 'See',
 		'home.disambig.heading-prefix': '"',
 		'home.disambig.heading-suffix': '" is ambiguous',
 		'home.disambig.body': 'Casing matters in chord symbols:',
 		'home.disambig.chip-minor-prefix': '',
-		'home.disambig.chip-minor-suffix': '— minor',
+		'home.disambig.chip-minor-suffix': ': minor',
 		'home.disambig.chip-major-prefix': '',
-		'home.disambig.chip-major-suffix': '— major',
+		'home.disambig.chip-major-suffix': ': major',
 		'home.slash.explain':
 			'The slash means {BASS} is the lowest note: play {CHORD} with {BASS} at the bottom.'
 	},
@@ -72,17 +78,17 @@ export const home = {
 		'home.why.key-signature':
 			"construit l'accord depuis la fondamentale avec sa propre formule d'intervalles. La gamme (la clé) n'impose rien ici.",
 		'home.why.duo-heading': 'Ne pas confondre :',
-		'home.why.duo-minor-label': 'mineur — tierce basse',
-		'home.why.duo-major-label': 'majeur — tierce haute',
+		'home.why.duo-minor-label': 'mineur : tierce basse',
+		'home.why.duo-major-label': 'majeur : tierce haute',
 		'home.why.duo-closing': "La clé de la gamme ne change pas les notes du symbole.",
 		'home.why.escape-hatch-prefix': 'Voir',
 		'home.disambig.heading-prefix': '«',
 		'home.disambig.heading-suffix': '» est ambigu',
 		'home.disambig.body': 'La casse compte dans les symboles d’accords :',
 		'home.disambig.chip-minor-prefix': '',
-		'home.disambig.chip-minor-suffix': '— mineur',
+		'home.disambig.chip-minor-suffix': ': mineur',
 		'home.disambig.chip-major-prefix': '',
-		'home.disambig.chip-major-suffix': '— majeur',
+		'home.disambig.chip-major-suffix': ': majeur',
 		'home.slash.explain':
 			'La barre oblique indique que {BASS} est la note la plus basse : jouez {CHORD} en plaçant {BASS} en bas.'
 	}

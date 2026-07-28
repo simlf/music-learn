@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { ChordResult, IntervalRole } from '$lib/theory/types';
-	import { stackedThirdsFor } from '$lib/lookup/chordPresentation';
+	import { stackedThirdsFor, type StackedGap } from '$lib/lookup/chordPresentation';
 	import { t } from '$lib/i18n/locale.svelte';
 
 	/**
@@ -54,18 +54,20 @@
 	let stacked = $derived(stackedThirdsFor(chord, rotateFromRole));
 
 	/**
-	 * Gap modifier class from a stackedThirdsFor gap label ("+m3" -> "m3",
-	 * "+M3" -> "M3"). Non-third gaps DO occur in production (WR-02): the
-	 * name-it drill pool's tier 5-6 qualities (sus4/6/9/13) genuinely emit
-	 * gaps like "+P4"/"+M2"/"+P5" from stackedThirdsFor - this is not a dead
-	 * or unreachable branch. Those get the explicit neutral "other" modifier
+	 * Gap modifier class for one stackedThirdsFor gap ("+m3" -> "m3", "+M3" ->
+	 * "M3"). Non-third gaps DO occur in production (WR-02): the name-it drill
+	 * pool's tier 5-6 qualities (sus4/6/9/13) genuinely emit gaps like
+	 * "+P4"/"+M2"/"+P5" from stackedThirdsFor - this is not a dead or
+	 * unreachable branch. Those get the explicit neutral "other" modifier
 	 * (.gap-chip.other), a first-class visual state distinct from both the
 	 * m3 solid-ink-fill and M3 outline states.
+	 *
+	 * Reads the gap's own `isThird` flag rather than re-parsing its label, so
+	 * this row and IntervalView share ONE definition of "is this gap actually
+	 * a stacked third" (music-theory audit Bug D). Output is unchanged.
 	 */
-	function gapModifier(label: string): string {
-		const stripped = label.replace(/^\+/, '');
-		if (stripped === 'm3' || stripped === 'M3') return stripped;
-		return 'other';
+	function gapModifier(gap: StackedGap): string {
+		return gap.isThird ? gap.label.replace(/^\+/, '') : 'other';
 	}
 </script>
 
@@ -74,7 +76,7 @@
 		<span class="tone-chip {tone.role}">{tone.letter}</span>
 		{#if i < stacked.gaps.length}
 			{@const gap = stacked.gaps[i]}
-			{@const modifier = gapModifier(gap.label)}
+			{@const modifier = gapModifier(gap)}
 			<span class="gap-chip {modifier}" title={gap.longFr}>{gap.label}</span>
 		{/if}
 	{/each}

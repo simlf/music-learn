@@ -839,3 +839,95 @@ describe('ShellVoicingDrill: quality-aware shell rationale (pedagogy audit bug p
 		expect(screen.getByText('Joue le shell : les tons de guidage plus la ♭5.')).toBeInTheDocument();
 	});
 });
+
+/**
+ * BUG PIN (music-theory audit, Bug E): a chord whose shell has fewer than two
+ * notes has no answerable "play the guide tones" question. shellNotes(C6) is
+ * a single note [E] and shellNotes(Csus4) is empty, and with an empty target
+ * matchChord rejects EVERY play, so Check could never be satisfied and the
+ * learner would be stuck in a retry loop with nothing required (optionalMarkers
+ * meanwhile marked both remaining notes droppable). Unreachable from the
+ * standalone draw today (the 12x5 seventh matrix is all drillable) but reachable
+ * right now via embedSymbol, and it blocks the queued chart-vocabulary
+ * expansion to 6 / m6 / sus4 / add9 / 9 / 13 / m(maj7).
+ */
+describe('ShellVoicingDrill: undrillable shell guard (music-theory audit Bug E)', () => {
+	async function renderEmbedded(symbol: string) {
+		getAllCardsMock.mockResolvedValue([
+			{ ...makeCard(State.Learning), factId: `chord-formula:${symbol}` }
+		]);
+		return render(ShellVoicingDrill, { props: { embedSymbol: symbol } });
+	}
+
+	it('C6 renders the no-shell notice instead of an unanswerable drill', async () => {
+		await renderEmbedded('C6');
+		await waitFor(() => screen.getByTestId('shell-unavailable'));
+
+		expect(screen.getByTestId('shell-unavailable')).toHaveTextContent(
+			'No shell to drill on this symbol'
+		);
+		expect(screen.getByTestId('shell-unavailable')).toHaveTextContent(
+			'a shell keeps the third and the seventh'
+		);
+		// No unwinnable question is offered: no stage UI, no Check.
+		expect(screen.queryByTestId('step-indicator')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('stage-subtract')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('stage-drill')).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Check' })).not.toBeInTheDocument();
+		expect(screen.queryByTestId('retry')).not.toBeInTheDocument();
+	});
+
+	it('Csus4 (empty shell, the retry-loop case) is guarded the same way', async () => {
+		await renderEmbedded('Csus4');
+		await waitFor(() => screen.getByTestId('shell-unavailable'));
+
+		expect(screen.queryByRole('button', { name: 'Check' })).not.toBeInTheDocument();
+		expect(screen.getByTestId('target-glyph')).toBeInTheDocument();
+	});
+
+	it('the notice still names the chord and offers a way onward', async () => {
+		const onComplete = vi.fn();
+		getAllCardsMock.mockResolvedValue([]);
+		render(ShellVoicingDrill, { props: { embedSymbol: 'C69', onComplete } });
+		await waitFor(() => screen.getByTestId('shell-unavailable'));
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+		expect(onComplete).toHaveBeenCalledTimes(1);
+	});
+
+	it('FR: the notice reads in French', async () => {
+		setLocale('fr');
+		await renderEmbedded('C6');
+		await waitFor(() => screen.getByTestId('shell-unavailable'));
+
+		expect(screen.getByTestId('shell-unavailable')).toHaveTextContent(
+			'Pas de shell à travailler sur ce symbole'
+		);
+	});
+
+	it('every drillable chord is untouched: the seventh families still render their stages', async () => {
+		for (const symbol of ['Cmaj7', 'Cm7', 'C7', 'Cm7b5', 'Cdim7']) {
+			const { unmount } = await renderEmbedded(symbol);
+			await waitFor(() => screen.getByTestId('step-indicator'));
+			expect(screen.queryByTestId('shell-unavailable'), symbol).not.toBeInTheDocument();
+			unmount();
+		}
+	});
+
+	it('the meet stage of an extended chord shows the FULL stack, extensions included', async () => {
+		getAllCardsMock.mockResolvedValue([]);
+		render(ShellVoicingDrill, { props: { embedSymbol: 'C13' } });
+		await waitFor(() => screen.getByTestId('stage-meet'));
+
+		// C13 spells C E G B♭ D A. Before Bug E's fix the "what you know" card
+		// (fullStackNotes) highlighted only C E G B♭: the 9th and the 13th were
+		// dropped from the chord's OWN full stack.
+		const know = screen.getByTestId('compare-know');
+		const highlighted = [
+			...know.querySelectorAll('.note-label--highlighted .note-label__letter')
+		].map((letter) => letter.textContent);
+		expect(highlighted).toContain('D');
+		expect(highlighted).toContain('A');
+		expect(new Set(highlighted)).toEqual(new Set(['C', 'E', 'G', 'B♭', 'D', 'A']));
+	});
+});

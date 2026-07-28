@@ -3,6 +3,7 @@
 	import { Note } from 'tonal';
 	import {
 		fullStackNotes,
+		hasDrillableShell,
 		hasFlatFifth,
 		optionalMarkers,
 		rootlessNotes,
@@ -64,9 +65,20 @@
 
 	type VoicingStyle = 'root' | 'shell' | 'rootless';
 
-	/** Draws a fresh 7th-chord symbol from the shared fact catalog's seventh-bearing family (25-02). */
+	/**
+	 * Draws a fresh 7th-chord symbol from the shared fact catalog's
+	 * seventh-bearing family (25-02), skipping anything whose shell would have
+	 * fewer than two notes to play (hasDrillableShell). Every symbol in today's
+	 * 12x5 seventh matrix carries both guide tones, so the filter is a no-op
+	 * now; it exists so the queued chart-vocabulary expansion (6 / m6 / sus4 /
+	 * add9 / 9 / 13 / m(maj7)) cannot start drawing a chord the shell drill
+	 * has no question for. Falls back to the unfiltered pool if the filter ever
+	 * empties it, so this can never draw undefined.
+	 */
 	function drawSymbol(): string {
-		const symbols = seventhChordSymbols();
+		const pool = seventhChordSymbols();
+		const drillable = pool.filter((candidate) => hasDrillableShell(spellChord(candidate)));
+		const symbols = drillable.length > 0 ? drillable : pool;
 		return symbols[Math.floor(Math.random() * symbols.length)];
 	}
 
@@ -90,6 +102,18 @@
 	 * exception, matching shellNotes' own note-set split.
 	 */
 	const flatFifth = $derived(hasFlatFifth(chord));
+
+	/**
+	 * Whether this chord has a shell worth drilling at all (music-theory audit
+	 * Bug E). A host can embed any symbol via embedSymbol, and the queued
+	 * chart-vocabulary expansion will widen the draw pool, so a chord missing a
+	 * guide tone (C6's shell is one note, Csus4's is none) has to be handled
+	 * rather than rendered as an unanswerable question: with an empty target,
+	 * matchChord rejects every play and the learner cannot get out of the retry
+	 * loop. Every symbol in today's seventh matrix is drillable, so this is
+	 * false for nothing the drill currently draws.
+	 */
+	const drillableShell = $derived(hasDrillableShell(chord));
 
 	let cards = $state<CardRecord[]>([]);
 	/**
@@ -352,6 +376,24 @@
 	     cards, and a fast "Got it" tap in that window would mark the wrong
 	     chord met. -->
 	{#if cardsLoaded}
+	<!-- Bug E guard: a chord whose shell has fewer than two notes has no
+	     answerable "play the guide tones" question (matchChord against an empty
+	     target rejects every play), so say so and offer the next chord instead
+	     of rendering an unwinnable drill. Nothing in today's seventh matrix
+	     lands here; embedSymbol and the queued vocabulary expansion can. -->
+	{#if !drillableShell}
+	<div data-testid="shell-unavailable">
+		<div class="mt-4 mb-4" data-testid="target-glyph">
+			<ChordGlyph root={chord.root} quality={glyphQuality} />
+		</div>
+		<p class="text-body">{t('voicings.shell.unavailable')}</p>
+		<div class="mt-4">
+			<Button type="button" variant="primary" onclick={next}>
+				{t('voicings.button.next')}
+			</Button>
+		</div>
+	</div>
+	{:else}
 	<div class="step-indicator" data-testid="step-indicator" role="group" aria-label={t('voicings.aria.stepGroup')}>
 		<button
 			type="button"
@@ -500,6 +542,7 @@
 				</div>
 			{/if}
 		</div>
+	{/if}
 	{/if}
 	{/if}
 </div>

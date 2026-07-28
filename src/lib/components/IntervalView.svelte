@@ -100,6 +100,7 @@
 				{#if i < stacked.gaps.length}
 					<span
 						class="interval-view__gap text-label font-mono"
+						class:interval-view__gap--other={!stacked.gaps[i].isThird}
 						aria-hidden="true"
 						title={stacked.gaps[i].longFr}
 					>
@@ -108,6 +109,11 @@
 				{/if}
 			{/each}
 		</div>
+		{#if !stacked.tertian}
+			<p class="interval-view__note text-label" data-testid="interval-stacked-non-tertian">
+				{t('interval-view.stacked.nonTertian')}
+			</p>
+		{/if}
 	{:else}
 		<div class="interval-view__row" data-testid="interval-formula">
 			{#each formula as entry (entry.role + entry.letter)}
@@ -185,5 +191,24 @@
 		align-self: center;
 		color: var(--color-muted);
 		font-weight: 700;
+	}
+
+	/* A gap that is NOT a third (music-theory audit Bug D): C13's +P5 over its
+	   missing 11th, a sus4's +P4, a 6th chord's +M2. Marked with the same
+	   dashed-neutral vocabulary CountingChipRow's .gap-chip.other already
+	   established for this exact case (Phase 32 WR-02), so a stacked-THIRDS
+	   row never presents a fifth as one of its thirds. Still muted text, never
+	   a colored chip - DESIGN-02's gap reservation holds. */
+	.interval-view__gap--other {
+		border-bottom: 2px dashed var(--color-faint);
+		font-weight: 400;
+		font-style: italic;
+	}
+
+	/* The row-level caption when the stack is not tertian at all. */
+	.interval-view__note {
+		margin-top: var(--spacing-sm);
+		color: var(--color-muted);
+		font-style: italic;
 	}
 </style>

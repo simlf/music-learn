@@ -89,9 +89,51 @@ export function rootlessNotes(chord: ChordResult): SpelledNote[] {
 	return notesWithRoles(chord, ['second', 'third', 'fourth', 'fifth', 'sixth', 'seventh']);
 }
 
-/** The full 4-note stack: root/third/fifth/seventh, in that order. */
+/**
+ * The chord's FULL stack: every note it spells, in the root-position order
+ * spellChord already put them in.
+ *
+ * BUG PIN (music-theory audit, Bug E): this filtered to root/third/fifth/
+ * seventh, so any tone outside those four roles silently vanished from the
+ * chord's own "full stack" - the one voicing card captioned "WHAT YOU KNOW":
+ *
+ *   fullStackNotes(spellChord('C6'))   before  [C, E, G]        (A gone)
+ *   fullStackNotes(spellChord('C69'))  before  [C, E, G]        (A, D gone)
+ *   fullStackNotes(spellChord('C13'))  before  [C, E, G, B♭]    (D, A gone)
+ *
+ * Unreachable while seventhChordSymbols() gates the drill to the 12x5 seventh
+ * matrix (every one of which is exactly root/third/fifth/seventh, so this
+ * change is a no-op for them), but it BLOCKS the queued chart-vocabulary
+ * expansion to 6 / m6 / sus4 / add9 / 9 / 13 / m(maj7) - real charts are full
+ * of those, and the drill would have taught an incomplete stack for each.
+ *
+ * Returns a copy, matching notesWithRoles' non-aliasing contract, so a caller
+ * can never mutate the chord's own note array through this.
+ */
 export function fullStackNotes(chord: ChordResult): SpelledNote[] {
-	return notesWithRoles(chord, ['root', 'third', 'fifth', 'seventh']);
+	return [...chord.notes];
+}
+
+/**
+ * Whether this chord can be drilled as a shell voicing at all: the shell has
+ * to carry at least TWO notes for "play the guide tones" to be a real
+ * question. shellNotes is the 3rd + 7th (plus the ♭5 on a ♭5 chord), so a
+ * chord missing either guide tone falls short:
+ *
+ *   shellNotes(spellChord('C6'))     [E]   - a third alone is not a pair
+ *   shellNotes(spellChord('Csus4'))  []    - no third and no seventh
+ *
+ * With an empty target the drill's Check could never be satisfied (matchChord
+ * against an empty note set rejects every play), so the learner would be
+ * stuck in a retry loop; with a single note the question teaches nothing. The
+ * seventh-matrix pool cannot produce either case today, so this is a guard
+ * for the queued vocabulary expansion and for host-supplied embed symbols,
+ * not a live bug.
+ *
+ * Total: an unrecognized chord has no shell and is not drillable.
+ */
+export function hasDrillableShell(chord: ChordResult): boolean {
+	return shellNotes(chord).length >= 2;
 }
 
 /**

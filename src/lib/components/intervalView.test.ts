@@ -179,3 +179,130 @@ describe('IntervalView toggle i18n + chrome (IVW-02)', () => {
 		expect(stackedSegment.className).toContain('ps-button--ghost');
 	});
 });
+
+/**
+ * BUG PIN (music-theory audit, Bug A) at the RENDER level: this is the
+ * component that draws the lookup page's formula/stacked rows, so the wrong
+ * degree was on screen, not just in a pure function. C9's D used to render as
+ * a chip labelled "M2" (a major SECOND) instead of "M9".
+ */
+describe('IntervalView renders compound degrees (music-theory audit Bug A)', () => {
+	it('C9 renders an M9 chip, never M2, in both the stacked and formula views', async () => {
+		render(IntervalView, { chord: spellChord('C9'), onInspectTone: vi.fn() });
+
+		const view = screen.getByTestId('interval-view');
+		const stacked = within(view).getByTestId('interval-stacked');
+		expect(within(stacked).getByText('M9')).toBeInTheDocument();
+		expect(within(stacked).queryByText('M2')).not.toBeInTheDocument();
+
+		await fireEvent.click(within(view).getByLabelText('Formula view'));
+
+		const formula = within(view).getByTestId('interval-formula');
+		expect(within(formula).getByText('M9')).toBeInTheDocument();
+		expect(within(formula).queryByText('M2')).not.toBeInTheDocument();
+	});
+
+	it('C13 renders M9 + M13 chips, never M2 + M6', () => {
+		render(IntervalView, { chord: spellChord('C13'), onInspectTone: vi.fn() });
+
+		const stacked = within(screen.getByTestId('interval-view')).getByTestId('interval-stacked');
+		expect(within(stacked).getByText('M9')).toBeInTheDocument();
+		expect(within(stacked).getByText('M13')).toBeInTheDocument();
+		expect(within(stacked).queryByText('M2')).not.toBeInTheDocument();
+		expect(within(stacked).queryByText('M6')).not.toBeInTheDocument();
+	});
+
+	it('C7#11 renders an A11 chip, never A4, and its tooltip names the 11th in French', () => {
+		render(IntervalView, { chord: spellChord('C7#11'), onInspectTone: vi.fn() });
+
+		const stacked = within(screen.getByTestId('interval-view')).getByTestId('interval-stacked');
+		const chip = within(stacked).getByText('A11');
+		expect(chip).toBeInTheDocument();
+		expect(chip.getAttribute('title')).toBe('onzième augmentée');
+		expect(within(stacked).queryByText('A4')).not.toBeInTheDocument();
+	});
+});
+
+/**
+ * BUG PIN (music-theory audit, Bug D) at the RENDER level: this view is
+ * labelled "Stacked-thirds view" and drew every gap in the same muted weight,
+ * so C13's +P5 (it has no 11th) looked exactly like one of its thirds.
+ */
+describe('IntervalView marks non-third gaps (music-theory audit Bug D)', () => {
+	/** The gap markers of the stacked row, in render order. */
+	function gaps() {
+		const stacked = within(screen.getByTestId('interval-view')).getByTestId('interval-stacked');
+		return [...stacked.querySelectorAll('.interval-view__gap')];
+	}
+
+	it('C13: only the +P5 carries the not-a-third marking, every third stays plain', () => {
+		render(IntervalView, { chord: spellChord('C13'), onInspectTone: vi.fn() });
+
+		const rendered = gaps().map((g) => [
+			g.textContent?.trim(),
+			g.classList.contains('interval-view__gap--other')
+		]);
+		expect(rendered).toEqual([
+			['+M3', false],
+			['+m3', false],
+			['+m3', false],
+			['+M3', false],
+			['+P5', true]
+		]);
+	});
+
+	it('C13 captions the row as not a plain stack of thirds, in both locales', () => {
+		render(IntervalView, { chord: spellChord('C13'), onInspectTone: vi.fn() });
+
+		const note = screen.getByTestId('interval-stacked-non-tertian');
+		expect(note.textContent?.trim()).toBe(
+			'The dashed gaps are not thirds. This symbol is not a plain stack of thirds.'
+		);
+
+		flushSync(() => setLocale('fr'));
+
+		expect(screen.getByTestId('interval-stacked-non-tertian').textContent?.trim()).toBe(
+			"Les écarts en pointillés ne sont pas des tierces. Ce symbole n'est pas un simple empilement de tierces."
+		);
+	});
+
+	it('a real stack of thirds is byte-identical: no marking, no caption', () => {
+		const { container: tertian } = render(IntervalView, { chord: cm7, onInspectTone: vi.fn() });
+
+		expect(screen.queryByTestId('interval-stacked-non-tertian')).not.toBeInTheDocument();
+		for (const gap of gaps()) {
+			expect(gap.classList.contains('interval-view__gap--other')).toBe(false);
+		}
+		expect(tertian.innerHTML).not.toContain('interval-view__gap--other');
+	});
+
+	it('Csus4 (no thirds at all) marks both gaps and captions the row', () => {
+		render(IntervalView, { chord: spellChord('Csus4'), onInspectTone: vi.fn() });
+
+		expect(gaps().map((g) => g.textContent?.trim())).toEqual(['+P4', '+M2']);
+		for (const gap of gaps()) {
+			expect(gap.classList.contains('interval-view__gap--other')).toBe(true);
+		}
+		expect(screen.getByTestId('interval-stacked-non-tertian')).toBeInTheDocument();
+	});
+
+	it('the caption is stacked-view only: switching to the formula view drops it', async () => {
+		render(IntervalView, { chord: spellChord('C13'), onInspectTone: vi.fn() });
+		expect(screen.getByTestId('interval-stacked-non-tertian')).toBeInTheDocument();
+
+		await fireEvent.click(
+			within(screen.getByTestId('interval-view')).getByLabelText('Formula view')
+		);
+
+		expect(screen.queryByTestId('interval-stacked-non-tertian')).not.toBeInTheDocument();
+	});
+
+	it('gap markers stay aria-hidden non-buttons: the marking adds no tap target', () => {
+		render(IntervalView, { chord: spellChord('C13'), onInspectTone: vi.fn() });
+
+		for (const gap of gaps()) {
+			expect(gap.getAttribute('aria-hidden')).toBe('true');
+			expect(gap.tagName).not.toBe('BUTTON');
+		}
+	});
+});

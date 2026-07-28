@@ -77,7 +77,10 @@ export const voicings = {
 		'voicings.button.next': 'Next',
 
 		'voicings.retry.wrong': 'Not quite. Try again.',
-		'voicings.correct.confirm': 'Guide tones locked in.'
+		'voicings.correct.confirm': 'Guide tones locked in.',
+
+		'voicings.shell.unavailable':
+			'No shell to drill on this symbol: a shell keeps the third and the seventh, and this one does not spell both.'
 	},
 	fr: {
 		'voicings.page.title': 'Shell Voicings',
@@ -119,6 +122,9 @@ export const voicings = {
 		'voicings.button.next': 'Suivant',
 
 		'voicings.retry.wrong': 'Pas tout à fait. Réessaie.',
-		'voicings.correct.confirm': 'Tons de guidage en place.'
+		'voicings.correct.confirm': 'Tons de guidage en place.',
+
+		'voicings.shell.unavailable':
+			"Pas de shell à travailler sur ce symbole : un shell garde la tierce et la septième, et celui-ci n'a pas les deux."
 	}
 } satisfies LocaleDict;
