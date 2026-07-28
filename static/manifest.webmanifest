@@ -1,7 +1,7 @@
 {
 	"name": "Music Learn",
 	"short_name": "Music Learn",
-	"start_url": "/",
+	"start_url": "/practice",
 	"scope": "/",
 	"display": "standalone",
 	"background_color": "#f2ecdd",
@@ -24,6 +24,47 @@
 			"sizes": "512x512",
 			"type": "image/png",
 			"purpose": "maskable"
+		}
+	],
+	"shortcuts": [
+		{
+			"name": "Practice",
+			"short_name": "Practice",
+			"description": "Start a practice session",
+			"url": "/practice",
+			"icons": [
+				{
+					"src": "/icons/icon-192.png",
+					"sizes": "192x192",
+					"type": "image/png"
+				}
+			]
+		},
+		{
+			"name": "Look up a chord",
+			"short_name": "Lookup",
+			"description": "Decode a chord symbol from sheet music",
+			"url": "/",
+			"icons": [
+				{
+					"src": "/icons/icon-192.png",
+					"sizes": "192x192",
+					"type": "image/png"
+				}
+			]
+		},
+		{
+			"name": "Progress",
+			"short_name": "Progress",
+			"description": "See the streak and what needs practice",
+			"url": "/progress",
+			"icons": [
+				{
+					"src": "/icons/icon-192.png",
+					"sizes": "192x192",
+					"type": "image/png"
+				}
+			]
 		}
 	]
 }

@@ -11,6 +11,17 @@
 	 * better than a discouraging "0 DAY STREAK" or a loading skeleton in
 	 * persistent chrome that must never flash or shift.
 	 *
+	 * B8: the count the masthead passes is now DEVICE-LOCAL (computed from
+	 * $lib/practice/practiceDays, raised only if a reachable server reports a
+	 * larger cross-device streak), so the chip renders for any streak >= 1 with
+	 * no bearer token and no network. The masthead therefore passes no
+	 * `loading` at all: the local value is ready by first paint. `loading` stays
+	 * in the API for the Progress page, whose hero still waits on a fetch.
+	 *
+	 * Self-hiding at zero remains the anti-guilt rule (Phase 1 D-02): a lapsed
+	 * 40-day run and a first-ever visit both show nothing here, and neither is
+	 * told what it lost.
+	 *
 	 * `hero` always renders the numeral at display size in font-mono (the
 	 * UI-SPEC's "display + mono = big data numeral" rule, distinct from
 	 * ChordGlyph's display + serif "chord glyph" rule). It's vermilion only

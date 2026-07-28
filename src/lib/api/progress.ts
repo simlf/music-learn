@@ -9,6 +9,7 @@
  */
 
 import { apiFetch } from './client';
+import { recordPracticeDay } from '$lib/practice/practiceDays';
 
 /** The client-side answer event shape. 'interval' answers use the shorthand name as item (Track C). */
 export interface AnswerEvent {
@@ -97,9 +98,18 @@ function enqueue(event: QueuedAnswerEvent): void {
  * or an unreachable backend) then fires an unawaited flush attempt. Always
  * returns undefined synchronously - the caller (the drill loop) never waits
  * on the network (D-04).
+ *
+ * B8: this is also where the DEVICE's own practice-day set is written, since
+ * every graded answer in the app funnels through here (directly, or via
+ * answerTelemetry's recordPracticeAnswer). Recording the day here rather than
+ * at each drill call site is what makes the local streak impossible to forget
+ * to wire up in a new drill surface. It is idempotent per day, so the
+ * hundredth answer of a session costs one localStorage read.
  */
 export function recordAnswer(event: AnswerEvent): void {
-	const payload: QueuedAnswerEvent = { ...event, clientDate: localDateString() };
+	const clientDate = localDateString();
+	recordPracticeDay(clientDate);
+	const payload: QueuedAnswerEvent = { ...event, clientDate };
 	enqueue(payload);
 	void flushQueue();
 }
@@ -183,8 +193,15 @@ export async function fetchStats(): Promise<{ items: StatItem[]; weakest: StatIt
 
 /**
  * Fetches the server-computed daily practice streak for the given local
- * calendar date (PROG-03, D-02: the client never re-derives the streak from
- * raw events). Throws on a non-ok response.
+ * calendar date (PROG-03). Throws on a non-ok response.
+ *
+ * B8 changed this endpoint's ROLE, not its shape: the server is no longer the
+ * source of truth for the visible streak. `$lib/practice/practiceDays`'
+ * `localStreak` is, because it needs no token and no tailnet. This fetch is a
+ * cross-device MERGE: when it succeeds and reports a LARGER streak (practice
+ * done on another device), callers raise the displayed number to it. A
+ * reachable server must never lower the streak below what this device knows
+ * happened.
  */
 export async function fetchStreak(today: string): Promise<StreakResult> {
 	const response = await apiFetch(`/streak?today=${encodeURIComponent(today)}`);

@@ -48,8 +48,12 @@ vi.mock('$app/stores', () => ({
 	page: readable({ url: new URL('http://localhost/') })
 }));
 
+// afterNavigate is stubbed as a no-op: the Lookup page registers a callback
+// through it to decide whether its input autofocuses (B6), and a factory mock
+// must expose every export the components under test import.
 vi.mock('$app/navigation', () => ({
-	goto: vi.fn(() => Promise.resolve())
+	goto: vi.fn(() => Promise.resolve()),
+	afterNavigate: vi.fn()
 }));
 
 const introduceNewCardsMock = vi.fn();

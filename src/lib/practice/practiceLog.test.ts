@@ -7,6 +7,7 @@ import {
 	practiceDaysSince,
 	PRACTICE_LOG_KEY
 } from './practiceLog';
+import { recordPracticeDay } from './practiceDays';
 
 function seed(entries: unknown): void {
 	localStorage.setItem(PRACTICE_LOG_KEY, JSON.stringify(entries));
@@ -88,6 +89,29 @@ describe('distinctPracticeDays', () => {
 		appendPracticeAnswer({ item: 'G7', correct: true, assisted: false, date: '2026-07-12' });
 		appendPracticeAnswer({ item: 'F7', correct: true, assisted: false, date: '2026-07-14' });
 		expect(distinctPracticeDays()).toEqual(['2026-07-12', '2026-07-14']);
+	});
+
+	/**
+	 * B8: the durable day set (practiceDays.ts) is the authoritative record now
+	 * that every graded answer writes one, but the bounded answer log can still
+	 * hold days from before it existed. Days from either source count, once.
+	 */
+	it('unions the durable practice-day set with the answer log, deduped and sorted', () => {
+		appendPracticeAnswer({ item: 'Cm7', correct: true, assisted: false, date: '2026-07-14' });
+		recordPracticeDay('2026-07-14');
+		recordPracticeDay('2026-07-15');
+		recordPracticeDay('2026-07-10');
+
+		expect(distinctPracticeDays()).toEqual(['2026-07-10', '2026-07-14', '2026-07-15']);
+	});
+
+	it('counts days the day set knows even when the answer log is empty', () => {
+		recordPracticeDay('2026-07-13');
+		recordPracticeDay('2026-07-14');
+
+		expect(readPracticeLog()).toEqual([]);
+		expect(distinctPracticeDays()).toEqual(['2026-07-13', '2026-07-14']);
+		expect(practiceDaysSince('2026-07-13')).toBe(1);
 	});
 });
 

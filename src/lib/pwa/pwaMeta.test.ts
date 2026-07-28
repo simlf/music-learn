@@ -32,8 +32,14 @@ describe('static/manifest.webmanifest installability preconditions', () => {
 		expect(manifest.short_name).toBeTruthy();
 	});
 
-	it('has start_url and scope of "/"', () => {
-		expect(manifest.start_url).toBe('/');
+	/**
+	 * B6: start_url used to be "/", the Lookup tool (a chord-symbol text box),
+	 * so every cold launch of the installed app opened the one screen where
+	 * nothing gets practiced. It now points at /practice. scope stays "/" so
+	 * every route still runs inside the installed app.
+	 */
+	it('launches into /practice, with a scope of "/" that still covers every route', () => {
+		expect(manifest.start_url).toBe('/practice');
 		expect(manifest.scope).toBe('/');
 	});
 
@@ -52,5 +58,53 @@ describe('static/manifest.webmanifest installability preconditions', () => {
 			icon.purpose?.includes('maskable')
 		);
 		expect(hasMaskable).toBe(true);
+	});
+});
+
+/**
+ * B6: home-screen icon long-press shortcuts. With start_url on /practice, the
+ * Lookup tool needs a one-tap route back that is not "launch the app, then
+ * navigate", since Lookup is the thing you reach for with sheet music in front
+ * of you.
+ */
+describe('static/manifest.webmanifest launch shortcuts (B6)', () => {
+	interface Shortcut {
+		name: string;
+		short_name?: string;
+		description?: string;
+		url: string;
+		icons?: { src: string; sizes: string; type: string }[];
+	}
+	const shortcuts: Shortcut[] = manifest.shortcuts;
+
+	it('declares a shortcuts array', () => {
+		expect(Array.isArray(shortcuts)).toBe(true);
+		expect(shortcuts.length).toBeGreaterThanOrEqual(2);
+	});
+
+	it('includes a Practice shortcut pointing at /practice', () => {
+		const practice = shortcuts.find((shortcut) => shortcut.url === '/practice');
+		expect(practice).toBeDefined();
+		expect(practice?.name).toBe('Practice');
+	});
+
+	it('includes a chord-lookup shortcut pointing at /', () => {
+		const lookup = shortcuts.find((shortcut) => shortcut.url === '/');
+		expect(lookup).toBeDefined();
+		expect(lookup?.name).toBe('Look up a chord');
+	});
+
+	it('gives every shortcut a name and an in-scope url', () => {
+		for (const shortcut of shortcuts) {
+			expect(shortcut.name).toBeTruthy();
+			expect(shortcut.url.startsWith('/')).toBe(true);
+		}
+	});
+
+	it('uses no em dashes in any shortcut copy (standing copy rule)', () => {
+		for (const shortcut of shortcuts) {
+			const copy = [shortcut.name, shortcut.short_name ?? '', shortcut.description ?? ''].join(' ');
+			expect(copy).not.toContain('—');
+		}
 	});
 });

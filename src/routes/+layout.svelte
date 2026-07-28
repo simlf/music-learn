@@ -3,6 +3,8 @@
 	import '../app.css';
 	import { page } from '$app/stores';
 	import { fetchStreak, localDateString } from '$lib/api/progress';
+	import { localStreak } from '$lib/practice/practiceDays';
+	import { dueCount, formatDueBadge, primeDueCount, refreshDueCount } from '$lib/srs/dueBadge.svelte';
 	import { getApiToken } from '$lib/api/client';
 	import StreakBadge from '$lib/components/StreakBadge.svelte';
 	import LocaleToggle from '$lib/components/LocaleToggle.svelte';
@@ -63,14 +65,80 @@
 	const bottomTabLinks = navLinks;
 
 	/**
-	 * Masthead streak chip (PROG-03): fetched only when a token is already
-	 * stored, since an unauthenticated request would just 401. StreakBadge's
-	 * own compact-variant self-hide (loading/zero/error) means the masthead
-	 * needs no conditional wrapper here - nav links render immediately
-	 * regardless of this fetch's state.
+	 * The route whose tab carries the due-count badge (B7). Practice is the
+	 * only destination where a due card can actually be answered, so it is the
+	 * only tab that gets a count.
 	 */
-	let streakCount = $state(0);
-	let streakLoading = $state(false);
+	const BADGED_HREF = '/practice';
+
+	/**
+	 * Masthead streak chip (PROG-03, rewritten local-first in B8).
+	 *
+	 * `localStreakCount` is read straight from this device's practice-day set:
+	 * no token, no network, available synchronously on mount, so the chip
+	 * shows on a phone that has never been on the tailnet. `serverStreakCount`
+	 * is a cross-device MERGE, fetched only when a token is already stored
+	 * (an unauthenticated request would just 401), and the displayed value is
+	 * the MAX of the two - a reachable server can raise the streak (practice
+	 * done on another device) but can never lower it below what this device
+	 * knows happened.
+	 *
+	 * There is no loading state any more: the local value is always ready by
+	 * first paint, so the chip never flashes a skeleton in persistent chrome.
+	 */
+	let localStreakCount = $state(0);
+	let serverStreakCount = $state(0);
+	const streakCount = $derived(Math.max(localStreakCount, serverStreakCount));
+
+	/**
+	 * The badge count for a nav link, or 0 for every link that carries no
+	 * badge. Suppressing at 0 is deliberate anti-guilt discipline: an empty
+	 * deck shows nothing at all, never a "0" dot.
+	 */
+	function badgeFor(href: string): number {
+		return href === BADGED_HREF ? dueCount() : 0;
+	}
+
+	/**
+	 * Accessible name for a tab. With a badge showing, the count is folded
+	 * into the name ("Practice, 3 due") because the visible badge itself is
+	 * aria-hidden decoration. Without one, this returns the plain label for
+	 * the bottom bar and `undefined` for the masthead, whose links take their
+	 * name from their own text.
+	 */
+	function tabAriaLabel(link: { href: string; labelKey: MessageKey }): string {
+		const due = badgeFor(link.href);
+		if (due === 0) return t(link.labelKey);
+		return t('nav.due.aria')
+			.replace('{LABEL}', t(link.labelKey))
+			.replace('{N}', String(due));
+	}
+
+	/** Masthead variant: no aria-label at all unless a badge needs describing. */
+	function mastheadAriaLabel(link: { href: string; labelKey: MessageKey }): string | undefined {
+		return badgeFor(link.href) === 0 ? undefined : tabAriaLabel(link);
+	}
+
+	/**
+	 * Re-reads the device-local streak. One small localStorage parse, so it is
+	 * cheap enough to run on every navigation - which matters because the
+	 * layout mounts once per app session while the streak can start mid-session
+	 * (the first graded answer of the day).
+	 */
+	function syncLocalStreak() {
+		localStreakCount = localStreak(localDateString());
+	}
+
+	// Covers both the first client-side read (the prerendered HTML is shared
+	// across devices, so it can never contain this device's streak) and every
+	// later route change, so finishing a practice session and walking to another
+	// hub shows the streak that session just started. The due-card count is NOT
+	// refreshed here - it is a full Dexie table scan, primed once per session
+	// and refreshed on visibilitychange instead.
+	$effect(() => {
+		void $page.url.pathname;
+		syncLocalStreak();
+	});
 
 	onMount(() => {
 		// Dev-only guard (30-REVIEW WR-03): navLinks/TAB_ICONS/bottomTabLinks
@@ -87,19 +155,32 @@
 		}
 		initLocale();
 		registerUpdateWatcher();
-		if (getApiToken() === '') return;
-		streakLoading = true;
-		fetchStreak(localDateString())
-			.then((result) => {
-				streakCount = result.streak;
-			})
-			.catch(() => {
-				// Fetch failure: the chip stays hidden (count remains 0). The
-				// full error explanation lives only on the Progress page.
-			})
-			.finally(() => {
-				streakLoading = false;
-			});
+		void primeDueCount();
+
+		// Returning from the background is the one moment both numbers can be
+		// stale (a day boundary crossed, cards came due, another device
+		// practiced), and it is also the cheapest place to pay for a rescan.
+		const onVisible = () => {
+			if (document.visibilityState !== 'visible') return;
+			syncLocalStreak();
+			void refreshDueCount();
+		};
+		document.addEventListener('visibilitychange', onVisible);
+
+		if (getApiToken() !== '') {
+			fetchStreak(localDateString())
+				.then((result) => {
+					serverStreakCount = result.streak;
+				})
+				.catch(() => {
+					// Off-tailnet, bad token, server down: the local streak still
+					// shows. The full error explanation lives on the Progress page.
+				});
+		}
+
+		return () => {
+			document.removeEventListener('visibilitychange', onVisible);
+		};
 	});
 </script>
 
@@ -109,7 +190,7 @@
 >
 	<div class="flex flex-wrap items-center gap-2">
 		<span class="text-heading font-bold uppercase tracking-tight whitespace-nowrap">{t('brand')}</span>
-		<StreakBadge variant="compact" count={streakCount} loading={streakLoading} />
+		<StreakBadge variant="compact" count={streakCount} />
 		<div class="hidden sm:block">
 			<LocaleToggle />
 		</div>
@@ -121,8 +202,13 @@
 				class="masthead__link text-label font-mono uppercase"
 				class:masthead__link--active={$page.url.pathname === link.href}
 				style="letter-spacing: 0.08em;"
+				aria-label={mastheadAriaLabel(link)}
 			>
-				{t(link.labelKey)}
+				{t(link.labelKey)}{#if badgeFor(link.href) > 0}<span
+						class="nav-badge"
+						data-testid="due-badge-masthead"
+						aria-hidden="true">{formatDueBadge(badgeFor(link.href))}</span
+					>{/if}
 			</a>
 		{/each}
 	</div>
@@ -134,9 +220,16 @@
 			href={link.href}
 			class="bottom-tab-bar__item font-mono"
 			class:bottom-tab-bar__item--active={$page.url.pathname === link.href}
-			aria-label={t(link.labelKey)}
+			aria-label={tabAriaLabel(link)}
 		>
-			<span class="bottom-tab-bar__icon">{@html TAB_ICONS[link.href]}</span>
+			<span class="bottom-tab-bar__icon">
+				{@html TAB_ICONS[link.href]}
+				{#if badgeFor(link.href) > 0}
+					<span class="nav-badge nav-badge--tab" data-testid="due-badge-tab" aria-hidden="true"
+						>{formatDueBadge(badgeFor(link.href))}</span
+					>
+				{/if}
+			</span>
 			<span class="bottom-tab-bar__label uppercase" style="letter-spacing: 0.06em;"
 				>{t(link.labelKey)}</span
 			>
@@ -255,6 +348,39 @@
 	.bottom-tab-bar__icon {
 		display: flex;
 		line-height: 0;
+		position: relative;
+	}
+
+	/*
+	 * Due-count badge (B7). A mustard highlighter pill with an ink hairline:
+	 * legible both on paper (inactive tab) and on the ink fill of the active
+	 * tab, and deliberately NOT vermilion, which this design system reserves
+	 * for practice reward/warning. It renders only when the count is >= 1
+	 * (suppressed in the markup, not just visually), so an empty deck shows
+	 * nothing at all rather than a "0" that would nag about nothing.
+	 */
+	.nav-badge {
+		display: inline-block;
+		min-width: 16px;
+		padding: 0 3px;
+		border: 1px solid var(--color-ink);
+		background: var(--color-mustard);
+		color: var(--color-ink);
+		font-family: var(--font-mono);
+		font-size: 9px;
+		line-height: 14px;
+		text-align: center;
+		vertical-align: text-top;
+		margin-left: 4px;
+	}
+
+	/* Phone tab slot: pinned to the icon's top-right corner so it never
+	   competes with the 9px micro-label for horizontal room. */
+	.nav-badge--tab {
+		position: absolute;
+		top: -7px;
+		right: -9px;
+		margin-left: 0;
 	}
 
 	.bottom-tab-bar__icon :global(svg) {

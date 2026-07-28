@@ -5,6 +5,11 @@ import type { LocaleDict } from './index';
  * accessible-name strings (I18N-01). The brand key is intentionally
  * IDENTICAL in en and fr - "MUSIC LEARN" is a proper noun and never
  * translates (locked in 20-UI-SPEC.md).
+ *
+ * `nav.due.aria` (B7) carries TWO placeholders: {LABEL} takes the tab's own
+ * translated label and {N} the due-card count, so the badged tab's accessible
+ * name reads "Practice, 3 due" / "Pratiquer, 3 à revoir" without hardcoding
+ * the word Practice in a second place.
  */
 export const chrome = {
 	en: {
@@ -28,7 +33,8 @@ export const chrome = {
 		'chrome.sheet.close': 'Close',
 		'nav.more': 'More',
 		'nav.progressions': 'Progressions',
-		'nav.voicings': 'Voicings'
+		'nav.voicings': 'Voicings',
+		'nav.due.aria': '{LABEL}, {N} due'
 	},
 	fr: {
 		'nav.lookup': 'Rechercher',
@@ -51,6 +57,7 @@ export const chrome = {
 		'chrome.sheet.close': 'Fermer',
 		'nav.more': 'Plus',
 		'nav.progressions': 'Progressions',
-		'nav.voicings': 'Voicings'
+		'nav.voicings': 'Voicings',
+		'nav.due.aria': '{LABEL}, {N} à revoir'
 	}
 } satisfies LocaleDict;

@@ -12,6 +12,8 @@
  * corrupt data resets to empty, writes degrade to no-ops.
  */
 
+import { readPracticeDays } from './practiceDays';
+
 export const PRACTICE_LOG_KEY = 'music-learn:practice-log';
 
 /** Bounded history: plenty for a 30-answer rolling window and warm-up seeding. */
@@ -83,9 +85,19 @@ export function recentMisses(limit: number): string[] {
 	return misses;
 }
 
-/** Sorted distinct local dates with at least one logged answer. */
+/**
+ * Sorted distinct local dates on which this device practiced.
+ *
+ * Union of two sources (B8): the bounded answer log above, and the durable
+ * day set in practiceDays.ts. The log alone is not a reliable day history -
+ * it holds only the last 200 answers, so one long session can push older days
+ * out of it entirely. The day set is the authoritative record going forward
+ * (written on every graded answer); the log is still unioned in so days
+ * recorded before the day set existed keep counting.
+ */
 export function distinctPracticeDays(): string[] {
-	return [...new Set(readPracticeLog().map((entry) => entry.date))].sort();
+	const logged = readPracticeLog().map((entry) => entry.date);
+	return [...new Set([...logged, ...readPracticeDays()])].sort();
 }
 
 /**

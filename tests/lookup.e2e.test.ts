@@ -304,11 +304,17 @@ describe('lookup page did-you-mean suggestion', () => {
 });
 
 describe('lookup page focus behavior', () => {
-	it('autofocuses the input on initial mount', () => {
+	it('does NOT autofocus the input on a cold entry (B6: no soft keyboard on launch)', () => {
+		// A plain mount with no client-side navigation is exactly the cold-entry
+		// case (installed app launch, bookmark, shared link). Focusing here is
+		// what used to pop the phone's soft keyboard over the page before the
+		// user asked for anything. The mid-session "navigated here from the tab
+		// bar" case still focuses, and is covered in
+		// src/routes/lookupEntryFocus.test.ts where afterNavigate is drivable.
 		renderPage();
 
 		const input = screen.getByRole('textbox');
-		expect(document.activeElement).toBe(input);
+		expect(document.activeElement).not.toBe(input);
 	});
 
 	it('re-selects the input content after a successful stamp for type-over entry', async () => {

@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { afterNavigate, goto } from '$app/navigation';
+	import { shouldAutofocusLookup } from '$lib/lookup/entryFocus';
 	import { spellChord } from '$lib/theory/chord';
 	import { setDrillSeeds } from '$lib/practice/drillSeeds';
 	import { pickHint, pickSuggestionHint } from '$lib/copy/hints';
@@ -222,13 +223,22 @@
 	}
 
 	/**
-	 * Autofocus on mount so the piano-side user can type immediately.
-	 * preventScroll keeps the masthead in view: without it the browser
-	 * scrolls the focused input to the top and hides the nav entirely.
+	 * Focus the input so the piano-side user can type immediately, but ONLY
+	 * when Lookup was reached by a deliberate in-app navigation (B6).
+	 *
+	 * On a cold entry (`type === 'enter'`: the installed app launching, a
+	 * bookmark, a shared link) the focus is skipped, because on a phone
+	 * focusing an input pops the soft keyboard over the page before the user
+	 * has asked to type anything. Navigating here from the tab bar mid-session
+	 * still focuses, unchanged.
+	 *
+	 * preventScroll keeps the masthead in view: without it the browser scrolls
+	 * the focused input to the top and hides the nav entirely.
 	 */
-	function autofocus(node: HTMLInputElement) {
-		node.focus({ preventScroll: true });
-	}
+	afterNavigate(({ type }) => {
+		if (!shouldAutofocusLookup(type)) return;
+		inputEl?.focus({ preventScroll: true });
+	});
 </script>
 
 <main class="bg-paper text-ink min-h-screen px-2 py-8 font-sans sm:px-8">
@@ -239,7 +249,6 @@
 			type="text"
 			bind:value={symbol}
 			bind:this={inputEl}
-			use:autofocus
 			placeholder={t('home.input.placeholder')}
 			class="border-ink bg-paper-bright min-w-0 flex-1 border-2 p-2"
 		/>

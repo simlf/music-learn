@@ -14,6 +14,12 @@ interface ManifestIcon {
 	purpose?: string;
 }
 
+interface ManifestShortcut {
+	name: string;
+	url: string;
+	icons?: ManifestIcon[];
+}
+
 interface Manifest {
 	name: string;
 	short_name: string;
@@ -22,6 +28,7 @@ interface Manifest {
 	background_color: string;
 	theme_color: string;
 	icons: ManifestIcon[];
+	shortcuts?: ManifestShortcut[];
 }
 
 describe('web app manifest', () => {
@@ -31,7 +38,9 @@ describe('web app manifest', () => {
 	it('is valid JSON with the required fields', () => {
 		expect(manifest.name).toBeTruthy();
 		expect(manifest.short_name).toBeTruthy();
-		expect(manifest.start_url).toBe('/');
+		// B6: the installed app launches into practice, not into the Lookup
+		// text box.
+		expect(manifest.start_url).toBe('/practice');
 		expect(manifest.display).toBe('standalone');
 		expect(manifest.theme_color).toBeTruthy();
 		expect(manifest.background_color).toBeTruthy();
@@ -50,6 +59,16 @@ describe('web app manifest', () => {
 			const relativePath = icon.src.replace(/^\//, '');
 			const absolutePath = join(projectRoot, 'static', relativePath);
 			expect(existsSync(absolutePath), `missing icon file: ${icon.src}`).toBe(true);
+		}
+	});
+
+	it('every shortcut icon src also resolves to a real file under static/ (B6)', () => {
+		for (const shortcut of manifest.shortcuts ?? []) {
+			for (const icon of shortcut.icons ?? []) {
+				const relativePath = icon.src.replace(/^\//, '');
+				const absolutePath = join(projectRoot, 'static', relativePath);
+				expect(existsSync(absolutePath), `missing shortcut icon file: ${icon.src}`).toBe(true);
+			}
 		}
 	});
 });

@@ -16,9 +16,13 @@ vi.mock('$lib/practice/drillSeeds', () => ({
 	setDrillSeeds: (...args: unknown[]) => setDrillSeedsMock(...args)
 }));
 
+// afterNavigate is stubbed as a no-op: the lookup page registers a callback
+// through it to decide whether the input autofocuses (B6), and a factory mock
+// must expose every export the component imports.
 const gotoMock = vi.fn();
 vi.mock('$app/navigation', () => ({
-	goto: (...args: unknown[]) => gotoMock(...args)
+	goto: (...args: unknown[]) => gotoMock(...args),
+	afterNavigate: vi.fn()
 }));
 
 const playChordMock = vi.fn();

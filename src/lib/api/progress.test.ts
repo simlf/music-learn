@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fetchStats, fetchStreak, flushQueue, localDateString, recordAnswer } from './progress';
 import { setApiToken } from './client';
+import {
+	localStreak,
+	previousDay,
+	readPracticeDays,
+	recordPracticeDay
+} from '$lib/practice/practiceDays';
 
 const QUEUE_KEY = 'music-learn:answer-queue';
 
@@ -71,6 +77,62 @@ describe('progress', () => {
 			await flushQueue();
 
 			expect(readQueueFromStorage()).toEqual([]);
+		});
+	});
+
+	/**
+	 * B8: the local streak's write path. Every graded answer in the app funnels
+	 * through recordAnswer (directly or via answerTelemetry), so recording the
+	 * practice day HERE is what makes the streak impossible to forget to wire
+	 * up in a new drill surface, and what makes it work with no token and no
+	 * network.
+	 */
+	describe('recordAnswer records the local practice day (B8)', () => {
+		it("marks today as practiced on this device, with today's local calendar date", () => {
+			vi.stubGlobal('fetch', undefined);
+
+			recordAnswer({ item: 'Cm7', kind: 'chord', correct: true });
+
+			expect(readPracticeDays()).toEqual([localDateString()]);
+			expect(localStreak(localDateString())).toBe(1);
+		});
+
+		it('records the day even when the answer was wrong (practice is practice)', () => {
+			vi.stubGlobal('fetch', undefined);
+
+			recordAnswer({ item: 'Cm7', kind: 'chord', correct: false });
+
+			expect(readPracticeDays()).toEqual([localDateString()]);
+		});
+
+		it('records the day even when the backend is unreachable', async () => {
+			const fetchMock = vi.fn().mockRejectedValue(new Error('network down'));
+			vi.stubGlobal('fetch', fetchMock);
+
+			recordAnswer({ item: 'Fmaj7', kind: 'chord', correct: false });
+
+			expect(readPracticeDays()).toEqual([localDateString()]);
+			await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+		});
+
+		it('stays one entry per day across a whole session of answers', () => {
+			vi.stubGlobal('fetch', undefined);
+
+			recordAnswer({ item: 'Cm7', kind: 'chord', correct: true });
+			recordAnswer({ item: 'G7', kind: 'chord', correct: true });
+			recordAnswer({ item: 'Fmaj7', kind: 'chord', correct: false });
+
+			expect(readPracticeDays()).toEqual([localDateString()]);
+		});
+
+		it('extends an existing run: yesterday plus today reads as a 2-day streak', () => {
+			vi.stubGlobal('fetch', undefined);
+			const yesterday = previousDay(localDateString());
+			recordPracticeDay(yesterday);
+
+			recordAnswer({ item: 'Cm7', kind: 'chord', correct: true });
+
+			expect(localStreak(localDateString())).toBe(2);
 		});
 	});
 
