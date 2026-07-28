@@ -703,3 +703,139 @@ describe('ShellVoicingDrill: lean nudge flow replaces the 3-way selector (VOICE-
 		expect(screen.getByTestId('current-voicing')).toHaveTextContent('Complet');
 	});
 });
+
+/**
+ * BUG PIN (pedagogy audit, shell-voicing rationale). The subtract stage used
+ * to render ONE line for all five seventh families:
+ *
+ *   'Drop what the symbol already tells you: root is named, fifth adds no
+ *    color; keep the 3rd + 7th tritone.'
+ *
+ * The 3rd-to-7th interval is a tritone only in dom7 and dim7 (it is a perfect
+ * fifth in maj7, m7 and m7b5), and on m7b5 / dim7 the ♭5 is the chord's
+ * identity rather than colorless filler. shellVoicing.test.ts pins the
+ * musical facts; this pins what the learner actually READS, per quality, plus
+ * the ♭5 grading that now matches the words.
+ */
+describe('ShellVoicingDrill: quality-aware shell rationale (pedagogy audit bug pin)', () => {
+	const PERFECT_FIFTH_FAMILIES = ['Cmaj7', 'Cm7', 'C7'];
+	const FLAT5_FAMILIES = ['Cm7b5', 'Cdim7'];
+
+	async function renderSubtract(symbol: string) {
+		getAllCardsMock.mockResolvedValue([
+			{ ...makeCard(State.Learning), factId: `chord-formula:${symbol}` }
+		]);
+		const rendered = render(ShellVoicingDrill, { props: { embedSymbol: symbol } });
+		await waitFor(() => screen.getByTestId('stage-subtract'));
+		return rendered;
+	}
+
+	it('never claims a tritone on any of the five seventh families', async () => {
+		for (const symbol of [...PERFECT_FIFTH_FAMILIES, ...FLAT5_FAMILIES]) {
+			const { unmount } = await renderSubtract(symbol);
+			const text = screen.getByTestId('teach-panel').textContent ?? '';
+			expect(text.toLowerCase(), symbol).not.toContain('tritone');
+			unmount();
+		}
+	});
+
+	it('perfect-fifth families read the guide-tone rationale (3rd says major/minor, 7th says which seventh)', async () => {
+		for (const symbol of PERFECT_FIFTH_FAMILIES) {
+			const { unmount } = await renderSubtract(symbol);
+			const panel = screen.getByTestId('teach-panel');
+			expect(panel, symbol).toHaveTextContent('Keep the two guide tones');
+			expect(panel, symbol).toHaveTextContent('the 3rd says major or minor');
+			expect(panel, symbol).toHaveTextContent('the 7th says which seventh');
+			expect(panel, symbol).toHaveTextContent('a plain 5th adds no color');
+			expect(panel.textContent, symbol).not.toContain('♭5');
+			unmount();
+		}
+	});
+
+	it('♭5 families read the exception instead: the ♭5 is the identity and stays in the shell', async () => {
+		for (const symbol of FLAT5_FAMILIES) {
+			const { unmount } = await renderSubtract(symbol);
+			const panel = screen.getByTestId('teach-panel');
+			expect(panel, symbol).toHaveTextContent('The ♭5 stays.');
+			expect(panel, symbol).toHaveTextContent('the fifth is the chord identity, not filler');
+			expect(panel, symbol).toHaveTextContent('the shell keeps the 3rd, the ♭5 and the 7th');
+			// The generic "adds no color" claim never reaches a ♭5 chord.
+			expect(panel.textContent, symbol).not.toContain('adds no color');
+			unmount();
+		}
+	});
+
+	it('the play prompt names the ♭5 only where the shell actually carries one', async () => {
+		const { unmount } = await renderSubtract('Cm7');
+		expect(screen.getByText('Play the shell: just the guide tones.')).toBeInTheDocument();
+		unmount();
+
+		await renderSubtract('Cm7b5');
+		expect(screen.getByText('Play the shell: the guide tones plus the ♭5.')).toBeInTheDocument();
+	});
+
+	it('the meet-stage "what players use" caption names the ♭5 shell as three notes', async () => {
+		getAllCardsMock.mockResolvedValue([]);
+		const { unmount } = render(ShellVoicingDrill, { props: { embedSymbol: 'Cm7b5' } });
+		await waitFor(() => screen.getByTestId('stage-meet'));
+		expect(screen.getByTestId('compare-use')).toHaveTextContent('The shell. Third, ♭5, and seventh.');
+		unmount();
+
+		getAllCardsMock.mockResolvedValue([]);
+		render(ShellVoicingDrill, { props: { embedSymbol: 'Cm7' } });
+		await waitFor(() => screen.getByTestId('stage-meet'));
+		expect(screen.getByTestId('compare-use')).toHaveTextContent(
+			'The shell. Just the third and seventh.'
+		);
+	});
+
+	it('Cm7b5 now grades the ♭5 as required: the bare 3rd + 7th (the Cm7 shell) retries', async () => {
+		await renderSubtract('Cm7b5');
+
+		// E♭ + B♭ = the Cm7 shell, chroma-identical to what this drill used to
+		// accept for Cm7b5. It must no longer be a complete answer.
+		clickKey('D♯');
+		clickKey('A♯');
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(screen.getByTestId('retry')).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
+	});
+
+	it('Cm7b5 grades correct with the ♭5 in place (3rd + ♭5 + 7th)', async () => {
+		await renderSubtract('Cm7b5');
+
+		clickKey('D♯');
+		clickKey('F♯');
+		clickKey('A♯');
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
+		expect(screen.queryByTestId('retry')).not.toBeInTheDocument();
+	});
+
+	it('a ♭5 chord ghost-hatches the root only, so the keyboard never offers the ♭5 as droppable', async () => {
+		const { container } = await renderSubtract('Cm7b5');
+
+		expect(container.querySelectorAll('[data-ghost="R"]')).toHaveLength(1);
+		expect(container.querySelectorAll('[data-ghost="5"]')).toHaveLength(0);
+	});
+
+	it('FR: both rationale variants read correctly and neither mentions a triton', async () => {
+		setLocale('fr');
+
+		const { unmount } = await renderSubtract('Cm7');
+		let panel = screen.getByTestId('teach-panel');
+		expect(panel).toHaveTextContent('Garde les deux tons de guidage');
+		expect(panel).toHaveTextContent('la tierce dit majeur ou mineur');
+		expect(panel.textContent?.toLowerCase()).not.toContain('triton');
+		unmount();
+
+		await renderSubtract('Cm7b5');
+		panel = screen.getByTestId('teach-panel');
+		expect(panel).toHaveTextContent('Mais la ♭5 reste.');
+		expect(panel).toHaveTextContent("la quinte fait l'identité de l'accord");
+		expect(panel.textContent?.toLowerCase()).not.toContain('triton');
+		expect(screen.getByText('Joue le shell : les tons de guidage plus la ♭5.')).toBeInTheDocument();
+	});
+});

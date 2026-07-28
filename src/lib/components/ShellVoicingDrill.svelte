@@ -3,6 +3,7 @@
 	import { Note } from 'tonal';
 	import {
 		fullStackNotes,
+		hasFlatFifth,
 		optionalMarkers,
 		rootlessNotes,
 		seventhChordSymbols,
@@ -68,6 +69,21 @@
 	// present, drawSymbol() is never called, per REG-01/T-27-02-01.
 	let symbol = $state(untrack(() => embedSymbol ?? drawSymbol()));
 	const chord = $derived(spellChord(symbol));
+
+	/**
+	 * Whether this chord is one of the ♭5 families (m7b5, dim7), which is what
+	 * selects the `-flat5` variant of every rationale string below.
+	 *
+	 * The single generic rationale these variants replaced claimed the shell was
+	 * "the 3rd + 7th tritone" and that the "fifth adds no color". Both halves
+	 * were false for 3 of the 5 seventh families this drill draws from: the
+	 * 3rd-to-7th interval is a tritone only in dom7 and dim7 (a perfect fifth in
+	 * maj7, m7 and m7b5), and on a ♭5 chord the fifth IS the chord's identity.
+	 * The truthful general rationale is guide tones (the 3rd names major/minor,
+	 * the 7th names which seventh), with the ♭5 families as an explicit
+	 * exception, matching shellNotes' own note-set split.
+	 */
+	const flatFifth = $derived(hasFlatFifth(chord));
 
 	let cards = $state<CardRecord[]>([]);
 	/**
@@ -306,7 +322,12 @@
 	function drillPrompt(style: VoicingStyle): string {
 		if (style === 'root') return t('voicings.prompt.playFull');
 		if (style === 'rootless') return t('voicings.prompt.playRootless');
-		return t('voicings.prompt.playShell');
+		return shellPrompt();
+	}
+
+	/** "Play the shell" prompt, naming the ♭5 when the shell actually carries one. */
+	function shellPrompt(): string {
+		return flatFifth ? t('voicings.prompt.playShell-flat5') : t('voicings.prompt.playShell');
 	}
 </script>
 
@@ -365,7 +386,11 @@
 				<div class="vcard" data-testid="compare-use">
 					<div class="vcard__head">
 						<h4 class="vcard__label">{t('voicings.compare.useLabel')}</h4>
-						<span class="vcard__use">{t('voicings.compare.useCaption')}</span>
+						<span class="vcard__use"
+							>{flatFifth
+								? t('voicings.compare.useCaption-flat5')
+								: t('voicings.compare.useCaption')}</span
+						>
 					</div>
 					<PianoKeyboard notes={shellNotes(chord)} inspectable />
 				</div>
@@ -389,7 +414,7 @@
 			</div>
 			{#if effectiveStage === 'subtract'}
 				<div class="teach-panel" data-testid="teach-panel">
-					<p>{t('voicings.subtract.teach')}</p>
+					<p>{flatFifth ? t('voicings.subtract.teach-flat5') : t('voicings.subtract.teach')}</p>
 				</div>
 			{:else}
 				<div
@@ -425,7 +450,7 @@
 			{/if}
 
 			<p class="text-body mt-4">
-				{effectiveStage === 'subtract' ? t('voicings.prompt.playShell') : drillPrompt(voicingStyle)}
+				{effectiveStage === 'subtract' ? shellPrompt() : drillPrompt(voicingStyle)}
 			</p>
 
 			<div class="mt-4">

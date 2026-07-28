@@ -5,7 +5,7 @@ import {
 	toGlyphAccidentals
 } from '$lib/theory/interval';
 import type { ChordResult, IntervalRole } from '$lib/theory/types';
-import { currentLocale } from '$lib/i18n/locale.svelte';
+import { currentLocale, t } from '$lib/i18n/locale.svelte';
 
 /**
  * A single entry in a chord's interval-formula readout: the root is always
@@ -157,6 +157,53 @@ export function displaySymbol(chord: ChordResult): string {
  * mirroring the diction BuildSession's French construction steps use. Interval
  * shorthand / chord symbols stay immune; only the connective prose changes.
  */
+/**
+ * The bare letter name of a spelled note: "E♭" -> "E", "B♭♭" -> "B".
+ * SpelledNote.letter is always one uppercase A..G followed by zero or more
+ * accidental glyphs (never ASCII #/b, per SpelledNote's contract), so the
+ * first character IS the letter name.
+ */
+function letterNameOf(spelled: string): string {
+	return spelled.charAt(0);
+}
+
+/**
+ * The lookup panel's "why is the third spelled THAT way?" sentence, generated
+ * from the chord's own spelled third rather than from a worked example.
+ *
+ * The copy this replaced was written for the Am7 / Amaj7 duo (C vs C♯) and
+ * then reused for every chord: it asserted a minor third "gives the natural
+ * note, not the sharp" and a major third "gives the sharp note", which is
+ * false for Cm7 (E♭ is a flat) and for Fmaj7 (A is natural). It held for only
+ * 6 of 12 roots minor / 5 of 12 major.
+ *
+ * The true mechanism, and what this sentence now teaches for EVERY root: the
+ * interval NUMBER counts letter names (a third always spans three, so from
+ * {root} the answer is some kind of {letter}), and the interval QUALITY counts
+ * half steps (which picks the accidental). That is why 3 semitones above C is
+ * E♭ and not D♯: D♯ would span only two letter names (C, D) and be a second.
+ *
+ * Every number and letter in the sentence comes from the chord's own
+ * intervalBetween(root, third) / spelled third, so it cannot drift from the
+ * formula row or the keyboard above it. Locale-aware via the interval module's
+ * own long names (`long` / `longFr`), matching formulaSentence's diction.
+ *
+ * Total: a chord with no third role (a sus4, an unrecognized chord) returns
+ * "", never throws.
+ */
+export function thirdSpellingSentence(chord: ChordResult): string {
+	const third = chord.notes.find((note) => note.role === 'third');
+	if (!third) return '';
+	const info = intervalBetween(chord.root, third.letter);
+	if (info.short === '') return '';
+	const qualityName = currentLocale() === 'fr' ? info.longFr : info.long;
+	return t('home.why.third-step')
+		.replaceAll('{QUALITY}', qualityName)
+		.replaceAll('{SEMI}', String(info.semitones))
+		.replaceAll('{ROOT}', chord.root)
+		.replaceAll('{DEGREE}', letterNameOf(third.letter));
+}
+
 export function formulaSentence(chord: ChordResult): string {
 	const isFr = currentLocale() === 'fr';
 	const longs = formulaFor(chord)

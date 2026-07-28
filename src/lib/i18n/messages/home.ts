@@ -27,9 +27,10 @@ export const home = {
 		'home.inspect.semitones.singular': 'semitone',
 		'home.inspect.semitones.plural': 'semitones',
 		'home.why.toggle': 'Why these notes?',
-		'home.why.third-step': 'is a minor third: 3 semitones above the root, giving the natural note, not the sharp.',
-		'home.why.third-step-major':
-			'is a major third: 4 semitones above the root, giving the sharp note.',
+		'home.why.third-step':
+			'is a {QUALITY}: {SEMI} semitones above {ROOT}. A third always spans three letter names, {ROOT} up to {DEGREE}, so those {SEMI} semitones get spelled with the letter {DEGREE} and whatever accidental that takes.',
+		'home.why.number-vs-quality':
+			'The number counts letter names. The quality counts half steps.',
 		'home.why.key-signature':
 			'builds the chord from the root using its own interval formula. The scale/key signature does not impose accidentals here.',
 		'home.why.duo-heading': 'Do not mix up:',
@@ -65,9 +66,9 @@ export const home = {
 		'home.inspect.semitones.plural': 'demi-tons',
 		'home.why.toggle': 'Pourquoi ces notes ?',
 		'home.why.third-step':
-			'= tierce mineure : 3 demi-tons au-dessus de la fondamentale, la note naturelle, pas le dièse.',
-		'home.why.third-step-major':
-			'= tierce majeure : 4 demi-tons au-dessus de la fondamentale, la note diésée.',
+			"= {QUALITY} : {SEMI} demi-tons au-dessus de {ROOT}. Une tierce enjambe toujours trois noms de notes, de {ROOT} à {DEGREE}, donc ces {SEMI} demi-tons s'écrivent forcément sur la lettre {DEGREE}, avec l'altération qu'il faut.",
+		'home.why.number-vs-quality':
+			'Le chiffre compte les noms de notes. La qualité compte les demi-tons.',
 		'home.why.key-signature':
 			"construit l'accord depuis la fondamentale avec sa propre formule d'intervalles. La gamme (la clé) n'impose rien ici.",
 		'home.why.duo-heading': 'Ne pas confondre :',

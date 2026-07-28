@@ -18,6 +18,18 @@ import type { LocaleDict } from './index';
  * identical in en/fr, mirroring chrome.ts's nav.progressions precedent for a
  * technical jazz term without an established French equivalent.
  *
+ * QUALITY-AWARE RATIONALE (pedagogy audit fix): the subtract-stage teach
+ * line, the compare "what players use" caption, and the play-the-shell prompt
+ * each ship a `-flat5` sibling, selected by shellVoicing.hasFlatFifth(). The
+ * single generic version they replaced said "keep the 3rd + 7th tritone" and
+ * "fifth adds no color", and both halves were false for 3 of the 5 seventh
+ * families: the 3rd-to-7th interval is a tritone only in dom7 and dim7 (it is
+ * a PERFECT FIFTH in maj7, m7 and m7b5, verified with tonal), and on m7b5 /
+ * dim7 the ♭5 is the chord's whole identity, not filler. Scoping the tritone
+ * back to the dominants keeps this panel consistent with copy/mnemonics.ts
+ * and with theory.ts's dominant lesson, which are both built on the tritone
+ * being what makes a V7 a V7.
+ *
  * French register-slot abbreviation (013 fit rule): the step-indicator
  * chips abbreviate 1 MEET/3 DRILL to 1 VOIR/3 EXO so all three still fit
  * their chip width under fr. The drill-stage nudges (variant A) render in a
@@ -40,10 +52,13 @@ export const voicings = {
 		'voicings.compare.knowCaption': 'The full stack. Root, third, fifth, seventh.',
 		'voicings.compare.useLabel': 'WHAT PLAYERS USE',
 		'voicings.compare.useCaption': 'The shell. Just the third and seventh.',
+		'voicings.compare.useCaption-flat5': 'The shell. Third, ♭5, and seventh.',
 		'voicings.button.gotIt': 'Got it',
 
 		'voicings.subtract.teach':
-			'Drop what the symbol already tells you: root is named, fifth adds no color; keep the 3rd + 7th tritone.',
+			'Drop what the symbol already tells you. The root is named right there, and a plain 5th adds no color. Keep the two guide tones: the 3rd says major or minor, the 7th says which seventh.',
+		'voicings.subtract.teach-flat5':
+			'Drop the root: the symbol already names it. The ♭5 stays. On a ♭5 symbol the fifth is the chord identity, not filler, so the shell keeps the 3rd, the ♭5 and the 7th.',
 
 		'voicings.nudge.addRoot': 'Add the root',
 		'voicings.nudge.removeBass': 'Remove the bass',
@@ -54,6 +69,7 @@ export const voicings = {
 		'voicings.voicing.rootless': 'Rootless',
 
 		'voicings.prompt.playShell': 'Play the shell: just the guide tones.',
+		'voicings.prompt.playShell-flat5': 'Play the shell: the guide tones plus the ♭5.',
 		'voicings.prompt.playFull': 'Play the full voicing: root, third, fifth, seventh.',
 		'voicings.prompt.playRootless': 'Play it rootless: no root, just third, fifth, seventh.',
 
@@ -77,10 +93,13 @@ export const voicings = {
 		'voicings.compare.knowCaption': 'La pile complète. Fondamentale, tierce, quinte, septième.',
 		'voicings.compare.useLabel': 'CE QUE LES MUSICIENS JOUENT',
 		'voicings.compare.useCaption': 'Le shell. Juste la tierce et la septième.',
+		'voicings.compare.useCaption-flat5': 'Le shell. Tierce, ♭5 et septième.',
 		'voicings.button.gotIt': 'Compris',
 
 		'voicings.subtract.teach':
-			"Laisse tomber ce que le symbole te dit déjà : la fondamentale est nommée, la quinte n'ajoute pas de couleur. Garde le triton tierce et septième.",
+			"Laisse tomber ce que le symbole te dit déjà. La fondamentale est nommée juste là, et une quinte juste n'ajoute pas de couleur. Garde les deux tons de guidage : la tierce dit majeur ou mineur, la septième dit quelle septième c'est.",
+		'voicings.subtract.teach-flat5':
+			"Laisse tomber la fondamentale : le symbole la nomme déjà. Mais la ♭5 reste. Sur un symbole en ♭5, la quinte fait l'identité de l'accord, ce n'est pas du remplissage : le shell garde la tierce, la ♭5 et la septième.",
 
 		'voicings.nudge.addRoot': 'Poser la fondamentale',
 		'voicings.nudge.removeBass': 'Retirer la basse',
@@ -91,6 +110,7 @@ export const voicings = {
 		'voicings.voicing.rootless': 'Sans fondamentale',
 
 		'voicings.prompt.playShell': 'Joue le shell : juste les tons de guidage.',
+		'voicings.prompt.playShell-flat5': 'Joue le shell : les tons de guidage plus la ♭5.',
 		'voicings.prompt.playFull': 'Joue le voicing complet : fondamentale, tierce, quinte, septième.',
 		'voicings.prompt.playRootless':
 			'Joue-le sans fondamentale : juste tierce, quinte, septième.',

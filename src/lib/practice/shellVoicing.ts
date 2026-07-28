@@ -1,4 +1,5 @@
 import { spellChord } from '$lib/theory/chord';
+import { intervalBetween } from '$lib/theory/interval';
 import type { ChordResult, IntervalRole, SpelledNote } from '$lib/theory/types';
 import { State } from '$lib/srs/scheduler';
 import type { CardRecord } from '$lib/srs/deck';
@@ -12,10 +13,11 @@ import { allFacts } from '$lib/srs/facts';
  * rule from label hints to voicing pedagogy: one flow, three stages keyed
  * to a chord's FSRS card maturity.
  *
- * Derives the shell (3rd + 7th guide tones), the rootless voicing, and the
- * full 4-note stack from a spelled chord; marks the droppable notes
- * (root + fifth) for the 019 subtraction stage; and maps a set of a chord's
- * FSRS cards to the three staged pedagogy modes (meet / subtract / drill).
+ * Derives the shell (the 3rd + 7th guide tones, plus the ♭5 on a ♭5 chord,
+ * see shellNotes), the rootless voicing, and the full 4-note stack from a
+ * spelled chord; marks the droppable notes for the 019 subtraction stage; and
+ * maps a set of a chord's FSRS cards to the three staged pedagogy modes
+ * (meet / subtract / drill).
  *
  * Pure module: no DOM/Svelte/Dexie/localStorage. The maturity input is a
  * plain CardRecord[] (never a live Dexie read) — callers own fetching cards
@@ -39,12 +41,44 @@ function notesWithRoles(chord: ChordResult, roles: IntervalRole[]): SpelledNote[
 }
 
 /**
- * The guide-tone shell: 3rd + 7th only, in ascending role order
- * (third-then-seventh). Total: a triad or any chord missing one of these
- * roles simply returns fewer entries rather than throwing (T-25-02-01).
+ * True when the chord's fifth is DIMINISHED (the ♭5 families: m7b5 and dim7).
+ * Derived from the interval the chord actually spells, never from matching the
+ * "b5"/"dim" substring in a symbol, so an alias spelling (Cø7, C°7) resolves
+ * identically. Total: a chord with no fifth role (or an unrecognized chord)
+ * is simply not a ♭5 chord.
+ *
+ * Deliberately scoped to 'd' rather than "any non-perfect fifth": ♭5 is the
+ * only altered fifth in the v1 quality space, and the copy this gates names
+ * the ♭5 concretely to the learner.
+ */
+export function hasFlatFifth(chord: ChordResult): boolean {
+	const fifth = chord.notes.find((note) => note.role === 'fifth');
+	if (!fifth) return false;
+	return intervalBetween(chord.root, fifth.letter).quality === 'd';
+}
+
+/**
+ * The left-hand shell: the notes that carry the chord's identity, in
+ * ascending role order.
+ *
+ * Normally the two guide tones, 3rd + 7th: the 3rd says major or minor, the
+ * 7th says which seventh, and the root is already printed in the symbol while
+ * a perfect 5th is filler.
+ *
+ * ON A ♭5 CHORD (m7b5, dim7) THE FIFTH JOINS THEM. The ♭5 is what that symbol
+ * IS, not filler: with 3rd + 7th alone the shell of Cm7b5 (E♭ + B♭) is
+ * chroma-identical to the shell of Cm7, so the drill would have been training
+ * a voicing that cannot tell the two chords apart, on an app whose whole point
+ * is chord-symbol fluency. Verified with tonal across all 12 roots
+ * (shellVoicing.test.ts).
+ *
+ * Total: a triad or any chord missing one of these roles simply returns fewer
+ * entries rather than throwing (T-25-02-01).
  */
 export function shellNotes(chord: ChordResult): SpelledNote[] {
-	return notesWithRoles(chord, ['third', 'seventh']);
+	return hasFlatFifth(chord)
+		? notesWithRoles(chord, ['third', 'fifth', 'seventh'])
+		: notesWithRoles(chord, ['third', 'seventh']);
 }
 
 /**
@@ -61,16 +95,24 @@ export function fullStackNotes(chord: ChordResult): SpelledNote[] {
 }
 
 /**
- * The two notes the 019 subtraction stage drains to ghost-hatch: root
- * marked 'R', fifth marked '5', in that order. Total: a chord missing
- * either role (e.g. a rootless-only input, which never happens from
- * spellChord but kept defensive) simply omits that marker.
+ * The notes the 019 subtraction stage drains to ghost-hatch: root marked 'R',
+ * fifth marked '5', in that order.
+ *
+ * A ♭5 chord ghosts the ROOT ONLY: its fifth is part of the shell (see
+ * shellNotes), so hatching it would tell the learner the ♭5 is droppable when
+ * it is the one note that identifies the symbol. Keeping this in step with
+ * shellNotes also keeps the subtract stage's "ghost notes are allowed but not
+ * required" grading honest: nothing required is ever also optional.
+ *
+ * Total: a chord missing either role (e.g. a rootless-only input, which never
+ * happens from spellChord but kept defensive) simply omits that marker.
  */
 export function optionalMarkers(chord: ChordResult): OptionalMarker[] {
 	const markers: OptionalMarker[] = [];
 	for (const note of chord.notes) {
 		if (note.role === 'root') markers.push({ letter: note.letter, marker: 'R' });
 	}
+	if (hasFlatFifth(chord)) return markers;
 	for (const note of chord.notes) {
 		if (note.role === 'fifth') markers.push({ letter: note.letter, marker: '5' });
 	}

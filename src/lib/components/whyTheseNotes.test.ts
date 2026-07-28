@@ -37,17 +37,77 @@ describe('WhyTheseNotes', () => {
 		expect(screen.queryByTestId('why-panel')).not.toBeInTheDocument();
 	});
 
-	it('explains the third is minor (3 semitones -> natural note) and states the key signature does not impose accidentals', async () => {
+	it('explains the third by letter-name span + semitone count, and states the key signature does not impose accidentals', async () => {
 		render(WhyTheseNotes, { chord: am7, counterpart: amaj7, counterpartSymbol: 'Amaj7' });
 
 		await fireEvent.click(screen.getByTestId('why-toggle'));
 		const panel = screen.getByTestId('why-panel');
 
-		expect(within(panel).getByText(/minor third/)).toBeInTheDocument();
-		expect(within(panel).getByText(/3 semitones/)).toBeInTheDocument();
+		const step = within(panel).getByTestId('why-third-step');
+		expect(step).toHaveTextContent('is a minor 3rd: 3 semitones above A');
+		expect(step).toHaveTextContent('spans three letter names, A up to C');
+		// The generalized rule sits under the worked third.
+		expect(within(panel).getByTestId('why-number-vs-quality')).toHaveTextContent(
+			'The number counts letter names. The quality counts half steps.'
+		);
 		// Root/third note letters render verbatim (immune), embedded in the panel.
 		expect(within(panel).getByText('C', { selector: 'b' })).toBeInTheDocument();
 		expect(within(panel).getByText(/does not impose accidentals/)).toBeInTheDocument();
+	});
+
+	/**
+	 * BUG PIN (pedagogy audit): this panel used to render "is a minor third: 3
+	 * semitones above the root, giving the natural note, not the sharp." for
+	 * EVERY minor-third chord and "...giving the sharp note." for every
+	 * major-third chord. Both were written for the Am7/Amaj7 worked example and
+	 * were false on roughly half of all lookups (Cm7's third is E♭, a flat;
+	 * Fmaj7's third is A, natural).
+	 *
+	 * chordPresentation.test.ts proves the generated sentence across all 12
+	 * catalog roots; this covers the RENDER path for the spread the audit named,
+	 * plus the two headline regressions in full.
+	 */
+	it('renders a truthful third-step line for a spread of roots, never a natural-vs-sharp claim', async () => {
+		const cases: Array<[symbol: string, expected: string]> = [
+			['Cm7', 'is a minor 3rd: 3 semitones above C. A third always spans three letter names, C up to E'],
+			['Fm7', 'is a minor 3rd: 3 semitones above F. A third always spans three letter names, F up to A'],
+			['Am7', 'is a minor 3rd: 3 semitones above A. A third always spans three letter names, A up to C'],
+			['Bbm7', 'is a minor 3rd: 3 semitones above B♭. A third always spans three letter names, B♭ up to D'],
+			['Ebm7', 'is a minor 3rd: 3 semitones above E♭. A third always spans three letter names, E♭ up to G'],
+			['F#m7', 'is a minor 3rd: 3 semitones above F♯. A third always spans three letter names, F♯ up to A'],
+			['Dbm7', 'is a minor 3rd: 3 semitones above D♭. A third always spans three letter names, D♭ up to F'],
+			['Cmaj7', 'is a major 3rd: 4 semitones above C. A third always spans three letter names, C up to E'],
+			['Fmaj7', 'is a major 3rd: 4 semitones above F. A third always spans three letter names, F up to A'],
+			['Amaj7', 'is a major 3rd: 4 semitones above A. A third always spans three letter names, A up to C'],
+			['Bbmaj7', 'is a major 3rd: 4 semitones above B♭. A third always spans three letter names, B♭ up to D'],
+			['Ebmaj7', 'is a major 3rd: 4 semitones above E♭. A third always spans three letter names, E♭ up to G'],
+			['F#maj7', 'is a major 3rd: 4 semitones above F♯. A third always spans three letter names, F♯ up to A'],
+			['Dbmaj7', 'is a major 3rd: 4 semitones above D♭. A third always spans three letter names, D♭ up to F']
+		];
+
+		for (const [symbol, expected] of cases) {
+			const { unmount } = render(WhyTheseNotes, { chord: spellChord(symbol) });
+			await fireEvent.click(screen.getByTestId('why-toggle'));
+
+			const step = screen.getByTestId('why-third-step');
+			expect(step, symbol).toHaveTextContent(expected);
+			// The false absolute claims are gone on every root.
+			expect(step.textContent?.toLowerCase(), symbol).not.toContain('natural');
+			expect(step.textContent?.toLowerCase(), symbol).not.toContain('the sharp');
+
+			unmount();
+		}
+	});
+
+	it('the third callout still shows the actual spelled third next to the sentence (E♭ for Cm7, A for Fmaj7)', async () => {
+		const { unmount } = render(WhyTheseNotes, { chord: spellChord('Cm7') });
+		await fireEvent.click(screen.getByTestId('why-toggle'));
+		expect(screen.getByTestId('why-third-step')).toHaveTextContent('→ E♭');
+		unmount();
+
+		render(WhyTheseNotes, { chord: spellChord('Fmaj7') });
+		await fireEvent.click(screen.getByTestId('why-toggle'));
+		expect(screen.getByTestId('why-third-step')).toHaveTextContent('→ A');
 	});
 
 	it('deepest content is the m-vs-maj duo, showing both readings with differing third/seventh via ChordGlyph', async () => {
@@ -114,6 +174,20 @@ describe('WhyTheseNotes: FR locale', () => {
 		setLocale('en');
 	});
 
+	it('renders a truthful French third-step line for a flat-third root (Cm7 -> E♭, never "pas le dièse")', async () => {
+		setLocale('fr');
+		render(WhyTheseNotes, { chord: spellChord('Cm7') });
+
+		await fireEvent.click(screen.getByTestId('why-toggle'));
+		const step = screen.getByTestId('why-third-step');
+
+		expect(step).toHaveTextContent('= tierce mineure : 3 demi-tons au-dessus de C');
+		expect(step).toHaveTextContent('trois noms de notes, de C à E');
+		expect(step).toHaveTextContent('sur la lettre E');
+		expect(step.textContent?.toLowerCase()).not.toContain('dièse');
+		expect(step.textContent?.toLowerCase()).not.toContain('naturelle');
+	});
+
 	it('renders French step copy while chord symbols/note letters stay identical', async () => {
 		setLocale('fr');
 		render(WhyTheseNotes, { chord: am7, counterpart: amaj7, counterpartSymbol: 'Amaj7' });
@@ -122,7 +196,15 @@ describe('WhyTheseNotes: FR locale', () => {
 		await fireEvent.click(screen.getByTestId('why-toggle'));
 
 		const panel = screen.getByTestId('why-panel');
-		expect(within(panel).getByText(/tierce mineure/)).toBeInTheDocument();
+		expect(within(panel).getByTestId('why-third-step')).toHaveTextContent(
+			'= tierce mineure : 3 demi-tons au-dessus de A'
+		);
+		expect(within(panel).getByTestId('why-third-step')).toHaveTextContent(
+			'trois noms de notes, de A à C'
+		);
+		expect(within(panel).getByTestId('why-number-vs-quality')).toHaveTextContent(
+			'Le chiffre compte les noms de notes. La qualité compte les demi-tons.'
+		);
 		expect(within(panel).getByText("n'impose rien ici", { exact: false })).toBeInTheDocument();
 		// Symbols/note letters immune.
 		expect(within(panel).getByText('C', { selector: 'b' })).toBeInTheDocument();

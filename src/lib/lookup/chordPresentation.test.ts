@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { Chord, Interval } from 'tonal';
 import { spellChord } from '$lib/theory/chord';
 import {
 	formulaFor,
 	aliasLine,
 	displaySymbol,
 	formulaSentence,
-	stackedThirdsFor
+	stackedThirdsFor,
+	thirdSpellingSentence
 } from './chordPresentation';
 import { setLocale } from '$lib/i18n/locale.svelte';
 import { intervalBetween } from '$lib/theory/interval';
@@ -292,5 +294,167 @@ describe('stackedThirdsFor: startRole rotation (Phase 35, INV-02)', () => {
 	it('rotating by the current leading role (root) is a no-op', () => {
 		const chord = spellChord('Cm7');
 		expect(stackedThirdsFor(chord, 'root')).toEqual(stackedThirdsFor(chord));
+	});
+});
+
+/**
+ * BUG PIN (pedagogy audit, "Why these notes?" panel): the previous copy was
+ *
+ *   en 'is a minor third: 3 semitones above the root, giving the natural note,
+ *       not the sharp.'
+ *   en 'is a major third: 4 semitones above the root, giving the sharp note.'
+ *   fr '= tierce mineure : ... la note naturelle, pas le dièse.'
+ *   fr '= tierce majeure : ... la note diésée.'
+ *
+ * written for the Am7/Amaj7 worked example (C vs C♯) and then rendered for
+ * EVERY recognized chord. The minor claim was true for only 6 of 12 roots
+ * (Cm7's third is E♭, a FLAT) and the major claim for only 5 of 12 (Fmaj7's
+ * third is A, NATURAL). This suite asserts the replacement sentence is true
+ * for all 12 catalog roots across every third-bearing quality.
+ *
+ * Truth is checked against tonal directly (not via the app's own interval
+ * module) so the assertions are independent of the code under test. The
+ * copy deliberately spells the letter-name span as the word "three"/"trois"
+ * and uses DIGITS only for the semitone count, which lets the digit sweep
+ * below prove no wrong number can appear anywhere in the sentence.
+ */
+describe('thirdSpellingSentence: true for every root (pedagogy audit bug pin)', () => {
+	afterEach(() => {
+		setLocale('en');
+	});
+
+	/** randomChord.ts's 12 catalog roots, the exact space every drill/lookup draws from. */
+	const ROOTS = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
+	/** Every v1 quality spellChord gives a third-role note. */
+	const QUALITIES = ['', 'm', 'dim', 'maj7', 'm7', '7', 'm7b5', 'dim7'];
+
+	/** Everything after the "is a minor 3rd:" / "= tierce mineure :" lead-in. */
+	function body(sentence: string): string {
+		return sentence.slice(sentence.indexOf(':') + 1);
+	}
+
+	/** Ground truth straight from tonal, bypassing $lib/theory/interval entirely. */
+	function truthFor(symbol: string) {
+		const chord = Chord.get(symbol);
+		const third = chord.notes[1];
+		const info = Interval.get(Interval.distance(chord.tonic!, third));
+		return {
+			third,
+			letterName: third.charAt(0),
+			semitones: info.semitones!,
+			degree: info.num!,
+			quality: info.q
+		};
+	}
+
+	it('every root x quality yields a third that really is a third (guards the fixture space itself)', () => {
+		for (const root of ROOTS) {
+			for (const quality of QUALITIES) {
+				const truth = truthFor(root + quality);
+				expect(truth.degree, `${root}${quality}`).toBe(3);
+			}
+		}
+	});
+
+	it('EN: names the right quality, the right semitone count, and the right letter name for all 12 roots', () => {
+		setLocale('en');
+		for (const root of ROOTS) {
+			for (const quality of QUALITIES) {
+				const symbol = root + quality;
+				const chord = spellChord(symbol);
+				const truth = truthFor(symbol);
+				const sentence = thirdSpellingSentence(chord);
+				const where = `${symbol} (third ${truth.third})`;
+
+				// The only digits in the sentence body are the TRUE semitone count.
+				// (The lead-in quality name comes from the shared interval module's
+				// ordinal diction, "minor 3rd", whose own digit is checked by the
+				// exact-quality assertion below rather than by this sweep.)
+				const digits = body(sentence).match(/\d+/g) ?? [];
+				expect(digits.length, where).toBeGreaterThan(0);
+				for (const digit of digits) {
+					expect(Number(digit), where).toBe(truth.semitones);
+				}
+
+				// The quality word matches tonal's quality, not a hardcoded guess.
+				const expectedQuality = truth.quality === 'm' ? 'minor 3rd' : 'major 3rd';
+				expect(sentence, where).toContain(`is a ${expectedQuality}:`);
+
+				// The letter-name span is the actual spelled third's letter, and the
+				// letter-name count ("three") is spelled as a word, never a digit.
+				expect(sentence, where).toContain('spans three letter names');
+				expect(sentence, where).toContain(`${chord.root} up to ${truth.letterName}`);
+				expect(sentence, where).toContain(`the letter ${truth.letterName}`);
+
+				// The false natural/sharp/flat claims are gone for good: the sentence
+				// never asserts WHICH accidental the answer carries in prose.
+				expect(sentence.toLowerCase(), where).not.toContain('natural');
+				expect(sentence.toLowerCase(), where).not.toContain('sharp');
+				expect(sentence.toLowerCase(), where).not.toContain('flat');
+			}
+		}
+	});
+
+	it('FR: same truth, French interval vocabulary, no dièse/bémol/naturelle claim', () => {
+		setLocale('fr');
+		for (const root of ROOTS) {
+			for (const quality of QUALITIES) {
+				const symbol = root + quality;
+				const chord = spellChord(symbol);
+				const truth = truthFor(symbol);
+				const sentence = thirdSpellingSentence(chord);
+				const where = `${symbol} (third ${truth.third})`;
+
+				const digits = sentence.match(/\d+/g) ?? [];
+				expect(digits.length, where).toBeGreaterThan(0);
+				for (const digit of digits) {
+					expect(Number(digit), where).toBe(truth.semitones);
+				}
+
+				const expectedQuality = truth.quality === 'm' ? 'tierce mineure' : 'tierce majeure';
+				expect(sentence, where).toContain(`= ${expectedQuality} :`);
+				expect(sentence, where).toContain('trois noms de notes');
+				expect(sentence, where).toContain(`de ${chord.root} à ${truth.letterName}`);
+				expect(sentence, where).toContain(`la lettre ${truth.letterName}`);
+
+				expect(sentence.toLowerCase(), where).not.toContain('dièse');
+				expect(sentence.toLowerCase(), where).not.toContain('diésée');
+				expect(sentence.toLowerCase(), where).not.toContain('bémol');
+				expect(sentence.toLowerCase(), where).not.toContain('naturelle');
+			}
+		}
+	});
+
+	it('the specific regressions the audit named now read correctly', () => {
+		setLocale('en');
+		// Cm7's third is E♭, a FLAT: the old copy claimed "the natural note, not
+		// the sharp".
+		expect(thirdSpellingSentence(spellChord('Cm7'))).toBe(
+			'is a minor 3rd: 3 semitones above C. A third always spans three letter names, C up to E, ' +
+				'so those 3 semitones get spelled with the letter E and whatever accidental that takes.'
+		);
+		// Fmaj7's third is A, NATURAL: the old copy claimed "the sharp note".
+		expect(thirdSpellingSentence(spellChord('Fmaj7'))).toBe(
+			'is a major 3rd: 4 semitones above F. A third always spans three letter names, F up to A, ' +
+				'so those 4 semitones get spelled with the letter A and whatever accidental that takes.'
+		);
+		// A double-flat third (G♭m7 -> B♭♭) still names the LETTER B, not B♭.
+		expect(thirdSpellingSentence(spellChord('Gbm7'))).toContain('G♭ up to B');
+		expect(thirdSpellingSentence(spellChord('Gbm7'))).toContain('the letter B and');
+	});
+
+	it('is total: a chord with no third role returns the empty string, never throws', () => {
+		setLocale('en');
+		expect(thirdSpellingSentence(spellChord('Csus4'))).toBe('');
+		expect(thirdSpellingSentence(spellChord('not-a-chord'))).toBe('');
+	});
+
+	it('contains no em dashes in either locale (standing copy rule)', () => {
+		for (const locale of ['en', 'fr'] as const) {
+			setLocale(locale);
+			for (const symbol of ['Cm7', 'Fmaj7', 'Bbm7b5', 'F#dim7', 'Ab7']) {
+				expect(thirdSpellingSentence(spellChord(symbol))).not.toMatch(/—|–/);
+			}
+		}
 	});
 });
