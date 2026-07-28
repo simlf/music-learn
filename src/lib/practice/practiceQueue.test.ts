@@ -11,6 +11,9 @@ import {
 	SCAFFOLD_HEAVY,
 	isLowMasterySession,
 	advanceHybridQueue,
+	sliceRound,
+	RETRY_MIN_GAP,
+	RETRY_MAX_GAP,
 	filterVoicingsBySong,
 	filterInversionsBySong,
 	familiesInQueue,
@@ -635,6 +638,156 @@ describe('advanceHybridQueue', () => {
 		const second = makeCarded('interval', 'M3');
 		const advanced = advanceHybridQueue([first, second], Rating.Good);
 		expect(advanced).toEqual([second]);
+	});
+});
+
+/**
+ * B1: the bounded daily round. sliceRound cuts the composed queue down to the
+ * day's target without re-ordering it, and the DELAYED retry re-asks a missed
+ * item inside the round instead of parking it behind everything else.
+ */
+
+/** The `symbol` each slot carries (undefined for a progression), for order assertions. */
+function symbolsOf(queue: HybridQueueItem[]): (string | undefined)[] {
+	return queue.map((item) => (item.family === 'progression' ? undefined : item.symbol));
+}
+
+describe('sliceRound', () => {
+	function queueOf(n: number): HybridQueueItem[] {
+		return Array.from({ length: n }, (_, i) => makeCarded('name-it', `Cm7-${i}`));
+	}
+
+	it('cuts to the target and reports what it left waiting', () => {
+		const queue = queueOf(30);
+		const { round, waiting } = sliceRound(queue, 12);
+		expect(round).toHaveLength(12);
+		expect(waiting).toBe(18);
+	});
+
+	it('preserves the composed order exactly (never re-orders or re-picks)', () => {
+		const queue = queueOf(20);
+		expect(sliceRound(queue, 5).round).toEqual(queue.slice(0, 5));
+	});
+
+	it('never mutates the input queue', () => {
+		const queue = queueOf(6);
+		const snapshot = [...queue];
+		sliceRound(queue, 3);
+		expect(queue).toEqual(snapshot);
+	});
+
+	it('a target at or above the queue length takes everything, nothing waiting', () => {
+		const queue = queueOf(4);
+		expect(sliceRound(queue, 12)).toEqual({ round: queue, waiting: 0 });
+		expect(sliceRound(queueOf(12), 12).waiting).toBe(0);
+	});
+
+	it('a non-positive or non-finite target yields an empty round with everything waiting', () => {
+		expect(sliceRound(queueOf(7), 0)).toEqual({ round: [], waiting: 7 });
+		expect(sliceRound(queueOf(7), -3).round).toEqual([]);
+		expect(sliceRound(queueOf(7), Number.NaN).round).toEqual([]);
+		expect(sliceRound(queueOf(7), Number.POSITIVE_INFINITY).round).toEqual([]);
+	});
+
+	it('an empty queue yields an empty round with nothing waiting', () => {
+		expect(sliceRound([], 12)).toEqual({ round: [], waiting: 0 });
+	});
+
+	it('floors a fractional target rather than producing a fractional slice', () => {
+		expect(sliceRound(queueOf(10), 3.9).round).toHaveLength(3);
+	});
+});
+
+describe('advanceHybridQueue: delayed in-session retry (B1)', () => {
+	function queueOf(labels: string[]): HybridQueueItem[] {
+		return labels.map((label) => makeCarded('name-it', label));
+	}
+
+	/** rng() = 0 draws the MINIMUM gap; just under 1 draws the maximum. */
+	const minRng = () => 0;
+	const maxRng = () => 0.999;
+	const delayed = { retryMinGap: RETRY_MIN_GAP, retryMaxGap: RETRY_MAX_GAP };
+
+	it('re-inserts a missed carded item `gap` questions ahead, not at the tail', () => {
+		const advanced = advanceHybridQueue(queueOf(['A', 'B', 'C', 'D', 'E']), Rating.Again, {
+			...delayed,
+			rng: minRng
+		});
+		// Gap 2 = one other question, then A again.
+		expect(symbolsOf(advanced)).toEqual(['B', 'A', 'C', 'D', 'E']);
+	});
+
+	it('honours the maximum gap draw', () => {
+		const advanced = advanceHybridQueue(queueOf(['A', 'B', 'C', 'D', 'E']), Rating.Again, {
+			...delayed,
+			rng: maxRng
+		});
+		expect(symbolsOf(advanced)).toEqual(['B', 'C', 'D', 'A', 'E']);
+	});
+
+	it('keeps the round the same LENGTH: the retry displaces nothing and adds nothing', () => {
+		const queue = queueOf(['A', 'B', 'C', 'D']);
+		const advanced = advanceHybridQueue(queue, Rating.Again, { ...delayed, rng: minRng });
+		expect(advanced).toHaveLength(queue.length);
+		expect(new Set(advanced)).toEqual(new Set(queue));
+	});
+
+	it('appends rather than dropping when the gap runs past the remaining queue', () => {
+		const advanced = advanceHybridQueue(queueOf(['A', 'B']), Rating.Again, {
+			...delayed,
+			rng: maxRng
+		});
+		expect(symbolsOf(advanced)).toEqual(['B', 'A']);
+	});
+
+	it('a sole remaining item comes straight back (nothing to interleave with)', () => {
+		const advanced = advanceHybridQueue(queueOf(['A']), Rating.Again, { ...delayed, rng: minRng });
+		expect(symbolsOf(advanced)).toEqual(['A']);
+	});
+
+	it('leaves synthetic items and non-Again outcomes alone even with retry options set', () => {
+		const voicing = makeVoicing('Cmaj7');
+		const carded = makeCarded('name-it', 'Cm7');
+		const options = { ...delayed, rng: minRng };
+		expect(advanceHybridQueue([voicing, carded], Rating.Again, options)).toEqual([carded]);
+		expect(advanceHybridQueue([carded, voicing], Rating.Good, options)).toEqual([voicing]);
+	});
+
+	it('omitting the retry options keeps the legacy tail re-enqueue (REG-01)', () => {
+		expect(symbolsOf(advanceHybridQueue(queueOf(['A', 'B', 'C']), Rating.Again))).toEqual([
+			'B',
+			'C',
+			'A'
+		]);
+	});
+
+	it('never mutates the input queue', () => {
+		const queue = queueOf(['A', 'B', 'C']);
+		const snapshot = [...queue];
+		advanceHybridQueue(queue, Rating.Again, { ...delayed, rng: minRng });
+		expect(queue).toEqual(snapshot);
+	});
+
+	it('clamps a degenerate gap configuration to a real gap of at least one question', () => {
+		const advanced = advanceHybridQueue(queueOf(['A', 'B', 'C']), Rating.Again, {
+			retryMinGap: 0,
+			retryMaxGap: 0,
+			rng: minRng
+		});
+		expect(symbolsOf(advanced)).toEqual(['A', 'B', 'C']);
+	});
+
+	it('a randomly drawn gap always lands inside the 2-to-4 window', () => {
+		const rng = seededRng(99);
+		for (let trial = 0; trial < 60; trial++) {
+			const advanced = advanceHybridQueue(queueOf(['A', 'B', 'C', 'D', 'E', 'F']), Rating.Again, {
+				...delayed,
+				rng
+			});
+			const index = symbolsOf(advanced).indexOf('A');
+			expect(index).toBeGreaterThanOrEqual(1);
+			expect(index).toBeLessThanOrEqual(3);
+		}
 	});
 });
 

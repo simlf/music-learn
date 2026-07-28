@@ -5,7 +5,9 @@
 		cardsToQueueItems,
 		advanceHybridQueue,
 		isHybridSessionComplete,
-		hybridSessionRemaining,
+		sliceRound,
+		RETRY_MIN_GAP,
+		RETRY_MAX_GAP,
 		syntheticVoicingItems,
 		syntheticProgressionItems,
 		syntheticInversionItems,
@@ -16,6 +18,19 @@
 		type InversionQueueItem,
 		type CardedQueueItem
 	} from '$lib/practice/practiceQueue';
+	import {
+		DAILY_TARGET,
+		answeredToday,
+		isYesterday,
+		markDoneToday,
+		previousSummary,
+		recordDailyAnswer,
+		remainingDailyTarget,
+		type DaySummary
+	} from '$lib/practice/dailySession';
+	import { localDateString } from '$lib/api/progress';
+	import { localStreak } from '$lib/practice/practiceDays';
+	import { pickStreakLine } from '$lib/copy/streak';
 	import {
 		getDueCards,
 		getAllCards,
@@ -28,7 +43,7 @@
 	import { remainingIntroBudget, consumeIntroBudget } from '$lib/srs/introBudget';
 	import { Rating, newCard } from '$lib/srs/scheduler';
 	import { factById } from '$lib/srs/facts';
-	import { consumeDrillSeeds, consumeLessonSeeds } from '$lib/practice/drillSeeds';
+	import { consumeDrillSeeds, consumeLessonSeeds, setDrillSeeds } from '$lib/practice/drillSeeds';
 	import { readSongFilter } from '$lib/practice/songFilterPref';
 	import { buildProvenanceIndex, symbolHasProvenance } from '$lib/practice/songProvenance';
 	import { recordPracticeAnswer } from '$lib/practice/answerTelemetry';
@@ -67,7 +82,68 @@
 
 	let pageState = $state<PageState>('loading');
 	let queue = $state<HybridQueueItem[]>([]);
-	let length = $state(0);
+
+	/**
+	 * B1, the bounded daily session.
+	 *
+	 * `roundTarget` is the round's hard ceiling in QUESTIONS: whatever the day
+	 * still owes against DAILY_TARGET. It is a question budget, not an item
+	 * count, which is what stops the round growing - a re-asked miss spends a
+	 * slot rather than extending the round, so the round can never run longer
+	 * than the number the user agreed to on the pre-start card.
+	 *
+	 * `roundSize` is how many distinct items the round drew (at most
+	 * `roundTarget`), and `waiting` is what it deliberately left behind - shown
+	 * on the pre-start card rather than hidden.
+	 *
+	 * `extraRound` marks a round opted into PAST the day's target: bounded at
+	 * DAILY_TARGET of its own rather than uncapped. `answeredEarlier` is what
+	 * the day had already banked before this round, so a resumed day says
+	 * "5 of 12 done" instead of pretending the day starts over.
+	 */
+	let roundTarget = $state(0);
+	let roundSize = $state(0);
+	let waiting = $state(0);
+	let extraRound = $state(false);
+	let answeredEarlier = $state(0);
+
+	/**
+	 * B2, the closable end card. `dayDone` is what the card is allowed to
+	 * claim: it is set from the PERSISTED day ledger at round end (target met,
+	 * or the due queue genuinely ran dry), never inferred from the in-memory
+	 * register, so the card never says "done for today" on a device whose
+	 * ledger did not record it. `bankedToday` is the ledger's own count, used
+	 * by the degraded line. `endStreakLine` is optional by design: the streak is
+	 * owned elsewhere (the device's practice-day set) and a zero renders nothing
+	 * at all, exactly as StreakBadge self-hides rather than showing a
+	 * discouraging count.
+	 */
+	let dayDone = $state(false);
+	let bankedToday = $state(0);
+	let endStreakLine = $state<string | null>(null);
+
+	/**
+	 * B5, the re-entry cue. The Practice hub showed nothing at all about the
+	 * last session; the only history lived two taps deep in Progress, which is
+	 * the wrong place for it - the moment that matters is the moment the user is
+	 * deciding whether to start. `lastSession` is the most recent PREVIOUS
+	 * practice day's ledger, and `returningItems` is the part of it that is
+	 * actually in the round about to be played, so the line makes a promise the
+	 * session then keeps.
+	 */
+	let lastSession = $state<DaySummary | undefined>(undefined);
+	let returningItems = $state<string[]>([]);
+
+	/** At most this many of yesterday's misses are named, so the cue stays one line. */
+	const MAX_RETURNING_NAMED = 3;
+
+	/**
+	 * B1: the host opts into practiceQueue's DELAYED in-session retry. A tail
+	 * re-enqueue parks a missed item behind every remaining question, which a
+	 * question-capped round may never reach; a 2-to-4 question gap re-asks it
+	 * while the correction still means something, and cannot grow the round.
+	 */
+	const RETRY_OPTIONS = { retryMinGap: RETRY_MIN_GAP, retryMaxGap: RETRY_MAX_GAP };
 
 	// Session-glue state (mirrors drills' score-register model, D- reused verbatim).
 	let score = $state({ correct: 0, streak: 0 });
@@ -352,8 +428,39 @@
 			const dedupedComposed = composed.filter((item) => !seedIds.has(item.id));
 			const finalQueue: HybridQueueItem[] = [...seededItems, ...dedupedComposed];
 
-			queue = finalQueue;
-			length = finalQueue.length;
+			/**
+			 * B1: bound the composed queue to what the DAY still owes, not to
+			 * the whole due set. sliceRound preserves the composer's order
+			 * exactly (its variety weave, its cold-session first-pick guard,
+			 * and the seeded items leading the queue all survive the cut), and
+			 * reports the remainder so the pre-start card can show it. A day
+			 * whose target is already spent slices to nothing and lands on the
+			 * pre-start card's done branch, where extra practice is an explicit
+			 * opt-in rather than an unbounded default.
+			 */
+			answeredEarlier = answeredToday();
+			roundTarget = extraRound ? DAILY_TARGET : remainingDailyTarget();
+			const sliced = sliceRound(finalQueue, roundTarget);
+
+			queue = sliced.round;
+			roundSize = sliced.round.length;
+			waiting = sliced.waiting;
+
+			/**
+			 * B5: yesterday's line, and specifically which of yesterday's misses
+			 * the user is about to meet again. Intersecting with the ROUND (not
+			 * the whole due set) keeps the claim true: an item held back in
+			 * `waiting` is not coming back in this session.
+			 */
+			lastSession = previousSummary();
+			const roundLabels = new Set(sliced.round.map(missedLabelFor));
+			returningItems =
+				lastSession === undefined
+					? []
+					: lastSession.missed
+							.filter((label) => roundLabels.has(label))
+							.slice(0, MAX_RETURNING_NAMED);
+
 			asked = 0;
 			score = { correct: 0, streak: 0 };
 			bestStreak = 0;
@@ -372,18 +479,21 @@
 	const currentItem = $derived(queue[0]);
 
 	/**
-	 * B1 fix: the in-session register was previously `Math.min(asked+1, length)
-	 * of length`, where `length` is the queue's INITIAL size and `asked` only
-	 * ever increments. A missed (Again-graded) carded item is re-enqueued to
-	 * the back of `queue` (advanceHybridQueue), so the live queue can hold
-	 * MORE unresolved items than `length - asked` implies - the fraction
-	 * saturates at "N of N" while re-enqueued misses still remain, reading as
-	 * a stuck/frozen session. Drive the register off the LIVE queue instead
-	 * (mirrors RecallSession's own `remaining = sessionRemaining(queue)`
-	 * convention) so a re-enqueued miss is honestly reflected as still-
-	 * remaining work, not silently absorbed into a frozen total.
+	 * Questions left in THIS round. Previously this was the live queue's
+	 * length, because the round had no length of its own and a missed item was
+	 * re-enqueued to the tail, so the queue could grow while the user worked
+	 * and a frozen "N of N" fraction read as a stuck session.
+	 *
+	 * With the round bounded, this is the smaller of the two real limits: the
+	 * unresolved items still in the queue, and the question budget the round
+	 * has left. Both only ever fall (the queue never grows, since a delayed
+	 * retry re-inserts rather than appends an extra slot; the budget is spent
+	 * one question at a time), so the register only ever falls too, and it
+	 * reaches zero exactly when the round ends. Items the round did not reach
+	 * stay FSRS-due and come back (they are counted in `waiting`), so stopping
+	 * at the target loses nothing.
 	 */
-	const remaining = $derived(hybridSessionRemaining(queue));
+	const remaining = $derived(Math.max(0, Math.min(queue.length, roundTarget - asked)));
 
 	/**
 	 * Per-item telemetry clock (mirrors RecallSession's questionShownAt): a
@@ -397,6 +507,80 @@
 		questionShownAt = Date.now();
 		pageState = 'reviewing';
 	}
+
+	/**
+	 * The explicit opt-in continuation (B1), reached from the pre-start card on
+	 * an already-met day and from the end card whenever work is left.
+	 * Recomposes from live FSRS state and drops straight into a fresh round.
+	 *
+	 * Whether that round is "extra" is decided from the ledger, not latched: a
+	 * day that still owes questions continues on its own budget, and only a
+	 * fully spent day starts a fresh bounded DAILY_TARGET. So extra practice is
+	 * always offered and always bounded, and never implied to be owed.
+	 */
+	async function keepGoing(): Promise<void> {
+		extraRound = remainingDailyTarget() === 0;
+		await load();
+		if (pageState === 'pre-start' && roundSize > 0) {
+			questionShownAt = Date.now();
+			pageState = 'reviewing';
+		}
+	}
+
+	/**
+	 * B5's two optional pre-start lines. The score line is suppressed when the
+	 * last session scored nothing: this is a re-entry cue, not a report card,
+	 * and a zero carries no cue value while still stinging (same reasoning as
+	 * StreakBadge self-hiding at zero). "Yesterday" is only used when the last
+	 * session literally was yesterday; otherwise the wording drops the claim
+	 * rather than lying about the calendar.
+	 */
+	const lastSessionLine = $derived.by((): string | null => {
+		const previous = lastSession;
+		if (previous === undefined || previous.correct === 0) return null;
+		const key = isYesterday(previous.date) ? 'practice.pre.yesterday' : 'practice.pre.lastRun';
+		return t(key)
+			.replace('{N}', String(previous.correct))
+			.replace('{B}', String(previous.bestStreak));
+	});
+
+	const comingBackLine = $derived.by((): string | null => {
+		if (returningItems.length === 0) return null;
+		return t('practice.pre.comingBack').replace('{ITEMS}', returningItems.join(', '));
+	});
+
+	/**
+	 * The pre-start card's register (B1). Three honest shapes:
+	 * - the whole due set fits the round: the pre-existing "N CARDS DUE TODAY"
+	 *   line, unchanged, because it is then exactly true;
+	 * - the round is a slice: "12 TODAY · 27 WAITING", so the number is
+	 *   finishable without the remainder being hidden;
+	 * - the day is partly spent: "5 OF 12 DONE TODAY · 7 TO GO", so a resumed
+	 *   day picks up instead of pretending to start over.
+	 * A day whose target is already met gets the done line instead.
+	 */
+	const preStartRegister = $derived.by((): string => {
+		const waitingLine = t('practice.pre.waiting').replace('{N}', String(waiting));
+		if (roundSize === 0) {
+			const done = t('practice.pre.doneToday');
+			return waiting > 0 ? `${done} · ${waitingLine}` : done;
+		}
+		// The resume line only makes sense while a round is still spending the
+		// day's own budget; an extra round past the target would otherwise read
+		// "12 OF 12 DONE TODAY · 12 TO GO".
+		if (answeredEarlier > 0 && !extraRound) {
+			const resume = t('practice.pre.resume')
+				.replace('{DONE}', String(answeredEarlier))
+				.replace('{TARGET}', String(DAILY_TARGET));
+			return `${resume} · ${t('practice.pre.toGo').replace('{N}', String(roundSize))}`;
+		}
+		if (waiting > 0) {
+			return `${t('practice.pre.today').replace('{N}', String(roundSize))} · ${waitingLine}`;
+		}
+		return roundSize === 1
+			? t('practice.pre.dueSingular')
+			: t('practice.pre.duePlural').replace('{N}', String(roundSize));
+	});
 
 	/**
 	 * Family-cue chip label (27-UI-SPEC "Family Cue Between Questions") -
@@ -423,14 +607,66 @@
 	}
 
 	function finishItem(item: HybridQueueItem, correct: boolean): void {
+		const label = missedLabelFor(item);
 		if (correct) {
 			score = { correct: score.correct + 1, streak: score.streak + 1 };
 			bestStreak = Math.max(bestStreak, score.streak);
 		} else {
 			score = { correct: score.correct, streak: 0 };
-			missed = [...missed, missedLabelFor(item)];
+			if (!missed.includes(label)) missed = [...missed, label];
 		}
 		asked += 1;
+		/**
+		 * B1: every graded answer lands in the day's persisted ledger too. The
+		 * in-memory register above is destroyed the moment the user navigates
+		 * away, which is exactly what made the reward feel gated behind
+		 * finishing everything; the ledger is what lets a half-finished day
+		 * resume honestly and what the end card reads to say "done for today".
+		 * FSRS is untouched by it (dailySession never reads or writes a card).
+		 */
+		recordDailyAnswer({ correct, label: correct ? undefined : label });
+	}
+
+	/**
+	 * B1: the round ends when the queue is resolved, or when the day's question
+	 * budget runs out, whichever comes first. Both conditions matter. The
+	 * budget is the bound: it caps a 39-item due set at a finishable round and
+	 * guarantees the round cannot grow past what the pre-start card promised.
+	 * The empty queue is what lets a small due set (4 items on a quiet day)
+	 * finish without burning the rest of the budget, AND what keeps a missed
+	 * item's delayed retry inside the round instead of ending on the miss.
+	 */
+	function maybeFinishRound(): void {
+		if (!isHybridSessionComplete(queue) && asked < roundTarget) return;
+
+		/**
+		 * B2: what is left over is everything the round never drew PLUS
+		 * anything it drew but did not resolve (a late miss whose delayed retry
+		 * fell outside the budget). Both are still FSRS-due, so both belong in
+		 * the number the card shows.
+		 */
+		waiting = waiting + queue.length;
+		bankedToday = answeredToday();
+		dayDone = bankedToday >= DAILY_TARGET || waiting === 0;
+		if (dayDone) markDoneToday();
+		refreshEndStreak();
+		pageState = 'complete';
+	}
+
+	/**
+	 * B2's streak line. This host does not own the streak and must not invent
+	 * one from its own day ledger, so it reads the practice-day set that owns it
+	 * (practiceDays.localStreak) rather than deriving a second number: local,
+	 * synchronous, no token and no tailnet, which is what makes the line show up
+	 * on the phone where practice actually happens. A zero streak renders
+	 * nothing at all, exactly as StreakBadge self-hides rather than showing a
+	 * discouraging count, and the copy comes from the existing non-scolding
+	 * rotation pool rather than new strings.
+	 */
+	function refreshEndStreak(): void {
+		const streak = localStreak(localDateString());
+		endStreakLine =
+			streak >= 1 ? pickStreakLine('activePracticedToday').replace('{N}', String(streak)) : null;
 	}
 
 	/**
@@ -474,10 +710,10 @@
 			});
 			finishItem(item, correct);
 			const updatedItem = { ...item, card: updatedCard };
-			queue = advanceHybridQueue([updatedItem, ...queue.slice(1)], rating);
+			queue = advanceHybridQueue([updatedItem, ...queue.slice(1)], rating, RETRY_OPTIONS);
 			questionShownAt = Date.now();
 			cardEpoch += 1;
-			if (isHybridSessionComplete(queue)) pageState = 'complete';
+			maybeFinishRound();
 		} finally {
 			grading = false;
 		}
@@ -505,10 +741,10 @@
 			durationMs
 		});
 		finishItem(item, correct);
-		queue = advanceHybridQueue(queue, rating);
+		queue = advanceHybridQueue(queue, rating, RETRY_OPTIONS);
 		questionShownAt = Date.now();
 		cardEpoch += 1;
-		if (isHybridSessionComplete(queue)) pageState = 'complete';
+		maybeFinishRound();
 	}
 
 	/**
@@ -517,42 +753,96 @@
 	 * 27-CONTEXT's "no persisted-schema change") - recordGrade must NEVER be
 	 * called for them (T-27-05-01, extended to inversions by T-35-06-02).
 	 * onComplete only ever fires after a correct play/earn in ShellVoicingDrill,
-	 * ProgressionDrill, and InversionDrill alike (they never gate to completion
-	 * on a wrong answer), so the round counter always finishes the item as
-	 * correct. The host only advances the local queue/score register here - no
-	 * telemetry event is recorded for synthetic completions (the embedded
-	 * components own their own internal behavior; adding a host-level
-	 * recordPracticeAnswer call here would be new surface not required by any
-	 * family's own contract).
+	 * ProgressionDrill, and InversionDrill alike (a wrong answer retries and
+	 * never gates), so "completed" carries no information about whether the
+	 * user got it right. This handler used to finish every synthetic item as
+	 * CORRECT for exactly that reason, which made three of the six families
+	 * free points: the end card's accuracy was dishonest upward by
+	 * construction, and the more the round leaned on voicing/progression/
+	 * inversion the more meaningless the number became.
+	 *
+	 * B3: each of those three components now reports `firstTry` - whether the
+	 * item was earned with no wrong attempt at all - which is the same standard
+	 * the carded families are graded by (PracticeChordDrill's `correct` is its
+	 * first pick). The pedagogy is untouched: a wrong play still just retries,
+	 * still never gates, and still commits no FSRS grade (these items carry no
+	 * card at all, T-27-05-01/T-35-06-02). Only the round's own accuracy,
+	 * best-run and missed-item register now tell the truth about them.
+	 *
+	 * Server telemetry stays deliberately silent for synthetic completions.
+	 * /answers accuracy is chord-IDENTIFICATION accuracy, which /progress reads
+	 * to pick weak items; a voicing or inversion attempt measures a different
+	 * skill on the same symbol, so posting it there would quietly change what
+	 * that number means (and REG-01 keeps the existing telemetry contract).
 	 */
-	function completeSynthetic(): void {
+	function completeSynthetic(firstTry: boolean): void {
 		const item = currentItem;
 		if (
 			item === undefined ||
 			(item.family !== 'voicing' && item.family !== 'progression' && item.family !== 'inversion')
 		)
 			return;
-		finishItem(item, true);
-		queue = advanceHybridQueue(queue, Rating.Good);
+		finishItem(item, firstTry);
+		queue = advanceHybridQueue(queue, Rating.Good, RETRY_OPTIONS);
 		questionShownAt = Date.now();
 		cardEpoch += 1;
-		if (isHybridSessionComplete(queue)) pageState = 'complete';
+		maybeFinishRound();
 	}
 
 	/**
-	 * The end-card's "Run it again" CTA: re-runs load() and, when the freshly
-	 * composed queue is non-empty, drops straight into a fresh round rather
-	 * than stopping at the pre-start confirmation card again - matching
-	 * drills' own "Run it again" behavior. A now-empty deck/due-set lands on
-	 * the matching empty tier instead (load() already sets that state).
+	 * The end card's own summary lines (B2). Three shapes, and only the first
+	 * two ever claim the day is finished:
+	 * - the day's target is met and work remains: say so, then offer the rest;
+	 * - the day's target is met and nothing remains: say the deck is clear;
+	 * - the ledger does not back a "done" claim (storage full or blocked):
+	 *   report the round and claim nothing about the day.
 	 */
-	async function runAgain(): Promise<void> {
-		await load();
-		if (pageState === 'pre-start') {
-			questionShownAt = Date.now();
-			pageState = 'reviewing';
-		}
+	const endDoneLine = $derived.by((): string => {
+		if (dayDone) return t('practice.end.doneToday');
+		return t('practice.end.partial')
+			.replace('{DONE}', String(bankedToday > 0 ? bankedToday : asked))
+			.replace('{N}', String(waiting));
+	});
+
+	/**
+	 * B4: which missed labels can actually seed a drill. `buildSeededItems`
+	 * resolves a seed through factById('chord-formula:{symbol}') and skips
+	 * anything that does not resolve, so an interval short ("m3") or a
+	 * progression label ("major-ii-V-I C") would seed a round with nothing in
+	 * it. Those chips stay inert text; only real chord symbols become actions,
+	 * and the CTA counts only what it can genuinely deliver.
+	 */
+	const seedableMisses = $derived(
+		missed.filter((label) => factById(`chord-formula:${label}`) !== undefined)
+	);
+
+	/**
+	 * Re-enters practice with `symbols` at the front of the queue, through the
+	 * SAME one-shot localStorage handoff Lookup's "Drill it" and the Progress
+	 * hub's "Drill all N" already use (setDrillSeeds, drained by load() via
+	 * buildSeededItems). No new mechanism, and no second code path that could
+	 * drift from the one the rest of the app relies on.
+	 *
+	 * The one difference from those two callers is the navigation: they are on
+	 * another route, so they goto('/practice') and the fresh mount consumes the
+	 * seeds. Here we are already on /practice, where a same-route goto would not
+	 * remount the page and the seeds would sit unconsumed until the next visit.
+	 * So this re-runs the load/start path locally, which drains the very same
+	 * channel.
+	 */
+	async function fixMisses(symbols: string[]): Promise<void> {
+		if (symbols.length === 0) return;
+		setDrillSeeds(symbols);
+		await keepGoing();
 	}
+
+	const endRemainderLine = $derived.by((): string | null => {
+		if (!dayDone) return null;
+		if (waiting === 0) return t('practice.end.allClear');
+		return waiting === 1
+			? t('practice.end.moreReadySingular')
+			: t('practice.end.moreReadyPlural').replace('{N}', String(waiting));
+	});
 </script>
 
 <main class="bg-paper text-ink min-h-screen px-2 py-8 font-sans sm:px-8">
@@ -591,14 +881,30 @@
 	{:else if pageState === 'pre-start'}
 		<div class="border-ink bg-paper-bright mt-6 border-2 p-6" data-testid="practice-pre-start">
 			<p class="text-label font-mono uppercase" data-testid="practice-due-register">
-				{length === 1
-					? t('practice.pre.dueSingular')
-					: t('practice.pre.duePlural').replace('{N}', String(length))}
+				{preStartRegister}
 			</p>
+
+			{#if lastSessionLine || comingBackLine}
+				<div class="mt-4" data-testid="practice-last-session">
+					{#if lastSessionLine}
+						<p class="text-body text-muted">{lastSessionLine}</p>
+					{/if}
+					{#if comingBackLine}
+						<p class="text-body mt-1">{comingBackLine}</p>
+					{/if}
+				</div>
+			{/if}
+
 			<div class="mt-6">
-				<Button type="button" variant="primary" onclick={startSession}>
-					{t('practice.cta.start')}
-				</Button>
+				{#if roundSize > 0}
+					<Button type="button" variant="primary" onclick={startSession}>
+						{t('practice.cta.start')}
+					</Button>
+				{:else}
+					<Button type="button" variant="primary" onclick={() => void keepGoing()}>
+						{t('practice.cta.keepGoing')}
+					</Button>
+				{/if}
 			</div>
 		</div>
 	{:else if pageState === 'reviewing' && currentItem}
@@ -625,18 +931,21 @@
 					onComplete={(rating) => completeBuild(rating)}
 				/>
 			{:else if currentItem.family === 'voicing'}
-				<ShellVoicingDrill embedSymbol={currentItem.symbol} onComplete={() => completeSynthetic()} />
+				<ShellVoicingDrill
+					embedSymbol={currentItem.symbol}
+					onComplete={(firstTry) => completeSynthetic(firstTry)}
+				/>
 			{:else if currentItem.family === 'progression'}
 				<ProgressionDrill
 					embedTemplateId={currentItem.templateId}
 					embedKey={currentItem.key}
-					onComplete={() => completeSynthetic()}
+					onComplete={(firstTry) => completeSynthetic(firstTry)}
 				/>
 			{:else if currentItem.family === 'inversion'}
 				<InversionDrill
 					symbol={currentItem.symbol}
 					inversionIndex={currentItem.inversionIndex}
-					onComplete={() => completeSynthetic()}
+					onComplete={(firstTry) => completeSynthetic(firstTry)}
 				/>
 			{/if}
 		{/key}
@@ -653,22 +962,67 @@
 				{t('drills.end.bestRunPrefix')} {bestStreak} {t('drills.end.bestRunSuffix')}
 			</p>
 
+			<p class="text-body mt-4 font-bold" data-testid="practice-end-card-done">{endDoneLine}</p>
+			{#if endRemainderLine}
+				<p class="text-body text-muted mt-1" data-testid="practice-end-card-remainder">
+					{endRemainderLine}
+				</p>
+			{/if}
+			{#if endStreakLine}
+				<p
+					class="text-label mt-2 font-mono uppercase"
+					data-testid="practice-end-card-day-streak"
+				>
+					{endStreakLine}
+				</p>
+			{/if}
+
 			{#if missed.length > 0}
 				<p class="text-body mt-6">{t('drills.end.worthAnotherLook')}</p>
 				<div class="mt-2 flex flex-wrap gap-2" data-testid="practice-end-card-misses">
 					{#each missed as item (item)}
-						<span class="font-serif font-bold">{item}</span>
+						{#if seedableMisses.includes(item)}
+							<button
+								type="button"
+								class="missed-chip font-serif font-bold"
+								aria-label={t('practice.end.fixChipAria').replace('{SYMBOL}', item)}
+								onclick={() => void fixMisses([item])}
+							>
+								{item}
+							</button>
+						{:else}
+							<span class="font-serif font-bold">{item}</span>
+						{/if}
 					{/each}
 				</div>
 			{:else}
 				<p class="text-body mt-6">{t('drills.end.cleanSheet')}</p>
 			{/if}
 
-			<div class="mt-6">
-				<Button type="button" variant="primary" onclick={() => void runAgain()}>
-					{t('drills.end.runAgain')}
-				</Button>
-			</div>
+			{#if seedableMisses.length > 0 || waiting > 0}
+				<div class="mt-6 flex flex-wrap gap-2">
+					{#if seedableMisses.length > 0}
+						<Button
+							type="button"
+							variant="primary"
+							onclick={() => void fixMisses(seedableMisses)}
+						>
+							{seedableMisses.length === 1
+								? t('practice.end.fixThis')
+								: t('practice.end.fixThese').replace('{N}', String(seedableMisses.length))}
+						</Button>
+					{/if}
+					{#if waiting > 0}
+						<Button
+							type="button"
+							variant={seedableMisses.length > 0 ? 'ghost' : 'primary'}
+							onclick={() => void keepGoing()}
+						>
+							{t('practice.cta.keepGoing')}
+						</Button>
+					{/if}
+				</div>
+			{/if}
 		</div>
 	{/if}
 
@@ -712,5 +1066,25 @@
 <style>
 	.stamp {
 		animation: stamp-in 240ms ease-out;
+	}
+
+	/**
+	 * B4: a missed chip is a control, so it has to look like one. Keeps the
+	 * chip's serif chord-glyph treatment (chord symbols are typographically
+	 * immune) and adds only the tappable affordance: a dotted underline in
+	 * vermilion, the app's existing "act on this" accent.
+	 */
+	.missed-chip {
+		color: var(--color-ink);
+		text-decoration: underline dotted var(--color-vermilion);
+		text-underline-offset: 0.2em;
+		cursor: pointer;
+		/* Phone-first: a comfortable tap target without changing the chip's look. */
+		padding: 0.25rem 0.125rem;
+	}
+
+	.missed-chip:hover,
+	.missed-chip:focus-visible {
+		color: var(--color-vermilion);
 	}
 </style>

@@ -25,11 +25,15 @@ import { inversionCountFor } from './inversions';
  *      cross-family weave only; carded items arrive already FSRS-ordered,
  *      this module never re-sorts them by anything but the variety weave,
  *      preserving PRAC-03).
+ *   8. sliceRound(composed, target)            (this module - the bounded
+ *      daily session's cut, order-preserving, reporting what it left)
  *
  * Grading/advance loop:
- *   8. advanceHybridQueue(queue, outcome) on every answer - mirrors
+ *   9. advanceHybridQueue(queue, outcome, options) on every answer - mirrors
  *      srs/session.ts's advanceQueue Rating.Again re-enqueue contract for
- *      carded items; synthetic items are always consumed.
+ *      carded items; synthetic items are always consumed. `options` chooses
+ *      between the legacy tail re-enqueue (default) and the delayed
+ *      in-session retry a bounded round wants.
  *
  * Song filter (PRAC-04, WR-02): the carded half is restricted upstream of
  * this module, by the host's own applySongFilter over the raw due
@@ -446,6 +450,57 @@ export function composePracticeQueue(
 	return output;
 }
 
+/**
+ * The bounded round's slice of a composed queue: the items THIS round will
+ * ask, and how many composed items it deliberately left for later.
+ */
+export interface RoundSlice {
+	round: HybridQueueItem[];
+	/** Composed items the round does not include. Surfaced honestly on the pre-start card, never hidden. */
+	waiting: number;
+}
+
+/**
+ * Cuts a composed queue down to at most `target` items (the bounded daily
+ * session). Pure and order-preserving: the round is the composed queue's own
+ * prefix, so the composer's variety weave, its low-mastery first-pick guard,
+ * and the seeded items it leads with all survive the cut intact - this
+ * function never re-orders, never re-picks, and never drops an item without
+ * counting it in `waiting`.
+ *
+ * A non-positive or non-finite target yields an empty round with everything
+ * waiting (the caller's "today is already done" branch); a target at or above
+ * the queue length yields the whole queue with nothing waiting.
+ */
+export function sliceRound(queue: HybridQueueItem[], target: number): RoundSlice {
+	const bounded = Number.isFinite(target) ? Math.max(0, Math.floor(target)) : 0;
+	const size = Math.min(bounded, queue.length);
+	return { round: queue.slice(0, size), waiting: queue.length - size };
+}
+
+/**
+ * The in-session retry gap (srs/session.ts's DEFAULT_SESSION_CONFIG values,
+ * reused verbatim): a missed item comes back 2 to 4 questions later. Far
+ * enough to be a real retrieval event rather than an immediate short-term
+ * memory echo, near enough to still be the same sitting.
+ */
+export const RETRY_MIN_GAP = 2;
+export const RETRY_MAX_GAP = 4;
+
+/** How advanceHybridQueue should re-queue a missed (Again-graded) carded item. */
+export interface AdvanceOptions {
+	/**
+	 * Opt in to the DELAYED retry: the missed item is re-inserted this many
+	 * questions ahead (up to retryMaxGap, rng-drawn) instead of appended to
+	 * the tail. Omitted = the legacy tail re-enqueue, byte-identical to the
+	 * pre-existing two-argument contract (REG-01: every existing caller and
+	 * test keeps exactly the behavior it asserted).
+	 */
+	retryMinGap?: number;
+	retryMaxGap?: number;
+	rng?: () => number;
+}
+
 /** True for the three FSRS-backed families (a CardedQueueItem), false for synthetic ones. */
 function isCardedItem(item: HybridQueueItem): item is CardedQueueItem {
 	return item.family === 'name-it' || item.family === 'build-it' || item.family === 'interval';
@@ -453,18 +508,40 @@ function isCardedItem(item: HybridQueueItem): item is CardedQueueItem {
 
 /**
  * Removes the front item of `queue`. Mirrors srs/session.ts's advanceQueue
- * D-10 contract: re-enqueues the front item to the back only when it is a
+ * D-10 contract: re-enqueues the front item only when it is a
  * CardedQueueItem AND `outcome === Rating.Again`; every synthetic item and
  * every non-Again outcome is consumed without re-enqueue. Never mutates the
  * input array - always returns a new one.
+ *
+ * Where the re-enqueue LANDS depends on `options`. Without them the item goes
+ * to the tail (the original contract). With `retryMinGap`/`retryMaxGap` it is
+ * inserted `gap` questions ahead - the delayed in-session retry - which is
+ * what a bounded round wants: a tail re-enqueue pushes the retry behind every
+ * remaining item (so a round that is capped by question count may never get
+ * back to it), while a 2-to-4 gap re-asks it inside the same round, in the
+ * window where the correction still means something. A gap longer than the
+ * remaining queue appends, so the retry is never dropped.
  */
-export function advanceHybridQueue(queue: HybridQueueItem[], outcome: Rating): HybridQueueItem[] {
+export function advanceHybridQueue(
+	queue: HybridQueueItem[],
+	outcome: Rating,
+	options: AdvanceOptions = {}
+): HybridQueueItem[] {
 	if (queue.length === 0) return queue;
 	const [current, ...rest] = queue;
-	if (isCardedItem(current) && outcome === Rating.Again) {
-		return [...rest, current];
-	}
-	return rest;
+	if (!isCardedItem(current) || outcome !== Rating.Again) return rest;
+
+	const minGap = options.retryMinGap;
+	if (minGap === undefined) return [...rest, current];
+
+	const boundedMin = Math.max(1, Math.floor(minGap));
+	const boundedMax = Math.max(boundedMin, Math.floor(options.retryMaxGap ?? boundedMin));
+	const rng = options.rng ?? Math.random;
+	const gap = boundedMin + Math.floor(rng() * (boundedMax - boundedMin + 1));
+	// gap counts QUESTIONS from now, and the item just left slot 0, so a gap
+	// of 2 means "one other question, then this again" = index 1.
+	const index = Math.min(gap - 1, rest.length);
+	return [...rest.slice(0, index), current, ...rest.slice(index)];
 }
 
 /** Keeps only voicing items whose symbol satisfies `predicate` (PRAC-04's synthetic-half restriction). */

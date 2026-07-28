@@ -57,7 +57,14 @@
 	interface Props {
 		embedTemplateId?: string;
 		embedKey?: string;
-		onComplete?: () => void;
+		/**
+		 * `firstTry` (B3) reports whether every bar in the grid was earned with
+		 * no wrong name pick and no wrong play. Naming or playing wrong retries
+		 * and never gates, so every completion is eventually correct and the
+		 * host cannot read "completed" as "right" - it needs this to grade the
+		 * item honestly.
+		 */
+		onComplete?: (firstTry: boolean) => void;
 	}
 
 	let { embedTemplateId, embedKey, onComplete }: Props = $props();
@@ -88,6 +95,13 @@
 	let step = $state<Step>('name');
 	let nameRetry = $state(false);
 	let playRetry = $state(false);
+	/**
+	 * Sticky across the whole grid (B3): set by ANY wrong name pick or wrong
+	 * play, cleared only by a fresh progression draw. nameRetry/playRetry are
+	 * transient per bar, so neither can answer "was this progression earned
+	 * clean", which is what the embedding host grades on.
+	 */
+	let missedOnce = $state(false);
 	let selected = $state<Set<string>>(new Set());
 	let pulseToken = $state(0);
 	let functionReveal = $state<RomanFunction | null>(null);
@@ -294,6 +308,7 @@
 			step = 'play';
 		} else {
 			nameRetry = true;
+			missedOnce = true;
 		}
 	}
 
@@ -319,6 +334,7 @@
 
 		if (!result.correct) {
 			playRetry = true;
+			missedOnce = true;
 			return;
 		}
 
@@ -344,6 +360,7 @@
 		step = 'name';
 		nameRetry = false;
 		playRetry = false;
+		missedOnce = false;
 		selected = new Set();
 		functionReveal = null;
 	}
@@ -492,7 +509,7 @@
 			<h2 class="completion-title">{t('progressions.completion.title')}</h2>
 			<p>{t('progressions.completion.body')}</p>
 			{#if onComplete}
-				<Button type="button" variant="primary" onclick={() => onComplete?.()}>
+				<Button type="button" variant="primary" onclick={() => onComplete?.(!missedOnce)}>
 					{t('progressions.button.next')}
 				</Button>
 			{:else}

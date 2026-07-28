@@ -21,16 +21,43 @@ export const practice = {
 		// Primary CTA (locked language, 27-UI-SPEC "Primary CTA" - do not
 		// re-case to "Start Practice" or "Practice Now").
 		'practice.cta.start': 'Start practice',
+		// Opt-in continuation past the day's target: extra practice is always
+		// offered, never implied to be owed (B1).
+		'practice.cta.keepGoing': 'Keep going',
 
 		// Pre-start due-summary register (27-UI-SPEC "Pre-start due-summary
 		// register"). The plural line carries a literal {N} placeholder,
 		// substituted client-side (SongMark's {N} convention).
+		//
+		// These two lines stay the register whenever the round IS the whole due
+		// set - "3 CARDS DUE TODAY" is then exactly true. The bounded-session
+		// lines below take over only when the round is a deliberate slice of a
+		// larger due set, where "due today" would read as a contradiction
+		// (B1: the split must be honest in both directions).
 		'practice.pre.dueSingular': '1 CARD DUE TODAY',
 		'practice.pre.duePlural': '{N} CARDS DUE TODAY',
 
-		// In-session register (B1 fix, 30-CONTEXT UAT): driven off the LIVE
-		// queue (hybridSessionRemaining), not a frozen initial-size fraction -
-		// mirrors recall.register.left-today's "N LEFT" convention.
+		// Bounded daily session (B1). "{N} TODAY · {M} WAITING": a finishable
+		// number, with the remainder shown rather than hidden.
+		'practice.pre.today': '{N} TODAY',
+		'practice.pre.waiting': '{N} WAITING',
+		// Resuming a day whose target is partly spent already.
+		'practice.pre.resume': '{DONE} OF {TARGET} DONE TODAY',
+		'practice.pre.toGo': '{N} TO GO',
+		// Re-entry on a day whose target is already met.
+		'practice.pre.doneToday': "TODAY'S PRACTICE IS DONE",
+
+		// Last session's one line (B5), shown at the moment the user decides
+		// whether to start. "Yesterday" only when it literally was yesterday.
+		'practice.pre.yesterday': 'Yesterday: {N} right, best run {B}.',
+		'practice.pre.lastRun': 'Last run: {N} right, best run {B}.',
+		// {ITEMS} is a comma-joined list of chord symbols / interval shorthands,
+		// interpolated verbatim (never localized).
+		'practice.pre.comingBack': 'Coming back today: {ITEMS}.',
+
+		// In-session register: questions left in the bounded round (never a
+		// frozen initial-size fraction) - mirrors recall.register.left-today's
+		// "N LEFT" convention.
 		'practice.register.left': 'LEFT',
 
 		// Empty: no deck yet.
@@ -45,6 +72,32 @@ export const practice = {
 			'1 other card is waiting. Turn off the song filter on the Songs page to see it.',
 		'practice.empty.filtered.body.plural':
 			'{N} other cards are waiting. Turn off the song filter on the Songs page to see them.',
+
+		// End card (B2). The card has to be able to say "you are done for
+		// today" plainly: before this, "done" was only discoverable by draining
+		// the entire due set, tapping "Run it again", and reading the
+		// nothing-due empty state. None of these lines nag or measure the user
+		// against a target they missed - they state what happened and stop,
+		// matching streak.ts's rule that a lapsed run reads exactly like a
+		// first-ever visit.
+		'practice.end.doneToday': "That's today's practice done.",
+		'practice.end.moreReadySingular': '1 more is ready if you want it.',
+		'practice.end.moreReadyPlural': '{N} more are ready if you want them.',
+		'practice.end.allClear': 'Nothing else is waiting today. The deck is clear.',
+		// Shown instead of the done lines when the day's ledger does not back a
+		// "done" claim (a round finished on a device whose storage is full or
+		// blocked): report the round, claim nothing about the day.
+		'practice.end.partial': '{DONE} answered today. {N} still waiting.',
+
+		// Actionable misses (B4). The moment the user is looking straight at the
+		// chord they just blew is the highest-intent moment in the app, so each
+		// chip is a drill and there is one CTA for the whole set. Mirrors the
+		// Progress hub's own "Drill all {N}" affordance rather than inventing a
+		// second vocabulary for the same act.
+		'practice.end.fixThis': 'Fix this one',
+		'practice.end.fixThese': 'Fix these {N}',
+		// {SYMBOL} is interpolated verbatim (chord symbols are never localized).
+		'practice.end.fixChipAria': 'Drill {SYMBOL} again',
 
 		// Error state ("queue" vocabulary, per 27-UI-SPEC).
 		'practice.error.body':
@@ -65,9 +118,20 @@ export const practice = {
 		'practice.page.title': 'Pratique',
 
 		'practice.cta.start': 'Commencer la pratique',
+		'practice.cta.keepGoing': 'Continuer',
 
 		'practice.pre.dueSingular': "1 CARTE À REVOIR AUJOURD'HUI",
 		'practice.pre.duePlural': "{N} CARTES À REVOIR AUJOURD'HUI",
+
+		'practice.pre.today': "{N} AUJOURD'HUI",
+		'practice.pre.waiting': '{N} EN ATTENTE',
+		'practice.pre.resume': "{DONE} SUR {TARGET} FAITES AUJOURD'HUI",
+		'practice.pre.toGo': '{N} À FAIRE',
+		'practice.pre.doneToday': 'LA PRATIQUE DU JOUR EST FAITE',
+
+		'practice.pre.yesterday': 'Hier : {N} bonnes, meilleure série {B}.',
+		'practice.pre.lastRun': 'Dernière séance : {N} bonnes, meilleure série {B}.',
+		'practice.pre.comingBack': "De retour aujourd'hui : {ITEMS}.",
 
 		'practice.register.left': 'RESTANTES',
 
@@ -80,6 +144,16 @@ export const practice = {
 			'1 autre carte attend. Désactive le filtre de morceaux sur la page Morceaux pour la voir.',
 		'practice.empty.filtered.body.plural':
 			'{N} autres cartes attendent. Désactive le filtre de morceaux sur la page Morceaux pour les voir.',
+
+		'practice.end.doneToday': 'La pratique du jour est faite.',
+		'practice.end.moreReadySingular': '1 autre est prête si tu la veux.',
+		'practice.end.moreReadyPlural': '{N} autres sont prêtes si tu les veux.',
+		'practice.end.allClear': "Rien d'autre n'attend aujourd'hui. Le paquet est vide.",
+		'practice.end.partial': "{DONE} faites aujourd'hui. {N} encore en attente.",
+
+		'practice.end.fixThis': 'Reprendre celui-là',
+		'practice.end.fixThese': 'Reprendre ces {N}',
+		'practice.end.fixChipAria': 'Rejouer {SYMBOL}',
 
 		'practice.error.body':
 			"Impossible d'ouvrir la file de pratique. Recharge la page, mon ami. Si ça continue, le stockage de ton navigateur est peut-être plein ou bloqué.",

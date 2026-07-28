@@ -45,14 +45,16 @@
 		/** Which inversion to drill: 0 root, 1 third-in-bass, 2 fifth-in-bass, 3 seventh-in-bass (7ths only). */
 		inversionIndex: number;
 		/**
-		 * Fired exactly once, at the user's Next tap after the reveal. Unlike
-		 * PracticeChordDrill/PracticeIntervalDrill's `(correct: boolean) =>
-		 * void`, this is `() => void`: a wrong play always retries and never
-		 * completes, so every completion is correct - the host's synthetic
-		 * completion counts it as correct, mirroring ProgressionDrill/
-		 * ShellVoicingDrill's own onComplete shape.
+		 * Fired exactly once, at the user's Next tap after the reveal.
+		 *
+		 * A wrong play retries and never gates, so every completion here is
+		 * eventually correct - which is precisely why the host cannot read
+		 * "completed" as "right". `firstTry` reports whether the reveal was
+		 * reached with no wrong Check at all (B3), so the round's accuracy
+		 * figure means the same thing for this family as for the carded ones.
+		 * The pedagogy is untouched: a wrong play still just retries.
 		 */
-		onComplete: () => void;
+		onComplete: (firstTry: boolean) => void;
 	}
 
 	let { symbol, inversionIndex, onComplete }: Props = $props();
@@ -82,6 +84,13 @@
 	let pressedOctaveByLetter = $state(new Map<string, number>());
 	let answered = $state(false);
 	let retryKind = $state<'none' | 'notes' | 'bass'>('none');
+	/**
+	 * Sticky for this instance (B3): set by ANY wrong Check, never cleared by a
+	 * later correct one. `retryKind` is transient (it resets as soon as the play
+	 * is right), so it cannot answer "was this item earned on the first try" -
+	 * which is what the host needs to grade the item honestly.
+	 */
+	let missedOnce = $state(false);
 
 	function toggleKey(letter: string): void {
 		const next = new Set(selected);
@@ -132,10 +141,12 @@
 
 		if (!result.chordCorrect) {
 			retryKind = 'notes';
+			missedOnce = true;
 			return;
 		}
 		if (!result.bassCorrect) {
 			retryKind = 'bass';
+			missedOnce = true;
 			return;
 		}
 		retryKind = 'none';
@@ -327,7 +338,7 @@
 	{:else}
 		<p class="reveal" data-testid="inversion-reveal">{t('inversions.reveal.correct')}</p>
 		<div class="mt-4">
-			<Button type="button" variant="primary" onclick={() => onComplete()}>
+			<Button type="button" variant="primary" onclick={() => onComplete(!missedOnce)}>
 				{t('inversions.button.next')}
 			</Button>
 		</div>

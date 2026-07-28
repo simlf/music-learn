@@ -51,7 +51,13 @@
 	 */
 	interface Props {
 		embedSymbol?: string;
-		onComplete?: () => void;
+		/**
+		 * `firstTry` (B3) reports whether the reveal was reached with no wrong
+		 * Check on this chord. A wrong play retries and never gates, so every
+		 * completion is eventually correct and the host cannot read "completed"
+		 * as "right" - it needs this to grade the item honestly.
+		 */
+		onComplete?: (firstTry: boolean) => void;
 	}
 
 	let { embedSymbol, onComplete }: Props = $props();
@@ -164,6 +170,13 @@
 	let answered = $state(false);
 	/** Transient: true right after a wrong Check, cleared on the next key toggle/style pick/Check. */
 	let wrongRetry = $state(false);
+	/**
+	 * Sticky for this chord (B3): set by ANY wrong Check, cleared only when a
+	 * fresh chord is drawn. `wrongRetry` is transient by design (it clears on
+	 * the next tap), so it cannot answer "was this chord earned on the first
+	 * try", which is what the embedding host grades on.
+	 */
+	let missedOnce = $state(false);
 	let pulseToken = $state(0);
 
 	function noteSetFor(style: VoicingStyle): SpelledNote[] {
@@ -280,6 +293,7 @@
 			playChord(targetNotes.map((note) => note.letter));
 		} else {
 			wrongRetry = true;
+			missedOnce = true;
 			selected = new Set();
 		}
 	}
@@ -292,13 +306,14 @@
 	 */
 	function next() {
 		if (onComplete) {
-			onComplete();
+			onComplete(!missedOnce);
 			return;
 		}
 		symbol = drawSymbol();
 		selected = new Set();
 		answered = false;
 		wrongRetry = false;
+		missedOnce = false;
 		voicingStyle = 'shell';
 		activeStage = null;
 	}
