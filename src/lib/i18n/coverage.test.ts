@@ -99,20 +99,6 @@ vi.mock('$lib/practice/drillSeeds', () => ({
 	setDrillSeeds: vi.fn()
 }));
 
-const drawFromPoolMock = vi.fn(
-	(..._args: unknown[]): { symbol: string; bucket: string; scaffoldStage: string | null } => ({
-		symbol: 'F7',
-		bucket: 'tier',
-		scaffoldStage: null
-	})
-);
-vi.mock('$lib/practice/pool', () => ({
-	drawFromPool: (...args: unknown[]) => drawFromPoolMock(...args),
-	drawFromSymbols: (symbols: string[]): string | null => (symbols.length > 0 ? symbols[0] : null),
-	scaffoldStageForSymbol: (): string | null => null,
-	limitScaffoldingQualities: (symbols: string[]): string[] => symbols
-}));
-
 vi.mock('$lib/practice/practiceLog', () => ({
 	recentMisses: (): string[] => [],
 	appendPracticeAnswer: vi.fn(),
@@ -135,17 +121,6 @@ vi.mock('$lib/practice/levelState', () => ({
 	isSnoozed: () => false,
 	setCurrentTier: vi.fn(),
 	snoozeSuggestion: vi.fn()
-}));
-
-vi.mock('$lib/practice/scaffold', () => ({
-	readScaffolds: () => ({}),
-	writeScaffold: vi.fn(),
-	recordScaffoldAnswer: (state: unknown) => state
-}));
-
-vi.mock('$lib/drills/rotateHint', () => ({
-	isRotateHintDismissed: () => true,
-	dismissRotateHint: vi.fn()
 }));
 
 const { default: RootLayout } = await import('../../routes/+layout.svelte');
@@ -192,8 +167,6 @@ beforeEach(() => {
 	consumeDrillSeedsMock.mockImplementation((): string[] => []);
 	consumeLessonSeedsMock.mockReset();
 	consumeLessonSeedsMock.mockImplementation((): string[] => []);
-	drawFromPoolMock.mockReset();
-	drawFromPoolMock.mockReturnValue({ symbol: 'F7', bucket: 'tier', scaffoldStage: null });
 });
 
 afterEach(() => {

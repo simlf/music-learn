@@ -128,10 +128,10 @@ function shuffle<T>(items: T[]): T[] {
  * Practice-pool seam (Track B) + deck selector (Track C), combined at the
  * integration merge:
  *
- * - `symbol`: the practice engine already drew a chord symbol (the weighted
- *   60/25/15 song/tier/review mix in $lib/practice/pool, or a session-sourced
- *   warm-up/retry/seed item). Skips the random symbol draw and FORCES a
- *   chord question regardless of `mode` (session items are chord symbols).
+ * - `symbol`: the practice engine already drew a chord symbol (a
+ *   session-sourced warm-up/retry/seed item, or any other caller-supplied
+ *   symbol). Skips the random symbol draw and FORCES a chord question
+ *   regardless of `mode` (session items are chord symbols).
  * - `direction`: a scaffold stage forces construction or identification,
  *   skipping the 50/50 direction draw. Also forces a chord question.
  * - `mode`: which family a fresh draw belongs to. 'chords' (default) keeps

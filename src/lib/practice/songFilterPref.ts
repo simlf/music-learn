@@ -14,8 +14,8 @@
  * Total/degrade-to-off: every storage access is wrapped so a thrown or
  * disabled localStorage never crashes the page, mirroring the existing
  * pattern in recall/+page.svelte and songs.ts. This module owns only the
- * persisted flag - it never touches the drawFromSymbols/drawFromPool pool
- * seam or any provenance logic.
+ * persisted flag - it never touches the practice-pool draw seam or any
+ * provenance logic.
  */
 
 const NEW_KEY = 'music-learn:song-filter';
