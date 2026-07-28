@@ -1,9 +1,15 @@
 import type { LocaleDict } from './index';
 
 /**
- * Theory-domain dictionary (I18N-02, Phase 20 Plan 06): the /theory static
- * shape lessons (`+page.svelte`), the Phase 19 `InteractiveLesson.svelte`
+ * Theory-domain dictionary (I18N-02, Phase 20 Plan 06): the shape lessons in
+ * `TheoryLessons.svelte` (rendered on /learn; /theory is now a 308 redirect
+ * shim with no page component), the Phase 19 `InteractiveLesson.svelte`
  * do-then-check controls, and `ChordExample.svelte`'s "Hear it" button.
+ *
+ * `theory.page.subtitle` was deleted with the /theory page component it
+ * belonged to: it still promised "Six short lessons" while /learn renders
+ * eight blocks under its own subtitle, so it was dead AND wrong. Do not
+ * reintroduce a lesson COUNT in any copy here; the block list changes.
  *
  * IMMUNITY (never keyed here): chord symbols (Cmaj7, Cm7b5...), ChordGlyph
  * output, interval shorthand (m3/P5/m7), solfège syllables (Do/Ré/Mi...), and
@@ -13,8 +19,6 @@ import type { LocaleDict } from './index';
 export const theory = {
 	en: {
 		'theory.page.title': 'Theory',
-		'theory.page.subtitle':
-			"The shop's field guide to chord symbols. Six short lessons, every one with real keys under it.",
 
 		'theory.hearIt': 'Hear it',
 
@@ -28,7 +32,7 @@ export const theory = {
 		'theory.lesson.handoff.tag': 'You just learned this',
 		'theory.lesson.handoff.heading': 'Now make it stick',
 		'theory.lesson.handoff.body':
-			'The beginner course on /drills will show you chords like these and ask for the notes. The third you just found is the middle note of every triad: major third, happy triad; minor third, sad triad.',
+			'The beginner course on /drills will show you chords like these and ask for the notes. The third you just measured is what decides a triad: four half steps up from the root gives a major triad, three gives a minor one.',
 		'theory.lesson.handoff.cta': 'Try this in a drill →',
 
 		'theory.symbol.label': 'Reading a chord symbol',
@@ -48,16 +52,24 @@ export const theory = {
 		'theory.sevenths.caption.dim7': 'Diminished triad + ♭♭7.',
 
 		'theory.anchor.label': 'The white-key anchor',
-		'theory.anchor.heading': 'One scale, four qualities',
+		'theory.anchor.heading': 'Seven degrees, one fixed order',
 		'theory.anchor.body':
-			'Stack a seventh on each note of the C major scale and every chord lands on white keys only: Cmaj7, Dm7, Em7, Fmaj7, G7, Am7, Bm7b5. One hand position teaches four qualities and their day jobs. Tap each one.',
-		'theory.anchor.caption.i': 'The I chord. Home.',
-		'theory.anchor.caption.ii': 'The ii. On its way.',
-		'theory.anchor.caption.iii': 'The iii. Home in disguise.',
-		'theory.anchor.caption.iv': 'The IV. A step out the door.',
-		'theory.anchor.caption.v7': 'The V7. Pulls home.',
-		'theory.anchor.caption.vi': 'The vi. The relative minor.',
-		'theory.anchor.caption.vii': 'The viiø7. The restless one.',
+			'Stack a seventh on each note of the C major scale and the qualities fall out in a fixed order: maj7, m7, m7, maj7, 7, m7, m7♭5. All white keys here, which is why you learn it in C. That order is identical in every key, so this is seven degrees to learn, not 84 chords. We number them with roman numerals, capital when the chord\'s third is major, small when it is minor. So "ii in B♭" means the second degree of B♭ major, minor 7th: Cm7. That is chart reading.',
+		'theory.anchor.caption.i': 'I: first degree, always maj7. Home. This is the tonic.',
+		'theory.anchor.caption.ii': 'ii: second degree, always m7. Its job is to set up the V.',
+		'theory.anchor.caption.iii': 'iii: third degree, m7. Tonic family: home, one shade darker.',
+		'theory.anchor.caption.iv': 'IV: fourth degree, always maj7. A step out the door.',
+		'theory.anchor.caption.v7': 'V: fifth degree, always 7. It pulls home. This is the dominant.',
+		'theory.anchor.caption.vi': 'vi: sixth degree, m7. Tonic family too, a softer way to sit at home.',
+		'theory.anchor.caption.vii': 'viiø7: seventh degree, always m7♭5. Restless, and it leans home.',
+
+		'theory.function.label': 'The three jobs',
+		'theory.function.heading': 'What function means',
+		'theory.function.body':
+			"Function is a chord's job in the key, and there are three jobs. Tonic is home: I, with iii and vi. Subdominant has stepped out the door: ii and IV. Dominant is the pull back: V, and viiø7 with it. That is what a drill means when it reveals FUNCTION: SUBDOMINANT.",
+		'theory.function.sentence':
+			'ii V I is the jazz sentence: approach, push, arrive. In C that is Dm7, G7, Cmaj7, and the roots fall by fifths, D to G to C. The push in the middle is a tritone resolving, which the next lesson takes apart.',
+		'theory.function.hearButton': 'Hear ii V I',
 
 		'theory.dominant.label': 'The dominant engine',
 		'theory.dominant.heading': 'Why 7 pulls home',
@@ -82,8 +94,6 @@ export const theory = {
 	},
 	fr: {
 		'theory.page.title': 'Théorie',
-		'theory.page.subtitle':
-			"Le guide de terrain de l'atelier pour les symboles d'accords. Six leçons courtes, chacune avec de vraies touches dessous.",
 
 		'theory.hearIt': 'Écouter',
 
@@ -97,7 +107,7 @@ export const theory = {
 		'theory.lesson.handoff.tag': "Tu viens d'apprendre ça",
 		'theory.lesson.handoff.heading': 'Maintenant, ancre-le',
 		'theory.lesson.handoff.body':
-			"Le parcours débutant sur /drills te montrera des accords comme ceux-ci et te demandera les notes. La tierce que tu viens de trouver est la note du milieu de chaque triade : tierce majeure, triade joyeuse, tierce mineure, triade triste.",
+			"Le parcours débutant sur /drills te montrera des accords comme ceux-ci et te demandera les notes. La tierce que tu viens de mesurer est ce qui décide d'une triade : quatre demi-tons au-dessus de la fondamentale donnent une triade majeure, trois en donnent une mineure.",
 		'theory.lesson.handoff.cta': 'Essayer dans un exercice →',
 
 		'theory.symbol.label': "Lire un symbole d'accord",
@@ -117,16 +127,27 @@ export const theory = {
 		'theory.sevenths.caption.dim7': 'Triade diminuée + ♭♭7.',
 
 		'theory.anchor.label': "L'ancrage aux touches blanches",
-		'theory.anchor.heading': 'Une gamme, quatre qualités',
+		'theory.anchor.heading': 'Sept degrés, un ordre fixe',
 		'theory.anchor.body':
-			"Empile une septième sur chaque note de la gamme de Do majeur et chaque accord tombe uniquement sur des touches blanches : Cmaj7, Dm7, Em7, Fmaj7, G7, Am7, Bm7b5. Une seule position de main enseigne quatre qualités et leur rôle. Touche chacune.",
-		'theory.anchor.caption.i': "L'accord I. La maison.",
-		'theory.anchor.caption.ii': 'Le ii. En chemin.',
-		'theory.anchor.caption.iii': 'Le iii. La maison déguisée.',
-		'theory.anchor.caption.iv': 'Le IV. Un pas dehors.',
-		'theory.anchor.caption.v7': 'Le V7. Tire vers la maison.',
-		'theory.anchor.caption.vi': 'Le vi. Le relatif mineur.',
-		'theory.anchor.caption.vii': 'Le viiø7. Celui qui ne tient pas en place.',
+			"Empile une septième sur chaque note de la gamme de Do majeur et les qualités sortent dans un ordre fixe : maj7, m7, m7, maj7, 7, m7, m7♭5. Que des touches blanches ici, et c'est pour ça qu'on l'apprend en Do. Cet ordre est identique dans tous les tons : sept degrés à apprendre, pas 84 accords. On les numérote en chiffres romains, majuscule quand la tierce de l'accord est majeure, minuscule quand elle est mineure. Donc « ii en Si♭ » veut dire le deuxième degré de Si♭ majeur, mineur septième : Cm7. Lire une grille, c'est ça.",
+		'theory.anchor.caption.i': 'I : premier degré, toujours maj7. La maison. La tonique.',
+		'theory.anchor.caption.ii': 'ii : deuxième degré, toujours m7. Son rôle : préparer le V.',
+		'theory.anchor.caption.iii':
+			'iii : troisième degré, m7. Famille tonique : la maison, une nuance plus sombre.',
+		'theory.anchor.caption.iv': 'IV : quatrième degré, toujours maj7. Un pas dehors.',
+		'theory.anchor.caption.v7': 'V : cinquième degré, toujours 7. Il tire vers la maison. La dominante.',
+		'theory.anchor.caption.vi':
+			'vi : sixième degré, m7. Famille tonique aussi, une façon plus douce de rester chez soi.',
+		'theory.anchor.caption.vii':
+			'viiø7 : septième degré, toujours m7♭5. Instable, et il penche vers la maison.',
+
+		'theory.function.label': 'Les trois rôles',
+		'theory.function.heading': 'Ce que veut dire la fonction',
+		'theory.function.body':
+			"La fonction, c'est le rôle d'un accord dans le ton, et il y en a trois. La tonique est à la maison : I, avec iii et vi. La sous-dominante est sortie : ii et IV. La dominante, c'est ce qui tire vers le retour : V, et viiø7 avec lui. Voilà ce que veut dire FONCTION : SOUS-DOMINANTE quand un exercice l'affiche.",
+		'theory.function.sentence':
+			"ii V I, c'est la phrase du jazz : on approche, on pousse, on arrive. En Do : Dm7, G7, Cmaj7, et les fondamentales descendent de quinte en quinte, D, G, C. La poussée du milieu est un triton qui se résout, et la leçon suivante le démonte.",
+		'theory.function.hearButton': 'Écouter ii V I',
 
 		'theory.dominant.label': 'Le moteur dominant',
 		'theory.dominant.heading': 'Pourquoi 7 tire vers la maison',

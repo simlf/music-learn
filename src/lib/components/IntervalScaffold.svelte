@@ -1,7 +1,8 @@
 <script lang="ts">
 	import type { FormulaEntry } from '$lib/lookup/chordPresentation';
 	import type { IntervalScaffoldLevel } from '$lib/practice/scaffoldLevel';
-	import { t } from '$lib/i18n/locale.svelte';
+	import { intervalFromShort } from '$lib/theory/interval';
+	import { t, currentLocale } from '$lib/i18n/locale.svelte';
 	import IntervalChip from './IntervalChip.svelte';
 
 	/**
@@ -20,6 +21,20 @@
 	}
 
 	let { entries, level }: Props = $props();
+
+	/**
+	 * The entry's long interval name in the READER's language, mirroring
+	 * InspectRegister's own locale switch. This scaffold previously rendered
+	 * `longFr` unconditionally, so an English session read "m3 / tierce
+	 * mineure" while the app's own prose said "minor 3rd". `FormulaEntry`
+	 * carries only `longFr`, so the English name is re-derived from the
+	 * entry's own shorthand label: an exact round trip, since `formulaFor`
+	 * sets `label` to `IntervalInfo.short` and `intervalFromShort` is that
+	 * field's inverse (including 'R' for the unison, which yields "root").
+	 */
+	function longName(entry: FormulaEntry): string {
+		return currentLocale() === 'fr' ? entry.longFr : intervalFromShort(entry.label).long;
+	}
 </script>
 
 {#if level !== 'off'}
@@ -30,9 +45,9 @@
 		<div class="mt-2 flex flex-wrap gap-3" data-scaffold-level={level}>
 			{#each entries as entry (entry.role + entry.label)}
 				<div class="flex flex-col items-center gap-1">
-					<IntervalChip role={entry.role} label={entry.label} longName={entry.longFr} />
+					<IntervalChip role={entry.role} label={entry.label} longName={longName(entry)} />
 					{#if level === 'full'}
-						<span class="text-label text-muted font-mono">{entry.longFr}</span>
+						<span class="text-label text-muted font-mono">{longName(entry)}</span>
 					{/if}
 				</div>
 			{/each}

@@ -7,12 +7,12 @@
 		intervalQuestionNotes,
 		type IntervalQuestion
 	} from '$lib/drills/generateIntervalQuestion';
-	import { intervalFromShort } from '$lib/theory/interval';
+	import { intervalFromShort, type IntervalInfo } from '$lib/theory/interval';
 	import { ensureAudioReady, playChord } from '$lib/audio/audio';
 	import PianoKeyboard from './PianoKeyboard.svelte';
 	import IntervalChip from './IntervalChip.svelte';
 	import Button from './Button.svelte';
-	import { t } from '$lib/i18n/locale.svelte';
+	import { t, currentLocale } from '$lib/i18n/locale.svelte';
 
 	/**
 	 * Practice hub render component (27-03): the intervals family, both
@@ -81,6 +81,19 @@
 	function handleNext(): void {
 		onComplete(correct);
 	}
+
+	/**
+	 * The interval's long name in the READER's language, mirroring
+	 * InspectRegister's own locale switch. This surface previously rendered
+	 * `longFr` unconditionally, so an English session read "m3 · tierce
+	 * mineure" and the app never once showed the English words "minor 3rd" in
+	 * a drill while its prose said exactly that. The shorthand (m3/P5/m7)
+	 * stays immune and identical across locales; only the long name switches,
+	 * and it is never doubled, so the line stays one phone-width row.
+	 */
+	function longName(info: IntervalInfo): string {
+		return currentLocale() === 'fr' ? info.longFr : info.long;
+	}
 </script>
 
 <div data-testid="practice-interval-drill">
@@ -102,7 +115,7 @@
 				>
 					<span class="flex flex-col items-center">
 						<span class="font-mono text-heading font-bold">{choice}</span>
-						<span class="text-label font-mono">{intervalFromShort(choice).longFr}</span>
+						<span class="text-label font-mono">{longName(intervalFromShort(choice))}</span>
 					</span>
 				</Button>
 			{/each}
@@ -136,15 +149,15 @@
 			<IntervalChip
 				role={question.interval.role}
 				label={question.interval.short}
-				longName={question.interval.longFr}
+				longName={longName(question.interval)}
 			/>
 			<p class="text-label mt-2 font-mono uppercase" data-testid="interval-answer-line">
-				{question.interval.short} · {question.interval.longFr}
+				{question.interval.short} · {longName(question.interval)}
 			</p>
 			{#if question.direction === 'construction' && tappedReadout}
 				<p class="text-label mt-2 font-mono uppercase" data-testid="interval-tap-line">
 					{t('drills.feedback.youTapped')} {tappedReadout.letter} · {tappedReadout.info.short} ·
-					{tappedReadout.info.longFr}
+					{longName(tappedReadout.info)}
 				</p>
 			{/if}
 		</div>

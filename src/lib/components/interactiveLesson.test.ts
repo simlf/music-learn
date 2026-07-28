@@ -74,7 +74,7 @@ describe('InteractiveLesson (LEARN-01/02/03)', () => {
 
 		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
 
-		expect(screen.getByText('A major third is 4 keys up')).toBeInTheDocument();
+		expect(screen.getByText('Why a third is four half steps')).toBeInTheDocument();
 	});
 
 	it('a wrong tap on step 2 shows the count-hint retry, does not advance, but still sounds its own key-touch note (G1: every tap sounds)', async () => {
@@ -87,7 +87,7 @@ describe('InteractiveLesson (LEARN-01/02/03)', () => {
 
 		const feedback = screen.getByTestId('lesson-feedback');
 		expect(feedback.textContent).toContain('2');
-		expect(feedback.textContent?.toLowerCase()).toContain('a major third is 4');
+		expect(feedback.textContent?.toLowerCase()).toContain('a major third is 4 half steps');
 		// Every step's title always renders (locked steps show title + body
 		// too, per the UI-SPEC) - the real advancement signal is which step's
 		// own card still holds the live keyboard.
@@ -142,7 +142,7 @@ describe('InteractiveLesson (LEARN-01/02/03)', () => {
 
 		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
 
-		expect(screen.getByText('A major third is 4 keys up')).toBeInTheDocument();
+		expect(screen.getByText('Why a third is four half steps')).toBeInTheDocument();
 	});
 
 	it('after completing all four steps, the handoff card renders with a real /practice link', async () => {
@@ -160,6 +160,47 @@ describe('InteractiveLesson (LEARN-01/02/03)', () => {
 		await fireEvent.click(link);
 
 		expect(JSON.parse(localStorage.getItem(LESSON_SEEDS_KEY) ?? '[]')).toEqual(['C', 'Cm']);
+	});
+
+	/**
+	 * T5 R1: the number + quality framing must survive all the way to the
+	 * screen, not just live correctly in the data module. The rendered lesson
+	 * is the app's very first theory surface, so it also sets the unit word
+	 * ("half steps") every later surface reuses.
+	 */
+	it('renders the letters-versus-half-steps split on the major-third step, with the interval NUMBER as the emphasized span', async () => {
+		render(InteractiveLesson);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+
+		const step = screen.getByTestId('lesson-step-1');
+		expect(step.textContent).toContain('Letter names first: C, D, E');
+		expect(step.textContent).toContain('The name counts letters, the quality counts half steps');
+		// The verdigris `**...**` span is the interval number, never a note.
+		expect(within(step).getByText('third')).toBeInTheDocument();
+		expect(step.textContent).not.toMatch(/\bkeys up\b/);
+	});
+
+	it('keeps E♭ a third: the minor-third step still names the letters C, D, E and measures in half steps', async () => {
+		render(InteractiveLesson);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'E key' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+		const step = screen.getByTestId('lesson-step-3');
+		expect(step.textContent).toContain('Still the letters C, D, E');
+		expect(step.textContent).toContain('three half steps instead of four');
+		expect(step.textContent).not.toMatch(/black key is a/i);
+	});
+
+	it('the wrong-tap hint states the rule in half steps and reports the tapped count', async () => {
+		render(InteractiveLesson);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'D key' }));
+
+		expect(screen.getByTestId('lesson-feedback').textContent?.trim()).toBe(
+			'A major third is 4 half steps. That one was 2. Try again.'
+		);
 	});
 });
 

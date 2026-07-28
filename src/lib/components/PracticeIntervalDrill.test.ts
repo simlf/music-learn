@@ -135,3 +135,81 @@ describe('PracticeIntervalDrill: construction direction, chroma-based grading', 
 		expect(onComplete).toHaveBeenCalledWith(false);
 	});
 });
+
+/**
+ * T5 R4: every long interval name on this surface used to be `longFr`,
+ * unconditionally, so an English session read "m3 · tierce mineure" and the
+ * app never once showed the English words "minor 3rd" in a drill even though
+ * its own prose used them. The long name now follows the reader's locale, in
+ * all four places it appears (choice buttons, reveal chip, answer line,
+ * you-tapped line), and is never doubled.
+ */
+describe('PracticeIntervalDrill: long interval names follow the reader locale (T5 R4)', () => {
+	beforeEach(() => {
+		vi.spyOn(Math, 'random').mockReturnValue(0);
+	});
+
+	it('labels identification choices with English long names under en', () => {
+		render(PracticeIntervalDrill, { props: { short: 'm3', onComplete: vi.fn() } });
+
+		const grid = screen.getByTestId('interval-choice-grid');
+		expect(within(grid).getByText('minor 3rd')).toBeInTheDocument();
+		expect(grid.textContent).not.toMatch(/tierce/);
+	});
+
+	it('labels identification choices with French long names under fr, with no English duplicate', () => {
+		setLocale('fr');
+		render(PracticeIntervalDrill, { props: { short: 'm3', onComplete: vi.fn() } });
+
+		const grid = screen.getByTestId('interval-choice-grid');
+		expect(within(grid).getByText('tierce mineure')).toBeInTheDocument();
+		expect(grid.textContent).not.toMatch(/minor 3rd/);
+	});
+
+	it('reveals the answer line in the reader locale while the shorthand stays immune', async () => {
+		const { unmount } = render(PracticeIntervalDrill, {
+			props: { short: 'm3', onComplete: vi.fn() }
+		});
+		await fireEvent.click(choiceButton('m3'));
+		expect(screen.getByTestId('interval-answer-line').textContent?.trim()).toBe('m3 · minor 3rd');
+		expect(
+			within(screen.getByTestId('interval-drill-feedback')).getByText('m3')
+		).toHaveAttribute('title', 'minor 3rd');
+		unmount();
+
+		setLocale('fr');
+		render(PracticeIntervalDrill, { props: { short: 'm3', onComplete: vi.fn() } });
+		await fireEvent.click(screen.getByRole('button', { name: 'Réponse : m3' }));
+		expect(screen.getByTestId('interval-answer-line').textContent?.trim()).toBe(
+			'm3 · tierce mineure'
+		);
+		expect(
+			within(screen.getByTestId('interval-drill-feedback')).getByText('m3')
+		).toHaveAttribute('title', 'tierce mineure');
+	});
+});
+
+describe('PracticeIntervalDrill: the you-tapped readout follows the reader locale (T5 R4)', () => {
+	beforeEach(() => {
+		// 0.9 draws root 'Bb' plus the construction direction.
+		vi.spyOn(Math, 'random').mockReturnValue(0.9);
+	});
+
+	it('names the tapped interval in English under en and in French under fr', async () => {
+		const { unmount } = render(PracticeIntervalDrill, {
+			props: { short: 'm3', onComplete: vi.fn() }
+		});
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		const enLine = screen.getByTestId('interval-tap-line').textContent ?? '';
+		expect(enLine).toMatch(/major 2nd/);
+		expect(enLine).not.toMatch(/seconde majeure/);
+		unmount();
+
+		setLocale('fr');
+		render(PracticeIntervalDrill, { props: { short: 'm3', onComplete: vi.fn() } });
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		const frLine = screen.getByTestId('interval-tap-line').textContent ?? '';
+		expect(frLine).toMatch(/seconde majeure/);
+		expect(frLine).not.toMatch(/major 2nd/);
+	});
+});

@@ -24,6 +24,76 @@ describe('THIRDS_LESSON content invariants', () => {
 	});
 });
 
+/**
+ * The pedagogy gate for the app's FIRST lesson (T5 R1). The old copy taught a
+ * keyboard recipe ("a major third is 4 keys up", "that black key IS a minor
+ * third"), which encodes two falsehoods: that an interval is a property of a
+ * note rather than a distance between two, and that the unit of measurement
+ * has anything to do with which keys are black. These assertions lock the
+ * number + quality framing that replaced it.
+ */
+describe('THIRDS_LESSON teaches number + quality, not a keyboard recipe (T5 R1)', () => {
+	const allCopy = THIRDS_LESSON.flatMap((step) =>
+		[step.title, step.body, step.correctLine, step.wrongHint]
+			.filter((copy): copy is NonNullable<typeof copy> => copy !== null)
+			.flatMap((copy) => [copy.en, copy.fr])
+	);
+
+	it('never calls a NOTE an interval (no "is a minor third" predicated on a key)', () => {
+		for (const line of allCopy) {
+			expect(line).not.toMatch(/black key is a/i);
+			expect(line).not.toMatch(/touche noire est une/i);
+		}
+	});
+
+	it('measures every distance in half steps, never in "keys" or "semitones"', () => {
+		for (const line of allCopy) {
+			expect(line).not.toMatch(/\bkeys up\b/i);
+			expect(line).not.toMatch(/\bsemitones?\b/i);
+			expect(line).not.toMatch(/\btouches? plus haut\b/i);
+		}
+		// The unit word itself is present where a count appears.
+		expect(THIRDS_LESSON[1].body.en).toContain('half steps');
+		expect(THIRDS_LESSON[1].body.fr).toContain('demi-tons');
+		expect(THIRDS_LESSON[3].body.en).toContain('half step');
+		expect(THIRDS_LESSON[3].body.fr).toContain('demi-ton');
+	});
+
+	it('explains the number/quality split explicitly on the major-third step', () => {
+		expect(THIRDS_LESSON[1].body.en).toMatch(/name counts letters/i);
+		expect(THIRDS_LESSON[1].body.en).toMatch(/quality counts half steps/i);
+		expect(THIRDS_LESSON[1].body.fr).toMatch(/compte les lettres/i);
+		expect(THIRDS_LESSON[1].body.fr).toMatch(/compte les demi-tons/i);
+	});
+
+	it('emphasizes the interval NUMBER on both third steps, so E♭ is still a third', () => {
+		// The `**...**` span is what the component paints verdigris: on step 2
+		// and step 4 it must be the interval word, and step 4's letters must be
+		// named as unchanged (C, D, E) so the reader sees E♭ is still an E.
+		expect(THIRDS_LESSON[1].body.en).toContain('**third**');
+		expect(THIRDS_LESSON[3].body.en).toContain('**third**');
+		expect(THIRDS_LESSON[1].body.fr).toContain('**tierce**');
+		expect(THIRDS_LESSON[3].body.fr).toContain('**tierce**');
+		expect(THIRDS_LESSON[3].body.en).toMatch(/C, D, E/);
+		expect(THIRDS_LESSON[3].body.fr).toMatch(/C, D, E/);
+	});
+
+	it('names the QUALITY (major / minor) only on the hear step and the wrong-tap hints', () => {
+		expect(THIRDS_LESSON[2].body.en).toContain('**major third**');
+		expect(THIRDS_LESSON[2].body.fr).toContain('**tierce majeure**');
+		expect(THIRDS_LESSON[1].wrongHint?.en).toContain('A major third is 4 half steps');
+		expect(THIRDS_LESSON[3].wrongHint?.en).toContain('A minor third is 3 half steps');
+		expect(THIRDS_LESSON[1].wrongHint?.fr).toContain('4 demi-tons');
+		expect(THIRDS_LESSON[3].wrongHint?.fr).toContain('3 demi-tons');
+	});
+
+	it('contains no em dashes in any shipped line (standing copy rule)', () => {
+		for (const line of allCopy) {
+			expect(line).not.toMatch(/—|–/);
+		}
+	});
+});
+
 describe('THIRDS_LESSON bilingual copy completeness (I18N-02)', () => {
 	it('every step has non-empty en and fr title and body', () => {
 		for (const step of THIRDS_LESSON) {

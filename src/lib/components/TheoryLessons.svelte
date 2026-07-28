@@ -10,7 +10,7 @@
 	import { t, type MessageKey } from '$lib/i18n/locale.svelte';
 
 	/**
-	 * TheoryLessons: the six shape-first lessons decoding jazz chord symbols
+	 * TheoryLessons: the shape-first lessons decoding jazz chord symbols
 	 * for a returning classical pianist, extracted from /theory (Phase 28
 	 * Plan 01, LEARN-01 DRY extraction) so /theory and the future /learn hub
 	 * (Plan 04) can both render the same lesson body — one source of truth,
@@ -31,15 +31,35 @@
 		{ symbol: 'Cdim7', suffix: 'dim7', captionKey: 'theory.sevenths.caption.dim7' }
 	];
 
-	/** The diatonic sevenths of C major: all white keys, four qualities, their day jobs. */
-	const ANCHOR_CHORDS: { symbol: string; captionKey: MessageKey }[] = [
-		{ symbol: 'Cmaj7', captionKey: 'theory.anchor.caption.i' },
-		{ symbol: 'Dm7', captionKey: 'theory.anchor.caption.ii' },
-		{ symbol: 'Em7', captionKey: 'theory.anchor.caption.iii' },
-		{ symbol: 'Fmaj7', captionKey: 'theory.anchor.caption.iv' },
-		{ symbol: 'G7', captionKey: 'theory.anchor.caption.v7' },
-		{ symbol: 'Am7', captionKey: 'theory.anchor.caption.vi' },
-		{ symbol: 'Bm7b5', captionKey: 'theory.anchor.caption.vii' }
+	/**
+	 * The diatonic sevenths of C major, each carrying the roman numeral its
+	 * degree is written as. The numeral rides on the button (not only in the
+	 * caption prose) because /learn is the ONLY place the numeral system is
+	 * ever defined, and ProgressionDrill then requires numeral literacy
+	 * ("STEP 1: NAME THE ii"). Numerals are immune display values, exactly
+	 * like chord symbols: never routed through t().
+	 */
+	const ANCHOR_CHORDS: { roman: string; symbol: string; captionKey: MessageKey }[] = [
+		{ roman: 'I', symbol: 'Cmaj7', captionKey: 'theory.anchor.caption.i' },
+		{ roman: 'ii', symbol: 'Dm7', captionKey: 'theory.anchor.caption.ii' },
+		{ roman: 'iii', symbol: 'Em7', captionKey: 'theory.anchor.caption.iii' },
+		{ roman: 'IV', symbol: 'Fmaj7', captionKey: 'theory.anchor.caption.iv' },
+		{ roman: 'V', symbol: 'G7', captionKey: 'theory.anchor.caption.v7' },
+		{ roman: 'vi', symbol: 'Am7', captionKey: 'theory.anchor.caption.vi' },
+		{ roman: 'viiø7', symbol: 'Bm7b5', captionKey: 'theory.anchor.caption.vii' }
+	];
+
+	/**
+	 * The three bars of the jazz sentence in C, numeral + symbol, for the
+	 * function lesson. Roman numerals and chord symbols are both immune
+	 * display values, so nothing here routes through t(). Three of the three
+	 * templates in `progressions.ts` are ii-V-I derivatives, which is why this
+	 * shape earns its own worked example rather than a passing mention.
+	 */
+	const JAZZ_SENTENCE = [
+		{ roman: 'ii', root: 'D', quality: 'm7', notes: ['D', 'F', 'A', 'C'] },
+		{ roman: 'V', root: 'G', quality: '7', notes: ['G', 'B', 'D', 'F'] },
+		{ roman: 'I', root: 'C', quality: 'maj7', notes: ['C', 'E', 'G', 'B'] }
 	];
 
 	/** The full letter-to-solfege map for the French reader. */
@@ -65,8 +85,29 @@
 		resolutionTimer = setTimeout(() => playChord(['C', 'E', 'G']), 800);
 	}
 
+	/**
+	 * The ii V I demo: one bar per 800ms beat, matching hearResolution's
+	 * pacing so the two demos feel like the same instrument. Timers are
+	 * tracked in an array and cleared on re-press and on destroy, so a double
+	 * tap never stacks two overlapping sentences.
+	 */
+	let sentenceTimers: ReturnType<typeof setTimeout>[] = [];
+	function clearSentenceTimers() {
+		for (const timer of sentenceTimers) clearTimeout(timer);
+		sentenceTimers = [];
+	}
+	function hearSentence() {
+		void ensureAudioReady();
+		clearSentenceTimers();
+		playChord(JAZZ_SENTENCE[0].notes);
+		sentenceTimers = JAZZ_SENTENCE.slice(1).map((bar, i) =>
+			setTimeout(() => playChord(bar.notes), (i + 1) * 800)
+		);
+	}
+
 	onDestroy(() => {
 		clearTimeout(resolutionTimer);
+		clearSentenceTimers();
 	});
 </script>
 
@@ -145,20 +186,54 @@
 	<p class="text-body">
 		{t('theory.anchor.body')}
 	</p>
-	<div class="flex flex-wrap gap-2">
+	<div class="flex flex-wrap gap-2" data-testid="anchor-pick-row">
 		{#each ANCHOR_CHORDS as chord (chord.symbol)}
 			<Button
 				type="button"
 				variant={anchorPick.symbol === chord.symbol ? 'primary' : 'ghost'}
 				onclick={() => (anchorPick = chord)}
 			>
-				{chord.symbol}
+				<span class="anchor-pick flex flex-col items-center">
+					<span class="text-label font-mono">{chord.roman}</span>
+					<span>{chord.symbol}</span>
+				</span>
 			</Button>
 		{/each}
 	</div>
 	{#key anchorPick.symbol}
 		<ChordExample symbol={anchorPick.symbol} caption={t(anchorPick.captionKey)} />
 	{/key}
+</section>
+
+<section
+	class="border-ink bg-paper-bright flex flex-col gap-4 border-2 px-4 py-6"
+	data-testid="section-function"
+>
+	<p class="text-label font-mono uppercase" style="letter-spacing: 0.08em;">
+		{t('theory.function.label')}
+	</p>
+	<h2 class="text-heading font-bold">{t('theory.function.heading')}</h2>
+	<p class="text-body">
+		{t('theory.function.body')}
+	</p>
+	<p class="text-body">
+		{t('theory.function.sentence')}
+	</p>
+	<div class="flex flex-wrap items-end gap-4" data-testid="jazz-sentence-row">
+		{#each JAZZ_SENTENCE as bar (bar.roman)}
+			<div class="flex flex-col items-start gap-1">
+				<span class="text-label font-mono uppercase" style="letter-spacing: 0.08em;">
+					{bar.roman}
+				</span>
+				<ChordGlyph root={bar.root} quality={bar.quality} />
+			</div>
+		{/each}
+	</div>
+	<div>
+		<Button type="button" variant="ghost" onclick={hearSentence}
+			>{t('theory.function.hearButton')}</Button
+		>
+	</div>
 </section>
 
 <section
@@ -215,3 +290,11 @@
 		{/each}
 	</div>
 </section>
+
+<style>
+	/* The numeral sits tight above its chord symbol so a two-line pick button
+	   stays the same height as the one-line seventh-shape buttons beside it. */
+	.anchor-pick {
+		line-height: 1.15;
+	}
+</style>

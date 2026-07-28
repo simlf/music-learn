@@ -69,6 +69,15 @@ export interface LessonStep {
 /**
  * The locked four-step major-vs-minor-third lesson (LEARN-01). Order is
  * fixed: anchor root, major third, hear it, minor third.
+ *
+ * The copy teaches NUMBER + QUALITY, never a keyboard recipe: the number
+ * counts letter names (C, D, E is three names, so a "third"), the quality
+ * counts half steps (four is major, three is minor). Step 4 deliberately
+ * keeps the same three letters as step 2 so the reader sees that E♭ is still
+ * an E, only nearer: an interval is a DISTANCE between two notes, never a
+ * property of the top note. Never write "that black key is a minor third" -
+ * it is false for D to F, E to G, A to C, B to D and F♯ to A, and it is the
+ * confusion that later breaks ♭♭7 in dim7 and m7b5 versus m6.
  */
 export const THIRDS_LESSON: LessonStep[] = [
 	{
@@ -88,10 +97,13 @@ export const THIRDS_LESSON: LessonStep[] = [
 		}
 	},
 	{
-		title: { en: 'A major third is 4 keys up', fr: 'Une tierce majeure, c’est 4 touches plus haut' },
+		title: {
+			en: 'Why a third is four half steps',
+			fr: 'Pourquoi une tierce fait quatre demi-tons'
+		},
 		body: {
-			en: 'Count 4 keys to the right of C, counting the black keys too. That lands on E. Tap it.',
-			fr: 'Compte 4 touches à droite de C, en comptant aussi les touches noires. Tu arrives sur E. Touche-la.'
+			en: 'Letter names first: C, D, E. Three names, so the distance is a **third**. Now half steps: C♯, D, D♯, E. Four of them. The name counts letters, the quality counts half steps, and that never changes. Tap E.',
+			fr: "D'abord les noms de notes : C, D, E. Trois noms, donc la distance est une **tierce**. Maintenant les demi-tons : C♯, D, D♯, E. Quatre. Le nom compte les lettres, la qualité compte les demi-tons, et ça ne change jamais. Touche E."
 		},
 		targetChroma: 4,
 		role: 'third',
@@ -99,15 +111,15 @@ export const THIRDS_LESSON: LessonStep[] = [
 		hearable: true,
 		correctLine: { en: "That's it. Nicely found.", fr: 'Voilà. Bien trouvé.' },
 		wrongHint: {
-			en: "That's {N} keys up. A major third is 4. Try again.",
-			fr: "C'est {N} touches plus haut. Une tierce majeure, c'est 4. Réessaie."
+			en: 'A major third is 4 half steps. That one was {N}. Try again.',
+			fr: 'Une tierce majeure fait 4 demi-tons. Celle-là en fait {N}. Réessaie.'
 		}
 	},
 	{
 		title: { en: 'Hear the bright one', fr: 'Écoute la lumineuse' },
 		body: {
-			en: "C and E together. That's a **major third**: open, bright, the happy sound.",
-			fr: 'C et E ensemble. C’est une **tierce majeure** : ouverte, lumineuse, le son joyeux.'
+			en: 'C and E together, four half steps apart. That distance is a **major third**: open, bright, the happy sound.',
+			fr: "C et E ensemble, à quatre demi-tons d'écart. Cette distance est une **tierce majeure** : ouverte, lumineuse, le son joyeux."
 		},
 		targetChroma: null,
 		role: null,
@@ -117,19 +129,25 @@ export const THIRDS_LESSON: LessonStep[] = [
 		wrongHint: null
 	},
 	{
-		title: { en: 'Now the sad one: 3 keys up', fr: 'Maintenant la triste : 3 touches plus haut' },
+		title: {
+			en: 'The same third, one half step smaller',
+			fr: 'La même tierce, un demi-ton plus petite'
+		},
 		body: {
-			en: 'Move the top note down one key, to just 3 keys above C. That black key is a **minor third**: darker.',
-			fr: "Descends la note du haut d'une touche, à seulement 3 touches au-dessus de C. Cette touche noire est une **tierce mineure** : plus sombre."
+			en: 'Move the top note down one half step, to E♭. Still the letters C, D, E, so still a **third**. But three half steps instead of four, and that is what makes it minor. Tap it.',
+			fr: "Descends la note du haut d'un demi-ton, jusqu'à E♭. Toujours les lettres C, D, E, donc toujours une **tierce**. Mais trois demi-tons au lieu de quatre, et c'est ça qui la rend mineure. Touche-la."
 		},
 		targetChroma: 3,
 		role: 'third',
 		letter: 'E♭',
 		hearable: true,
-		correctLine: { en: "That's it. Hear the difference?", fr: 'Voilà. Tu entends la différence ?' },
+		correctLine: {
+			en: "That's it. Same letters, smaller distance.",
+			fr: 'Voilà. Mêmes lettres, distance plus petite.'
+		},
 		wrongHint: {
-			en: "That's {N} keys up. A minor third is 3. Try again.",
-			fr: "C'est {N} touches plus haut. Une tierce mineure, c'est 3. Réessaie."
+			en: 'A minor third is 3 half steps. That one was {N}. Try again.',
+			fr: 'Une tierce mineure fait 3 demi-tons. Celle-là en fait {N}. Réessaie.'
 		}
 	}
 ];
@@ -143,7 +161,9 @@ export const THIRDS_LESSON_DRILL_SEEDS: string[] = ['C', 'Cm'];
 
 /**
  * Returns the pitch class of `tappedLetter` measured up from C (C=0),
- * 0-11. Drives the "That's {N} keys up" wrong-tap count-hint copy.
+ * 0-11. Drives the "That one was {N}" wrong-tap count-hint copy, whose unit
+ * word is always "half steps" (never "keys" or "semitones"): the lesson is
+ * the app's first, so it sets the vocabulary every later surface reuses.
  * Total: returns -1 for an unparseable letter rather than throwing, so
  * callers can treat it as no meaningful distance.
  */
