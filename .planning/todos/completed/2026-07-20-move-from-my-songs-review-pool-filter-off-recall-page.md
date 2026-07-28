@@ -28,3 +28,11 @@ Decided 2026-07-20 via /gsd-explore:
 - Keep the empty-provenance fallback behavior (`songFallbackActive`) working on both consumers.
 - Phone-first constraint from Phase 23/24 applies to the new Songs-page control (bottom tab bar, folded chrome).
 - Update/relocate the existing tests: `songFilterToggle.test.ts`, `recallSongFilter.test.ts`, `drillsSongFilter.test.ts`, plus phone-strip test expectations.
+
+## Resolved
+
+Shipped by quick task `260720-v9u` (`.planning/quick/260720-v9u-move-the-from-my-songs-review-pool-filte/`), exactly as decided above. Verified in the tree while filing this:
+
+- `src/lib/practice/songFilterPref.ts` owns the single `music-learn:song-filter` key and OR-migrates both legacy per-surface keys on first read, then deletes them.
+- `SongFilterToggle.svelte` is imported by exactly one component, `SongManager.svelte` (the Songs surface). Neither Recall nor Drills renders it any more; they read the persisted preference instead.
+- The `drawFromSymbols`/`drawFromPool` seam is untouched.

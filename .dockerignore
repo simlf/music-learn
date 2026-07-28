@@ -1,8 +1,42 @@
+# Build context for the web image (Dockerfile). The build stage does
+# `COPY package.json package-lock.json` + `npm ci`, then `COPY . .` +
+# `npm run build`, so the context only needs what Vite/SvelteKit actually
+# read: src/, static/, and the config files (svelte.config.js, vite.config.ts,
+# tsconfig.json, package*.json).
+#
+# Two paths must NOT be excluded:
+#   - nginx.conf: the runtime stage COPYs it straight from the context.
+#   - static/:    adapter-static copies it into build/.
+
+# Installed deps and build output — regenerated inside the image
 node_modules
 build
-.git
 .svelte-kit
+
+# VCS and CI metadata
+.git
+.github
+
+# Planning, agent, and docs history — never read by the build. This is the
+# big win: .planning alone is ~7.3 MB of what was a ~12 MB context.
+.planning
+.claude
 docs
+
+# The api image builds from its own context (docker-compose*.yml: ./server)
 server
+
+# Tests: vite.config.ts's `test.include` is read by vitest, never by
+# `vite build`
+tests
+
+# Docker/compose files are not consumed inside the image
+Dockerfile
+.dockerignore
+docker-compose.yml
+docker-compose.prod.yml
+
+# Secrets. `.env.*` also covers .env.example, which the build does not read
+# (the API base URL comes from the VITE_API_BASE_URL build arg).
 .env
 .env.*

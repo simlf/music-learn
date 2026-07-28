@@ -1,14 +1,15 @@
 @import 'tailwindcss';
 
 @theme {
-	/* Print Shop palette (DESIGN-01) */
+	/* Print Shop palette (DESIGN-01). The palette's tan lives on below as
+	   --color-fifth (same #a89a7f): it is only ever used as an interval
+	   color, so there is no separate palette token for it. */
 	--color-paper: #f2ecdd;
 	--color-paper-bright: #faf6ea;
 	--color-ink: #221e17;
 	--color-vermilion: #c8502e;
 	--color-mustard: #f0c948;
 	--color-verdigris: #3e7d6b;
-	--color-tan: #a89a7f;
 	--color-muted: #7d7462;
 	--color-faint: #9a907f;
 
@@ -35,7 +36,8 @@
 	--color-wrong-deep: #8f877a;
 
 	/* On-fill text colors paired with each interval color (UI-SPEC contrast note):
-	   vermilion + verdigris take paper/white text; mustard + tan take ink text. */
+	   vermilion + verdigris take paper/white text; mustard + the tan fifth take
+	   ink text. */
 	--color-on-root: #ffffff;
 	--color-on-third: #ffffff;
 	--color-on-fifth: #221e17;
@@ -50,14 +52,17 @@
 	--font-serif: Georgia, 'Times New Roman', serif;
 	--font-mono: 'Courier New', Courier, monospace;
 
-	/* Spacing scale (DESIGN-01 — multiples of 4) */
+	/* Spacing scale (DESIGN-01 — multiples of 4). Keep --spacing-2xl even
+	   though no rule references it directly: a named max-w-* utility spelled
+	   out in a comment on the Learn page is picked up by Tailwind's scanner
+	   and resolves through this token, so dropping it would silently change
+	   that generated utility's value. */
 	--spacing-xs: 4px;
 	--spacing-sm: 8px;
 	--spacing-md: 16px;
 	--spacing-lg: 24px;
 	--spacing-xl: 32px;
 	--spacing-2xl: 48px;
-	--spacing-3xl: 64px;
 
 	/* Typography roles (exactly 4 sizes, 2 weights: 400, 700) */
 	--text-body: 16px;
@@ -76,17 +81,19 @@
 	--text-display: 56px;
 	--text-display--line-height: 1.05;
 	--text-display--font-weight: 700;
-
-	/* Sharp corners are identity (DESIGN-01) */
-	--radius-none: 0px;
-	--radius-sm: 0px;
-	--radius-md: 0px;
-	--radius-lg: 0px;
-	--radius-xl: 0px;
-	--radius-2xl: 0px;
-	--radius-full: 0px;
 }
 
+/*
+ * Sharp corners are identity (DESIGN-01). This one rule is the whole
+ * enforcement: it beats any rounded-* utility, any component style, and any
+ * UA default, whatever the radius value would have been. A matching set of
+ * zeroed --radius-* theme tokens used to sit in @theme above, but it only
+ * covered the named scale Tailwind shipped at the time (none/sm/md/lg/xl/2xl/
+ * full, never 3xl/4xl), no rounded-* class exists anywhere in src/, and
+ * Tailwind tree-shook the tokens out of the bundle regardless — so they were
+ * a partial guard that never reached the browser. Do not replace them with a
+ * "complete" set; this rule already is the complete guard.
+ */
 * {
 	border-radius: 0 !important;
 }
