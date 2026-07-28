@@ -86,9 +86,20 @@ const lastIndices: Record<StreakLineKind, number> = {
 
 /**
  * Picks a line from the given pool for the CURRENT locale, avoiding an
- * immediate repeat of the previous pick for that same kind (mirroring
- * pickHint's anti-repeat while-loop exactly). Returns the raw line WITH its
- * {N} placeholder still in place, if any; the caller substitutes the count.
+ * immediate repeat of the previous pick for that same kind. Returns the raw
+ * line WITH its {N} placeholder still in place, if any; the caller substitutes
+ * the count.
+ *
+ * The anti-repeat step is ONE deterministic hop, not an unbounded redraw loop.
+ * This used to re-roll `Math.random()` in a `while` until it differed from the
+ * last pick, which is a rejection loop whose termination depends entirely on a
+ * randomness source this module does not own: if `Math.random` ever returns a
+ * constant, the loop never exits. That is not theoretical - it is the normal
+ * shape of a deterministic test (`vi.spyOn(Math, 'random').mockReturnValue(x)`),
+ * and a spun spy also records every call, so the hang surfaced as heap
+ * exhaustion rather than an honest timeout. A single modular step keeps the
+ * guarantee the loop existed for (with more than one line, the pick is never the
+ * previous one) and always terminates.
  */
 export function pickStreakLine(kind: StreakLineKind): string {
 	const pool = poolsByLocale[currentLocale()][kind];
@@ -98,8 +109,8 @@ export function pickStreakLine(kind: StreakLineKind): string {
 	}
 
 	let index = Math.floor(Math.random() * pool.length);
-	while (index === lastIndices[kind]) {
-		index = Math.floor(Math.random() * pool.length);
+	if (index === lastIndices[kind]) {
+		index = (index + 1) % pool.length;
 	}
 	lastIndices[kind] = index;
 	return pool[index];

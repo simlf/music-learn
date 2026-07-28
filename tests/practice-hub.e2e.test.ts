@@ -195,7 +195,7 @@ describe('empty tiers', () => {
 		// Cm7 has no provenance in the one active song above (only G7 does),
 		// so the filter hides this single due card.
 		getDueCardsMock.mockResolvedValue([
-			makeCard('chord-formula:Cm7', 'chord-formula', 'see-play')
+			makeCard('chord-formula:Cm7', 'chord-formula', 'formula')
 		]);
 
 		render(PracticePage);
@@ -210,7 +210,7 @@ describe('empty tiers', () => {
 
 describe('carded grade commit (PRAC-03/REG-01/T-27-04-01)', () => {
 	it('a correct name-it answer commits Rating.Good via deck.recordGrade for the item\'s own card', async () => {
-		const card = makeCard('chord-formula:Dm7', 'chord-formula', 'see-play');
+		const card = makeCard('chord-formula:Dm7', 'chord-formula', 'formula');
 		getDueCardsMock.mockResolvedValue([card]);
 
 		render(PracticePage);
@@ -232,7 +232,7 @@ describe('carded grade commit (PRAC-03/REG-01/T-27-04-01)', () => {
 	});
 
 	it('a wrong name-it answer commits Rating.Again and re-enqueues the item (D-10); a later correct answer completes the round with the miss listed', async () => {
-		const card = makeCard('chord-formula:Dm7', 'chord-formula', 'see-play');
+		const card = makeCard('chord-formula:Dm7', 'chord-formula', 'formula');
 		getDueCardsMock.mockResolvedValue([card]);
 
 		render(PracticePage);
@@ -291,8 +291,8 @@ describe('carded grade commit (PRAC-03/REG-01/T-27-04-01)', () => {
 
 describe('in-session register reflects the live queue, not a frozen fraction (B1)', () => {
 	it('does not freeze when a miss is re-enqueued: shows live remaining, then completes only once the queue truly empties', async () => {
-		const cardA = makeCard('chord-formula:Cm7', 'chord-formula', 'see-play');
-		const cardB = makeCard('chord-formula:G7', 'chord-formula', 'see-play');
+		const cardA = makeCard('chord-formula:Cm7', 'chord-formula', 'formula');
+		const cardB = makeCard('chord-formula:G7', 'chord-formula', 'formula');
 		getDueCardsMock.mockResolvedValue([cardA, cardB]);
 
 		render(PracticePage);
@@ -352,7 +352,7 @@ describe('mixed carded families: routing, family cue, and session drain', () => 
 		vi.spyOn(Math, 'random').mockReturnValue(0.1);
 
 		const buildCard = makeCard('chord-formula:Cm7', 'chord-formula', 'formula-build');
-		const nameCard = makeCard('chord-formula:Dm7', 'chord-formula', 'see-play');
+		const nameCard = makeCard('chord-formula:Dm7', 'chord-formula', 'formula');
 		const intervalCard = makeCard('interval-size:m3', 'interval-size', 'formula');
 		getDueCardsMock.mockResolvedValue([buildCard, nameCard, intervalCard]);
 		getCardMock.mockImplementation(async (factId: string, mode: string) =>

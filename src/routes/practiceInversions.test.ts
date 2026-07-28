@@ -179,7 +179,7 @@ describe('inversion family surfaces and completes without an FSRS write (INV-03)
 	it('renders InversionDrill under the INVERSION family cue, and completing it advances the queue with no deck.recordGrade call for that item', async () => {
 		vi.spyOn(Math, 'random').mockReturnValue(0.1);
 
-		const nameCard = makeCard('chord-formula:Cm7', 'chord-formula', 'see-play');
+		const nameCard = makeCard('chord-formula:Cm7', 'chord-formula', 'formula');
 		getDueCardsMock.mockResolvedValue([nameCard]);
 		getAllCardsMock.mockResolvedValue([nameCard]);
 

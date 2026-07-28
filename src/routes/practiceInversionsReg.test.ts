@@ -265,7 +265,7 @@ describe('REG-01: six-family interleave, carded FSRS grade-commit, and synthetic
 		vi.spyOn(Math, 'random').mockReturnValue(0.1);
 
 		const buildCard = makeCard('chord-formula:Cm7', 'chord-formula', 'formula-build');
-		const nameCard = makeCard('chord-formula:Dm7', 'chord-formula', 'see-play');
+		const nameCard = makeCard('chord-formula:Dm7', 'chord-formula', 'formula');
 		const intervalCard = makeCard('interval-size:m3', 'interval-size', 'formula');
 		getDueCardsMock.mockResolvedValue([buildCard, nameCard, intervalCard]);
 		getCardMock.mockImplementation(async (factId: string, mode: string) =>
@@ -392,8 +392,8 @@ describe('REG-01: song filter (PRAC-04) steers the carded half, voicing, AND inv
 		// gate, or the inversion gate (all three read the SAME post-filter
 		// dueChordSymbols set).
 		getDueCardsMock.mockResolvedValue([
-			makeCard('chord-formula:G7', 'chord-formula', 'see-play'),
-			makeCard('chord-formula:Cm7', 'chord-formula', 'see-play')
+			makeCard('chord-formula:G7', 'chord-formula', 'formula'),
+			makeCard('chord-formula:Cm7', 'chord-formula', 'formula')
 		]);
 		getAllCardsMock.mockResolvedValue([
 			makeCard('chord-formula:G7', 'chord-formula', 'formula', State.Review)

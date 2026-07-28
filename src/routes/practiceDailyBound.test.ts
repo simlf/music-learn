@@ -97,7 +97,7 @@ function makeChordCard(symbol: string): CardRecord {
 		...newCard(NOW),
 		factId: `chord-formula:${symbol}`,
 		factKind: 'chord-formula',
-		mode: 'see-play',
+		mode: 'formula',
 		lastRating: null,
 		masteryDayCount: 0
 	};

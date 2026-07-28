@@ -107,7 +107,14 @@ export const practice = {
 		// Added for all six families now (voicing/progression/inversion), even
 		// though those synthetic items only appear once their own host-wiring
 		// plans land, so i18n stays additive and each wiring plan lands clean.
+		//
+		// T13 added playIt/hearIt: the see-play and hear-name modes used to be
+		// mislabeled "NAME IT" because they were rendered as the name-it
+		// question. Now they ask their own question, so the cue names it. Both
+		// stay verbs in the same imperative register as the existing cues.
 		'practice.cue.nameIt': 'NAME IT',
+		'practice.cue.playIt': 'PLAY IT',
+		'practice.cue.hearIt': 'BY EAR',
 		'practice.cue.buildIt': 'BUILD IT',
 		'practice.cue.voicing': 'VOICING',
 		'practice.cue.interval': 'INTERVAL',
@@ -159,6 +166,8 @@ export const practice = {
 			"Impossible d'ouvrir la file de pratique. Recharge la page, mon ami. Si ça continue, le stockage de ton navigateur est peut-être plein ou bloqué.",
 
 		'practice.cue.nameIt': 'NOMMER',
+		'practice.cue.playIt': 'JOUER',
+		'practice.cue.hearIt': "À L'OREILLE",
 		'practice.cue.buildIt': 'CONSTRUIRE',
 		'practice.cue.voicing': 'VOICING',
 		'practice.cue.interval': 'INTERVALLE',

@@ -212,7 +212,7 @@ describe('five-family interleaving (PRAC-02)', () => {
 		vi.spyOn(Math, 'random').mockReturnValue(0.1);
 
 		const buildCard = makeCard('chord-formula:Cm7', 'chord-formula', 'formula-build');
-		const nameCard = makeCard('chord-formula:Dm7', 'chord-formula', 'see-play');
+		const nameCard = makeCard('chord-formula:Dm7', 'chord-formula', 'formula');
 		const intervalCard = makeCard('interval-size:m3', 'interval-size', 'formula');
 		getDueCardsMock.mockResolvedValue([buildCard, nameCard, intervalCard]);
 		getCardMock.mockImplementation(async (factId: string, mode: string) =>
@@ -328,8 +328,8 @@ describe('song filter steers the merged queue (PRAC-04)', () => {
 		// the due set before it can ever reach the carded half or the
 		// due-chord-symbol gate that seeds voicing synthetics.
 		getDueCardsMock.mockResolvedValue([
-			makeCard('chord-formula:G7', 'chord-formula', 'see-play'),
-			makeCard('chord-formula:Cm7', 'chord-formula', 'see-play')
+			makeCard('chord-formula:G7', 'chord-formula', 'formula'),
+			makeCard('chord-formula:Cm7', 'chord-formula', 'formula')
 		]);
 		getAllCardsMock.mockResolvedValue([
 			makeCard('chord-formula:G7', 'chord-formula', 'formula', State.Review)
@@ -365,7 +365,7 @@ describe('grade-commit split (REG-02)', () => {
 	it('commits an FSRS grade for the carded item but never for the synthetic voicing/progression items', async () => {
 		vi.spyOn(Math, 'random').mockReturnValue(0.1);
 
-		const nameCard = makeCard('chord-formula:Dm7', 'chord-formula', 'see-play');
+		const nameCard = makeCard('chord-formula:Dm7', 'chord-formula', 'formula');
 		getDueCardsMock.mockResolvedValue([nameCard]);
 		getAllCardsMock.mockResolvedValue([
 			makeCard('chord-formula:Dm7', 'chord-formula', 'formula', State.Review)

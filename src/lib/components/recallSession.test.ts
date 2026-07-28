@@ -217,13 +217,17 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 		await fireEvent.click(dockButton('Show Answer'));
 
 		expect(screen.getByText("Here's the formula:")).toBeInTheDocument();
-		// Fixed FSRS day-scale intervals for a brand-new card (D-02): the four
-		// tags are all visible the instant the reveal renders, never computed
-		// lazily on click.
+		// FSRS day-scale intervals for a brand-new card (D-02): the four tags are
+		// all visible the instant the reveal renders, never computed lazily on
+		// click. Again/Hard/Good are exact (Again and Hard sit below the 2.5-day
+		// fuzz floor, and Good is the unfuzzable hard+1 clamp - see
+		// srs/scheduler.ts); Easy's 8 days IS fuzzable, so since T13 turned fuzz
+		// on it lands anywhere in FSRS's own 6-10 day window for this card and is
+		// matched as a window rather than a fixed number.
 		expect(dockTestId('recall-grade-again')).toHaveTextContent('1d');
 		expect(dockTestId('recall-grade-hard')).toHaveTextContent('2d');
 		expect(dockTestId('recall-grade-good')).toHaveTextContent('3d');
-		expect(dockTestId('recall-grade-easy')).toHaveTextContent('8d');
+		expect(dockTestId('recall-grade-easy')).toHaveTextContent(/\b(6|7|8|9|10)d\b/);
 
 		await fireEvent.click(dockTestId('recall-grade-good'));
 

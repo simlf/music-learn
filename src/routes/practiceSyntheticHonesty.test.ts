@@ -4,6 +4,7 @@ import PracticePage from './practice/+page.svelte';
 import { newCard, State } from '$lib/srs/scheduler';
 import type { CardRecord } from '$lib/srs/deck';
 import { todaySummary } from '$lib/practice/dailySession';
+import { localStreak, readPracticeDays } from '$lib/practice/practiceDays';
 
 /**
  * B3: a synthetic item is no longer a free point.
@@ -195,5 +196,72 @@ describe('B3: a synthetic item that took a retry scores as wrong', () => {
 
 		expect(recordGradeMock).not.toHaveBeenCalled();
 		expect(recordPracticeAnswerMock).not.toHaveBeenCalled();
+	});
+});
+
+/**
+ * T13 item 5: a round of synthetic work is still a practice day.
+ *
+ * The device's practice-day set (the local streak's only source of truth) was
+ * written exclusively inside api/progress.ts's recordAnswer, which every CARDED
+ * answer reaches through answerTelemetry. The three synthetic families
+ * deliberately post no server telemetry - /answers accuracy means chord
+ * IDENTIFICATION accuracy, and a voicing or inversion attempt measures a
+ * different skill on the same symbol - so a round made only of synthetic items
+ * was real practice the streak never recorded. Rare, because synthetics are gated
+ * on at least one due chord card, but a genuine hole in the streak.
+ *
+ * This file's mocks reproduce the hole exactly: `recordAnswer` is stubbed to a
+ * no-op and the round contains nothing but one inversion item, so the ONLY thing
+ * that can record the day is the host itself.
+ */
+describe('T13: a synthetic-only round counts as a practice day', () => {
+	it('records the day for a correctly-played synthetic item', async () => {
+		expect(readPracticeDays()).toEqual([]);
+
+		render(PracticePage);
+		await startRound();
+		await playCorrectInversion();
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+		await screen.findByTestId('session-end-card');
+
+		expect(readPracticeDays()).toEqual(['2026-07-28']);
+		expect(localStreak('2026-07-28')).toBe(1);
+	});
+
+	it('records the day for a MISSED synthetic item too: work done is work done', async () => {
+		render(PracticePage);
+		await startRound();
+
+		pressKeyAtOctave('A', 0);
+		await fireEvent.click(screen.getByTestId('inversion-check'));
+		await playCorrectInversion();
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+		await screen.findByTestId('session-end-card');
+
+		expect(readPracticeDays()).toEqual(['2026-07-28']);
+	});
+
+	it('surfaces the streak on the end card, which a synthetic-only round could never do before', async () => {
+		render(PracticePage);
+		await startRound();
+		await playCorrectInversion();
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+		const card = await screen.findByTestId('session-end-card');
+		expect(within(card).getByTestId('practice-end-card-day-streak')).toHaveTextContent('1');
+	});
+
+	it('is idempotent per day: a second answer does not add a second entry', async () => {
+		render(PracticePage);
+		await startRound();
+
+		pressKeyAtOctave('A', 0);
+		await fireEvent.click(screen.getByTestId('inversion-check'));
+		await playCorrectInversion();
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+		await screen.findByTestId('session-end-card');
+
+		expect(readPracticeDays()).toHaveLength(1);
 	});
 });

@@ -76,7 +76,32 @@ export const drills = {
 
 		// Picked-vs-correct comparison on a name-it miss (E1). {picked}/{correct}
 		// are raw chord symbols (immune, never translated) substituted client-side.
+		// Reused verbatim by the interval drill's identification miss, where the
+		// two substitutions are interval shorthand (also immune).
 		'drills.feedback.pickedVsCorrect': 'You picked {picked}. It was {correct}.',
+
+		// Interval confusion contrast on a miss (T13). An interval confusion IS a
+		// semitone-count confusion, and this surface never showed a count at all.
+		// Stated as counts rather than a sentence so it needs no singular/plural
+		// agreement in either language ("m2 is 1 semitones" is the trap). {A}/{B}
+		// are interval shorthand (immune); {N}/{M} are their semitone counts.
+		'drills.feedback.semitoneContrast': 'Semitones: {A} = {N}, {B} = {M}.',
+
+		// The interval drill's own escalating hint ladder (T13). Framing labels
+		// ("Need a hint?", the tier prefix) are reused from the recall domain
+		// rather than re-keyed; only these interval-specific rungs are new.
+		// Lowercase tier titles match recall.hint.tier.* ("the family").
+		'drills.hint.interval.tier.name': 'the name',
+		'drills.hint.interval.tier.count': 'the count',
+		'drills.hint.interval.tier.song': 'a tune you know',
+		'drills.hint.interval.reveal.count': 'Show the semitone count',
+		'drills.hint.interval.reveal.song': 'Name a tune you know',
+		// {SHORT} is interval shorthand (immune); {LONG} is its long name, which
+		// already follows the reader's locale.
+		'drills.hint.interval.nameBody': '{SHORT} is a {LONG}.',
+		'drills.hint.interval.countBodyUp': 'Semitones up from {ROOT}: {N}.',
+		'drills.hint.interval.countBodyBetween': 'Semitones between the two notes: {N}.',
+		'drills.hint.interval.closing': "That's everything about this one.",
 
 		// Screen-reader label for the per-quality stacked-thirds teaching line
 		// (E2); the visible line itself ("m7: m3 · M3 · m3") is built entirely
@@ -189,6 +214,18 @@ export const drills = {
 		'drills.feedback.incorrect': 'Pas tout à fait',
 
 		'drills.feedback.pickedVsCorrect': "Tu as choisi {picked}. C'était {correct}.",
+
+		'drills.feedback.semitoneContrast': 'Demi-tons : {A} = {N}, {B} = {M}.',
+
+		'drills.hint.interval.tier.name': 'le nom',
+		'drills.hint.interval.tier.count': 'le compte',
+		'drills.hint.interval.tier.song': 'un air connu',
+		'drills.hint.interval.reveal.count': 'Montrer le nombre de demi-tons',
+		'drills.hint.interval.reveal.song': 'Donner un air connu',
+		'drills.hint.interval.nameBody': "{SHORT}, c'est une {LONG}.",
+		'drills.hint.interval.countBodyUp': 'Demi-tons au-dessus de {ROOT} : {N}.',
+		'drills.hint.interval.countBodyBetween': 'Demi-tons entre les deux notes : {N}.',
+		'drills.hint.interval.closing': "C'est tout ce qu'il y a à savoir dessus.",
 
 		'drills.aria.chordShape': "Forme de l'accord",
 

@@ -3,6 +3,8 @@ import { Rating, State } from '$lib/srs/scheduler';
 import type { CardRecord, Mode } from '$lib/srs/deck';
 import {
 	familyForCard,
+	backlogFactCount,
+	DUE_BACKLOG_GATE_FACTS,
 	cardsToQueueItems,
 	syntheticVoicingItems,
 	syntheticProgressionItems,
@@ -26,6 +28,7 @@ import {
 	type HybridQueueItem
 } from './practiceQueue';
 import { seventhChordSymbols } from './shellVoicing';
+import { MAX_NEW_CARDS_PER_DAY } from '$lib/srs/introBudget';
 
 /**
  * TDD suite for the pure hybrid-queue composer (HYBRID queue model, 27-01
@@ -84,14 +87,29 @@ describe('familyForCard', () => {
 		expect(familyForCard(card)).toBe('name-it');
 	});
 
-	it("returns 'name-it' for chord-formula + 'see-play' mode", () => {
+	/**
+	 * T13 (mode collapse): see-play and hear-name used to map to 'name-it' too,
+	 * so all three modes rendered the SAME 4-choice identification question.
+	 * One family per mode is what makes the three questions distinguishable at
+	 * all; these tests pin the mapping so a future refactor cannot quietly fold
+	 * them back together.
+	 */
+	it("returns 'play-it' for chord-formula + 'see-play' mode", () => {
 		const card = makeCardRecord({ factKind: 'chord-formula', mode: 'see-play' });
-		expect(familyForCard(card)).toBe('name-it');
+		expect(familyForCard(card)).toBe('play-it');
 	});
 
-	it("returns 'name-it' for chord-formula + 'hear-name' mode", () => {
+	it("returns 'ear-it' for chord-formula + 'hear-name' mode", () => {
 		const card = makeCardRecord({ factKind: 'chord-formula', mode: 'hear-name' });
-		expect(familyForCard(card)).toBe('name-it');
+		expect(familyForCard(card)).toBe('ear-it');
+	});
+
+	it('maps the four chord-formula modes onto four DISTINCT families (no two modes collapse)', () => {
+		const modes = ['formula', 'see-play', 'hear-name', 'formula-build'] as const;
+		const families = modes.map((mode) =>
+			familyForCard(makeCardRecord({ factKind: 'chord-formula', mode }))
+		);
+		expect(new Set(families).size).toBe(modes.length);
 	});
 
 	it("returns 'interval' for interval-size regardless of mode", () => {
@@ -360,10 +378,13 @@ describe('composePracticeQueue', () => {
 			return false;
 		}
 
-		it('never lands two same-symbol name-it items (different modes of the same chord) adjacent when an alternative family item exists', () => {
-			// Same chord (Cm7), two modes both classified as name-it by
-			// familyForCard (a real teach-cluster shape) - plus a distinct
-			// name-it symbol and two voicing items as the alternative family.
+		it('never lands two same-symbol name-it items adjacent when an alternative family item exists', () => {
+			// Same chord (Cm7) twice inside ONE family. Since T13 gave each chord
+			// mode its own family, familyForCard no longer produces this shape
+			// from a teach cluster, but the composer's symbol rule must still
+			// hold for any same-family repeat (a re-drawn symbol, a future
+			// family that carries two items per symbol), so the items are built
+			// directly here rather than mapped from cards.
 			const carded: CardedQueueItem[] = [
 				makeCarded('name-it', 'Cm7', { id: 'fsrs:chord-formula:Cm7:formula', mode: 'formula' }),
 				makeCarded('name-it', 'Cm7', { id: 'fsrs:chord-formula:Cm7:see-play', mode: 'see-play' }),
@@ -823,5 +844,122 @@ describe('familiesInQueue / hybridSessionRemaining / isHybridSessionComplete', (
 		expect(isHybridSessionComplete(queue)).toBe(false);
 		expect(hybridSessionRemaining([])).toBe(0);
 		expect(isHybridSessionComplete([])).toBe(true);
+	});
+});
+
+/**
+ * T13 (mode collapse): the teach cluster's own shape, end to end through the
+ * real cardsToQueueItems + composePracticeQueue. A new chord fact seeds
+ * formula + see-play + formula-build together, and those three cards used to
+ * become TWO name-it items and one build-it item, so two thirds of the cluster
+ * asked the identical multiple-choice question about the identical symbol.
+ */
+describe('teach-cluster modes spread across families (T13)', () => {
+	function clusterCards(symbol: string): CardRecord[] {
+		const factId = `chord-formula:${symbol}`;
+		return (['formula', 'see-play', 'formula-build', 'hear-name'] as Mode[]).map((mode) =>
+			makeCardRecord({ factId, factKind: 'chord-formula', mode })
+		);
+	}
+
+	it("maps one chord's four cards to four items in four distinct families", () => {
+		const items = cardsToQueueItems(clusterCards('Cm7'));
+		expect(items).toHaveLength(4);
+		expect(new Set(items.map((item) => item.family)).size).toBe(4);
+		// Every item still names the same chord and keeps its own card identity.
+		for (const item of items) {
+			expect(item.symbol).toBe('Cm7');
+		}
+		expect(new Set(items.map((item) => item.id)).size).toBe(4);
+	});
+
+	it('lets the composer break up a single chord\'s cluster instead of running it as one family block', () => {
+		// One symbol only, so the SYMBOL rule cannot help - it is purely the
+		// family split that gives the composer anything to interleave. Before
+		// T13 the three non-build cards were one family, so the no-3-in-a-row
+		// rule had to relax and the round read as the same question repeated.
+		const items = cardsToQueueItems(clusterCards('Cm7'));
+		for (const seed of [1, 2, 3, 4, 5]) {
+			const composed = composePracticeQueue(items, [], seededRng(seed));
+			expect(composed).toHaveLength(4);
+			expect(hasThreeInARow(composed)).toBe(false);
+		}
+	});
+});
+
+/**
+ * T13 item 4: the due-backlog gate compared a CARD count against a FACT budget.
+ * One day's own introduction is ~30 cards (10 facts x a 3-mode teach cluster),
+ * so on every day a cohort returned, 30 > 20 blocked new material and intake
+ * self-throttled from about day 4 onward.
+ */
+describe('due-backlog gate (T13)', () => {
+	it('states its threshold in the same unit as the budget it gates', () => {
+		// The relationship, asserted against the REAL constant rather than a
+		// mocked one: 20 is two full days of intake, not a coincidence.
+		expect(DUE_BACKLOG_GATE_FACTS).toBe(2 * MAX_NEW_CARDS_PER_DAY);
+	});
+
+	it("counts a chord's whole teach cluster as ONE fact, not three cards", () => {
+		const factId = 'chord-formula:Cm7';
+		const cluster = (['formula', 'see-play', 'formula-build'] as Mode[]).map((mode) =>
+			makeCardRecord({ factId, factKind: 'chord-formula', mode })
+		);
+		expect(cluster).toHaveLength(3);
+		expect(backlogFactCount(cluster)).toBe(1);
+	});
+
+	it('lets one full day of intake through the gate, where the card count did not', () => {
+		// 10 chord facts x 3 cluster modes = 30 cards, which is exactly the shape
+		// that used to trip `30 > 20` and freeze intake.
+		const symbols = ['Cm7', 'Dm7', 'Em7', 'Fmaj7', 'G7', 'Am7', 'Bm7b5', 'Cmaj7', 'D7', 'Emaj7'];
+		const day: CardRecord[] = [];
+		for (const symbol of symbols) {
+			for (const mode of ['formula', 'see-play', 'formula-build'] as Mode[]) {
+				day.push(
+					makeCardRecord({ factId: `chord-formula:${symbol}`, factKind: 'chord-formula', mode })
+				);
+			}
+		}
+
+		expect(day).toHaveLength(30);
+		expect(day.length > DUE_BACKLOG_GATE_FACTS).toBe(true); // the old, wrong comparison
+		expect(backlogFactCount(day)).toBe(10);
+		expect(backlogFactCount(day) > DUE_BACKLOG_GATE_FACTS).toBe(false); // the fixed one
+	});
+
+	it('still trips on a genuine backlog of three unpracticed days', () => {
+		const facts: CardRecord[] = [];
+		for (let i = 0; i < 30; i++) {
+			facts.push(
+				makeCardRecord({ factId: `interval-size:fact-${i}`, factKind: 'interval-size', mode: 'formula' })
+			);
+		}
+		expect(backlogFactCount(facts)).toBe(30);
+		expect(backlogFactCount(facts) > DUE_BACKLOG_GATE_FACTS).toBe(true);
+	});
+
+	/**
+	 * The zombie-card interaction. All 84 scale-degree facts are introduced by the
+	 * deck and then dropped by familyForCard, so their cards are due forever and
+	 * unclearable. If they counted here, a growing pile of questions the surface
+	 * cannot ask would permanently freeze intake - a worse version of the bug
+	 * being fixed.
+	 */
+	it('ignores cards no practice surface can ask, so unclearable cards can never freeze intake', () => {
+		const zombies: CardRecord[] = [];
+		for (let i = 1; i <= 84; i++) {
+			zombies.push(
+				makeCardRecord({ factId: `scale-degree:C:${i}`, factKind: 'scale-degree', mode: 'formula' })
+			);
+		}
+		expect(backlogFactCount(zombies)).toBe(0);
+
+		// And they do not drown out the real signal either.
+		const withOneRealFact = [
+			...zombies,
+			makeCardRecord({ factId: 'chord-formula:Cm7', factKind: 'chord-formula', mode: 'formula' })
+		];
+		expect(backlogFactCount(withOneRealFact)).toBe(1);
 	});
 });

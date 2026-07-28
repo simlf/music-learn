@@ -7,8 +7,8 @@ import { inversionCountFor } from './inversions';
 
 /**
  * The pure, DOM-free HYBRID queue composer (27-CONTEXT "Queue model =
- * HYBRID"): turns FSRS due-cards (the three carded families - name-it,
- * build-it, interval) plus synthetic, non-persisted voicing/progression
+ * HYBRID"): turns FSRS due-cards (the five carded families - name-it,
+ * play-it, ear-it, build-it, interval) plus synthetic, non-persisted voicing/progression
  * items into one interleaved practice queue. No Svelte, no DOM, no direct
  * Dexie/localStorage access - CardRecord/Mode/FactKind are type-only
  * imports from srs/deck and srs/facts (single-source, no re-implementation
@@ -44,18 +44,30 @@ import { inversionCountFor } from './inversions';
  * 27-CONTEXT's "read the global pref once via readSongFilter()").
  */
 
-/** The six practice-hub drill families (27-CONTEXT domain boundary; 'inversion' added by Phase 35, INV-03 - synthetic, not carded). */
-export type PracticeFamily = 'name-it' | 'build-it' | 'interval' | 'voicing' | 'progression' | 'inversion';
+/**
+ * The eight practice-hub drill families (27-CONTEXT domain boundary;
+ * 'inversion' added by Phase 35, INV-03 - synthetic, not carded; 'play-it'
+ * and 'ear-it' added by T13, see familyForCard).
+ */
+export type PracticeFamily =
+	| 'name-it'
+	| 'play-it'
+	| 'ear-it'
+	| 'build-it'
+	| 'interval'
+	| 'voicing'
+	| 'progression'
+	| 'inversion';
 
-/** The three FSRS-backed families this module maps from a CardRecord. */
-export type CardedFamily = 'name-it' | 'build-it' | 'interval';
+/** The five FSRS-backed families this module maps from a CardRecord. */
+export type CardedFamily = 'name-it' | 'play-it' | 'ear-it' | 'build-it' | 'interval';
 
 /**
  * The two "scaffold-heavy" families (Phase 36's QUEUE-01 term, 36-CONTEXT):
  * progression and inversion both lean on a prior family's foundation
  * (spelling/voicing) rather than being answerable cold - a bad first item
  * for a low-mastery session. Their complement, the "simpler" families, is
- * name-it/build-it/interval/voicing. Single source of truth: reused by
+ * name-it/play-it/ear-it/build-it/interval/voicing. Single source of truth: reused by
  * composePracticeQueue's first-pick guard below AND by the host/tests -
  * never re-listed as a duplicated string literal elsewhere.
  */
@@ -136,21 +148,103 @@ export interface InversionQueueItem {
 export type HybridQueueItem = CardedQueueItem | VoicingQueueItem | ProgressionQueueItem | InversionQueueItem;
 
 /**
- * Maps a CardRecord to its practice family. 'build-it' for chord-formula in
- * 'formula-build' mode (Phase 12's construction mode, reused as a recall
- * mode); 'name-it' for chord-formula in any OTHER mode (formula, see-play,
- * hear-name); 'interval' for interval-size regardless of mode; null for
+ * Maps a CardRecord to its practice family: ONE family per chord-formula
+ * MODE, plus 'interval' for interval-size regardless of mode, plus null for
  * scale-degree/scale-formula - scales practice is Phase 28, so those facts
  * must never enter this queue (T-27-01-02).
+ *
+ * T13 (mode collapse): this used to fold formula, see-play and hear-name into
+ * a single 'name-it' family, and the host rendered every one of them as the
+ * same 4-choice identification question. So three modes that the deck seeds
+ * separately, schedules separately, and believes it is training separately
+ * produced BYTE-IDENTICAL items - on day one, ~20 multiple-choice questions
+ * over 10 symbols, each symbol asked twice with the same four chips. Two of
+ * the three skills the deck thinks it trains were never practiced at all.
+ *
+ * The mapping is now one family per mode, so a family is again what its name
+ * says: one kind of question.
+ *   - 'name-it'  <- 'formula'    : see the notes, name the chord (choices)
+ *   - 'play-it'  <- 'see-play'   : see the symbol, play the notes (keyboard)
+ *   - 'ear-it'   <- 'hear-name'  : hear the chord, name it (choices)
+ *   - 'build-it' <- 'formula-build': the step-by-step construction flow
+ *
+ * This is a RENDER-ROUTING change only. Nothing here touches how a card is
+ * scheduled: the host still commits the same Rating for the same (factId,
+ * mode) card through the same recordGrade call (REG-01).
+ *
+ * It also makes composePracticeQueue's variety weave honest again: three
+ * separate FIFOs of ~10 items each now rotate against build-it/interval/
+ * voicing, where before one 20-item 'name-it' FIFO dominated the
+ * "most items remaining" preference.
  */
 export function familyForCard(card: CardRecord): CardedFamily | null {
 	if (card.factKind === 'chord-formula') {
-		return card.mode === 'formula-build' ? 'build-it' : 'name-it';
+		switch (card.mode) {
+			case 'formula-build':
+				return 'build-it';
+			case 'see-play':
+				return 'play-it';
+			case 'hear-name':
+				return 'ear-it';
+			default:
+				return 'name-it';
+		}
 	}
 	if (card.factKind === 'interval-size') {
 		return 'interval';
 	}
 	return null;
+}
+
+/**
+ * The due-backlog gate's threshold, in FACTS.
+ *
+ * T13 fixed a UNITS bug at the host's call site: the gate compared a CARD count
+ * against 20, but the budget it gates (introBudget's MAX_NEW_CARDS_PER_DAY) is a
+ * FACT budget of 10 a day, and a chord fact seeds a teach cluster of 3 cards. So
+ * one day's own introduction is about 30 cards, and every single day a cohort
+ * came back the gate saw 30 > 20 and locked new material out. From roughly day 4
+ * intake self-throttled into a stop-start pattern with no visible cause.
+ *
+ * 20 is kept, but it is now 2 x MAX_NEW_CARDS_PER_DAY in the SAME unit as the
+ * budget, which makes it a real rule instead of a coincidence: one unpracticed
+ * day of intake is 10 facts and passes, two days is 20 and still passes (`>`,
+ * not `>=`), three days is 30 and is a genuine backlog worth clearing before
+ * growing the deck further.
+ *
+ * Deliberately a literal rather than an import of MAX_NEW_CARDS_PER_DAY: every
+ * host test mocks `$lib/srs/introBudget` down to two functions, so importing the
+ * constant here would silently resolve to undefined inside those tests and turn
+ * the comparison into `> NaN` (a gate that never fires, invisibly). The
+ * relationship is protected by an assertion in practiceQueue.test.ts against the
+ * real constant instead, which cannot be mocked away.
+ */
+export const DUE_BACKLOG_GATE_FACTS = 20;
+
+/**
+ * How many distinct FACTS have a due card this practice surface can actually
+ * ask: the gate's own measure of "backlog".
+ *
+ * The familyForCard filter is load-bearing, not defensive decoration. All 84
+ * scale-degree facts are introduced by the deck and then dropped here
+ * (familyForCard returns null for them - scales practice is a separate surface
+ * that does not exist yet), so their cards are due forever and no amount of
+ * practice can ever clear them. Counting them would let a growing pile of
+ * permanently-unanswerable cards permanently freeze new intake, which is a worse
+ * version of the very bug being fixed. A card this surface cannot ask is not a
+ * backlog the user can clear, so it must not gate.
+ *
+ * When a scale-degree question surface lands and familyForCard starts returning a
+ * family for those cards, they begin counting here automatically, with no change
+ * at the call site.
+ */
+export function backlogFactCount(due: CardRecord[]): number {
+	const facts = new Set<string>();
+	for (const card of due) {
+		if (familyForCard(card) === null) continue;
+		facts.add(card.factId);
+	}
+	return facts.size;
 }
 
 /** Stable queue-item id for a carded (FSRS) item: `fsrs:{factId}:{mode}`. */
@@ -501,9 +595,18 @@ export interface AdvanceOptions {
 	rng?: () => number;
 }
 
-/** True for the three FSRS-backed families (a CardedQueueItem), false for synthetic ones. */
+/** The five FSRS-backed families, as a runtime set. Single source for isCardedItem below and for callers that need the same test. */
+const CARDED_FAMILIES: ReadonlySet<PracticeFamily> = new Set<PracticeFamily>([
+	'name-it',
+	'play-it',
+	'ear-it',
+	'build-it',
+	'interval'
+]);
+
+/** True for the five FSRS-backed families (a CardedQueueItem), false for synthetic ones. */
 function isCardedItem(item: HybridQueueItem): item is CardedQueueItem {
-	return item.family === 'name-it' || item.family === 'build-it' || item.family === 'interval';
+	return CARDED_FAMILIES.has(item.family);
 }
 
 /**

@@ -12,6 +12,8 @@
 		syntheticProgressionItems,
 		syntheticInversionItems,
 		filterVoicingsBySong,
+		backlogFactCount,
+		DUE_BACKLOG_GATE_FACTS,
 		isLowMasterySession,
 		type HybridQueueItem,
 		type VoicingQueueItem,
@@ -29,7 +31,7 @@
 		type DaySummary
 	} from '$lib/practice/dailySession';
 	import { localDateString } from '$lib/api/progress';
-	import { localStreak } from '$lib/practice/practiceDays';
+	import { localStreak, recordPracticeDay } from '$lib/practice/practiceDays';
 	import { pickStreakLine } from '$lib/copy/streak';
 	import {
 		getDueCards,
@@ -199,8 +201,14 @@
 		});
 	}
 
-	/** Daily new-card intro budget + due-backlog gate (mirrors RecallSession's load() skeleton verbatim). */
-	const DUE_BACKLOG_GATE = 20;
+	/**
+	 * Daily new-card intro budget + due-backlog gate. The gate's threshold and
+	 * its "how much backlog is there" measure both live in practiceQueue.ts (the
+	 * pure module) rather than inline here, since both are pure card arithmetic
+	 * and this host is meant to be thin. See DUE_BACKLOG_GATE_FACTS there for why
+	 * it counts FACTS rather than cards, and why permanently-unanswerable
+	 * scale-degree cards deliberately do not gate.
+	 */
 
 	/**
 	 * The small, session-scaled count of synthetic progression items woven
@@ -284,7 +292,7 @@
 
 			const preDue = await getDueCards();
 			let dueBase: CardRecord[];
-			if (preDue.length > DUE_BACKLOG_GATE) {
+			if (backlogFactCount(preDue) > DUE_BACKLOG_GATE_FACTS) {
 				dueBase = preDue;
 			} else {
 				const remaining = remainingIntroBudget(new Date());
@@ -591,6 +599,8 @@
 	const CUE_LABELS = $derived.by(
 		(): Record<HybridQueueItem['family'], string> => ({
 			'name-it': t('practice.cue.nameIt'),
+			'play-it': t('practice.cue.playIt'),
+			'ear-it': t('practice.cue.hearIt'),
 			'build-it': t('practice.cue.buildIt'),
 			voicing: t('practice.cue.voicing'),
 			interval: t('practice.cue.interval'),
@@ -625,6 +635,26 @@
 		 * FSRS is untouched by it (dailySession never reads or writes a card).
 		 */
 		recordDailyAnswer({ correct, label: correct ? undefined : label });
+		/**
+		 * T13 item 5: the day's STREAK entry, recorded here for every family.
+		 *
+		 * The practice-day set used to be written only inside api/progress.ts's
+		 * recordAnswer, which every carded answer reaches via answerTelemetry -
+		 * but the three synthetic families (voicing, progression, inversion)
+		 * deliberately post no server telemetry, because /answers accuracy means
+		 * chord-IDENTIFICATION accuracy and a voicing attempt measures a different
+		 * skill on the same symbol. So a round made only of synthetic items was
+		 * real practice that the local streak never saw. Rare (synthetics are
+		 * gated on at least one due chord card) but a genuine hole in the streak.
+		 *
+		 * `finishItem` is the one choke point every graded answer of every family
+		 * passes through, which is exactly why the day belongs here rather than at
+		 * each drill's call site. recordPracticeDay is idempotent per day, so the
+		 * carded families now record it twice a day at most - once here, once via
+		 * telemetry - and the second call is one localStorage read. The streak
+		 * itself is still owned by practiceDays.ts; this only reports the day.
+		 */
+		recordPracticeDay(localDateString());
 	}
 
 	/**
@@ -679,17 +709,32 @@
 	 */
 	let grading = $state(false);
 
-	/** Grades + advances a carded (name-it/interval) item: FSRS commit via deck.recordGrade (PRAC-03/REG-01/T-27-04-01). */
+	/**
+	 * The families completeCarded actually grades. WR-01: an ALLOWLIST, not a
+	 * denylist of the synthetic families - build-it is also a CardedFamily and
+	 * commits its own FSRS grade internally (see completeBuild's comment), so a
+	 * denylist here would silently double-commit if routing ever misdirected a
+	 * build-it item into this handler. T13 adds play-it and ear-it: both are
+	 * ordinary carded chord items whose grade this host commits, exactly as it
+	 * already did when the same cards were mislabeled 'name-it'.
+	 *
+	 * A type predicate rather than an array `.includes` so the narrowing to
+	 * CardedQueueItem (and therefore `item.card`) survives the check.
+	 */
+	function isHostGraded(item: HybridQueueItem): item is CardedQueueItem {
+		return (
+			item.family === 'name-it' ||
+			item.family === 'play-it' ||
+			item.family === 'ear-it' ||
+			item.family === 'interval'
+		);
+	}
+
+	/** Grades + advances a carded (name-it/play-it/ear-it/interval) item: FSRS commit via deck.recordGrade (PRAC-03/REG-01/T-27-04-01). */
 	async function completeCarded(correct: boolean): Promise<void> {
 		if (grading) return;
 		const item = currentItem;
-		// WR-01: allowlist the two families completeCarded actually grades
-		// (name-it/interval), rather than denylisting the two synthetic
-		// families - build-it is also a CardedFamily and commits its own FSRS
-		// grade internally (see completeBuild's comment), so a denylist here
-		// would silently double-commit if routing ever misdirected a
-		// build-it item into this handler.
-		if (item === undefined || (item.family !== 'name-it' && item.family !== 'interval')) {
+		if (item === undefined || !isHostGraded(item)) {
 			return;
 		}
 		grading = true;
@@ -922,7 +967,30 @@
 
 		{#key `${currentItem.id}|${cardEpoch}`}
 			{#if currentItem.family === 'name-it'}
-				<PracticeChordDrill symbol={currentItem.symbol ?? ''} onComplete={(correct) => completeCarded(correct)} />
+				<PracticeChordDrill
+					symbol={currentItem.symbol ?? ''}
+					mode="formula"
+					onComplete={(correct) => completeCarded(correct)}
+				/>
+			{:else if currentItem.family === 'play-it'}
+				<!--
+					T13: the three chord modes ask three different questions now. The
+					mode is passed as a LITERAL per branch rather than forwarded from
+					`currentItem.mode` (which is the deck's 4-value Mode, including
+					'formula-build'), so the routing is total by construction and no
+					narrowing cast is needed.
+				-->
+				<PracticeChordDrill
+					symbol={currentItem.symbol ?? ''}
+					mode="see-play"
+					onComplete={(correct) => completeCarded(correct)}
+				/>
+			{:else if currentItem.family === 'ear-it'}
+				<PracticeChordDrill
+					symbol={currentItem.symbol ?? ''}
+					mode="hear-name"
+					onComplete={(correct) => completeCarded(correct)}
+				/>
 			{:else if currentItem.family === 'interval'}
 				<PracticeIntervalDrill short={currentItem.short ?? ''} onComplete={(correct) => completeCarded(correct)} />
 			{:else if currentItem.family === 'build-it'}

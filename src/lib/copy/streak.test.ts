@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	activePracticedToday,
 	activeNudge,
@@ -102,6 +102,28 @@ describe('pickStreakLine', () => {
 			for (let i = 1; i < picks.length; i++) {
 				expect(picks[i]).not.toBe(picks[i - 1]);
 			}
+		}
+	});
+	/**
+	 * The anti-repeat step used to be an unbounded `while` that re-rolled
+	 * Math.random() until it differed from the last pick. That is a rejection
+	 * loop whose termination depends on a randomness source this module does not
+	 * own: a constant Math.random - the normal shape of a deterministic test -
+	 * spun it forever, and because a spun vi spy also records every call, the
+	 * hang arrived as a heap exhaustion in an unrelated test file rather than as
+	 * an honest timeout. It is one deterministic hop now.
+	 */
+	it('terminates with a CONSTANT Math.random, and still never repeats', () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.1);
+		try {
+			const first = pickStreakLine('activePracticedToday');
+			const second = pickStreakLine('activePracticedToday');
+			const third = pickStreakLine('activePracticedToday');
+			expect(activePracticedToday).toContain(second);
+			expect(second).not.toBe(first);
+			expect(third).not.toBe(second);
+		} finally {
+			vi.restoreAllMocks();
 		}
 	});
 });

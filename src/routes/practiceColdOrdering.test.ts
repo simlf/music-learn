@@ -108,9 +108,9 @@ function makeCard(
  */
 function coldChordCards(): CardRecord[] {
 	return [
-		makeCard('chord-formula:Cm7', 'chord-formula', 'see-play', State.New),
-		makeCard('chord-formula:Dm7', 'chord-formula', 'see-play', State.New),
-		makeCard('chord-formula:G7', 'chord-formula', 'see-play', State.New)
+		makeCard('chord-formula:Cm7', 'chord-formula', 'formula', State.New),
+		makeCard('chord-formula:Dm7', 'chord-formula', 'formula', State.New),
+		makeCard('chord-formula:G7', 'chord-formula', 'formula', State.New)
 	];
 }
 
@@ -121,9 +121,9 @@ function coldChordCards(): CardRecord[] {
  */
 function warmChordCards(): CardRecord[] {
 	return [
-		makeCard('chord-formula:Cm7', 'chord-formula', 'see-play', State.Review),
-		makeCard('chord-formula:Dm7', 'chord-formula', 'see-play', State.Review),
-		makeCard('chord-formula:G7', 'chord-formula', 'see-play', State.New)
+		makeCard('chord-formula:Cm7', 'chord-formula', 'formula', State.Review),
+		makeCard('chord-formula:Dm7', 'chord-formula', 'formula', State.Review),
+		makeCard('chord-formula:G7', 'chord-formula', 'formula', State.New)
 	];
 }
 

@@ -213,3 +213,154 @@ describe('PracticeIntervalDrill: the you-tapped readout follows the reader local
 		expect(frLine).not.toMatch(/major 2nd/);
 	});
 });
+
+/**
+ * T13 item 2: this component and PracticeChordDrill generate the overwhelming
+ * majority of daily items, and neither had a teaching scaffold. The escalating
+ * ladder and the confusion contrast were wired into RecallSession,
+ * ProgressionDrill, InversionDrill and WhyTheseNotes but never here.
+ */
+describe('PracticeIntervalDrill: opt-in escalating hint ladder', () => {
+	describe('construction (the rungs teach the method, so they may come before the answer)', () => {
+		beforeEach(() => {
+			// 0.9 draws root 'Bb' plus the construction direction.
+			vi.spyOn(Math, 'random').mockReturnValue(0.9);
+		});
+
+		it('offers a collapsed ladder before the answer, never an always-on inline hint', () => {
+			render(PracticeIntervalDrill, { props: { short: 'm3', onComplete: vi.fn() } });
+
+			expect(screen.getByTestId('interval-hint-ladder')).toBeInTheDocument();
+			expect(screen.getByTestId('interval-hint-cta')).toHaveTextContent('Need a hint?');
+			expect(screen.queryAllByTestId('interval-hint-layer')).toHaveLength(0);
+			// Nothing about the answer has leaked.
+			expect(screen.queryByTestId('interval-drill-feedback')).not.toBeInTheDocument();
+		});
+
+		it('escalates one rung per tap: the name, then the semitone count', async () => {
+			render(PracticeIntervalDrill, { props: { short: 'm3', onComplete: vi.fn() } });
+
+			await fireEvent.click(within(screen.getByTestId('interval-hint-cta')).getByRole('button'));
+			let layers = screen.getAllByTestId('interval-hint-layer');
+			expect(layers).toHaveLength(1);
+			expect(layers[0]).toHaveAttribute('data-layer', 'name');
+			expect(layers[0]).toHaveTextContent('m3 is a minor 3rd.');
+
+			await fireEvent.click(within(screen.getByTestId('interval-hint-cta')).getByRole('button'));
+			layers = screen.getAllByTestId('interval-hint-layer');
+			expect(layers).toHaveLength(2);
+			expect(layers[1]).toHaveAttribute('data-layer', 'count');
+			// The count rung is the piece this surface never showed anywhere.
+			expect(layers[1]).toHaveTextContent('Semitones up from B♭: 3.');
+		});
+
+		it('never changes grading: a hinted correct tap still grades correct exactly once', async () => {
+			const onComplete = vi.fn();
+			render(PracticeIntervalDrill, { props: { short: 'm3', onComplete } });
+
+			await fireEvent.click(within(screen.getByTestId('interval-hint-cta')).getByRole('button'));
+			await fireEvent.click(within(screen.getByTestId('interval-hint-cta')).getByRole('button'));
+
+			// Bb + m3 = chroma 1 = C♯.
+			await fireEvent.click(screen.getAllByRole('button', { name: 'C♯ key' })[0]);
+			await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+			expect(onComplete).toHaveBeenCalledExactlyOnceWith(true);
+		});
+
+		it('renders the ladder rungs in French under fr', async () => {
+			setLocale('fr');
+			render(PracticeIntervalDrill, { props: { short: 'm3', onComplete: vi.fn() } });
+
+			expect(screen.getByTestId('interval-hint-cta')).toHaveTextContent("Besoin d'un indice ?");
+			await fireEvent.click(within(screen.getByTestId('interval-hint-cta')).getByRole('button'));
+			expect(screen.getAllByTestId('interval-hint-layer')[0]).toHaveTextContent(
+				"m3, c'est une tierce mineure."
+			);
+		});
+	});
+
+	describe('identification (the count IS the answer, so the ladder waits for a miss)', () => {
+		beforeEach(() => {
+			vi.spyOn(Math, 'random').mockReturnValue(0);
+		});
+
+		it('shows no ladder before the answer, and none after a correct answer', async () => {
+			render(PracticeIntervalDrill, { props: { short: 'm3', onComplete: vi.fn() } });
+			expect(screen.queryByTestId('interval-hint-ladder')).not.toBeInTheDocument();
+
+			await fireEvent.click(choiceButton('m3'));
+			expect(screen.queryByTestId('interval-hint-ladder')).not.toBeInTheDocument();
+		});
+
+		it('offers the ladder after a MISS, without the redundant name rung', async () => {
+			render(PracticeIntervalDrill, { props: { short: 'm3', onComplete: vi.fn() } });
+
+			const grid = screen.getByTestId('interval-choice-grid');
+			const wrong = within(grid)
+				.getAllByRole('button')
+				.find((button) => button.getAttribute('aria-label') !== 'Answer: m3');
+			await fireEvent.click(wrong!);
+
+			expect(screen.getByTestId('interval-hint-ladder')).toBeInTheDocument();
+			await fireEvent.click(within(screen.getByTestId('interval-hint-cta')).getByRole('button'));
+			const layers = screen.getAllByTestId('interval-hint-layer');
+			// The choice chips already carried every long name, so 'name' is dropped.
+			expect(layers[0]).toHaveAttribute('data-layer', 'count');
+			expect(layers[0]).toHaveTextContent('Semitones between the two notes: 3.');
+		});
+	});
+});
+
+describe('PracticeIntervalDrill: confusion contrast on the wrong path', () => {
+	it('contrasts the two semitone counts on a wrong construction tap', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.9);
+		render(PracticeIntervalDrill, { props: { short: 'm3', onComplete: vi.fn() } });
+
+		// Bb + M2 = C, one semitone short of the m3 target.
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+
+		expect(screen.getByTestId('interval-semitone-contrast')).toHaveTextContent(
+			'Semitones: M2 = 2, m3 = 3.'
+		);
+	});
+
+	it('contrasts the counts and names the pick on a wrong identification choice', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0);
+		render(PracticeIntervalDrill, { props: { short: 'm3', onComplete: vi.fn() } });
+
+		const grid = screen.getByTestId('interval-choice-grid');
+		const wrong = within(grid)
+			.getAllByRole('button')
+			.find((button) => button.getAttribute('aria-label') !== 'Answer: m3');
+		const wrongShort = wrong!.getAttribute('aria-label')?.replace('Answer: ', '') ?? '';
+		await fireEvent.click(wrong!);
+
+		const picked = screen.getByTestId('interval-picked-vs-correct');
+		expect(picked).toHaveTextContent(wrongShort);
+		expect(picked).toHaveTextContent('m3');
+		expect(screen.getByTestId('interval-semitone-contrast')).toHaveTextContent('m3 = 3');
+	});
+
+	it('says nothing on a correct answer', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0);
+		render(PracticeIntervalDrill, { props: { short: 'm3', onComplete: vi.fn() } });
+
+		await fireEvent.click(choiceButton('m3'));
+
+		expect(screen.queryByTestId('interval-semitone-contrast')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('interval-picked-vs-correct')).not.toBeInTheDocument();
+	});
+
+	it('renders the contrast in French under fr', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.9);
+		setLocale('fr');
+		render(PracticeIntervalDrill, { props: { short: 'm3', onComplete: vi.fn() } });
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+
+		expect(screen.getByTestId('interval-semitone-contrast')).toHaveTextContent(
+			'Demi-tons : M2 = 2, m3 = 3.'
+		);
+	});
+});

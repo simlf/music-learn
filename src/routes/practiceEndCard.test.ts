@@ -112,7 +112,7 @@ function makeChordCard(symbol: string): CardRecord {
 		...newCard(NOW),
 		factId: `chord-formula:${symbol}`,
 		factKind: 'chord-formula',
-		mode: 'see-play',
+		mode: 'formula',
 		lastRating: null,
 		masteryDayCount: 0
 	};
@@ -292,9 +292,25 @@ describe('B2: the streak lands on the card when it is earned', () => {
 		expect(line.textContent).toContain('3');
 	});
 
-	it("counts a run through yesterday when today's answers have not been credited yet", async () => {
-		// The local streak keeps its one-day grace: this must never read as 0 and
-		// suppress a run the user is in the middle of extending.
+	/**
+	 * These three used to assert what happens when today's own practice has NOT
+	 * been credited to the practice-day set: a run through yesterday read as 2, an
+	 * empty set read as 0 and hid the line, and a lapsed run also hid it.
+	 *
+	 * That state is no longer reachable from a completed round. T13 item 5 records
+	 * the day inside the host's own `finishItem`, the one choke point every graded
+	 * answer of every family passes through, because the day used to be written
+	 * only inside api/progress.recordAnswer - which the three SYNTHETIC families
+	 * never reach, since they deliberately post no server telemetry. A
+	 * synthetic-only round was real practice the streak never saw.
+	 *
+	 * So a graded answer now always credits today, and the streak on the end card
+	 * always includes the session that just produced it. (In production the CARDED
+	 * path already did this through real answerTelemetry -> recordAnswer; these
+	 * tests mock that module out, which is why they could previously observe a
+	 * state the app itself never showed.)
+	 */
+	it('credits today, so an in-progress run is extended rather than reported short', async () => {
 		seedPracticeDays([dayOffset(2), dayOffset(1)]);
 
 		render(PracticePage);
@@ -302,26 +318,30 @@ describe('B2: the streak lands on the card when it is earned', () => {
 		await answerCorrectly('Cm7');
 
 		const line = await screen.findByTestId('practice-end-card-day-streak');
-		expect(line.textContent).toContain('2');
+		expect(line.textContent).toContain('3');
 	});
 
-	it('omits a zero streak rather than showing a discouraging count', async () => {
+	it('earns a one-day run from nothing: the round itself starts the streak', async () => {
 		seedPracticeDays([]);
 
 		render(PracticePage);
 		await startRound();
 		await answerCorrectly('Cm7');
 
-		expect(screen.queryByTestId('practice-end-card-day-streak')).not.toBeInTheDocument();
+		const line = await screen.findByTestId('practice-end-card-day-streak');
+		expect(line.textContent).toContain('1');
 	});
 
-	it('omits a lapsed run rather than reporting the gap', async () => {
+	it('restarts at one after a lapse rather than reporting the gap', async () => {
 		seedPracticeDays([dayOffset(9), dayOffset(8), dayOffset(7)]);
 
 		render(PracticePage);
 		await startRound();
 		await answerCorrectly('Cm7');
 
-		expect(screen.queryByTestId('practice-end-card-day-streak')).not.toBeInTheDocument();
+		const line = await screen.findByTestId('practice-end-card-day-streak');
+		expect(line.textContent).toContain('1');
+		// The old, lapsed run is not resurrected.
+		expect(line.textContent).not.toContain('3');
 	});
 });

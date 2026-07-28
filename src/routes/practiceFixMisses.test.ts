@@ -122,7 +122,7 @@ afterEach(() => {
 describe('B4: a missed chord chip drills that chord', () => {
 	beforeEach(() => {
 		getDueCardsMock.mockResolvedValue([
-			makeCard('chord-formula:Dm7', 'chord-formula', 'see-play')
+			makeCard('chord-formula:Dm7', 'chord-formula', 'formula')
 		]);
 	});
 
@@ -166,8 +166,8 @@ describe('B4: a missed chord chip drills that chord', () => {
 describe('B4: the CTA covers the whole missed set', () => {
 	it('counts the misses and drills all of them', async () => {
 		getDueCardsMock.mockResolvedValue([
-			makeCard('chord-formula:Dm7', 'chord-formula', 'see-play'),
-			makeCard('chord-formula:G7', 'chord-formula', 'see-play')
+			makeCard('chord-formula:Dm7', 'chord-formula', 'formula'),
+			makeCard('chord-formula:G7', 'chord-formula', 'formula')
 		]);
 
 		render(PracticePage);

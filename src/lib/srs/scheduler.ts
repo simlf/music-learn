@@ -12,8 +12,28 @@ import type { Card, Grade } from 'ts-fsrs';
  * day scale (New+Again=1d, Hard=2d, Good=3d, Easy=8d) and a New+Again
  * graduates straight to Review, never Relearning.
  *
- * enable_fuzz:false keeps the scheduled_days math deterministic for tests
- * (revisit later to spread same-day due piles once correctness is proven).
+ * enable_fuzz:true (T13, the revisit this comment used to promise): without
+ * fuzz, every card graded the same way on the same day comes back on ONE day,
+ * so a daily cohort of new cards stays a lump forever - avalanche days next to
+ * empty days. Fuzz randomizes each interval within the FSRS fuzz window, so a
+ * cohort fans out instead of marching in step. It is seeded from the card's own
+ * review time, reps, difficulty and stability (ts-fsrs's DefaultInitSeedStrategy),
+ * so a given card at a given instant is still deterministic - fuzz adds spread
+ * across cards, not run-to-run flakiness.
+ *
+ * What fuzz does and does NOT reach, measured against ts-fsrs 5.4.1 rather than
+ * assumed, because it is easy to over-claim here:
+ *   - Below 2.5 days, apply_fuzz returns the interval untouched. So New+Again
+ *     (1d) and New+Hard (2d) are exactly as before.
+ *   - New+Good stays exactly 3 days too, and NOT because of the floor: the
+ *     LongTermScheduler derives Good from `max(good, hard + 1)`, and the raw
+ *     Good interval for a New card (~2d) is under the floor, so the 3 is the
+ *     clamp, not a fuzzable number. The first return of a day-one cohort is
+ *     therefore still a single day; spreading THAT needs an intake lever (the
+ *     daily intro budget and the due-backlog gate), not a scheduler flag.
+ *   - From the second review on, fuzz bites properly: the 14-day Good becomes a
+ *     12-16 day window, and windows widen from there. That is where a cohort
+ *     actually separates, and it compounds every review after it.
  *
  * Pure module: no DOM, no Svelte, no Dexie. Persistence lives in deck.ts.
  */
@@ -32,7 +52,7 @@ const scheduler = fsrs(
 	generatorParameters({
 		enable_short_term: false,
 		request_retention: 0.9,
-		enable_fuzz: false
+		enable_fuzz: true
 	})
 );
 
