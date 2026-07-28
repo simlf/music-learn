@@ -56,35 +56,26 @@ test('the due-count badge on the Practice tab meets WCAG AA', async ({ page }) =
 });
 
 /**
- * KNOWN GAP, NOT A FLAKE.
+ * FIXED 2026-07-29. This was a `test.fail()` recording a real, measured gap.
  *
- * The masthead streak chip renders `--color-muted` (#7d7462) on `--color-paper`
- * (#f2ecdd) at 12px/700. That is 3.92:1, below the 4.5:1 WCAG AA floor that
- * applies at this size (12px bold is NOT "large text": the bold threshold is
- * 18.66px). The chip is legible-ish on a bright desktop screen, which is
- * presumably why five rounds of manual visual UAT never flagged it, and hard to
- * read on a phone outdoors.
+ * The masthead streak chip renders `--color-muted` on `--color-paper` at
+ * 12px/700. At the old token value (#7d7462) that measured 3.92:1, below the
+ * 4.5:1 WCAG AA floor that applies at this size (12px bold is NOT "large text":
+ * the bold threshold is 18.66px). It was legible-ish on a bright desktop
+ * screen, which is presumably why five rounds of manual visual UAT never
+ * flagged it, and hard to read on a phone outdoors.
  *
- * This is marked `test.fail()` rather than deleted or loosened, because:
- *   - the assertion is the REAL one, at the REAL threshold, so the suite is not
- *     laundering a failure as a pass;
- *   - Playwright reports it as an expected failure, so the run stays green and
- *     nobody learns to ignore red;
- *   - if someone darkens `--color-muted` (or bumps the chip's size/weight),
- *     this test starts PASSING and Playwright fails the run for "passed
- *     unexpectedly" -- which is the prompt to delete this `test.fail()` line.
+ * The token was darkened to #716856 on the same hue, which clears 4.67:1 on
+ * `--color-paper` and 5.09:1 on `--color-paper-bright`. The old value failed on
+ * BOTH backgrounds (4.28:1 on paper-bright), so this was never chip-specific:
+ * `--color-muted` carries body copy in 13 files, and every one of them was
+ * under the floor. That is why the shared token moved rather than the chip.
  *
- * Fixing it means changing a shared design token in src/app.css or the chip in
- * src/lib/components/StreakBadge.svelte. Both are outside this change's
- * ownership, and `--color-muted` is used app-wide, so it is a design decision
- * for the owner rather than a drive-by edit.
+ * `--color-faint` (#9a907f) is deliberately still below the floor. It is
+ * decorative only (rules, dividers, disabled affordances) and must never carry
+ * body copy. If a future change puts text on it, that text needs its own token.
  */
 test('the masthead streak chip meets WCAG AA', async ({ page }) => {
-	test.fail(
-		true,
-		'Known gap: --color-muted on --color-paper is 3.92:1 at 12px/700, below the 4.5:1 AA floor.'
-	);
-
 	await seedStreak(page, 3);
 	await page.goto('/');
 

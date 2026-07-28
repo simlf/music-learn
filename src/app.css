@@ -10,7 +10,14 @@
 	--color-vermilion: #c8502e;
 	--color-mustard: #f0c948;
 	--color-verdigris: #3e7d6b;
-	--color-muted: #7d7462;
+	/* Darkened from #7d7462 on 2026-07-29. The old value measured 3.92:1 on
+	   --color-paper and 4.28:1 on --color-paper-bright, both under the 4.5:1
+	   WCAG AA floor that applies to muted body text (12px bold is not "large
+	   text": the bold threshold is 18.66px). This value clears 4.67:1 and
+	   5.09:1 respectively, on the same hue. See tests/e2e/contrast.spec.ts. */
+	--color-muted: #716856;
+	/* --color-faint is decorative only (rules, dividers, disabled affordances).
+	   It is deliberately below the text floor and must not carry body copy. */
 	--color-faint: #9a907f;
 
 	/* Interval color language (DESIGN-02 — app-wide, fixed forever) */
