@@ -26,6 +26,7 @@
 	import {
 		assignNotesToKeys,
 		blackKeysForOctaves,
+		minBoardWidthPx,
 		octavesForWidth,
 		whiteLettersForOctaves,
 		type BlackKeyPattern,
@@ -709,6 +710,19 @@
 	style="touch-action: manipulation;"
 	bind:this={containerEl}
 >
+<!--
+	The board carries the fingertip floor as a px min-width and the wrapper above
+	scrolls when the container cannot supply it, so a white key is never narrower
+	than MIN_WHITE_KEY_PX at ANY viewport (measured: 43.80px keys on a 43.32px
+	pitch at 375px before this). This is the same scroll-wrap + min-width board
+	shape ScaleKeyboardDrill already used, which is why the scale drill's own
+	keyboard never had the defect. The min-width is on the BOARD, never on the
+	keys: a per-key px floor is the 09-02 defect (see the note in the stylesheet),
+	because it fights the percentage `left`/`width` layout and overlaps
+	neighbors. Percentages resolve against the widened board instead, so key
+	geometry stays exactly proportional.
+-->
+	<div class="piano-keyboard__board" style="min-width: {minBoardWidthPx(effectiveOctaves)}px;">
 	{#each whiteKeys as key (key.index)}
 		<!-- svelte-ignore a11y_no_noninteractive_tabindex -- role is dynamically 'button' whenever tabindex is set (both gated by `interactive`) -->
 		<div
@@ -836,13 +850,23 @@
 			{/if}
 		</div>
 	{/each}
+	</div>
 </div>
 
 <style>
 	.piano-keyboard {
-		position: relative;
 		width: 100%;
-		height: 160px;
+		/*
+		 * Scrolls only when the container cannot supply the board's
+		 * `minBoardWidthPx` (one octave under 352px, i.e. 375px-class phones and
+		 * narrower). At every wider width the board fits exactly and this is
+		 * inert. Scrollbar hidden so the keyboard reads as an instrument rather
+		 * than a scroll pane, matching ScaleKeyboardDrill's own scroll-wrap.
+		 */
+		overflow-x: auto;
+		overflow-y: hidden;
+		-webkit-overflow-scrolling: touch;
+		scrollbar-width: none;
 		/* Gesture hygiene (D-12): see the touch-action inline style above and
 		   the matching rule on .piano-keyboard__key below - keyboard-only, not
 		   page-wide. */
@@ -850,16 +874,32 @@
 		user-select: none;
 	}
 
+	.piano-keyboard::-webkit-scrollbar {
+		display: none;
+	}
+
 	/*
-	 * No min-width here (09-02 defect fix): a fixed px floor fights the
-	 * percentage-based `left`/`width` layout above - every key would clamp to
-	 * the same 44px regardless of its percentage position, so at one octave
-	 * (8 white keys, ~34px pitch on a typical 390px phone with the old page
-	 * padding) keys overlapped their neighbors by ~10px and black keys fused
-	 * into solid blocks. The real >=44px touch pitch at one octave now comes
-	 * from the container being wide enough (page/card padding reduced at
-	 * phone widths, see drills/+page.svelte and routes/+page.svelte), not
-	 * from clamping key width independently of its position.
+	 * The absolute key layer. `position: relative` lives here, not on the
+	 * scrolling wrapper, so every key's percentage `left`/`width` resolves
+	 * against the board's own (possibly wider than the container) width.
+	 */
+	.piano-keyboard__board {
+		position: relative;
+		width: 100%;
+		height: 160px;
+	}
+
+	/*
+	 * No min-width on the KEYS (09-02 defect fix): a fixed px floor per key
+	 * fights the percentage-based `left`/`width` layout above - every key would
+	 * clamp to the same 44px regardless of its percentage position, so at one
+	 * octave (8 white keys, ~34px pitch on a typical 390px phone with the old
+	 * page padding) keys overlapped their neighbors by ~10px and black keys fused
+	 * into solid blocks. The >=44px touch pitch instead comes from the BOARD's
+	 * `minBoardWidthPx` (which scales the percentages together, so nothing
+	 * overlaps) plus the wrapper's scroll for the narrowest phones - not from
+	 * clamping key width independently of its position, and no longer from
+	 * hoping the container is wide enough, which measurably failed at 375px.
 	 */
 	.piano-keyboard__key {
 		position: absolute;

@@ -43,6 +43,29 @@ describe('matchInversion', () => {
 		expect(result.correct).toBe(false);
 	});
 
+	it('an empty played set against an ungradeable target is never correct (false-accept regression)', () => {
+		// matchInversion([], undefined, spellChord('m7'), -1) used to report
+		// chordCorrect: true, inheriting matchChord's empty-set false accept.
+		for (const symbol of ['m7', 'ø', 'dim7', 'Xyz']) {
+			const target = spellChord(symbol);
+			const result = matchInversion([], undefined, target, -1);
+			expect(result.chordCorrect, symbol).toBe(false);
+			expect(result.correct, symbol).toBe(false);
+
+			// Even when the "bass" happens to compare equal to the sentinel.
+			const withBass = matchInversion([], -1, target, -1);
+			expect(withBass.bassCorrect, symbol).toBe(true);
+			expect(withBass.chordCorrect, symbol).toBe(false);
+			expect(withBass.correct, symbol).toBe(false);
+		}
+	});
+
+	it('an empty played set is never correct against a real inversion target', () => {
+		const target = spellChord('Cm7');
+		expect(matchInversion([], 7, target, 7).chordCorrect).toBe(false);
+		expect(matchInversion([], 7, target, 7).correct).toBe(false);
+	});
+
 	it('is enharmonic-blind: the bass entered via its sharp-spelling chroma still grades identical to the flat-spelling target chroma', () => {
 		// Db7 target bass, chroma 1 (Db or C#): feed the sharp-equivalent chroma.
 		const target = spellChord('Db7');

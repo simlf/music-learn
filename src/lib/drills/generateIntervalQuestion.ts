@@ -1,9 +1,8 @@
-import { Note } from 'tonal';
 import {
+	chromaOf,
 	DRILL_INTERVALS,
-	intervalFromRoot,
 	intervalFromShort,
-	toAsciiAccidentals,
+	simplestIntervalFromRoot,
 	transposeFrom,
 	type IntervalInfo
 } from '$lib/theory/interval';
@@ -82,6 +81,15 @@ export interface GenerateIntervalQuestionOptions {
  * ROOTS, (2) interval index over DRILL_INTERVALS (skipped when `short` is
  * forced), (3) direction index, then (4+) distractor shuffle draws for
  * identification questions.
+ *
+ * An octave-spanning interval (P8) is always issued as IDENTIFICATION, never
+ * construction, whatever the direction draw says. The construction tap seam
+ * reports a pitch class only (`PianoKeyboard`'s `onToggle` passes a letter, and
+ * both C keys on a two-octave board report "C"), so an octave answer is
+ * indistinguishable from re-tapping the highlighted root - the question cannot
+ * be graded honestly and used to accept the unison. Identification drills the
+ * same fact with no such ambiguity. The direction draw is still consumed so the
+ * random-draw script stays positionally identical for every other interval.
  */
 export function generateIntervalQuestion(
 	options: GenerateIntervalQuestionOptions = {}
@@ -89,12 +97,14 @@ export function generateIntervalQuestion(
 	const rootAscii = ROOTS[Math.floor(Math.random() * ROOTS.length)];
 	const short =
 		options.short ?? DRILL_INTERVALS[Math.floor(Math.random() * DRILL_INTERVALS.length)];
-	const direction = INTERVAL_DIRECTIONS[Math.floor(Math.random() * INTERVAL_DIRECTIONS.length)];
+	const drawnDirection =
+		INTERVAL_DIRECTIONS[Math.floor(Math.random() * INTERVAL_DIRECTIONS.length)];
 
 	// transposeFrom(root, 'R') round-trips the root through the interval
 	// module's glyph restore, so "F#" comes out as the display form "F♯".
 	const root = transposeFrom(rootAscii, 'R');
 	const interval = intervalFromShort(short);
+	const direction = interval.semitones >= 12 ? 'identification' : drawnDirection;
 
 	if (direction === 'construction') {
 		return { kind: 'interval', direction, root, interval };
@@ -117,27 +127,53 @@ export function intervalQuestionNotes(question: IntervalQuestion): SpelledNote[]
 	];
 }
 
-/**
- * Grades a construction tap by chroma arithmetic, octave-agnostic like
- * matchChord: (tapped - root + 12) % 12 === semitones % 12. Enharmonic
- * answers are accepted by construction. Total: unparseable letters grade
- * false rather than throwing.
- */
-export function gradeIntervalTap(root: string, tappedLetter: string, semitones: number): boolean {
-	const rootChroma = Note.chroma(toAsciiAccidentals(root));
-	const tappedChroma = Note.chroma(toAsciiAccidentals(tappedLetter));
-	if (rootChroma === undefined || tappedChroma === undefined) return false;
-	return (tappedChroma - rootChroma + 12) % 12 === semitones % 12;
+/** Where the root sounds and where the tap landed, for grading an octave-spanning interval. */
+export interface IntervalTapRegister {
+	/** Octave the question root occupies. */
+	root: number;
+	/** Octave of the key the user tapped. */
+	tapped: number;
 }
 
-/** The keyboard reports black keys by their sharp spelling; this recovers the flat partner. */
-const SHARP_TO_FLAT: Record<string, string> = {
-	'C♯': 'D♭',
-	'D♯': 'E♭',
-	'F♯': 'G♭',
-	'G♯': 'A♭',
-	'A♯': 'B♭'
-};
+/**
+ * Grades a construction tap.
+ *
+ * SIMPLE intervals (under 12 semitones) grade by chroma arithmetic,
+ * octave-agnostic like matchChord: `(tapped - root + 12) % 12 === semitones`.
+ * Enharmonic answers are accepted, and any octave duplicate of the right pitch
+ * class is accepted (REG-01) - `register` is ignored for these.
+ *
+ * OCTAVE-SPANNING intervals (12 semitones or more) cannot be graded that way:
+ * `12 % 12 === 0`, so the modular comparison accepted the root's OWN pitch
+ * class, and tapping the very key that is already highlighted as the root
+ * answered "tap a P8 above C" correctly. These require absolute pitch, so they
+ * are graded on letter+octave distance and need `register`. Without it the tap
+ * is unverifiable and grades FALSE rather than accepting a unison: a caller
+ * that cannot say which octave was tapped cannot prove an octave was played.
+ * (`generateIntervalQuestion` therefore never issues an octave-spanning
+ * CONSTRUCTION question - see its own note.)
+ *
+ * Total: unparseable letters grade false rather than throwing.
+ */
+export function gradeIntervalTap(
+	root: string,
+	tappedLetter: string,
+	semitones: number,
+	register?: IntervalTapRegister
+): boolean {
+	const rootChroma = chromaOf(root);
+	const tappedChroma = chromaOf(tappedLetter);
+	if (rootChroma === undefined || tappedChroma === undefined) return false;
+
+	if (semitones >= 12) {
+		if (register === undefined) return false;
+		const rootPitch = register.root * 12 + rootChroma;
+		const tappedPitch = register.tapped * 12 + tappedChroma;
+		return tappedPitch - rootPitch === semitones;
+	}
+
+	return (tappedChroma - rootChroma + 12) % 12 === semitones % 12;
+}
 
 /** What a wrong construction tap actually was, for the feedback line. */
 export interface TappedIntervalReadout {
@@ -148,15 +184,20 @@ export interface TappedIntervalReadout {
 }
 
 /**
- * Names the tapped key relative to the question root: black keys (reported
- * by sharp letter) pick whichever enharmonic reads simplest from the root,
- * so a D♯-key tap over C reads "m3" as E♭, not A2.
+ * Names the tapped key relative to the question root, reading the tapped PITCH
+ * (any enharmonic respelling) rather than the one spelling the keyboard
+ * happened to report, so the readout always names the simplest interval from
+ * the root: a D♯-key tap over C reads "m3" as E♭, not A2, and a plain D-key tap
+ * over D♭ reads "m2" as E♭♭, not "A1 / fondamentale augmentée".
+ *
+ * That last part is why this cannot special-case black keys only, as it used to
+ * via a 5-entry sharp-to-flat table: white-key taps then skipped the
+ * enharmonic-preference scoring entirely and printed qualities that are not in
+ * DRILL_INTERVALS at all (A1, A2, A5, A6, d8), telling the user an augmented
+ * unison exists in a drill whose whole vocabulary is m2..P8.
  */
 export function describeTappedInterval(root: string, tappedLetter: string): TappedIntervalReadout {
-	const flatLetter = SHARP_TO_FLAT[tappedLetter];
-	const info = flatLetter
-		? intervalFromRoot(root, { sharpLetter: tappedLetter, flatLetter })
-		: intervalFromRoot(root, tappedLetter);
+	const info = simplestIntervalFromRoot(root, tappedLetter);
 	const letter = info.short === '' ? tappedLetter : transposeFrom(root, info.short) || tappedLetter;
 	return { letter, info };
 }

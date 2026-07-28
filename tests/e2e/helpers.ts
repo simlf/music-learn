@@ -19,6 +19,16 @@ import type { Locator, Page } from '@playwright/test';
 export const PHONE = { width: 375, height: 812 };
 
 /**
+ * The narrowest phone class still in real use (iPhone SE 1st gen, small
+ * Androids). Kept as its own viewport because it is where the one-octave
+ * keyboard actually ran out of room: at 375px the keyboard's container is 359
+ * layout px (8 keys at 44.875px, above the floor), but at 320px it is 304px,
+ * which is 38px per key. That is the width the `octavesForWidth` one-octave
+ * blind spot showed up at, not 375px.
+ */
+export const PHONE_NARROW = { width: 320, height: 568 };
+
+/**
  * Phone held sideways. Matters because PianoKeyboard renders TWO octaves once
  * the available width clears `15 * 44px` (keyboardLayout.octavesForWidth), so
  * this is the viewport where the "two-octave tap targets on a phone" question

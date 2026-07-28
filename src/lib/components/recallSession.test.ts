@@ -250,6 +250,25 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
 
 		expect(screen.getByText("Here's the interval:")).toBeInTheDocument();
 		expect(screen.getByText('m3')).toBeInTheDocument();
+		// A simple interval still sounds at the reference octave.
+		expect(playNoteMock).toHaveBeenCalledWith('Eb4');
+	});
+
+	it('sounds the P8 reveal an octave up (C5), never a unison (C4)', async () => {
+		// The bug: transposeFrom('C','P8') is pitch-class only and returns 'C',
+		// so the interval-size:P8 card's audio reveal played C4 - the same note
+		// as the reference - for a card whose entire point is the octave.
+		const card = makeCard('interval-size:P8', 'interval-size');
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue([card]);
+		getAllCardsMock.mockResolvedValue([card]);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-prompt'));
+		await fireEvent.click(dockButton('Show Answer'));
+
+		expect(playNoteMock).toHaveBeenCalledWith('C5');
+		expect(playNoteMock).not.toHaveBeenCalledWith('C4');
 	});
 
 	it('reviews a scale-degree card with the correct prompt/reveal template', async () => {

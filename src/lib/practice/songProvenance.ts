@@ -11,8 +11,8 @@
  * is never raw string equality.
  */
 
-import { Note } from 'tonal';
 import { spellChord } from '$lib/theory/chord';
+import { chromaOf } from '$lib/theory/interval';
 import { activeSongChordSymbols, listSongs } from './songs';
 
 /**
@@ -20,7 +20,7 @@ import { activeSongChordSymbols, listSongs } from './songs';
  * collapse to a `${rootPitchClass}:${qualityName}` identity key built from
  * spellChord's already-parsed root/quality, so Cm7 = C-7 = Cmin7 (same
  * quality name, spellChord's own alias resolution) and F♯ø7 = G♭ø7 (root
- * pitch-class from `tonal`'s `Note.get`, quality name from spellChord,
+ * pitch-class via the shared `chromaOf`, quality name from spellChord,
  * ignoring the enharmonic letter spelling difference). An unrecognized
  * symbol falls back to its raw input unchanged, so a hand-entered/exotic
  * song symbol never throws and still matches itself.
@@ -29,16 +29,19 @@ export function normalizeSymbolForMatch(symbol: string): string {
 	const spelled = spellChord(symbol);
 	if (!spelled.recognized) return symbol;
 
-	const asciiRoot = spelled.root.replace(/♯/g, '#').replace(/♭/g, 'b');
-	const rootChroma = Note.get(asciiRoot).chroma;
-	// LO-01: a recognized chord with an empty/unparseable root (spellChord's
-	// own `chord.tonic ?? ''` fallback, reachable via a rootless quality-only
-	// symbol like "m7" - tonal's Chord.get resolves that to `tonic: ''`)
-	// makes `Note.get('').chroma` come back NaN, not undefined. Without this
-	// guard every such chord would collapse into the same colliding
-	// "NaN:<quality>" bucket. Degrade the same way the unrecognized branch
-	// above does: match only itself, never collide with an unrelated chord.
-	if (Number.isNaN(rootChroma)) return symbol;
+	// LO-01 (superseded): this used to need a `Number.isNaN(rootChroma)` guard,
+	// because a rootless quality-only symbol like "m7" came back from spellChord
+	// as RECOGNIZED with `root: ''`, and `Note.get('').chroma` is NaN - collapsing
+	// every such symbol into one colliding "NaN:<quality>" bucket. spellChord now
+	// treats an empty root (or an empty note set) as unrecognized at the source,
+	// so a recognized chord always has a root tonal parsed, and those symbols
+	// take the `!spelled.recognized` branch above (matching only themselves).
+	// The guard was a symptom patch on a keying collision; the real defect was
+	// `recognized: true` on a chord with no notes, which also fed the drill
+	// graders an empty target.
+	// `chromaOf` is nullable by type; unreachable in practice per the note above.
+	const rootChroma = chromaOf(spelled.root);
+	if (rootChroma === undefined) return symbol;
 	return `${rootChroma}:${spelled.quality}`;
 }
 

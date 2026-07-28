@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { matchChord } from './matchChord';
 import { spellChord } from '$lib/theory/chord';
+import type { ChordResult } from '$lib/theory/types';
 
 describe('matchChord', () => {
 	it('grades correct when the played chroma set equals the target chroma set (Cm7)', () => {
@@ -58,5 +59,59 @@ describe('matchChord', () => {
 	it('never throws for an empty played set against any recognized target', () => {
 		const target = spellChord('F#m7b5');
 		expect(() => matchChord(new Set(), target)).not.toThrow();
+	});
+
+	describe('an empty played set is never correct (false-accept regression)', () => {
+		it('an empty target chroma set is never satisfiable, however little was played', () => {
+			// The bug: `missing.length === 0 && extra.length === 0` was
+			// trivially true for an empty played set against an empty target,
+			// so matchChord([], <empty target>) returned correct: true.
+			for (const symbol of ['m7', 'ø', 'maj7', 'dim7', 'sus4', 'Xyz', 'notachord', '']) {
+				const target = spellChord(symbol);
+				expect(target.notes, symbol).toEqual([]);
+				expect(matchChord([], target).correct, symbol).toBe(false);
+				expect(matchChord(new Set(), target).correct, symbol).toBe(false);
+				expect(matchChord([0], target).correct, symbol).toBe(false);
+			}
+		});
+
+		it('an empty played set is never correct against any real chord either', () => {
+			for (const symbol of ['C', 'Cm7', 'F#m7b5', 'Dbdim7', 'Cmaj7/G']) {
+				expect(matchChord([], spellChord(symbol)).correct, symbol).toBe(false);
+				expect(matchChord(new Set(), spellChord(symbol)).correct, symbol).toBe(false);
+			}
+		});
+
+		it('still reports every target chroma as missing for an empty play (generateQuestion depends on this)', () => {
+			// generateQuestion derives a chord's target chroma set from
+			// matchChord([], target).missing - the empty-target guard must not
+			// disturb that.
+			expect(new Set(matchChord([], spellChord('Cm7')).missing)).toEqual(new Set([0, 3, 7, 10]));
+		});
+	});
+
+	it('a target note whose letter has no pitch class makes the whole target ungradeable, never a smaller matchable set', () => {
+		// Guards the chromaOf normalization: Note.chroma returns NaN (not
+		// undefined) for junk, so the old code put NaN into the target set and
+		// only failed closed by accident. Dropping the note instead would be a
+		// false accept: playing C/E/G would "complete" a 4-note target.
+		const target: ChordResult = {
+			input: 'Cmaj7',
+			symbol: 'Cmaj7',
+			root: 'C',
+			quality: 'major seventh',
+			recognized: true,
+			aliases: [],
+			notes: [
+				{ letter: 'C', solfege: 'Do', role: 'root' },
+				{ letter: 'E', solfege: 'Mi', role: 'third' },
+				{ letter: 'G', solfege: 'Sol', role: 'fifth' },
+				{ letter: 'Q', solfege: '?', role: 'seventh' }
+			]
+		};
+
+		expect(matchChord([0, 4, 7], target).correct).toBe(false);
+		expect(matchChord([0, 4, 7, 11], target).correct).toBe(false);
+		expect(matchChord([0, 4, 7], target).missing).toEqual([]);
 	});
 });

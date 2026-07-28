@@ -134,6 +134,37 @@ describe('ScaleKeyboardDrill (tonic-anchored 2-octave keyboard, SCALE-04)', () =
 		expect(playNoteMock).toHaveBeenCalledTimes(8);
 	});
 
+	it('degree 8 rejects a re-tap of the starting tonic key: the octave has to be played', async () => {
+		// Degree 8 shares the tonic's pitch class, so a chroma-only grade let the
+		// user finish the ascending leg by tapping the same low C already played
+		// as degree 1 - the octave never had to be reached at all.
+		const notes = majorScaleNotes('C');
+		const placements = placeAscendingScaleKeys(notes);
+		renderDrill({ notes, tonic: 'C' });
+
+		for (let degree = 1; degree <= 7; degree += 1) {
+			await fireEvent.click(tapButtonFor(placements[degree - 1]));
+		}
+		expect(screen.getByTestId('scale-keyboard-register')).toHaveTextContent(
+			'DEGREE 8 OF 8 · ASCENDING'
+		);
+		playNoteMock.mockClear();
+
+		// Re-tapping the starting tonic is rejected: the register stays on degree 8.
+		await fireEvent.click(tapButtonFor(placements[0]));
+		expect(screen.getByTestId('scale-keyboard-register')).toHaveTextContent(
+			'DEGREE 8 OF 8 · ASCENDING'
+		);
+		expect(playNoteMock).not.toHaveBeenCalled();
+
+		// The actual octave key advances the drill into the descending leg.
+		await fireEvent.click(tapButtonFor(placements[7]));
+		expect(screen.getByTestId('scale-keyboard-register')).toHaveTextContent(
+			'DEGREE 7 OF 8 · DESCENDING'
+		);
+		expect(playNoteMock).toHaveBeenCalledTimes(1);
+	});
+
 	it('advances the register through the ascending leg then flips to descending 7 down to 1', async () => {
 		const notes = majorScaleNotes('C');
 		const placements = placeAscendingScaleKeys(notes);

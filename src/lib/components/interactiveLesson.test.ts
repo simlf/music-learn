@@ -54,18 +54,37 @@ describe('InteractiveLesson (LEARN-01/02/03)', () => {
 		expect(screen.getAllByRole('img', { name: /piano keyboard/i })).toHaveLength(1);
 	});
 
-	it('the active step keyboard wrapper carries no fixed min-width (regression: 375px mobile overflow bug)', () => {
-		// A hardcoded `min-width: 352px` (8 keys * 44px) on this wrapper once
-		// forced the mini keyboard past a 375px/320px viewport, causing
-		// horizontal page overflow. The wrapper must stay free to shrink with
-		// its step card, matching the containment pattern the static /theory
-		// lesson keyboards already rely on (PianoKeyboard's own width: 100%,
-		// no min-width - see PianoKeyboard.svelte's "09-02 defect fix" note).
+	it('no min-width in the active step can push the page sideways (regression: 375px mobile overflow bug)', () => {
+		// A hardcoded `min-width: 352px` (8 keys * 44px) on this step's keyboard
+		// WRAPPER once forced the mini keyboard past a 375px/320px viewport,
+		// causing horizontal PAGE overflow. That is the hazard, and the wrapper
+		// must still stay free to shrink with its step card.
+		//
+		// The one legitimate exception is PianoKeyboard's own key board, which
+		// carries `minBoardWidthPx` so a white key never falls under the 44px
+		// fingertip floor (measured settled in Chromium: 38.00px keys at a 320px
+		// viewport, 43.00px at 360px, before that min-width existed). It cannot
+		// push the page, because it sits inside `.piano-keyboard`, which is an
+		// `overflow-x: auto` scroll container - so the overflow is absorbed by
+		// the keyboard scrolling inside itself. Verified in a real browser at
+		// 320/360/375/390px: documentElement.scrollWidth never exceeds
+		// clientWidth (tests/e2e/tap-targets.spec.ts and hubs.spec.ts).
+		//
+		// So the rule is not "no min-width anywhere" but "nothing with a
+		// min-width may be un-scrollable", which is what this asserts.
 		render(InteractiveLesson);
 
 		const activeStep = screen.getByTestId('lesson-step-0');
 		for (const el of activeStep.querySelectorAll<HTMLElement>('[style]')) {
-			expect(el.getAttribute('style') ?? '').not.toMatch(/min-width/);
+			if (!/min-width/.test(el.getAttribute('style') ?? '')) continue;
+
+			expect(el.className, 'only the keyboard board may carry a min-width').toContain(
+				'piano-keyboard__board'
+			);
+			expect(
+				el.parentElement?.className,
+				'the board must sit inside the scrolling .piano-keyboard wrapper'
+			).toContain('piano-keyboard');
 		}
 	});
 

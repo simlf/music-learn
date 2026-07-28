@@ -698,8 +698,18 @@
 				const chord = spellChord(currentFact.symbol);
 				playChord(chord.notes.map((note) => note.letter));
 			} else if (currentFact.factKind === 'interval-size') {
+				// The reveal must SOUND the interval it names. `transposeFrom` is
+				// pitch-class only, so an octave-spanning interval comes back as the
+				// same letter as the reference C ("P8" -> "C") and the reveal played
+				// C4 - a unison - for the `interval-size:P8` card. Lift the target by
+				// a full octave per 12 semitones so P8 sounds as C5.
 				const targetLetter = transposeFrom('C', currentFact.short);
-				if (targetLetter) playNote(toPitch(targetLetter, 4));
+				// Math.max guards the empty IntervalInfo's -1 semitones, which would
+				// otherwise drop the note an octave BELOW the reference.
+				const octaveLift = Math.floor(
+					Math.max(0, intervalFromShort(currentFact.short).semitones) / 12
+				);
+				if (targetLetter) playNote(toPitch(targetLetter, 4 + octaveLift));
 			} else if (currentFact.factKind === 'scale-degree') {
 				const degreeNote = majorScaleNotes(currentFact.tonic)[currentFact.degree - 1];
 				if (degreeNote) playNote(toPitch(degreeNote.letter, 4));

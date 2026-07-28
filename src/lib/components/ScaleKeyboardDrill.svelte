@@ -14,7 +14,11 @@
 		type ScaleKeyPlacement,
 		type ScaleTarget
 	} from '$lib/practice/scaleKeyboardDrill';
-	import { whiteLettersForOctaves, blackKeysForOctaves } from '$lib/components/keyboardLayout';
+	import {
+		whiteLettersForOctaves,
+		blackKeysForOctaves,
+		MIN_WHITE_KEY_PX
+	} from '$lib/components/keyboardLayout';
 	import type { SpelledNote } from '$lib/theory/types';
 	import { t } from '$lib/i18n/locale.svelte';
 
@@ -136,7 +140,13 @@
 
 	function handleTap(kind: KeyKind, keyIndex: number, letter: string) {
 		const target = expectedTarget(drill);
-		const result = gradeScaleTap(drill, letter);
+		// The tapped key's identity is passed through, not just its letter: the
+		// ascending octave (degree 8) shares the tonic's pitch class, so chroma
+		// alone cannot tell the octave key from the starting tonic the user
+		// already played as degree 1. Every other degree stays chroma-graded and
+		// octave-agnostic, so a same-chroma duplicate key elsewhere on the board
+		// is still accepted (CR-01).
+		const result = gradeScaleTap(drill, letter, { kind, keyIndex });
 
 		if (result.correct) {
 			drill = result.state;
@@ -229,7 +239,6 @@
 	const blackKeyPatterns = blackKeysForOctaves(SCALE_DRILL_OCTAVES);
 	const whiteKeyWidthPct = 100 / whiteLetters.length;
 	const blackKeyWidthPct = whiteKeyWidthPct * 0.6;
-	const MIN_WHITE_KEY_PX = 44;
 
 	const whiteKeys: RenderWhiteKey[] = whiteLetters.map((letter, index) => ({
 		index,

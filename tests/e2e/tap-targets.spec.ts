@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { DESKTOP, PHONE, PHONE_LANDSCAPE } from './helpers';
+import { DESKTOP, PHONE, PHONE_LANDSCAPE, PHONE_NARROW } from './helpers';
 
 /**
  * Tap-target size checks for the two surfaces a finger actually lands on: the
@@ -36,12 +36,41 @@ import { DESKTOP, PHONE, PHONE_LANDSCAPE } from './helpers';
 const FINGERTIP_PX = 44;
 const WCAG_MINIMUM_PX = 24;
 
-/** Stamps a chord on the Lookup hub, which reveals a PianoKeyboard deterministically. */
+/**
+ * Stamps a chord on the Lookup hub, which reveals a PianoKeyboard
+ * deterministically, then WAITS FOR THE REVEAL ANIMATION TO SETTLE.
+ *
+ * The settle step is load-bearing, not politeness. The lookup result animates in
+ * under `stamp-in`, which scales the whole block (`transform: matrix(0.9647, ...)`
+ * on the way to 1). `getBoundingClientRect` reports post-transform boxes, so
+ * measuring as soon as the keyboard is merely VISIBLE measures a shrunken
+ * keyboard: 44.875px keys read as 43.29px, and two separate tests sampling two
+ * different animation frames disagree with each other (43.80 vs 43.32) even
+ * though the layout is identical. Every box check in this file has to wait for
+ * the transform to reach identity or it is measuring an animation, not a layout.
+ */
 async function revealKeyboard(page: Page): Promise<void> {
 	await page.goto('/');
 	await page.getByRole('textbox').first().fill('Cm7');
 	await page.getByRole('button', { name: 'Stamp', exact: true }).click();
 	await expect(page.locator('.piano-keyboard')).toBeVisible();
+
+	await page
+		.locator('.piano-keyboard')
+		.evaluate((element) =>
+			Promise.all(
+				element
+					.getAnimations({ subtree: true })
+					.concat(
+						(function ancestors(node: Element | null): Animation[] {
+							return node
+								? node.getAnimations().concat(ancestors(node.parentElement))
+								: [];
+						})(element)
+					)
+					.map((animation) => animation.finished.catch(() => undefined))
+			).then(() => undefined)
+		);
 }
 
 interface Box {
@@ -77,50 +106,21 @@ test.describe('bottom tab bar', () => {
 });
 
 /*
- * The keyboard is checked at three widths because octave count is
- * width-derived: one octave on a portrait phone, two once the available width
- * clears 15 * 44px. The two-octave case is the one the manual backlog kept
- * asking about, and portrait phone never reaches it -- landscape does.
+ * The keyboard is checked at four widths because octave count is width-derived:
+ * one octave on a portrait phone, two once the available width clears 15 * 44px.
+ * The two-octave case is the one the manual backlog kept asking about, and
+ * portrait phone never reaches it -- landscape does. The NARROW phone (320px) is
+ * where the one-octave span genuinely runs out of room, so it is the case that
+ * pins the board's minimum width and its horizontal scroll.
  */
 for (const [label, viewport] of [
+	['phone narrow', PHONE_NARROW],
 	['phone portrait', PHONE],
 	['phone landscape', PHONE_LANDSCAPE],
 	['desktop', DESKTOP]
 ] as const) {
 	test.describe(`piano keyboard, ${label}`, () => {
 		test.use({ viewport });
-
-		/*
-		 * KNOWN GAP at 375px portrait, and it is PLATFORM DEPENDENT.
-		 *
-		 * These two assertions were originally marked `test.fail(label === 'phone
-		 * portrait')`, which claims the defect always reproduces in portrait. It
-		 * does not. Measured: macOS renders 43.80px white keys (43.32px pitch) at a
-		 * 375px viewport, under the 44px floor; ubuntu-latest in CI clears 44px on
-		 * the same viewport, presumably from different default font metrics and
-		 * scrollbar reservation. So the `test.fail()` markers passed locally and
-		 * then failed CI with "Expected to fail, but passed", turning the run red
-		 * for the wrong reason.
-		 *
-		 * A sub-pixel browser measurement cannot be a reliable gate for this. The
-		 * invariant that actually matters is in the pure function:
-		 * `keyboardLayout.octavesForWidth` (`:52`) only tests whether the TWO-octave
-		 * layout fits and then returns 1 unconditionally, never checking that one
-		 * octave needs 8 * 44 = 352px of key area. That is the real defect and the
-		 * real fix belongs there, where it is deterministic and unit-testable.
-		 *
-		 * Parked with `test.fixme` rather than `test.fail`: the assertions are the
-		 * real ones at the real threshold, they report as skipped on every platform
-		 * instead of flipping red by environment, and they are ready to re-enable
-		 * the moment `octavesForWidth` guards the one-octave case. Landscape and
-		 * desktop stay hard assertions. The measurement test below still runs
-		 * everywhere, so the numbers are recorded rather than hidden.
-		 */
-		const portraitGap = label === 'phone portrait';
-		const gapReason =
-			'Parked: octavesForWidth does not check that the one-octave layout meets its own ' +
-			'44px floor. Measured 43.8px white keys (43.3px pitch) at 375px on macOS; ' +
-			'ubuntu CI clears 44px on the same viewport, so this is not a stable gate.';
 
 		test('the octave count matches the available width', async ({ page }) => {
 			await revealKeyboard(page);
@@ -147,7 +147,6 @@ for (const [label, viewport] of [
 		});
 
 		test('white keys clear the fingertip floor', async ({ page }) => {
-			test.fixme(portraitGap, gapReason);
 			await revealKeyboard(page);
 
 			const whites = await boxesOf(page, '.piano-keyboard__key--white');
@@ -158,7 +157,6 @@ for (const [label, viewport] of [
 		});
 
 		test('white key pitch clears the fingertip floor', async ({ page }) => {
-			test.fixme(portraitGap, gapReason);
 			await revealKeyboard(page);
 
 			const whites = (await boxesOf(page, '.piano-keyboard__key--white')).sort(
@@ -173,7 +171,7 @@ for (const [label, viewport] of [
 			}
 		});
 
-		/** Records the measured numbers even when the floor is missed, so the gap is quantified rather than just flagged. */
+		/** Records the measured numbers so the geometry is quantified, not just asserted. */
 		test('reports measured white-key geometry', async ({ page }, testInfo) => {
 			await revealKeyboard(page);
 
@@ -190,27 +188,68 @@ for (const [label, viewport] of [
 			});
 			expect(whites.length).toBeGreaterThan(0);
 		});
+
+		/**
+		 * The keyboard may scroll inside itself to hold the floor, but the PAGE
+		 * must never scroll sideways (the same invariant hubs.spec asserts). This
+		 * is what makes "widen the board and scroll it" a legitimate answer to a
+		 * container that is too narrow.
+		 */
+		test('a keyboard wider than its container never makes the page scroll sideways', async ({
+			page
+		}) => {
+			await revealKeyboard(page);
+
+			const doc = await page.evaluate(() => ({
+				scrollWidth: document.documentElement.scrollWidth,
+				clientWidth: document.documentElement.clientWidth
+			}));
+			expect(doc.scrollWidth).toBeLessThanOrEqual(doc.clientWidth);
+		});
 	});
 }
 
 /**
- * THE 375px PORTRAIT GAP (found by this suite, not fixed by it)
- * -------------------------------------------------------------
- * At a 375px-wide viewport the keyboard renders ONE octave (8 white keys) into
- * roughly 346.6px of content width, giving 43.80px keys on a 43.32px pitch.
- * Both are under 44px.
+ * WHAT THE ONE-OCTAVE FLOOR ACTUALLY MEASURES (corrected)
+ * -------------------------------------------------------
+ * An earlier revision of this file recorded a "375px portrait gap": 43.80px keys
+ * on a 43.32px pitch, first marked `test.fail()`, then re-marked `test.fixme()`
+ * on the theory that the gap was PLATFORM DEPENDENT, because macOS measured
+ * under 44px while ubuntu CI cleared it on the same viewport (guessed at as
+ * differing font metrics or scrollbar reservation).
  *
- * The cause is that `keyboardLayout.octavesForWidth(width, minWhiteKeyPx = 44)`
- * only checks the TWO-octave case (`width >= 15 * 44`); when that fails it
- * returns 1 unconditionally. Nothing then checks that one octave's 8 white keys
- * still need `8 * 44 = 352px`. Below ~352px of content width the stated 44px
- * guarantee silently does not hold. A 390px-class phone clears it (~361px
- * content, 45.2px keys); a 375px-class phone does not.
+ * It is not platform dependent, and neither number was layout. Both were
+ * measurement artifacts. The lookup result animates in under `stamp-in`, which
+ * scales the block from 0.9647 to 1, and `getBoundingClientRect` reports
+ * post-transform boxes -- so measuring the instant the keyboard became visible
+ * measured a keyboard mid-shrink. The tell is that the two figures disagreed
+ * with each other (43.80 width vs 43.32 pitch): a white key's width and its
+ * pitch are the SAME 12.5% of the board, so no layout can separate them. Two
+ * tests simply sampled two different animation frames, and the platform split
+ * was the two machines animating at different speeds, not measuring different
+ * geometry.
  *
- * Landscape and desktop both pass, including the two-octave layout, so the
- * long-standing "two-octave phone tap targets" question is answered: two
- * octaves are fine, one octave at 375px is not.
+ * `revealKeyboard` now waits for every animation on the keyboard and its
+ * ancestors to finish, so the measurement is of a layout rather than of a
+ * transition. The assertions are plain `test()` again, hard on every viewport
+ * and every platform: verified passing on macOS locally and on ubuntu in CI.
  *
- * Not fixed here: the fix belongs in src/lib/components/keyboardLayout.ts or
- * PianoKeyboard.svelte, which this change does not own.
+ * Settled geometry, measured in real Chromium at four widths, BEFORE the
+ * keyboardLayout fix:
+ *
+ *   viewport   keyboard container   white key / pitch
+ *   320px      304px                38.00px   under the floor
+ *   360px      344px                43.00px   under the floor
+ *   375px      359px                44.875px  fine all along
+ *   390px      374px                46.75px   fine
+ *
+ * So the defect was real but a class narrower than reported: `octavesForWidth`
+ * only ever tested the TWO-octave span and returned 1 as an unconditional
+ * fallback, so nothing checked that one octave's 8 white keys still need
+ * 8 * 44 = 352px. 375px happened to clear it; 320px and 360px did not.
+ *
+ * The board now carries `minBoardWidthPx` as a px min-width and the keyboard
+ * scrolls horizontally when its container cannot supply it, so all four widths
+ * measure >= 44px (320px and 360px land at exactly 44.00px) and the page still
+ * never scrolls sideways.
  */

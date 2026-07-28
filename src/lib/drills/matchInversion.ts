@@ -28,6 +28,10 @@ export interface InversionMatchResult {
  *
  * Total: an undefined `playedBassChroma` (nothing pressed / bass
  * undetermined) yields `bassCorrect: false`, never throws.
+ *
+ * Inherits matchChord's ungradeable-target rule: a target with no notes can
+ * never yield `chordCorrect` (and therefore never `correct`), so an empty play
+ * against an empty target is graded wrong instead of trivially right.
  */
 export function matchInversion(
 	played: Set<number> | number[],

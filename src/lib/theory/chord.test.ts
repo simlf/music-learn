@@ -131,6 +131,79 @@ describe('spellChord', () => {
 			expect(result.recognized).toBe(false);
 			expect(result.notes).toEqual([]);
 		});
+
+		/**
+		 * A quality token with no root is NOT a chord. tonal resolves the
+		 * quality anyway and returns `{ empty: false, tonic: '', notes: [] }`,
+		 * so the old `chord.empty`-only guard reported these as RECOGNIZED
+		 * chords with zero notes: the lookup page rendered a chord result with
+		 * no notes and no formula (skipping did-you-mean entirely), SongManager
+		 * stamped them as song chips, and the drill graders received an empty
+		 * target chroma set that matchChord scored correct for an empty play.
+		 */
+		const ROOTLESS_QUALITY_TOKENS = [
+			'm7',
+			'ø',
+			'7',
+			'maj7',
+			'dim7',
+			'sus4',
+			'Δ',
+			'°',
+			'°7',
+			'6',
+			'69',
+			'add9',
+			'-7',
+			'h7',
+			'o7',
+			'm',
+			'M',
+			'M7',
+			'ma7',
+			'min7',
+			'dim',
+			'aug'
+		];
+
+		it.each(ROOTLESS_QUALITY_TOKENS)(
+			'rootless quality token %s is unrecognized, never a zero-note "recognized" chord',
+			(token) => {
+				const result = spellChord(token);
+				expect(result.recognized, token).toBe(false);
+				expect(result.notes, token).toEqual([]);
+				expect(result.root, token).toBe('');
+				expect(result.symbol, token).toBe('');
+				expect(result.quality, token).toBe('');
+				expect(result.bass, token).toBeUndefined();
+				expect(result.input, token).toBe(token);
+			}
+		);
+
+		it('never reports a recognized chord that has no notes or no root', () => {
+			for (const symbol of [...ROOTLESS_QUALITY_TOKENS, 'notachord', '', ' ', '/', 'C/D']) {
+				const result = spellChord(symbol);
+				if (!result.recognized) continue;
+				expect(result.notes.length, symbol).toBeGreaterThan(0);
+				expect(result.root, symbol).not.toBe('');
+			}
+		});
+
+		it('still recognizes the same tokens once they carry a root', () => {
+			for (const [token, rooted] of [
+				['m7', 'Cm7'],
+				['ø', 'Cø'],
+				['7', 'C7'],
+				['maj7', 'Cmaj7'],
+				['dim7', 'Cdim7'],
+				['sus4', 'Csus4'],
+				['add9', 'Cadd9']
+			]) {
+				expect(spellChord(token).recognized, token).toBe(false);
+				expect(spellChord(rooted).recognized, rooted).toBe(true);
+				expect(spellChord(rooted).notes.length, rooted).toBeGreaterThan(0);
+			}
+		});
 	});
 
 	describe('slash chords (inversions)', () => {

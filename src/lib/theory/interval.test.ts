@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import { Note } from 'tonal';
 import {
+	chromaOf,
 	DRILL_INTERVALS,
 	intervalBetween,
 	intervalFromRoot,
 	intervalFromShort,
 	phraseStep,
+	simplestIntervalFromRoot,
 	toAsciiAccidentals,
 	transposeFrom
 } from './interval';
@@ -24,6 +27,29 @@ describe('toAsciiAccidentals', () => {
 		expect(toAsciiAccidentals('C')).toBe('C');
 		expect(toAsciiAccidentals('Eb')).toBe('Eb');
 		expect(toAsciiAccidentals('F#')).toBe('F#');
+	});
+});
+
+describe('chromaOf (shared NaN-safe chroma normalizer)', () => {
+	it('resolves glyph, ASCII, double-accidental, and pitch-with-octave spellings', () => {
+		expect(chromaOf('C')).toBe(0);
+		expect(chromaOf('F♯')).toBe(6);
+		expect(chromaOf('Gb')).toBe(6);
+		expect(chromaOf('B♭♭')).toBe(9);
+		expect(chromaOf('C♭')).toBe(11);
+		expect(chromaOf('C4')).toBe(0);
+	});
+
+	it('returns undefined (never NaN) for input that does not resolve to a pitch class', () => {
+		// The whole reason this helper exists: Note.chroma reports NaN, and
+		// `NaN === undefined` is false, so every `=== undefined` guard written
+		// directly against Note.chroma silently never fires.
+		expect(Number.isNaN(Note.chroma('Q'))).toBe(true);
+
+		for (const junk of ['Q', '', '??', 'notanote', 'H', 'zz']) {
+			expect(chromaOf(junk), junk).toBeUndefined();
+			expect(Number.isNaN(chromaOf(junk) as number), junk).toBe(false);
+		}
 	});
 });
 
@@ -104,6 +130,49 @@ describe('intervalBetween naming', () => {
 		expect(intervalBetween('F#', 'C#').short).toBe('P5');
 	});
 
+	it('names an ALTERED degree-1 interval "unison", never "1th"', () => {
+		// ENGLISH_ORDINALS started at 2, so degree 1 fell through to the
+		// `${degree}th` fallback and the EN locale read "augmented 1th".
+		// Reachable via InspectRegister: look up D♭maj7, inspect-tap the D key.
+		const augmented = intervalBetween('D♭', 'D');
+		expect(augmented.short).toBe('A1');
+		expect(augmented.long).toBe('augmented unison');
+		expect(augmented.longFr).toBe('fondamentale augmentée');
+
+		expect(intervalBetween('C♭', 'C').long).toBe('augmented unison');
+		expect(intervalFromShort('A1').long).toBe('augmented unison');
+
+		// The PERFECT unison still reads "root" (chord-formula convention).
+		expect(intervalBetween('C', 'C').long).toBe('root');
+	});
+
+	it('names every degree it can reach with a well-formed English ordinal (no `${degree}th` fallback holes)', () => {
+		// The shape of bug D: a hole in the ordinal table that silently fell
+		// through to `${degree}th`, which is wrong for any degree ending in
+		// 1, 2, or 3. Degrees 1 and 8 use interval nouns instead of ordinals.
+		const EXPECTED: Record<string, string> = {
+			A1: 'augmented unison',
+			A2: 'augmented 2nd',
+			A3: 'augmented 3rd',
+			A4: 'augmented 4th',
+			A5: 'augmented 5th',
+			A6: 'augmented 6th',
+			A7: 'augmented 7th',
+			d8: 'diminished octave',
+			M9: 'major 9th',
+			M10: 'major 10th',
+			P11: 'perfect 11th',
+			M13: 'major 13th'
+		};
+
+		for (const [short, long] of Object.entries(EXPECTED)) {
+			expect(intervalFromShort(short).long, short).toBe(long);
+			// The French table has no such hole and needs no fix: every degree
+			// it names reads as a word, never a digit.
+			expect(intervalFromShort(short).longFr, short).not.toMatch(/\d/);
+		}
+	});
+
 	it('is total: unparseable input returns a recognizable empty IntervalInfo, never throws', () => {
 		const info = intervalBetween('Zx', 'Q');
 		expect(info.short).toBe('');
@@ -135,6 +204,47 @@ describe('intervalFromRoot enharmonic picking', () => {
 
 	it('resolves a plain string key exactly like intervalBetween', () => {
 		expect(intervalFromRoot('C', 'E♭').short).toBe('m3');
+	});
+});
+
+describe('simplestIntervalFromRoot (names a tapped PITCH, not a given spelling)', () => {
+	it('respells a white key when that yields the simpler quality from the root', () => {
+		// D♭ to the plain D key is 1 semitone: readable as A1 (D) or m2 (E♭♭).
+		// The plain-quality reading wins, double accidental and all.
+		expect(simplestIntervalFromRoot('D♭', 'D').short).toBe('m2');
+		expect(simplestIntervalFromRoot('D♭', 'E').short).toBe('m3');
+		expect(simplestIntervalFromRoot('D♭', 'A').short).toBe('m6');
+		expect(simplestIntervalFromRoot('D♭', 'B').short).toBe('m7');
+		expect(simplestIntervalFromRoot('F♯', 'F').short).toBe('M7');
+	});
+
+	it('leaves a white key alone when its own spelling is already simplest', () => {
+		expect(simplestIntervalFromRoot('C', 'E').short).toBe('M3');
+		expect(simplestIntervalFromRoot('C', 'G').short).toBe('P5');
+		expect(simplestIntervalFromRoot('C', 'C').short).toBe('R');
+	});
+
+	it('agrees with intervalFromRoot on every black key (no double-accidental respelling can outrank the sharp/flat pair)', () => {
+		const blackKeys: [string, string][] = [
+			['C♯', 'D♭'],
+			['D♯', 'E♭'],
+			['F♯', 'G♭'],
+			['G♯', 'A♭'],
+			['A♯', 'B♭']
+		];
+
+		for (const root of ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B']) {
+			for (const [sharpLetter, flatLetter] of blackKeys) {
+				expect(simplestIntervalFromRoot(root, sharpLetter).short, `${root}+${sharpLetter}`).toBe(
+					intervalFromRoot(root, { sharpLetter, flatLetter }).short
+				);
+			}
+		}
+	});
+
+	it('is total: unparseable input returns the empty IntervalInfo, never throws', () => {
+		expect(simplestIntervalFromRoot('Zx', 'Q').short).toBe('');
+		expect(simplestIntervalFromRoot('C', 'Q').short).toBe('');
 	});
 });
 

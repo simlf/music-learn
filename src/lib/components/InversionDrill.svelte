@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { Note } from 'tonal';
 	import { spellChord } from '$lib/theory/chord';
-	import { toAsciiAccidentals } from '$lib/theory/interval';
+	import { chromaOf } from '$lib/theory/interval';
 	import { ensureAudioReady, playChord } from '$lib/audio/audio';
 	import { getAllCards, type CardRecord } from '$lib/srs/deck';
 	import { voicingStageForChord, type VoicingStage } from '$lib/practice/shellVoicing';
@@ -69,9 +68,11 @@
 	const drilledIndex = untrack(() => inversionIndex);
 	const bassRole = untrack(() => bassRoleForIndex(drilledIndex));
 	const bassNote = untrack(() => bassNoteFor(target, drilledIndex));
-	const bassChroma = untrack(() =>
-		bassNote ? Note.chroma(toAsciiAccidentals(bassNote.letter)) : -1
-	);
+	// -1 is the deliberate "no bass required" sentinel: no real chroma (0-11)
+	// can ever equal it, so an unresolvable bass letter can never grade as a
+	// correct bass (chromaOf normalizes Note.chroma's NaN into undefined -
+	// `NaN === bassChroma` was already false, but only by accident).
+	const bassChroma = untrack(() => (bassNote ? chromaOf(bassNote.letter) ?? -1 : -1));
 	const bassLetter = bassNote?.letter ?? '';
 	const count = untrack(() => inversionCountFor(symbol));
 	const quality = target.symbol.slice(target.root.length);
@@ -112,14 +113,18 @@
 	 * The chroma of whichever selected letter sits at the lowest absolute
 	 * pitch (octave*12 + chroma), using pressedOctaveByLetter (defaulting to
 	 * the base octave for a letter toggled without ever registering a press).
-	 * Undefined when nothing is selected.
+	 * Undefined when nothing is selected, or when any selected letter does not
+	 * resolve to a pitch class (the bass is then genuinely undetermined, so it
+	 * must not grade correct - `chromaOf` makes that check fire instead of
+	 * letting a NaN score silently win or lose the comparison).
 	 */
 	function lowestPlayedBassChroma(): number | undefined {
 		let lowestScore: number | undefined;
 		let lowestChroma: number | undefined;
 		for (const letter of selected) {
 			const octave = pressedOctaveByLetter.get(letter) ?? INVERSION_BASE_OCTAVE;
-			const chroma = Note.chroma(toAsciiAccidentals(letter));
+			const chroma = chromaOf(letter);
+			if (chroma === undefined) return undefined;
 			const score = octave * 12 + chroma;
 			if (lowestScore === undefined || score < lowestScore) {
 				lowestScore = score;
@@ -131,9 +136,11 @@
 
 	/** Check: grades via matchInversion. Wrong chord notes or right notes/wrong bass both retry gently and never gate; only a correct voicing (bass lowest) reveals. */
 	function checkPlay(): void {
-		const playedChroma = new Set(
-			[...selected].map((letter) => Note.chroma(toAsciiAccidentals(letter)))
-		);
+		// An unresolvable selected letter maps to -1, which no target chroma can
+		// match, so it lands in matchChord's `extra` and grades the play wrong
+		// (fails CLOSED) rather than being silently dropped from the set - which
+		// would let a junk letter alongside the right notes grade correct.
+		const playedChroma = new Set([...selected].map((letter) => chromaOf(letter) ?? -1));
 		const playedBassChroma = lowestPlayedBassChroma();
 		const result = matchInversion(playedChroma, playedBassChroma, target, bassChroma);
 		selected = new Set();

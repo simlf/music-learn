@@ -46,6 +46,32 @@ export function toGlyphAccidentals(note: string): string {
 	return note.replace(/#/g, '♯').replace(/b/g, '♭');
 }
 
+/**
+ * Pitch class (0-11) for a display-glyph or ASCII letter, or `undefined` when
+ * the input does not resolve to one.
+ *
+ * THE shared chroma normalizer for every grading, matching, and layout site in
+ * the app. `Note.chroma` returns `NaN` (not `undefined`) for input it cannot
+ * resolve - `Note.chroma('Q')` is `NaN`, and `NaN === undefined` is false - so a
+ * bare `Note.chroma(...) === undefined` guard never fires and the `NaN` leaks
+ * into downstream set arithmetic and comparisons. Callers that need a nullable
+ * chroma MUST route through this instead of re-deriving the check: the same
+ * normalization was previously written once (scaleKeyboardDrill) and MISSING at
+ * five other call sites (matchChord, gradeIntervalTap, keyboardLayout's
+ * candidate fallback, InversionDrill's played/bass chroma).
+ *
+ * Every one of those sites happened to fail closed (a `NaN` never equals a real
+ * chroma, so it landed in `extra`/`missing` or graded false) - but that was
+ * luck, not design, and one `?? 0` away from grading a wrong answer correct.
+ * Exported so `semitonesFromC` in `$lib/lessons/thirdsLesson.ts` - which
+ * documents a `-1` sentinel but actually returns `NaN`, making a hint read
+ * "That's NaN keys up." - can adopt it too.
+ */
+export function chromaOf(letter: string): number | undefined {
+	const chroma = Note.chroma(toAsciiAccidentals(letter));
+	return Number.isNaN(chroma) ? undefined : chroma;
+}
+
 /** The recognizable "unparseable input" value: total functions return this instead of throwing. */
 const EMPTY_INTERVAL: IntervalInfo = {
 	short: '',
@@ -101,7 +127,19 @@ const ENGLISH_QUALITIES: Record<string, string> = {
 	dd: 'doubly diminished'
 };
 
+/**
+ * English degree names for the `long` label. Degrees 1 and 8 use their proper
+ * interval nouns rather than ordinals, so an ALTERED unison or octave reads
+ * "augmented unison" / "diminished octave" - never "augmented 1th", which is
+ * what the missing degree-1 entry produced via the `${degree}th` fallback.
+ * A PERFECT unison never reaches this table: `infoFromTonal` labels it "root".
+ *
+ * The French table needs no equivalent entry: FRENCH_DEGREE_NOUNS already has
+ * degree 1 ("fondamentale", feminine, so "fondamentale augmentée" agrees
+ * correctly with the feminine quality adjectives).
+ */
 const ENGLISH_ORDINALS: Record<number, string> = {
+	1: 'unison',
 	2: '2nd',
 	3: '3rd',
 	4: '4th',
@@ -208,7 +246,10 @@ function enharmonicScore(info: IntervalInfo): number {
  * yields the simpler quality from this root (prefer P/M/m over A/d, then the
  * smaller alteration, then the sharp spelling on a full tie), so tapping the
  * F♯/G♭ key over a C root reads "A4, quarte augmentée" rather than an
- * arbitrarily chosen d5. Feeds PianoKeyboard's inspect mode.
+ * arbitrarily chosen d5. Feeds PianoKeyboard's inspect mode, where the tapped
+ * key's own spelling is the thing being named, so a white key is read
+ * literally (see `simplestIntervalFromRoot` for the drill-readout case, which
+ * names a tapped PITCH rather than a given spelling).
  */
 export function intervalFromRoot(
 	root: string,
@@ -220,6 +261,68 @@ export function intervalFromRoot(
 	const sharpInfo = intervalBetween(root, key.sharpLetter);
 	const flatInfo = intervalBetween(root, key.flatLetter);
 	return enharmonicScore(flatInfo) < enharmonicScore(sharpInfo) ? flatInfo : sharpInfo;
+}
+
+/** Letters and accidentals enumerated to enharmonically respell a pitch class. */
+const SPELLING_LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'] as const;
+const SPELLING_ACCIDENTALS = ['', '♯', '♭', '♯♯', '♭♭'] as const;
+
+/**
+ * Every spelling of a letter's pitch class using at most two accidentals, with
+ * `letter` itself first (so a caller scoring these keeps the given spelling on
+ * a tie). Double accidentals are NOT decorative here: over a D♭ root the pitch
+ * of the plain D key is only readable as a minor 2nd when spelled E♭♭.
+ */
+function enharmonicSpellings(letter: string): string[] {
+	const chroma = chromaOf(letter);
+	if (chroma === undefined) return [letter];
+
+	const spellings = [letter];
+	for (const accidental of SPELLING_ACCIDENTALS) {
+		for (const base of SPELLING_LETTERS) {
+			const candidate = `${base}${accidental}`;
+			if (candidate === letter) continue;
+			if (chromaOf(candidate) === chroma) spellings.push(candidate);
+		}
+	}
+	return spellings;
+}
+
+/**
+ * Interval from a root to a tapped keyboard KEY (a pitch, not a spelling):
+ * scores every enharmonic respelling of that pitch and returns the simplest
+ * reading from this root, preferring plain qualities (P/M/m) over altered ones
+ * (A/d) over exotic ones (AA/dd), then the smaller alteration, then the
+ * spelling the caller passed in.
+ *
+ * This is what a drill readout needs. The keyboard reports each key by ONE
+ * spelling (sharps for black keys, naturals for white keys), and naming a
+ * tapped pitch by that arbitrary spelling invents intervals outside the
+ * drill's own vocabulary: over a D♭ root, the plain D key read literally is an
+ * "augmented unison" (A1), and the B key an "augmented 6th" (A6), neither of
+ * which is in DRILL_INTERVALS - the user is told an augmented unison exists.
+ * Read as pitches they are a minor 2nd (E♭♭) and a minor 7th (C♭).
+ *
+ * Black keys resolve exactly as `intervalFromRoot`'s sharp/flat pair does (the
+ * given sharp spelling wins a full tie, so the F♯/G♭ key over C still reads
+ * A4, never d5): no double-accidental respelling can outrank a plain or
+ * singly-altered reading. Total: an unparseable root or key returns the empty
+ * IntervalInfo.
+ */
+export function simplestIntervalFromRoot(root: string, keyLetter: string): IntervalInfo {
+	let best = intervalBetween(root, keyLetter);
+	let bestScore = enharmonicScore(best);
+
+	for (const spelling of enharmonicSpellings(keyLetter)) {
+		const candidate = intervalBetween(root, spelling);
+		const score = enharmonicScore(candidate);
+		if (score < bestScore) {
+			best = candidate;
+			bestScore = score;
+		}
+	}
+
+	return best;
 }
 
 /** Converts the app's quality-first shorthand ("m3", "P8", "R") to tonal's native name ("3m", "8P", "1P"). */

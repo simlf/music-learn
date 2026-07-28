@@ -1,5 +1,4 @@
-import { Note } from 'tonal';
-import { toAsciiAccidentals } from '$lib/theory/interval';
+import { chromaOf } from '$lib/theory/interval';
 import { whiteLettersForOctaves, blackKeysForOctaves } from '$lib/components/keyboardLayout';
 import type { IntervalRole, SpelledNote } from '$lib/theory/types';
 
@@ -20,6 +19,12 @@ import type { IntervalRole, SpelledNote } from '$lib/theory/types';
 
 export type ScaleDirection = 'ascending' | 'descending';
 
+/** A physical key's identity on the rendered board: which array, which index. */
+export interface ScaleKeyId {
+	kind: 'white' | 'black';
+	keyIndex: number;
+}
+
 /** One expected tap in the 15-target sequence. */
 export interface ScaleTarget {
 	/** Pitch class (0-11) this target accepts, octave-agnostic. */
@@ -28,6 +33,19 @@ export interface ScaleTarget {
 	degree: number;
 	/** Which leg of the drill this target belongs to. */
 	direction: ScaleDirection;
+	/**
+	 * The one physical key this target requires, when chroma alone cannot
+	 * express it. Set ONLY for the ascending degree 8 (the octave), which shares
+	 * degree 1's pitch class: without it, re-tapping the starting tonic - a key
+	 * the user already played as degree 1 - completed the ascending leg, so the
+	 * octave never had to be played at all.
+	 *
+	 * Every other degree stays deliberately chroma-only and octave-agnostic
+	 * (SCALE-04): a correct tap on any same-pitch-class duplicate key elsewhere
+	 * on the board is accepted, which is what ScaleKeyboardDrill's fill map
+	 * (CR-01) is built around.
+	 */
+	key?: ScaleKeyId;
 }
 
 export interface ScaleKeyboardDrillState {
@@ -70,19 +88,6 @@ export interface ScaleKeyPlacement {
 export const SCALE_DRILL_OCTAVES = 2;
 
 /**
- * Pitch class (0-11) for a display-glyph letter, or undefined if unparseable.
- * `Note.chroma` returns `NaN` (not `undefined`) for input it can't resolve to
- * a pitch class, so this normalizes that into `undefined` to honor this
- * function's own return type - without this, every `=== undefined` guard
- * downstream (grading, degree-numbering fail-safes) would silently never
- * fire for genuinely unparseable input.
- */
-function chromaFor(letter: string): number | undefined {
-	const chroma = Note.chroma(toAsciiAccidentals(letter));
-	return Number.isNaN(chroma) ? undefined : chroma;
-}
-
-/**
  * Builds the 15-target ascending-then-descending sequence from 7 spelled
  * scale degrees: degrees 1..8 ascending (degree 8 is the octave, sharing
  * degree 1's chroma), then degrees 7..1 descending. Total: input that isn't
@@ -90,13 +95,20 @@ function chromaFor(letter: string): number | undefined {
  * pitch class, yields an inert empty state rather than throwing or silently
  * defaulting the unparseable degree to chroma 0 (C) - a bad chroma would
  * otherwise grade an unrelated tap as correct for that degree.
+ *
+ * The ascending degree-8 target additionally carries the octave key's identity
+ * from `placeAscendingScaleKeys` (see `ScaleTarget.key`), so the octave has to
+ * be played rather than satisfied by re-tapping the starting tonic. When the
+ * board geometry cannot supply that key (never true for a real major scale -
+ * all 12 place 8 distinct keys), the target degrades to chroma-only rather than
+ * becoming unsatisfiable and stalling the drill.
  */
 export function createScaleKeyboardDrillState(notes: SpelledNote[]): ScaleKeyboardDrillState {
 	if (notes.length !== 7) {
 		return { targets: [], position: 0, done: false };
 	}
 
-	const chromas = notes.map((note) => chromaFor(note.letter));
+	const chromas = notes.map((note) => chromaOf(note.letter));
 	if (chromas.some((chroma) => chroma === undefined)) {
 		return { targets: [], position: 0, done: false };
 	}
@@ -107,7 +119,17 @@ export function createScaleKeyboardDrillState(notes: SpelledNote[]): ScaleKeyboa
 		degree: index + 1,
 		direction: 'ascending' as const
 	}));
-	ascending.push({ chroma: resolvedChromas[0], degree: 8, direction: 'ascending' });
+
+	const placements = placeAscendingScaleKeys(notes);
+	const octavePlacement = placements.find((placement) => placement.degree === 8);
+	ascending.push({
+		chroma: resolvedChromas[0],
+		degree: 8,
+		direction: 'ascending',
+		...(octavePlacement
+			? { key: { kind: octavePlacement.kind, keyIndex: octavePlacement.keyIndex } }
+			: {})
+	});
 
 	const descending: ScaleTarget[] = [];
 	for (let degree = 7; degree >= 1; degree -= 1) {
@@ -123,13 +145,25 @@ export function expectedTarget(state: ScaleKeyboardDrillState): ScaleTarget | nu
 }
 
 /**
- * Grades one tap by chroma equality only, octave-agnostic like
- * gradeIntervalTap: never letter-string comparison. Unparseable input grades
- * false rather than throwing. A match advances position (flipping done once
- * every target has landed); a mismatch, an unparseable tap, or a tap after
- * done leaves the state reference unchanged.
+ * Grades one tap by chroma equality, octave-agnostic like gradeIntervalTap:
+ * never letter-string comparison. Unparseable input grades false rather than
+ * throwing. A match advances position (flipping done once every target has
+ * landed); a mismatch, an unparseable tap, or a tap after done leaves the state
+ * reference unchanged.
+ *
+ * The ONE target chroma cannot express is the ascending octave (degree 8), which
+ * shares the tonic's pitch class - so tapping the same low tonic key again
+ * completed the ascending leg without the octave ever being played. A target
+ * carrying a `key` (only degree 8 does) additionally requires the tap to land on
+ * that physical key, which is why callers pass `tappedKey`. An unidentified tap
+ * against such a target grades false: a caller that cannot say which key was
+ * touched cannot prove the octave was played.
  */
-export function gradeScaleTap(state: ScaleKeyboardDrillState, tappedLetter: string): GradeResult {
+export function gradeScaleTap(
+	state: ScaleKeyboardDrillState,
+	tappedLetter: string,
+	tappedKey?: ScaleKeyId
+): GradeResult {
 	if (state.done) {
 		return { correct: false, state };
 	}
@@ -139,9 +173,18 @@ export function gradeScaleTap(state: ScaleKeyboardDrillState, tappedLetter: stri
 		return { correct: false, state };
 	}
 
-	const tappedChroma = chromaFor(tappedLetter);
+	const tappedChroma = chromaOf(tappedLetter);
 	if (tappedChroma === undefined || tappedChroma !== target.chroma) {
 		return { correct: false, state };
+	}
+
+	if (target.key !== undefined) {
+		if (tappedKey === undefined) {
+			return { correct: false, state };
+		}
+		if (tappedKey.kind !== target.key.kind || tappedKey.keyIndex !== target.key.keyIndex) {
+			return { correct: false, state };
+		}
 	}
 
 	const position = state.position + 1;
@@ -161,10 +204,16 @@ interface OrderedKey {
 /**
  * Builds a single left-to-right ordered key list for the fixed 2-octave
  * board: white key i gets slot i*2, black key afterWhiteIndex a gets slot
- * a*2+1, interleaving white and black in true ascending pitch order. This
- * unified ordinal (not assignNotesToKeys' separate white/black cursor) is
- * what lets a single cursor walk find the returning octave as a distinct
- * key rather than collapsing it onto the tonic.
+ * a*2+1, interleaving white and black in true ascending pitch order. That
+ * unified ordinal is what lets a single cursor walk find the returning octave
+ * as a distinct key rather than collapsing it onto the tonic.
+ *
+ * `assignNotesToKeys` in $lib/components/keyboardLayout now uses the identical
+ * doubled-slot scheme (it previously mixed raw white indexes with
+ * `afterWhiteIndex + 1`, which collided, and that is exactly the collapse this
+ * module was written to sidestep). The two are kept separate anyway: that one
+ * assigns arbitrary chord notes for DISPLAY, this one owns the fixed 8-degree
+ * ascending geometry the drill grades against.
  */
 function buildOrderedKeys(): OrderedKey[] {
 	const whiteLetters = whiteLettersForOctaves(SCALE_DRILL_OCTAVES);
@@ -174,7 +223,7 @@ function buildOrderedKeys(): OrderedKey[] {
 		slot: index * 2,
 		kind: 'white' as const,
 		keyIndex: index,
-		chroma: chromaFor(letter) ?? 0,
+		chroma: chromaOf(letter) ?? 0,
 		octave: 4 + Math.floor(index / 7)
 	}));
 
@@ -182,7 +231,7 @@ function buildOrderedKeys(): OrderedKey[] {
 		slot: afterWhiteIndex * 2 + 1,
 		kind: 'black' as const,
 		keyIndex: index,
-		chroma: chromaFor(sharpLetter) ?? 0,
+		chroma: chromaOf(sharpLetter) ?? 0,
 		octave: 4 + Math.floor(afterWhiteIndex / 7)
 	}));
 
@@ -195,9 +244,9 @@ function buildOrderedKeys(): OrderedKey[] {
  * ascending key ordering, picking the first key at or after the cursor
  * whose chroma matches each degree, then moves strictly past it. This
  * guarantees the octave (degree 8) lands on a distinct, later key from the
- * tonic even when the 7th degree is a black key right before it (the
- * assignNotesToKeys collision this module deliberately avoids by not
- * importing it). Total: input that isn't exactly 7 notes, or contains a
+ * tonic even when the 7th degree is a black key right before it, which is also
+ * what makes it the source of truth for the degree-8 key `gradeScaleTap`
+ * requires. Total: input that isn't exactly 7 notes, or contains a
  * note whose letter doesn't resolve to a pitch class, returns []. Each
  * placement's `degree` is derived from its position in the fixed 8-note
  * ascending sequence (never from `placements.length`), so a skipped note
@@ -209,7 +258,7 @@ export function placeAscendingScaleKeys(notes: SpelledNote[]): ScaleKeyPlacement
 		return [];
 	}
 
-	const chromas = notes.map((note) => chromaFor(note.letter));
+	const chromas = notes.map((note) => chromaOf(note.letter));
 	if (chromas.some((chroma) => chroma === undefined)) {
 		return [];
 	}
@@ -224,7 +273,7 @@ export function placeAscendingScaleKeys(notes: SpelledNote[]): ScaleKeyPlacement
 	const placements: ScaleKeyPlacement[] = [];
 
 	ascendingNotes.forEach((note, index) => {
-		const chroma = chromaFor(note.letter);
+		const chroma = chromaOf(note.letter);
 		if (chroma === undefined) return;
 
 		let foundIndex = -1;

@@ -19,7 +19,23 @@ export function spellChord(symbol: string): ChordResult {
 	const normalized = normalizeSymbol(symbol);
 	const chord = Chord.get(normalized);
 
-	if (chord.empty) {
+	/*
+	 * A chord is only recognized when tonal gave us BOTH a root and notes.
+	 * `chord.empty` alone is not enough: a rootless quality-only token
+	 * ("m7", "ø", "maj7", "dim7", "sus4", "Δ", "°7", "69", "add9", "-7",
+	 * "h7", "aug", ...) is not empty - tonal resolves the QUALITY and returns
+	 * `{ empty: false, tonic: '', notes: [] }`. Without this guard such a
+	 * token became a "recognized" chord with zero notes, which rendered as a
+	 * chord result with no notes and no formula (and skipped the did-you-mean
+	 * fallback entirely), got stamped as a song chord chip, and - worst -
+	 * handed the drill graders an EMPTY target chroma set, which
+	 * `matchChord` scored as correct for an empty played set.
+	 *
+	 * Routing these through the same unrecognized path as garbage input puts
+	 * them back on the did-you-mean hint flow, where "m7" reads as the typo
+	 * it is (a missing root), not as a chord.
+	 */
+	if (chord.empty || chord.tonic === null || chord.tonic === '' || chord.notes.length === 0) {
 		return {
 			input: symbol,
 			symbol: '',

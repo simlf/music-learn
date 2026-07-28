@@ -43,14 +43,17 @@ describe('songProvenance', () => {
 		});
 
 		/**
-		 * LO-01 regression: a rootless quality-only symbol (e.g. a hand-entered
-		 * "m7" with no letter) is a REAL reachable case, not just a
-		 * hypothetical one - tonal's Chord.get resolves it to `recognized: true,
-		 * root: ''`, and Note.get('').chroma is NaN (not undefined). Without
-		 * the guard, every such rootless symbol would collapse into one
-		 * colliding "NaN:<quality>" bucket instead of matching only itself.
+		 * LO-01 regression, now fixed at the source: a rootless quality-only
+		 * symbol (e.g. a hand-entered "m7" with no letter) is a REAL reachable
+		 * case. tonal's Chord.get resolves it to `tonic: '', notes: []`, and
+		 * spellChord used to report that as `recognized: true` - so provenance
+		 * needed its own NaN guard to stop every rootless symbol collapsing
+		 * into one colliding "NaN:<quality>" bucket. spellChord now treats an
+		 * empty root / empty note set as UNRECOGNIZED, so these symbols take
+		 * the raw-input branch and the local NaN patch is gone. The observable
+		 * contract below is unchanged either way.
 		 */
-		it('degrades a recognized-but-rootless symbol (e.g. "m7" alone) to raw-input self-identity, never colliding with an unrelated rootless quality', () => {
+		it('degrades a rootless symbol (e.g. "m7" alone) to raw-input self-identity, never colliding with an unrelated rootless quality', () => {
 			expect(() => normalizeSymbolForMatch('m7')).not.toThrow();
 			expect(normalizeSymbolForMatch('m7')).toBe('m7');
 			// A different rootless quality must not collide with 'm7's key.
