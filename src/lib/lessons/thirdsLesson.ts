@@ -12,9 +12,8 @@
  * exercised by a second lesson.
  */
 
-import { Note } from 'tonal';
 import type { IntervalRole } from '$lib/theory/types';
-import { toAsciiAccidentals } from '$lib/theory/interval';
+import { chromaOf } from '$lib/theory/interval';
 
 /**
  * A bilingual copy pair (I18N-02, Phase 20 Plan 06). Every human-language
@@ -168,7 +167,11 @@ export const THIRDS_LESSON_DRILL_SEEDS: string[] = ['C', 'Cm'];
  * callers can treat it as no meaningful distance.
  */
 export function semitonesFromC(tappedLetter: string): number {
-	const chroma = Note.chroma(toAsciiAccidentals(tappedLetter));
+	// chromaOf, not Note.chroma: tonal returns NaN (not undefined) for an
+	// unparseable letter, so the old `=== undefined` guard never fired and this
+	// returned NaN, contradicting the -1 contract above. The visible symptom was
+	// the wrong-tap hint rendering "That one was NaN half steps".
+	const chroma = chromaOf(tappedLetter);
 	if (chroma === undefined) return -1;
 	return (chroma + 12) % 12;
 }
@@ -182,7 +185,11 @@ export function semitonesFromC(tappedLetter: string): number {
  */
 export function gradeLessonTap(step: LessonStep, tappedLetter: string): boolean {
 	if (step.targetChroma === null) return false;
-	const tappedChroma = Note.chroma(toAsciiAccidentals(tappedLetter));
+	// Same NaN trap as semitonesFromC. This one happened to fail closed, since
+	// `NaN === number` is false, but it relied on that accident rather than on
+	// the guard it appears to use. Routed through the shared normalizer so both
+	// call sites are correct for the same reason.
+	const tappedChroma = chromaOf(tappedLetter);
 	if (tappedChroma === undefined) return false;
 	return tappedChroma === step.targetChroma;
 }

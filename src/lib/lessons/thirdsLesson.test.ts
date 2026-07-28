@@ -180,3 +180,35 @@ describe('semitonesFromC', () => {
 		expect(semitonesFromC('B')).toBe(11);
 	});
 });
+
+describe('semitonesFromC honors its -1 contract for unparseable input', () => {
+	// Regression: tonal's Note.chroma returns NaN, not undefined, for an
+	// unparseable letter. The old `=== undefined` guard never fired, so this
+	// returned NaN and the wrong-tap hint rendered "That one was NaN half steps".
+	// Note: a bare '♭' is NOT in this list. It normalizes to 'b', which tonal
+	// legitimately parses as B natural (chroma 11), so it is parseable input
+	// rather than a guard case.
+	it.each(['Q', '', 'H♯', 'xyz', '8'])('returns -1 for %o', (bad) => {
+		const result = semitonesFromC(bad);
+		expect(Number.isNaN(result), `${bad} must not yield NaN`).toBe(false);
+		expect(result).toBe(-1);
+	});
+
+	it('still measures real letters, including exotic spellings', () => {
+		expect(semitonesFromC('C')).toBe(0);
+		expect(semitonesFromC('E♭')).toBe(3);
+		expect(semitonesFromC('E')).toBe(4);
+		expect(semitonesFromC('B♯')).toBe(0);
+		expect(semitonesFromC('C♭')).toBe(11);
+		expect(semitonesFromC('B♭♭')).toBe(9);
+	});
+
+	it('gradeLessonTap rejects unparseable input rather than relying on NaN comparison', () => {
+		const majorThirdStep = THIRDS_LESSON[1];
+		expect(majorThirdStep.targetChroma).toBe(4);
+		expect(gradeLessonTap(majorThirdStep, 'Q')).toBe(false);
+		expect(gradeLessonTap(majorThirdStep, 'E')).toBe(true);
+		// Enharmonic-blind by design: F♭ is chroma 4, same as E.
+		expect(gradeLessonTap(majorThirdStep, 'F♭')).toBe(true);
+	});
+});

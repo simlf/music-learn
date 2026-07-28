@@ -32,8 +32,12 @@
 	 *
 	 * Renders its own keyboard from the shared, pure keyboardLayout geometry
 	 * (whiteLettersForOctaves/blackKeysForOctaves) rather than delegating to
-	 * PianoKeyboard, since PianoKeyboard's assignNotesToKeys can collapse the
-	 * returning octave onto the tonic key when the 7th degree is a black key
+	 * PianoKeyboard. NOTE: the original reason for this was that
+	 * assignNotesToKeys collapsed the returning octave onto the tonic key when
+	 * the 7th degree was a black key. That bug is FIXED (white and black key
+	 * positions now occupy disjoint, correctly ordered slots), so the collapse
+	 * no longer happens and this separation is now only about owning the
+	 * drill's own target/progress rendering
 	 * (see 10-02-PLAN.md's recorded design decision) and its wrongLetters prop
 	 * paints a permanent-per-reveal cross mark, not a momentary flash.
 	 *
