@@ -97,6 +97,14 @@ function buildScaleDegreeFacts(): ScaleDegreeFact[] {
  * The full 192-entry catalog, built once at module load (pure and cheap).
  * Deterministic order: all chord-formula facts, then all interval-size
  * facts, then all scale-degree facts.
+ *
+ * This is the catalog's IDENTITY order, not a teaching order. It is what
+ * RecallMap renders (one grouped block per fact kind) and what
+ * shellVoicing.seventhChordSymbols enumerates, and a long tail of tests pins
+ * it. The order new facts are TAUGHT in lives in srs/curriculum.ts instead:
+ * conflating display order with introduction order is exactly what let the
+ * "all 96 chord spellings before the first interval atom" defect hide in
+ * plain sight.
  */
 const CATALOG: Fact[] = [
 	...buildChordFormulaFacts(),
@@ -115,6 +123,22 @@ export function allFacts(): Fact[] {
 /** Total lookup by factId: undefined (never throws) if no fact has that id. */
 export function factById(factId: string): Fact | undefined {
 	return CATALOG_BY_ID.get(factId);
+}
+
+/**
+ * The catalog's own chord-formula factId shape, exported so no consumer has
+ * to re-spell the `chord-formula:` prefix by hand (srs/curriculum.ts's tier
+ * ordering and practice/levelState.ts's tier-mastery check both need to go
+ * from a tiers.ts chord SYMBOL to its factId). Mirrors
+ * buildChordFormulaFacts's own construction exactly.
+ */
+export function chordFormulaFactId(symbol: string): string {
+	return `chord-formula:${symbol}`;
+}
+
+/** The catalog's own interval-size factId shape, for the same reason as chordFormulaFactId. */
+export function intervalSizeFactId(short: string): string {
+	return `interval-size:${short}`;
 }
 
 /**

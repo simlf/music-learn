@@ -1,43 +1,60 @@
 /**
- * Hybrid level gating (R3-learning.md section 2). The current tier lives in
- * localStorage ("music-learn:level", the established music-learn:* pattern);
- * unlock ELIGIBILITY is computed from server-derived fetchStats aggregates
- * plus the local rolling practice log. The client never re-derives lifetime
- * accuracy from raw answer events (D-02): per-item attempts/accuracy come in
- * as StatItem aggregates the server already computed.
+ * Tier progression: which rung of the tiers.ts ladder the deck is currently
+ * allowed to introduce new chord facts from.
  *
- * The rolling 30-answer window and distinct-practice-days signals are NOT
- * expressible from /stats (lifetime aggregates only) and the production
- * server is frozen tonight, so those two inputs come from the client-side
- * practice log until a GET /unlock endpoint ships (R3 recommends one).
+ * The current tier lives in localStorage ("music-learn:level", the
+ * established music-learn:* pattern). `srs/deck.ts`'s introduceNewCards reads
+ * it through `advanceTierOnMastery` on every introduction pass, so the tier
+ * picker in Practice Settings is a live control over what the deck teaches
+ * next rather than a stored preference nothing consumes.
+ *
+ * UNLOCK IS DECK-DERIVED AND OFFLINE-FIRST. An earlier `checkUnlock` computed
+ * eligibility from server-side `/stats` aggregates plus a rolling local answer
+ * log. It was never wired to anything, and it could not have worked as
+ * written: with `stats: null` (no bearer token, or the tailnet host
+ * unreachable, which is the normal case on a phone) every per-quality check
+ * failed and `eligible` was permanently false. A gate that cannot open
+ * offline is not a gate, so it is gone, along with UNLOCK_CRITERIA and the
+ * "Not yet" snooze that only existed to silence a suggestion prompt this
+ * project deliberately does not show.
+ *
+ * What replaces it is the mastery criterion the app already has and already
+ * visualises in the recall map: `CardRecord.masteryDayCount >= 2`, correct
+ * recall on two distinct local calendar days (srs/deck.ts's IMP-01
+ * successive-relearning gate). It needs no network, it is monotonic, and it
+ * is the same number the user can already see. A tier whose every chord has
+ * cleared it opens the next tier silently, with no prompt and no nag.
  */
 
-import type { StatItem } from '$lib/api/progress';
-import type { LoggedAnswer } from './practiceLog';
-import { availableTierIds, itemsForTier, splitSymbol, tierById, type TierId } from './tiers';
+import { chordFormulaFactId } from '$lib/srs/facts';
+// Type-only import: erased at compile time. deck.ts imports this module's
+// functions at runtime, so a runtime import of './deck' here would create a
+// circular dependency. This keeps the seam one-directional at runtime while
+// still sharing deck.ts's CardRecord shape for type-checking (the same
+// convention srs/rotation.ts already uses).
+import type { CardRecord } from '$lib/srs/deck';
+import { availableTierIds, itemsForTier, tierById, type TierId } from './tiers';
 
 export const LEVEL_KEY = 'music-learn:level';
 
-/** The exact R3 section 2 unlock numbers, in one tunable object. */
-export const UNLOCK_CRITERIA = {
-	rollingWindow: 30,
-	rollingAccuracyMin: 0.85,
-	minLifetimeAttempts: 40,
-	perQualityMinAttempts: 8,
-	perQualityAccuracyMin: 0.75,
-	minDistinctDays: 2,
-	snoozePracticeDays: 3
-} as const;
-
-export type UnlockCriteria = typeof UNLOCK_CRITERIA;
+/**
+ * Distinct local days of correct recall that count as mastery of one fact.
+ * Deliberately not a second definition: this is the exact threshold
+ * `srs/deck.ts:deriveCellState` uses to report a card as 'mastered', named
+ * here so the tier gate and the recall map can never drift apart.
+ */
+export const MASTERY_DAY_COUNT = 2;
 
 export interface LevelState {
-	/** Highest tier the user drills by default. */
+	/** Highest tier the deck may introduce new chord facts from. */
 	currentTier: TierId;
-	/** Ascending list; manual override rewrites it as 1..currentTier. */
+	/**
+	 * Ascending list of every tier ever reached, whether earned or set by
+	 * hand. Only ever grows: it is the record of what the user has already
+	 * been offered, which is what lets a deliberate move back DOWN the ladder
+	 * stick instead of being undone by the next mastery check.
+	 */
 	unlockedTiers: TierId[];
-	/** Set when "Not yet" was tapped: silence the suggestion for 3 practice days. */
-	snooze?: { tier: TierId; snoozedOn: string };
 }
 
 const DEFAULT_STATE: LevelState = { currentTier: 1, unlockedTiers: [1] };
@@ -81,127 +98,103 @@ function writeState(state: LevelState): void {
 }
 
 /**
- * Manual tier override (always available in settings): sets the current
- * tier and unlocks every tier up to it. Re-locking to a lower tier shrinks
- * the unlocked set. Locked tiers (5, 6) are ignored.
+ * Manual tier override (always available in Practice Settings): sets the
+ * current tier and records every tier up to it as reached. Locked tiers
+ * (5, 6) are ignored.
+ *
+ * `unlockedTiers` is ADDITIVE and never shrinks, unlike the earlier version
+ * that rewrote it as exactly 1..tier. Moving the current tier back DOWN is a
+ * legitimate "stop feeding me sevenths for a while" request, and the union
+ * semantics are what make it stick: `advanceTierOnMastery` only ever grants a
+ * tier that has never been reached, so it cannot immediately undo the move.
  */
 export function setCurrentTier(tier: TierId): LevelState {
 	const current = getLevelState();
 	if (!tierById(tier)?.available) return current;
-	const unlocked = availableTierIds().filter((id) => id <= tier);
-	const next: LevelState = { ...current, currentTier: tier, unlockedTiers: unlocked };
-	writeState(next);
-	return next;
-}
-
-/** Records a "Not yet" tap: the suggestion for `tier` sleeps for 3 practice days. */
-export function snoozeSuggestion(tier: TierId, today: string): LevelState {
-	const next: LevelState = { ...getLevelState(), snooze: { tier, snoozedOn: today } };
-	writeState(next);
-	return next;
-}
-
-/**
- * Pure snooze check: true while fewer than snoozePracticeDays practice days
- * have passed since the snooze was recorded for THIS tier. Callers supply
- * practiceDaysSince(state.snooze.snoozedOn) from the practice log.
- */
-export function isSnoozed(
-	state: LevelState,
-	tier: TierId,
-	practiceDaysSinceSnooze: number,
-	criteria: UnlockCriteria = UNLOCK_CRITERIA
-): boolean {
-	if (!state.snooze || state.snooze.tier !== tier) return false;
-	return practiceDaysSinceSnooze < criteria.snoozePracticeDays;
-}
-
-export interface QualityCheck {
-	quality: string;
-	attempts: number;
-	accuracy: number;
-	passing: boolean;
-}
-
-export interface UnlockCheck {
-	/** The tier whose mastery was evaluated (the current tier). */
-	tier: TierId;
-	/** The tier an eligible unlock would open, or null when the next tier is locked. */
-	nextTier: TierId | null;
-	eligible: boolean;
-	rollingAccuracy: number;
-	rollingCount: number;
-	lifetimeAttempts: number;
-	distinctDays: number;
-	perQuality: QualityCheck[];
-}
-
-/**
- * Evaluates every R3 unlock criterion for the given tier. Pure function:
- * stats come from fetchStats (server-derived aggregates, D-02), the log from
- * the local practice record. `stats: null` (offline/tokenless) is never
- * eligible, so gating degrades gracefully behind auth (R1 warning).
- */
-export function checkUnlock(opts: {
-	tier: TierId;
-	stats: StatItem[] | null;
-	log: LoggedAnswer[];
-	criteria?: UnlockCriteria;
-}): UnlockCheck {
-	const criteria = opts.criteria ?? UNLOCK_CRITERIA;
-	const tierDef = tierById(opts.tier);
-	const tierItems = new Set(itemsForTier(opts.tier));
-
-	const nextId = (opts.tier + 1) as TierId;
-	const nextTier = opts.tier < 6 && tierById(nextId)?.available ? nextId : null;
-
-	const tierStats = (opts.stats ?? []).filter(
-		(stat) => stat.kind === 'chord' && tierItems.has(stat.item)
-	);
-	const lifetimeAttempts = tierStats.reduce((sum, stat) => sum + stat.attempts, 0);
-
-	const perQuality: QualityCheck[] = tierDef.qualities.map((quality) => {
-		const qualityStats = tierStats.filter((stat) => splitSymbol(stat.item)?.quality === quality);
-		const attempts = qualityStats.reduce((sum, stat) => sum + stat.attempts, 0);
-		const accuracy =
-			attempts === 0
-				? 0
-				: qualityStats.reduce((sum, stat) => sum + stat.accuracy * stat.attempts, 0) / attempts;
-		return {
-			quality,
-			attempts,
-			accuracy,
-			passing: attempts >= criteria.perQualityMinAttempts && accuracy >= criteria.perQualityAccuracyMin
-		};
-	});
-
-	// Rolling window: tier-scoped, cold answers only (assisted excluded, R3).
-	const coldTierAnswers = opts.log.filter(
-		(entry) => !entry.assisted && tierItems.has(entry.item)
-	);
-	const window = coldTierAnswers.slice(-criteria.rollingWindow);
-	const rollingCount = window.length;
-	const rollingAccuracy =
-		rollingCount === 0 ? 0 : window.filter((entry) => entry.correct).length / rollingCount;
-
-	const distinctDays = new Set(coldTierAnswers.map((entry) => entry.date)).size;
-
-	const eligible =
-		nextTier !== null &&
-		rollingCount >= criteria.rollingWindow &&
-		rollingAccuracy >= criteria.rollingAccuracyMin &&
-		lifetimeAttempts >= criteria.minLifetimeAttempts &&
-		perQuality.every((entry) => entry.passing) &&
-		distinctDays >= criteria.minDistinctDays;
-
-	return {
-		tier: opts.tier,
-		nextTier,
-		eligible,
-		rollingAccuracy,
-		rollingCount,
-		lifetimeAttempts,
-		distinctDays,
-		perQuality
+	const reached = new Set<TierId>(current.unlockedTiers);
+	for (const id of availableTierIds()) {
+		if (id <= tier) reached.add(id);
+	}
+	const next: LevelState = {
+		...current,
+		currentTier: tier,
+		unlockedTiers: [...reached].sort((a, b) => a - b)
 	};
+	writeState(next);
+	return next;
+}
+
+/**
+ * True once EVERY chord symbol in `tier` has a 'formula' card that cleared
+ * the MASTERY_DAY_COUNT gate. Pure: the caller supplies the cards it already
+ * read (introduceNewCards always has them in hand), so this never touches
+ * Dexie or the network.
+ *
+ * 'formula' is the mode checked because it is the one mode every fact kind
+ * carries and the one the /practice name-it family and /recall both grade.
+ * `masteryDayCount` rather than `deriveCellState(...) === 'mastered'` because
+ * the cell state is deliberately transient (a mastered card that comes due
+ * again reports 'due'), which would make the gate flicker from day to day;
+ * the underlying day count only ever goes up.
+ *
+ * A locked tier has no items and is never mastered, which is what keeps
+ * tiers 5 and 6 shut.
+ */
+export function tierMastered(
+	tier: TierId,
+	cards: CardRecord[],
+	threshold: number = MASTERY_DAY_COUNT
+): boolean {
+	const symbols = itemsForTier(tier);
+	if (symbols.length === 0) return false;
+	const mastered = new Set(
+		cards
+			.filter((card) => card.mode === 'formula' && card.masteryDayCount >= threshold)
+			.map((card) => card.factId)
+	);
+	return symbols.every((symbol) => mastered.has(chordFormulaFactId(symbol)));
+}
+
+/**
+ * Pure tier progression: the tier a user at `state.currentTier` has earned,
+ * given `cards`. Climbs while the current tier is mastered and the next
+ * available tier has never been reached before. Never descends.
+ *
+ * The "never reached before" condition is what respects a deliberate manual
+ * move back down the ladder: re-locking to tier 1 after having been at tier 2
+ * leaves `unlockedTiers` holding 2, so mastery of tier 1 does not re-grant it.
+ * Climbing further is then a manual step, which is the honest reading of "the
+ * user told me to stay here".
+ */
+export function earnedTier(state: LevelState, cards: CardRecord[]): TierId {
+	const ladder = availableTierIds();
+	const ceiling = state.unlockedTiers.reduce<number>(
+		(highest, tier) => Math.max(highest, tier),
+		state.currentTier
+	);
+	let tier = state.currentTier;
+	for (;;) {
+		const next = ladder.find((id) => id > tier);
+		if (next === undefined || next <= ceiling) return tier;
+		if (!tierMastered(tier, cards)) return tier;
+		tier = next;
+	}
+}
+
+/**
+ * Reads the stored level, advances it past every tier the deck proves
+ * mastered, persists any change, and returns the effective state.
+ *
+ * Called by `srs/deck.ts:introduceNewCards` at the start of every
+ * introduction pass, which is the one hook both /practice and /progress >
+ * Recall share. Deliberately silent: the reward for mastering a tier is that
+ * new material starts arriving, not a congratulation banner or a "ready to
+ * level up?" prompt. The /progress tier line reflects the new tier the next
+ * time it is opened.
+ */
+export function advanceTierOnMastery(cards: CardRecord[]): LevelState {
+	const current = getLevelState();
+	const tier = earnedTier(current, cards);
+	if (tier === current.currentTier) return current;
+	return setCurrentTier(tier);
 }

@@ -6,6 +6,9 @@ import { allFacts } from '$lib/srs/facts';
 import type { FactKind, Fact } from '$lib/srs/facts';
 export type { FactKind };
 import { teachClusterModes, clusterGraduated } from '$lib/srs/rotation';
+import { introductionOrder } from '$lib/srs/curriculum';
+import { advanceTierOnMastery } from '$lib/practice/levelState';
+import type { TierId } from '$lib/practice/tiers';
 
 /**
  * The Dexie/IndexedDB persistence layer for FSRS cards (MEM-01/MEM-03/MEM-04):
@@ -194,19 +197,38 @@ export async function getCard(factId: string, mode: Mode): Promise<CardRecord | 
  * pre-existing card (a Phase-11/12 returning-user fact whose teach cluster is
  * only partially seeded, or a graduated cluster newly eligible for its
  * 'hear-name' stagger-unlock) is a RETROFIT, not the introduction of a
- * genuinely new fact. Retrofits are collected in a first pass and only
- * written in a SECOND pass, budgeted by their own counter
- * (`retrofitsTouched`, capped at `limit` exactly like `factsTouched`) that
- * never shares or competes with the brand-new-fact budget above. This means
- * a returning user's entire Phase-11 backlog can never silently consume a
- * session's new-fact introduction budget ahead of a genuinely unseen fact -
- * the first pass always walks past already-known facts (without spending
- * `factsTouched`) until it finds `limit` worth of genuinely new ones (or
- * exhausts the catalog), and the retrofit pass runs independently afterward.
+ * genuinely new fact. Retrofits are collected in their own pass and budgeted
+ * by their own counter (`retrofitsTouched`, capped at `limit` exactly like
+ * `factsTouched`) that never shares or competes with the brand-new-fact
+ * budget above. This means a returning user's entire Phase-11 backlog can
+ * never silently consume a session's new-fact introduction budget ahead of a
+ * genuinely unseen fact.
+ *
+ * CURRICULUM ORDER (this task). The new-fact pass walks
+ * `curriculum.introductionOrder(tier)` rather than `allFacts()`: interval
+ * atoms come before the chords built from them, chord facts are ordered
+ * quality-outer / root-inner within a tier, and the tier ladder actually
+ * gates how far down that order introduction may reach. `tier` defaults to
+ * `levelState.advanceTierOnMastery(existing).currentTier`, so the effective
+ * tier is re-derived from the deck's own mastery evidence on every pass and
+ * new material appears silently when it is earned. No prompt, no nag, in
+ * keeping with this project's anti-guilt discipline.
+ *
+ * The RETROFIT pass deliberately still walks the whole catalog (`allFacts()`)
+ * and is NOT tier-gated: repairing the card shape of a fact the user has
+ * already met (a missing cluster mode, an earned 'hear-name' unlock) is not
+ * the introduction of new curriculum, and a tier gate must never freeze it.
+ *
+ * The optional third parameter is for tests and for callers that want to
+ * pin a tier explicitly; passing it also skips the levelState read/write
+ * entirely. Both existing call sites (/practice's load(), RecallSession's
+ * load()) pass only `limit`, so their behavior is unchanged apart from the
+ * order material arrives in.
  */
 export async function introduceNewCards(
 	limit: number = NEW_CARDS_PER_SESSION,
-	now: Date = new Date()
+	now: Date = new Date(),
+	maxTier?: TierId
 ): Promise<number> {
 	const existing = await getAllCards();
 	const existingByFact = new Map<string, CardRecord[]>();
@@ -229,9 +251,10 @@ export async function introduceNewCards(
 	}
 	const retrofitCandidates: RetrofitCandidate[] = [];
 
-	for (const fact of allFacts()) {
-		if (factsTouched >= limit) break;
-
+	/** What each fact still needs, or null when it is already fully seeded. */
+	function pendingFor(
+		fact: Fact
+	): { missingClusterModes: Mode[]; introducesHearName: boolean } | null {
 		const cardsForFact = existingByFact.get(fact.factId) ?? [];
 		const cluster = teachClusterModes(fact.factKind);
 		const missingClusterModes = cluster.filter(
@@ -241,22 +264,13 @@ export async function introduceNewCards(
 			fact.factKind === 'chord-formula' &&
 			!cardsForFact.some((card) => card.mode === 'hear-name') &&
 			clusterGraduated(cardsForFact, cluster);
+		if (missingClusterModes.length === 0 && !introducesHearName) return null;
+		return { missingClusterModes, introducesHearName };
+	}
 
-		if (missingClusterModes.length === 0 && !introducesHearName) {
-			continue;
-		}
-
-		if (cardsForFact.length > 0) {
-			// Already-known fact (WR-02): defer to the separately-budgeted
-			// retrofit pass below instead of spending the new-fact `limit`.
-			retrofitCandidates.push({ fact, missingClusterModes, introducesHearName });
-			continue;
-		}
-
-		factsTouched += 1;
+	function seed(fact: Fact, missingClusterModes: Mode[], introducesHearName: boolean): void {
 		const modesToAdd: Mode[] = [...missingClusterModes];
 		if (introducesHearName) modesToAdd.push('hear-name');
-
 		for (const mode of modesToAdd) {
 			records.push({
 				...newCard(now),
@@ -269,24 +283,35 @@ export async function introduceNewCards(
 		}
 	}
 
+	const tier = maxTier ?? advanceTierOnMastery(existing).currentTier;
+
+	// Pass 1, genuinely new facts: curriculum order, tier-gated.
+	for (const fact of introductionOrder(tier, new Set(existingByFact.keys()))) {
+		if (factsTouched >= limit) break;
+		if (existingByFact.has(fact.factId)) continue;
+		const pending = pendingFor(fact);
+		if (pending === null) continue;
+		factsTouched += 1;
+		seed(fact, pending.missingClusterModes, pending.introducesHearName);
+	}
+
+	// Pass 2 collection, already-known facts (WR-02): whole catalog, ungated.
+	for (const fact of allFacts()) {
+		if (!existingByFact.has(fact.factId)) continue;
+		const pending = pendingFor(fact);
+		if (pending === null) continue;
+		retrofitCandidates.push({
+			fact,
+			missingClusterModes: pending.missingClusterModes,
+			introducesHearName: pending.introducesHearName
+		});
+	}
+
 	let retrofitsTouched = 0;
 	for (const { fact, missingClusterModes, introducesHearName } of retrofitCandidates) {
 		if (retrofitsTouched >= limit) break;
 		retrofitsTouched += 1;
-
-		const modesToAdd: Mode[] = [...missingClusterModes];
-		if (introducesHearName) modesToAdd.push('hear-name');
-
-		for (const mode of modesToAdd) {
-			records.push({
-				...newCard(now),
-				factId: fact.factId,
-				factKind: fact.factKind,
-				mode,
-				lastRating: null,
-				masteryDayCount: 0
-			});
-		}
+		seed(fact, missingClusterModes, introducesHearName);
 	}
 
 	if (records.length === 0) {

@@ -108,19 +108,11 @@ vi.mock('$lib/practice/practiceLog', () => ({
 
 vi.mock('$lib/practice/levelState', () => ({
 	getLevelState: () => ({ currentTier: 1, unlockedTiers: [1] }),
-	checkUnlock: () => ({
-		tier: 1,
-		nextTier: 2,
-		eligible: false,
-		rollingAccuracy: 0,
-		rollingCount: 0,
-		lifetimeAttempts: 0,
-		distinctDays: 0,
-		perQuality: []
-	}),
-	isSnoozed: () => false,
 	setCurrentTier: vi.fn(),
-	snoozeSuggestion: vi.fn()
+	// The introduceNewCards tier hook. checkUnlock/isSnoozed/snoozeSuggestion
+	// used to be stubbed here too; they no longer exist (the unlock is now
+	// derived from the deck's own masteryDayCount, see levelState.ts).
+	advanceTierOnMastery: () => ({ currentTier: 1, unlockedTiers: [1] })
 }));
 
 const { default: RootLayout } = await import('../../routes/+layout.svelte');

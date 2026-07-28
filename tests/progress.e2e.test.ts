@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ProgressPage from '../src/routes/progress/+page.svelte';
 import { setLocale } from '$lib/i18n/locale.svelte';
 import { resetStatsCache } from '$lib/practice/statsCache';
+import { PRACTICE_DAYS_KEY } from '$lib/practice/practiceDays';
 
 // +layout.svelte reads the `$page` store from $app/stores to mark the active
 // nav link, same mock shape as tests/drills.e2e.test.ts.
@@ -85,6 +86,10 @@ beforeEach(() => {
 	// mocked network response (the caching behavior itself is covered by a
 	// dedicated describe block below).
 	resetStatsCache();
+	// The hero streak is now local-first (max of this device's practice-day
+	// set and the server value), so the day set has to be cleared between
+	// cases or a seeded streak leaks into the next one.
+	localStorage.removeItem(PRACTICE_DAYS_KEY);
 	storedToken = '';
 	currentTier = 1;
 	soundOn = true;
@@ -165,6 +170,59 @@ describe('progress page populated state', () => {
 		const badge = within(hero).getByTestId('streak-badge');
 		expect(badge).toHaveTextContent('0');
 		expect(badge.classList.contains('streak-badge--active')).toBe(false);
+	});
+
+	it('local-first streak: the hero shows THIS DEVICE count when fetchStreak fails (tailnet unreachable)', async () => {
+		storedToken = 'secret';
+		// localDateString is mocked to 2026-07-13 above, so these three days
+		// are today, yesterday, and the day before.
+		localStorage.setItem(
+			PRACTICE_DAYS_KEY,
+			JSON.stringify(['2026-07-11', '2026-07-12', '2026-07-13'])
+		);
+		fetchStatsMock.mockResolvedValue({
+			items: [{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4, needsPractice: true }],
+			weakest: [{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4, needsPractice: true }]
+		});
+		fetchStreakMock.mockRejectedValue(new Error('offline'));
+
+		render(ProgressPage);
+
+		await waitFor(() =>
+			expect(
+				within(screen.getByTestId('streak-hero')).getByTestId('streak-badge')
+			).toHaveTextContent('3')
+		);
+	});
+
+	it('local-first streak: the server can only RAISE the hero numeral, never lower it', async () => {
+		storedToken = 'secret';
+		localStorage.setItem(PRACTICE_DAYS_KEY, JSON.stringify(['2026-07-12', '2026-07-13']));
+		fetchStatsMock.mockResolvedValue({
+			items: [{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4, needsPractice: true }],
+			weakest: [{ item: 'Cm7', kind: 'chord', attempts: 5, accuracy: 0.4, needsPractice: true }]
+		});
+		// A server that is BEHIND this device (practice happened offline) must
+		// not drag the number down to 1.
+		fetchStreakMock.mockResolvedValue({ streak: 1, practicedToday: true });
+
+		render(ProgressPage);
+
+		await waitFor(() =>
+			expect(
+				within(screen.getByTestId('streak-hero')).getByTestId('streak-badge')
+			).toHaveTextContent('2')
+		);
+
+		// And a server AHEAD of this device (practice on another device) raises it.
+		resetStatsCache();
+		fetchStreakMock.mockResolvedValue({ streak: 9, practicedToday: true });
+		render(ProgressPage);
+		await waitFor(() =>
+			expect(
+				within(screen.getAllByTestId('streak-hero')[1]).getByTestId('streak-badge')
+			).toHaveTextContent('9')
+		);
 	});
 });
 

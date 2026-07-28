@@ -21,6 +21,7 @@
 	} from '$lib/practice/confidenceLog';
 	import { factById } from '$lib/srs/facts';
 	import { getLevelState, setCurrentTier } from '$lib/practice/levelState';
+	import { localStreak, practicedOn } from '$lib/practice/practiceDays';
 	import { TIERS, type TierId } from '$lib/practice/tiers';
 	import { getCachedStats, getCachedStreak, setCachedStats, setCachedStreak } from '$lib/practice/statsCache';
 	import PracticeItemRow from '$lib/components/PracticeItemRow.svelte';
@@ -53,9 +54,24 @@
 	let items = $state<StatItem[]>([]);
 	let weakest = $state<StatItem[]>([]);
 	let tokenInput = $state('');
-	let streak = $state(0);
-	let practicedToday = $state(false);
 	let last7 = $state<{ date: string; practiced: boolean }[]>([]);
+
+	/**
+	 * Local-first streak (B8, mirroring the masthead chip in +layout.svelte).
+	 * The hero numeral used to read straight off `fetchStreak`, so it showed 0
+	 * whenever the tailnet host was unreachable, which is most of the time on a
+	 * phone. This device owns the streak; the server can only ever RAISE the
+	 * visible number (practice done on another device), never lower it below
+	 * what this device knows happened. Same one-day grace on both sides
+	 * (practiceDays.computeStreakFromDays mirrors server/src/streak.ts), so the
+	 * plain max() never makes one of them look wrong.
+	 */
+	let serverStreak = $state(0);
+	let serverPracticedToday = $state(false);
+	let localStreakCount = $state(0);
+	let localPracticedToday = $state(false);
+	const streak = $derived(Math.max(localStreakCount, serverStreak));
+	const practicedToday = $derived(localPracticedToday || serverPracticedToday);
 
 	// ---- Confidence calibration (sketch 020-C, Plan 25-08): the payoff
 	// surface for 25-06's Recall confidence dots. Device-local, read
@@ -139,8 +155,8 @@
 		}
 
 		if (cachedStreak) {
-			streak = cachedStreak.streak;
-			practicedToday = cachedStreak.practicedToday;
+			serverStreak = cachedStreak.streak;
+			serverPracticedToday = cachedStreak.practicedToday;
 			last7 = cachedStreak.last7;
 		}
 
@@ -165,13 +181,16 @@
 				last7: streakResult.last7 ?? []
 			};
 			setCachedStreak(token, normalized);
-			streak = normalized.streak;
-			practicedToday = normalized.practicedToday;
+			serverStreak = normalized.streak;
+			serverPracticedToday = normalized.practicedToday;
 			last7 = normalized.last7;
 		} catch {
 			if (!cachedStreak) {
-				streak = 0;
-				practicedToday = false;
+				// The local streak is deliberately NOT reset here: a failed
+				// fetch is a fact about the network, not about whether the user
+				// practiced.
+				serverStreak = 0;
+				serverPracticedToday = false;
 				last7 = [];
 			}
 		}
@@ -183,6 +202,9 @@
 	}
 
 	onMount(() => {
+		const today = localDateString();
+		localStreakCount = localStreak(today);
+		localPracticedToday = practicedOn(today);
 		void load();
 		confidenceEntries = listConfidence();
 	});

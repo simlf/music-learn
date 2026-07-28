@@ -18,7 +18,9 @@ import {
 } from './deck';
 import { Rating, State } from '$lib/srs/scheduler';
 import type { CardRecord } from './deck';
-import { allFacts } from '$lib/srs/facts';
+import { allFacts, chordFormulaFactId, intervalSizeFactId } from '$lib/srs/facts';
+import { introductionOrder } from '$lib/srs/curriculum';
+import { LEVEL_KEY } from '$lib/practice/levelState';
 
 /**
  * Fixed instant so due-date comparisons below are exact and reproducible
@@ -36,6 +38,32 @@ const now0 = new Date('2026-07-15T00:00:00.000Z');
  */
 async function clearDeck() {
 	await _database().cards.clear();
+	// introduceNewCards now resolves its tier through
+	// levelState.advanceTierOnMastery, which persists an earned tier to
+	// localStorage. Clearing it keeps each case starting from a genuinely
+	// fresh tier 1 rather than inheriting the previous case's evidence.
+	localStorage.removeItem(LEVEL_KEY);
+}
+
+/**
+ * The three interval atoms tier 1 teaches before its first chord (m3, M3,
+ * P5), pre-seeded as already-known so a case can assert chord teach-cluster
+ * arithmetic without the interval atoms sitting in front of it. Written at
+ * State.Review with a single 'formula' card, which is a complete
+ * interval-size fact (its teach cluster is ['formula'] only), so these are
+ * neither new-fact nor retrofit candidates.
+ */
+async function seedTier1IntervalAtoms(): Promise<void> {
+	await _database().cards.bulkPut(
+		['m3', 'M3', 'P5'].map((short) =>
+			makeCardRecord({
+				factId: intervalSizeFactId(short),
+				factKind: 'interval-size',
+				mode: 'formula',
+				state: State.Review
+			})
+		)
+	);
 }
 
 describe('deck', () => {
@@ -47,93 +75,145 @@ describe('deck', () => {
 		expect(await getAllCards()).toEqual([]);
 	});
 
-	it('introduceNewCards defaults its limit to NEW_CARDS_PER_SESSION facts, each seeding a chord-formula teach cluster (3 cards/fact)', async () => {
+	it("introduceNewCards defaults its limit to NEW_CARDS_PER_SESSION facts: a fresh user's day one is 3 interval atoms then the 7 white-key major triads", async () => {
 		const count = await introduceNewCards(undefined, now0);
 		expect(count).toBe(NEW_CARDS_PER_SESSION);
+
 		const cards = await getAllCards();
-		expect(cards).toHaveLength(NEW_CARDS_PER_SESSION * 3);
+		// 3 interval-size facts x 1 card + 7 chord-formula facts x 3 cluster
+		// cards. The old catalog order made this 10 chord clusters (30 cards)
+		// covering every quality of C plus D-flat on day one.
+		expect(cards).toHaveLength(3 * 1 + 7 * 3);
 		expect(new Set(cards.map((c) => c.factId)).size).toBe(NEW_CARDS_PER_SESSION);
+		expect(
+			[...new Set(cards.map((c) => c.factId))].sort((a, b) => a.localeCompare(b))
+		).toEqual(
+			[
+				...['m3', 'M3', 'P5'].map(intervalSizeFactId),
+				...['C', 'D', 'E', 'F', 'G', 'A', 'B'].map(chordFormulaFactId)
+			].sort((a, b) => a.localeCompare(b))
+		);
 	});
 
-	it('introduceNewCards seeds distinct factIds across repeated calls, growing the deck incrementally (teach-cluster arithmetic)', async () => {
+	it('introduceNewCards follows the curriculum order across repeated calls, growing the deck incrementally', async () => {
+		const expectedOrder = introductionOrder(1).map((fact) => fact.factId);
+
 		const firstCount = await introduceNewCards(5, now0);
 		expect(firstCount).toBe(5);
 
 		const afterFirst = await getAllCards();
-		expect(afterFirst).toHaveLength(15);
-		const firstFactIds = new Set(afterFirst.map((c) => c.factId));
-		expect(firstFactIds.size).toBe(5);
+		// 3 interval atoms (1 card each) + 2 chord clusters (3 cards each).
+		expect(afterFirst).toHaveLength(3 + 6);
+		// getAllCards reads back in Dexie's compound-key order, not insertion
+		// order, so the assertion is on the SET of facts the curriculum's first
+		// 5 positions name (curriculum.test.ts pins the order itself).
+		expect(new Set(afterFirst.map((c) => c.factId))).toEqual(new Set(expectedOrder.slice(0, 5)));
 
 		const secondCount = await introduceNewCards(5, now0);
 		expect(secondCount).toBe(5);
 
 		const afterSecond = await getAllCards();
-		expect(afterSecond).toHaveLength(30);
-		const allFactIds = new Set(afterSecond.map((c) => c.factId));
-		expect(allFactIds.size).toBe(10);
+		expect(afterSecond).toHaveLength(3 + 7 * 3);
+		expect(new Set(afterSecond.map((c) => c.factId)).size).toBe(10);
+		// The second call picks up exactly where the first stopped: no
+		// reshuffling, no repeats.
+		expect(
+			expectedOrder.slice(0, 10).every((factId) => afterSecond.some((c) => c.factId === factId))
+		).toBe(true);
 	});
 
-	it("every card introduced via introduceNewCards(5) belongs to a chord-formula fact's teach cluster (formula/see-play/formula-build), state New, due <= now, lastRating null", async () => {
+	it('every introduced card is state New, due <= now, lastRating null: chord facts get the 3-mode teach cluster, interval facts exactly one formula card', async () => {
 		await introduceNewCards(5, now0);
 		const cards = await getAllCards();
-		expect(new Set(cards.map((c) => c.mode))).toEqual(new Set(['formula', 'see-play', 'formula-build']));
+
 		for (const card of cards) {
-			expect(card.factKind).toBe('chord-formula');
 			expect(card.state).toBe(State.New);
 			expect(card.due.getTime()).toBeLessThanOrEqual(now0.getTime());
 			expect(card.lastRating).toBeNull();
 		}
 
 		const modesByFact = new Map<string, Set<string>>();
+		const kindByFact = new Map<string, string>();
 		for (const card of cards) {
 			if (!modesByFact.has(card.factId)) modesByFact.set(card.factId, new Set());
 			modesByFact.get(card.factId)!.add(card.mode);
+			kindByFact.set(card.factId, card.factKind);
 		}
 		expect(modesByFact.size).toBe(5);
-		for (const modes of modesByFact.values()) {
-			expect(modes).toEqual(new Set(['formula', 'see-play', 'formula-build']));
+		for (const [factId, modes] of modesByFact) {
+			if (kindByFact.get(factId) === 'chord-formula') {
+				expect(modes).toEqual(new Set(['formula', 'see-play', 'formula-build']));
+			} else {
+				expect(modes).toEqual(new Set(['formula']));
+			}
 		}
 	});
 
-	it('getDueCards(now) after introduceNewCards(5, now) returns exactly those 15 cluster cards', async () => {
+	it('getDueCards(now) after introduceNewCards(5, now) returns exactly the 9 cards those 5 facts seeded', async () => {
 		await introduceNewCards(5, now0);
 		const introduced = await getAllCards();
 		const due = await getDueCards(now0);
-		expect(due).toHaveLength(15);
+		expect(due).toHaveLength(3 + 6);
 		expect(new Set(due.map((c) => `${c.factId}|${c.mode}`))).toEqual(
 			new Set(introduced.map((c) => `${c.factId}|${c.mode}`))
 		);
 	});
 
-	it('non-chord facts unchanged: introduceNewCards(97, now) from empty seeds 96 chord-formula clusters plus exactly ONE single-card interval-size fact', async () => {
-		const count = await introduceNewCards(97, now0);
-		expect(count).toBe(97);
-
+	it('interval atoms come FIRST, not last: the very first fact a fresh deck introduces is an interval-size fact', async () => {
+		// The defect this pins: with the old catalog walk, all 96 chord
+		// spellings were introduced before the first interval fact (around day
+		// 11 at 10 facts/day), so the prerequisites arrived after the material
+		// that needs them.
+		const count = await introduceNewCards(1, now0);
+		expect(count).toBe(1);
 		const cards = await getAllCards();
-		expect(new Set(cards.map((c) => c.factId)).size).toBe(97);
-
-		const nonChordCards = cards.filter((c) => c.factKind !== 'chord-formula');
-		expect(nonChordCards).toHaveLength(1);
-		expect(nonChordCards[0].factKind).toBe('interval-size');
-		expect(nonChordCards[0].mode).toBe('formula');
+		expect(cards).toHaveLength(1);
+		expect(cards[0].factKind).toBe('interval-size');
+		expect(cards[0].factId).toBe(intervalSizeFactId('m3'));
+		expect(cards[0].mode).toBe('formula');
 	});
 
-	it('exhaustion: introduceNewCards(1000, now) seeds all 192 facts (96 chord clusters x3 + 96 single-card) and a further call introduces 0', async () => {
+	it('the tier gate bounds introduction: a fresh tier 1 deck stops at 17 facts, and a further call introduces 0', async () => {
+		// Running out of new material at a tier is the gate working: nothing new
+		// arrives while the user still has a tier to master.
+		// levelState.advanceTierOnMastery opens the next rung on evidence.
 		const firstCount = await introduceNewCards(1000, now0);
+		expect(firstCount).toBe(3 + 14);
+
+		const allCards = await getAllCards();
+		expect(allCards).toHaveLength(3 * 1 + 14 * 3);
+		expect(new Set(allCards.map((c) => c.factId)).size).toBe(17);
+		expect(allCards.some((c) => c.factKind === 'scale-degree')).toBe(false);
+
+		expect(await introduceNewCards(1000, now0)).toBe(0);
+	});
+
+	it('exhaustion at the top of the ladder: introduceNewCards(1000, now, 4) seeds all 192 facts and a further call introduces 0', async () => {
+		const firstCount = await introduceNewCards(1000, now0, 4);
 		expect(firstCount).toBe(192);
 
 		const allCards = await getAllCards();
 		expect(allCards).toHaveLength(384);
 		expect(new Set(allCards.map((c) => c.factId)).size).toBe(192);
 
-		const secondCount = await introduceNewCards(1000, now0);
+		const secondCount = await introduceNewCards(1000, now0, 4);
 		expect(secondCount).toBe(0);
 
 		const stillAllCards = await getAllCards();
 		expect(stillAllCards).toHaveLength(384);
 	});
 
+	it('an explicit maxTier never writes the stored level: the tier read/write is skipped entirely', async () => {
+		await introduceNewCards(1000, now0, 4);
+		expect(localStorage.getItem(LEVEL_KEY)).toBeNull();
+	});
+
 	it('WR-02: pre-existing legacy formula-only chord facts (pre-13-01 seeding) are retrofitted via a separately-budgeted pass and never starve genuinely new fact introduction', async () => {
+		// The three tier-1 interval atoms are pre-seeded as already-known so
+		// this case's assertions are about CHORD teach clusters rather than the
+		// atoms that now precede them in the curriculum order.
+		await seedTier1IntervalAtoms();
+
 		// Mirror a returning Phase-11 user's deck: the first 5 chord-formula
 		// facts (catalog order) already have exactly one card each -
 		// 'formula' only, no 'see-play'/'formula-build' - the pre-13-01 shape.
@@ -165,7 +245,10 @@ describe('deck', () => {
 		// facts got their full 3-card teach cluster, none of them among the
 		// 5 legacy facts - the retrofit-eligible legacy facts never counted
 		// against this budget, so new-fact introduction was NOT starved.
-		const newFactIds = [...cardsByFact.keys()].filter((id) => !legacyFactIds.has(id));
+		const preSeededIds = new Set(['m3', 'M3', 'P5'].map(intervalSizeFactId));
+		const newFactIds = [...cardsByFact.keys()].filter(
+			(id) => !legacyFactIds.has(id) && !preSeededIds.has(id)
+		);
 		expect(newFactIds).toHaveLength(3);
 		for (const id of newFactIds) {
 			expect(new Set(cardsByFact.get(id)!.map((c) => c.mode))).toEqual(
@@ -196,6 +279,148 @@ describe('deck', () => {
 		expect(count).toBe(3 + 3);
 	});
 
+	it('MIGRATION: reordering introduction never touches an existing card\'s scheduling fields, and new material still arrives in the new order', async () => {
+		// The owner has real FSRS review state on two devices. Reordering
+		// INTRODUCTION can only ever affect facts that have no card yet, but
+		// that has to be proven rather than asserted: this case seeds a deck
+		// shaped like a real returning user (some facts deep in State.Review
+		// with genuine stability/difficulty/reps/lapses, some untouched),
+		// snapshots every scheduling field, runs a full introduction pass, and
+		// checks the snapshot survived byte for byte.
+		const reviewed: CardRecord[] = [
+			makeCardRecord({
+				factId: chordFormulaFactId('C'),
+				mode: 'formula',
+				state: State.Review,
+				stability: 37.418,
+				difficulty: 6.2231,
+				elapsed_days: 31,
+				scheduled_days: 42,
+				reps: 14,
+				lapses: 2,
+				due: new Date('2026-08-26T09:15:00.000Z'),
+				last_review: new Date('2026-07-15T09:15:00.000Z'),
+				lastRating: Rating.Good,
+				masteryDayCount: 5
+			}),
+			makeCardRecord({
+				factId: chordFormulaFactId('C'),
+				mode: 'see-play',
+				state: State.Review,
+				stability: 4.0091,
+				difficulty: 8.9902,
+				elapsed_days: 3,
+				scheduled_days: 4,
+				reps: 9,
+				lapses: 4,
+				due: new Date('2026-07-19T20:00:00.000Z'),
+				last_review: new Date('2026-07-15T20:00:00.000Z'),
+				lastRating: Rating.Again,
+				masteryDayCount: 1
+			}),
+			makeCardRecord({
+				factId: chordFormulaFactId('Cm7b5'),
+				mode: 'formula',
+				state: State.Review,
+				stability: 12.5,
+				difficulty: 7.75,
+				elapsed_days: 10,
+				scheduled_days: 13,
+				reps: 6,
+				lapses: 1,
+				due: new Date('2026-07-28T07:30:00.000Z'),
+				last_review: new Date('2026-07-15T07:30:00.000Z'),
+				lastRating: Rating.Hard,
+				masteryDayCount: 2
+			}),
+			makeCardRecord({
+				factId: 'scale-formula:C',
+				factKind: 'scale-formula',
+				mode: 'formula-build',
+				state: State.Review,
+				stability: 2.25,
+				difficulty: 5.5,
+				reps: 3,
+				lapses: 0,
+				due: new Date('2026-07-17T12:00:00.000Z'),
+				last_review: new Date('2026-07-15T12:00:00.000Z'),
+				lastRating: Rating.Good,
+				masteryDayCount: 2
+			})
+		];
+		await _database().cards.bulkPut(reviewed);
+
+		const key = (card: CardRecord) => `${card.factId}|${card.mode}`;
+		const before = new Map((await getAllCards()).map((card) => [key(card), { ...card }]));
+		expect(before.size).toBe(4);
+
+		const introduced = await introduceNewCards(1000, now0);
+		expect(introduced).toBeGreaterThan(0);
+
+		const after = new Map((await getAllCards()).map((card) => [key(card), card]));
+
+		// Nothing pre-existing was dropped, and every scheduling field on it is
+		// bit-identical: no re-scheduling, no reset, no lost history.
+		for (const [id, original] of before) {
+			const current = after.get(id);
+			expect(current).toBeDefined();
+			expect(current!.state).toBe(original.state);
+			expect(current!.stability).toBe(original.stability);
+			expect(current!.difficulty).toBe(original.difficulty);
+			expect(current!.elapsed_days).toBe(original.elapsed_days);
+			expect(current!.scheduled_days).toBe(original.scheduled_days);
+			expect(current!.learning_steps).toBe(original.learning_steps);
+			expect(current!.reps).toBe(original.reps);
+			expect(current!.lapses).toBe(original.lapses);
+			expect(current!.due.getTime()).toBe(original.due.getTime());
+			expect(current!.last_review?.getTime()).toBe(original.last_review?.getTime());
+			expect(current!.lastRating).toBe(original.lastRating);
+			expect(current!.masteryDayCount).toBe(original.masteryDayCount);
+			expect(current!.factKind).toBe(original.factKind);
+		}
+
+		// New material arrived in the NEW order: the three tier-1 interval
+		// atoms, which the old catalog walk would not have reached for another
+		// ten days.
+		for (const short of ['m3', 'M3', 'P5']) {
+			expect(after.has(`${intervalSizeFactId(short)}|formula`)).toBe(true);
+		}
+
+		// The Cm7b5 card the user already has stays exactly as it is: the tier
+		// gate withholds unintroduced tier-4 chords, it never removes or
+		// re-teaches one already in the deck.
+		expect(after.has(`${chordFormulaFactId('Cm7b5')}|formula`)).toBe(true);
+		expect(after.has(`${chordFormulaFactId('Cdim7')}|formula`)).toBe(false);
+	});
+
+	it("MIGRATION: a returning user's already-taught chords pull their interval prerequisites forward, whatever the stored tier says", async () => {
+		// The owner's real deck: all 96 chord spellings introduced (that IS the
+		// defect) and not one interval fact. A prerequisite of something
+		// already taught is overdue, not premature, so the tier gate must not
+		// withhold it. Without this, a stored tier of 1 would hand them only
+		// m3/M3/P5 and withhold A4/m7/M7/M6 forever.
+		const chordSymbols = allFacts()
+			.filter((fact) => fact.factKind === 'chord-formula')
+			.map((fact) => fact.factId);
+		await _database().cards.bulkPut(
+			chordSymbols.map((factId) =>
+				makeCardRecord({ factId, factKind: 'chord-formula', mode: 'formula', state: State.Review })
+			)
+		);
+
+		await introduceNewCards(1000, now0);
+		const cards = await getAllCards();
+		const intervalFactIds = new Set(
+			cards.filter((c) => c.factKind === 'interval-size').map((c) => c.factId)
+		);
+		expect(intervalFactIds).toEqual(
+			new Set(['m3', 'M3', 'A4', 'P5', 'M6', 'm7', 'M7'].map(intervalSizeFactId))
+		);
+		// Still no scale-degree facts: they stay behind the whole ladder
+		// because /practice cannot render them (practiceQueue.familyForCard).
+		expect(cards.some((c) => c.factKind === 'scale-degree')).toBe(false);
+	});
+
 	it("CardRecordSchema's widened mode enum accepts 'see-play' and 'hear-name' records without dropping them via safeParse", async () => {
 		const seePlayCard = makeCardRecord({
 			factId: 'chord-formula:Cm7',
@@ -216,12 +441,17 @@ describe('deck', () => {
 	});
 
 	it('hear-name stagger gate: hear-name is only introduced once ALL of a chord-formula fact\'s teach-cluster cards reach State.Review', async () => {
+		// Pre-seed the three tier-1 interval atoms so the next genuinely-new
+		// fact is a chord (interval facts have no hear-name mode at all).
+		await seedTier1IntervalAtoms();
+
 		const firstIntroduced = await introduceNewCards(1, now0);
 		expect(firstIntroduced).toBe(1);
 
-		const clusterCards = await getAllCards();
+		const clusterCards = (await getAllCards()).filter((c) => c.factKind === 'chord-formula');
 		expect(clusterCards).toHaveLength(3);
 		const targetFactId = clusterCards[0].factId;
+		expect(targetFactId).toBe(chordFormulaFactId('C'));
 		expect(clusterCards.every((c) => c.factId === targetFactId)).toBe(true);
 
 		const formulaCard = clusterCards.find((c) => c.mode === 'formula')!;
@@ -478,8 +708,8 @@ describe('formula-build mode seam (Phase 12 D-09)', () => {
 		expect(miss).toBeUndefined();
 	});
 
-	it('regression pin (updated for 13-01 teach-cluster): introduceNewCards(1000, now) produces formula-build ONLY for chord-formula facts, never for interval-size/scale-degree facts', async () => {
-		await introduceNewCards(1000, now0);
+	it('regression pin (updated for 13-01 teach-cluster): introduceNewCards(1000, now, 4) produces formula-build ONLY for chord-formula facts, never for interval-size/scale-degree facts', async () => {
+		await introduceNewCards(1000, now0, 4);
 		const cards = await getAllCards();
 		expect(cards.length).toBe(384);
 

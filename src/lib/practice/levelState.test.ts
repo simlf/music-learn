@@ -1,45 +1,46 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { StatItem } from '$lib/api/progress';
-import type { LoggedAnswer } from './practiceLog';
+import type { CardRecord } from '$lib/srs/deck';
+import { State } from '$lib/srs/scheduler';
+import { chordFormulaFactId } from '$lib/srs/facts';
 import {
 	LEVEL_KEY,
-	UNLOCK_CRITERIA,
+	MASTERY_DAY_COUNT,
 	getLevelState,
 	setCurrentTier,
-	snoozeSuggestion,
-	isSnoozed,
-	checkUnlock
+	tierMastered,
+	earnedTier,
+	advanceTierOnMastery
 } from './levelState';
+import { itemsForTier } from './tiers';
 
 beforeEach(() => {
 	localStorage.clear();
 });
 
-function chordStat(item: string, attempts: number, accuracy: number): StatItem {
-	return { item, kind: 'chord', attempts, accuracy, needsPractice: false };
+/** A formula-mode CardRecord for one chord symbol at a given mastery day count. */
+function formulaCard(symbol: string, masteryDayCount: number): CardRecord {
+	return {
+		factId: chordFormulaFactId(symbol),
+		factKind: 'chord-formula',
+		mode: 'formula',
+		due: new Date('2026-07-20T00:00:00.000Z'),
+		stability: 5,
+		difficulty: 5,
+		elapsed_days: 1,
+		scheduled_days: 3,
+		learning_steps: 0,
+		reps: 3,
+		lapses: 0,
+		state: State.Review,
+		last_review: new Date('2026-07-17T00:00:00.000Z'),
+		lastRating: 3,
+		masteryDayCount
+	};
 }
 
-/** Tier 1 stats fixture passing lifetime (40) and both per-quality floors. */
-function passingTier1Stats(): StatItem[] {
-	return [chordStat('C', 20, 0.9), chordStat('Cm', 20, 0.85)];
-}
-
-/**
- * Builds `total` tier-1 log answers across two dates with `correctCount`
- * correct, all cold (assisted: false) unless assistedCount is given (those
- * are appended as extra assisted entries).
- */
-function tier1Log(total: number, correctCount: number, days: string[] = ['2026-07-13', '2026-07-14']): LoggedAnswer[] {
-	const log: LoggedAnswer[] = [];
-	for (let i = 0; i < total; i++) {
-		log.push({
-			item: i % 2 === 0 ? 'C' : 'Cm',
-			correct: i < correctCount,
-			assisted: false,
-			date: days[i % days.length]
-		});
-	}
-	return log;
+/** Every chord of `tier` mastered at MASTERY_DAY_COUNT. */
+function masteredTierCards(tier: 1 | 2 | 3 | 4): CardRecord[] {
+	return itemsForTier(tier).map((symbol) => formulaCard(symbol, MASTERY_DAY_COUNT));
 }
 
 describe('getLevelState defaults and persistence', () => {
@@ -56,21 +57,37 @@ describe('getLevelState defaults and persistence', () => {
 		localStorage.setItem(LEVEL_KEY, JSON.stringify({ currentTier: 5, unlockedTiers: [1, 5] }));
 		expect(getLevelState().currentTier).toBe(1);
 	});
+
+	it('a legacy record carrying the removed snooze field still loads (extra keys are ignored)', () => {
+		localStorage.setItem(
+			LEVEL_KEY,
+			JSON.stringify({
+				currentTier: 3,
+				unlockedTiers: [1, 2, 3],
+				snooze: { tier: 4, snoozedOn: '2026-07-14' }
+			})
+		);
+		expect(getLevelState().currentTier).toBe(3);
+		expect(getLevelState().unlockedTiers).toEqual([1, 2, 3]);
+	});
 });
 
 describe('setCurrentTier (manual override)', () => {
-	it('sets the tier and unlocks everything up to it', () => {
+	it('sets the tier and records everything up to it as reached', () => {
 		const state = setCurrentTier(3);
 		expect(state.currentTier).toBe(3);
 		expect(state.unlockedTiers).toEqual([1, 2, 3]);
 		expect(getLevelState().currentTier).toBe(3);
 	});
 
-	it('re-locking to a lower tier shrinks the unlocked set', () => {
+	it('moving back DOWN lowers the current tier but keeps the reached set (additive)', () => {
 		setCurrentTier(4);
 		const state = setCurrentTier(2);
 		expect(state.currentTier).toBe(2);
-		expect(state.unlockedTiers).toEqual([1, 2]);
+		// unlockedTiers is the record of what has already been offered, so it
+		// never shrinks: that is what makes a deliberate step down stick
+		// against the next mastery check.
+		expect(state.unlockedTiers).toEqual([1, 2, 3, 4]);
 	});
 
 	it('ignores locked tiers 5 and 6', () => {
@@ -80,153 +97,106 @@ describe('setCurrentTier (manual override)', () => {
 	});
 });
 
-describe('snooze (Not yet, 3 practice days)', () => {
-	it('records the snoozed tier and date', () => {
-		const state = snoozeSuggestion(2, '2026-07-14');
-		expect(state.snooze).toEqual({ tier: 2, snoozedOn: '2026-07-14' });
+describe('tierMastered (deck-derived, offline, no server)', () => {
+	it('is false on an empty deck', () => {
+		expect(tierMastered(1, [])).toBe(false);
 	});
 
-	it('isSnoozed is true under 3 practice days since snooze, false at 3', () => {
-		const state = snoozeSuggestion(2, '2026-07-14');
-		expect(isSnoozed(state, 2, 0)).toBe(true);
-		expect(isSnoozed(state, 2, 2)).toBe(true);
-		expect(isSnoozed(state, 2, 3)).toBe(false);
+	it('is true once every chord of the tier has a formula card at masteryDayCount 2', () => {
+		expect(tierMastered(1, masteredTierCards(1))).toBe(true);
 	});
 
-	it('a snooze for one tier does not silence another tier', () => {
-		const state = snoozeSuggestion(2, '2026-07-14');
-		expect(isSnoozed(state, 3, 0)).toBe(false);
+	it('is false when a single chord of the tier is one day short', () => {
+		const cards = masteredTierCards(1);
+		cards[cards.length - 1] = formulaCard(itemsForTier(1)[itemsForTier(1).length - 1], 1);
+		expect(tierMastered(1, cards)).toBe(false);
+	});
+
+	it('is false when a chord of the tier has no card at all', () => {
+		expect(tierMastered(1, masteredTierCards(1).slice(0, -1))).toBe(false);
+	});
+
+	it('ignores non-formula modes: a mastered see-play card does not count', () => {
+		const cards = itemsForTier(1).map((symbol) => ({
+			...formulaCard(symbol, MASTERY_DAY_COUNT),
+			mode: 'see-play' as const
+		}));
+		expect(tierMastered(1, cards)).toBe(false);
+	});
+
+	it('mastering tier 1 does not master tier 2 (tier 2 adds accidental roots and dim)', () => {
+		const cards = masteredTierCards(1);
+		expect(tierMastered(1, cards)).toBe(true);
+		expect(tierMastered(2, cards)).toBe(false);
+	});
+
+	it('a locked tier is never mastered, however much evidence exists', () => {
+		expect(tierMastered(5 as 1, masteredTierCards(4))).toBe(false);
+	});
+
+	it('MASTERY_DAY_COUNT is 2, the same successive-relearning gate deriveCellState uses', () => {
+		expect(MASTERY_DAY_COUNT).toBe(2);
 	});
 });
 
-describe('checkUnlock criteria edges (R3 exact numbers)', () => {
-	it('29 rolling answers is not enough even at 100% accuracy', () => {
-		const check = checkUnlock({
-			tier: 1,
-			stats: passingTier1Stats(),
-			log: tier1Log(29, 29)
-		});
-		expect(check.rollingCount).toBe(29);
-		expect(check.eligible).toBe(false);
+describe('earnedTier (pure progression)', () => {
+	it('stays put with no evidence', () => {
+		expect(earnedTier({ currentTier: 1, unlockedTiers: [1] }, [])).toBe(1);
 	});
 
-	it('30 rolling answers at 26/30 (86.7%) with all floors passing is eligible', () => {
-		const check = checkUnlock({
-			tier: 1,
-			stats: passingTier1Stats(),
-			log: tier1Log(30, 26)
-		});
-		expect(check.rollingCount).toBe(30);
-		expect(check.rollingAccuracy).toBeCloseTo(26 / 30);
-		expect(check.eligible).toBe(true);
-		expect(check.nextTier).toBe(2);
+	it('climbs one rung when the current tier is mastered', () => {
+		expect(earnedTier({ currentTier: 1, unlockedTiers: [1] }, masteredTierCards(1))).toBe(2);
 	});
 
-	it('30 rolling answers at 25/30 (83.3%) fails the 85% bar', () => {
-		const check = checkUnlock({
-			tier: 1,
-			stats: passingTier1Stats(),
-			log: tier1Log(30, 25)
-		});
-		expect(check.eligible).toBe(false);
+	it('climbs multiple rungs in one pass when several tiers are already mastered', () => {
+		const cards = [...masteredTierCards(1), ...masteredTierCards(2), ...masteredTierCards(3)];
+		expect(earnedTier({ currentTier: 1, unlockedTiers: [1] }, cards)).toBe(4);
 	});
 
-	it('only the LAST 30 tier answers count for the rolling window', () => {
-		// 10 old misses followed by 30 straight correct: window is the 30 correct.
-		const log = [...tier1Log(10, 0), ...tier1Log(30, 30)];
-		const check = checkUnlock({ tier: 1, stats: passingTier1Stats(), log });
-		expect(check.rollingCount).toBe(30);
-		expect(check.rollingAccuracy).toBe(1);
-		expect(check.eligible).toBe(true);
-	});
-
-	it('a per-quality floor below 8 attempts blocks the unlock', () => {
-		const stats = [chordStat('C', 33, 0.9), chordStat('Cm', 7, 0.9)];
-		const check = checkUnlock({ tier: 1, stats, log: tier1Log(30, 30) });
-		const minorQuality = check.perQuality.find((entry) => entry.quality === 'm');
-		expect(minorQuality?.passing).toBe(false);
-		expect(check.eligible).toBe(false);
-	});
-
-	it('a per-quality accuracy below 75% blocks the unlock', () => {
-		const stats = [chordStat('C', 20, 0.9), chordStat('Cm', 20, 0.7)];
-		const check = checkUnlock({ tier: 1, stats, log: tier1Log(30, 30) });
-		expect(check.eligible).toBe(false);
-	});
-
-	it('fewer than 40 lifetime tier attempts blocks the unlock', () => {
-		const stats = [chordStat('C', 20, 0.9), chordStat('Cm', 15, 0.9)];
-		const check = checkUnlock({ tier: 1, stats, log: tier1Log(30, 30) });
-		expect(check.lifetimeAttempts).toBe(35);
-		expect(check.eligible).toBe(false);
-	});
-
-	it('a single practice day blocks the unlock (needs 2 distinct days)', () => {
-		const check = checkUnlock({
-			tier: 1,
-			stats: passingTier1Stats(),
-			log: tier1Log(30, 30, ['2026-07-14'])
-		});
-		expect(check.distinctDays).toBe(1);
-		expect(check.eligible).toBe(false);
-	});
-
-	it('assisted answers are excluded from the rolling window entirely', () => {
-		const log = tier1Log(29, 29);
-		// A 30th answer that was assisted must NOT complete the window.
-		log.push({ item: 'C', correct: true, assisted: true, date: '2026-07-14' });
-		const check = checkUnlock({ tier: 1, stats: passingTier1Stats(), log });
-		expect(check.rollingCount).toBe(29);
-		expect(check.eligible).toBe(false);
-	});
-
-	it('answers for items outside the tier are ignored (tier-scoped window)', () => {
-		const log = tier1Log(30, 26);
-		// Above-tier song chords (m7b5) never count toward tier 1 unlock stats.
-		for (let i = 0; i < 10; i++) {
-			log.push({ item: 'F#m7b5', correct: false, assisted: false, date: '2026-07-14' });
-		}
-		const check = checkUnlock({ tier: 1, stats: passingTier1Stats(), log });
-		expect(check.rollingCount).toBe(30);
-		expect(check.rollingAccuracy).toBeCloseTo(26 / 30);
-		expect(check.eligible).toBe(true);
-	});
-
-	it('is never eligible with no stats (server unreachable or tokenless)', () => {
-		const check = checkUnlock({ tier: 1, stats: null, log: tier1Log(30, 30) });
-		expect(check.eligible).toBe(false);
-	});
-
-	it('tier 4 has no unlockable next tier while 5 is locked', () => {
-		const stats = [
-			...['C', 'Db', 'D', 'Eb'].map((root) => chordStat(`${root}m7b5`, 10, 0.9)),
-			...['C', 'Db', 'D', 'Eb'].map((root) => chordStat(`${root}dim7`, 10, 0.9))
+	it('never climbs past tier 4 while tiers 5 and 6 are locked', () => {
+		const cards = [
+			...masteredTierCards(1),
+			...masteredTierCards(2),
+			...masteredTierCards(3),
+			...masteredTierCards(4)
 		];
-		const log: LoggedAnswer[] = [];
-		for (let i = 0; i < 30; i++) {
-			log.push({
-				item: i % 2 === 0 ? 'Cm7b5' : 'Cdim7',
-				correct: true,
-				assisted: false,
-				date: i % 2 === 0 ? '2026-07-13' : '2026-07-14'
-			});
-		}
-		const check = checkUnlock({ tier: 4, stats, log });
-		expect(check.nextTier).toBeNull();
-		expect(check.eligible).toBe(false);
+		expect(earnedTier({ currentTier: 4, unlockedTiers: [1, 2, 3, 4] }, cards)).toBe(4);
+	});
+
+	it('never descends, even with no mastery evidence at the current tier', () => {
+		expect(earnedTier({ currentTier: 3, unlockedTiers: [1, 2, 3] }, [])).toBe(3);
+	});
+
+	it('respects a deliberate step back down: a tier already reached is not re-granted', () => {
+		// The user climbed to 2, then chose to go back to 1. Tier 1 is
+		// mastered, but tier 2 has already been offered, so nothing changes.
+		const state = { currentTier: 1 as const, unlockedTiers: [1, 2] as (1 | 2)[] };
+		expect(earnedTier(state, masteredTierCards(1))).toBe(1);
 	});
 });
 
-describe('UNLOCK_CRITERIA constants', () => {
-	it('pins the exact R3 numbers', () => {
-		expect(UNLOCK_CRITERIA).toEqual({
-			rollingWindow: 30,
-			rollingAccuracyMin: 0.85,
-			minLifetimeAttempts: 40,
-			perQualityMinAttempts: 8,
-			perQualityAccuracyMin: 0.75,
-			minDistinctDays: 2,
-			snoozePracticeDays: 3
-		});
+describe('advanceTierOnMastery (the introduceNewCards hook)', () => {
+	it('leaves storage untouched when nothing was earned', () => {
+		const state = advanceTierOnMastery([]);
+		expect(state.currentTier).toBe(1);
+		expect(localStorage.getItem(LEVEL_KEY)).toBeNull();
+	});
+
+	it('persists the earned tier so /progress reflects it without any prompt', () => {
+		const state = advanceTierOnMastery(masteredTierCards(1));
+		expect(state.currentTier).toBe(2);
+		expect(getLevelState().currentTier).toBe(2);
+		expect(getLevelState().unlockedTiers).toEqual([1, 2]);
+	});
+
+	it('is idempotent: a second call with the same evidence does not climb again', () => {
+		advanceTierOnMastery(masteredTierCards(1));
+		const second = advanceTierOnMastery(masteredTierCards(1));
+		expect(second.currentTier).toBe(2);
+	});
+
+	it('honours a manual jump ahead: mastery of a lower tier never pulls the tier back down', () => {
+		setCurrentTier(4);
+		expect(advanceTierOnMastery(masteredTierCards(1)).currentTier).toBe(4);
 	});
 });

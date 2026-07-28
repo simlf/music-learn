@@ -89,7 +89,7 @@ export const progress = {
 		'progress.settings.heading': 'Practice Settings',
 		'progress.settings.tierPrefix': 'TIER',
 		'progress.settings.tierBlurb':
-			'Unlocking early is fine. The drill mixes in scaffolding for new chord types.',
+			'Your tier decides which chords come next. It moves up on its own once every chord here has come back to you on two separate days. Setting it yourself is fine too.',
 		'progress.settings.setTierAria': 'Set tier {N}',
 		'progress.settings.tiersComingLater': 'TIERS 5 AND 6: COMING LATER',
 
@@ -182,7 +182,7 @@ export const progress = {
 		'progress.settings.heading': 'Réglages de pratique',
 		'progress.settings.tierPrefix': 'NIVEAU',
 		'progress.settings.tierBlurb':
-			"Débloquer en avance ne pose aucun souci. L'exercice mêle des repères pour les nouveaux types d'accords.",
+			"Votre niveau décide des accords qui arrivent ensuite. Il monte tout seul dès que chaque accord d'ici vous revient sur deux jours différents. Le régler vous-même ne pose aucun souci.",
 		'progress.settings.setTierAria': 'Définir le niveau {N}',
 		'progress.settings.tiersComingLater': 'NIVEAUX 5 ET 6 : BIENTÔT DISPONIBLES',
 

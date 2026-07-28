@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { allFacts, factById, scaleFormulaFactId } from './facts';
+import {
+	allFacts,
+	chordFormulaFactId,
+	factById,
+	intervalSizeFactId,
+	scaleFormulaFactId
+} from './facts';
 import { ROOTS, QUALITY_SUFFIXES } from '$lib/theory/randomChord';
 import { DRILL_INTERVALS } from '$lib/theory/interval';
 import { MAJOR_SCALE_ROOTS, majorScaleNotes } from '$lib/theory/scale';
@@ -121,6 +127,42 @@ describe('allFacts', () => {
 	it('factById returns undefined for an unknown factId, never throws', () => {
 		expect(() => factById('nonsense:not-a-real-fact')).not.toThrow();
 		expect(factById('nonsense:not-a-real-fact')).toBeUndefined();
+	});
+
+	it('keeps its kind-grouped IDENTITY order: chord block, then interval block, then scale-degree block', () => {
+		// This is the DISPLAY order (RecallMap renders it, shellVoicing
+		// enumerates it) and it is deliberately NOT the teaching order, which
+		// lives in srs/curriculum.ts. Pinned so a future curriculum change
+		// cannot quietly reshuffle the recall map's rows.
+		const facts = allFacts();
+		expect(facts[0].factId).toBe('chord-formula:C');
+		expect(facts[95].factId).toBe('chord-formula:Bdim7');
+		expect(facts[96].factId).toBe('interval-size:m2');
+		expect(facts[107].factId).toBe('interval-size:P8');
+		expect(facts[108].factId).toBe('scale-degree:C:1');
+		expect(facts[191].factId).toBe('scale-degree:B:7');
+		expect(facts.slice(0, 96).every((f) => f.factKind === 'chord-formula')).toBe(true);
+		expect(facts.slice(96, 108).every((f) => f.factKind === 'interval-size')).toBe(true);
+		expect(facts.slice(108).every((f) => f.factKind === 'scale-degree')).toBe(true);
+	});
+});
+
+describe('factId builders (the catalog own id shapes)', () => {
+	it('chordFormulaFactId matches the ids the catalog actually holds', () => {
+		expect(chordFormulaFactId('Cm7')).toBe('chord-formula:Cm7');
+		expect(factById(chordFormulaFactId('F#m7b5'))).toBeDefined();
+		for (const fact of allFacts()) {
+			if (fact.factKind !== 'chord-formula') continue;
+			expect(chordFormulaFactId(fact.symbol)).toBe(fact.factId);
+		}
+	});
+
+	it('intervalSizeFactId matches the ids the catalog actually holds', () => {
+		expect(intervalSizeFactId('m3')).toBe('interval-size:m3');
+		for (const fact of allFacts()) {
+			if (fact.factKind !== 'interval-size') continue;
+			expect(intervalSizeFactId(fact.short)).toBe(fact.factId);
+		}
 	});
 });
 
