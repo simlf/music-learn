@@ -7,9 +7,10 @@ import {
 	intervalAtomsForTier,
 	introductionOrder
 } from './curriculum';
-import { allFacts, chordFormulaFactId, intervalSizeFactId } from './facts';
+import { allFacts, chordFormulaFactId, intervalSizeFactId, scaleDegreeFactId } from './facts';
 import { DRILL_INTERVALS } from '$lib/theory/interval';
 import { itemsForTier, availableTierIds } from '$lib/practice/tiers';
+import { MAJOR_SCALE_ROOTS } from '$lib/theory/scale';
 
 /**
  * The introduction order is a CONTRACT, not an accident. The catalog order it
@@ -168,25 +169,40 @@ describe('curriculumOrder (a total permutation of the catalog)', () => {
 		}
 	});
 
-	it('promotes C/G/F scale-degree facts right after tier 1s triads (this task, PR #38s deferred promotion)', () => {
+	it('promotes C/G/F scale-degree facts right after tier 1s triads (PR #54s first step)', () => {
 		// familyForCard gaining a 'degree' family (PR #51) removed the reason
-		// #38 kept every scale-degree fact at the tail. This pins the new
-		// position: right after the first triads, not at index 108 anymore.
+		// #38 kept every scale-degree fact at the tail. This pins the position
+		// #54 gave C/G/F: right after the first triads, not at index 108.
 		const order = curriculumOrder();
 		const firstScaleDegree = order.findIndex((fact) => fact.factKind === 'scale-degree');
 		expect(firstScaleDegree).toBe(17);
 		expect(order[17].factId).toBe('scale-degree:C:1');
 	});
 
-	it('the remaining 63 scale-degree facts (the 9 tonics NOT promoted) still occupy a genuine tail', () => {
+	it('finishes the promotion (this task): no scale-degree fact is left at the catalogs tail', () => {
+		// #54 deliberately left the other 9 tonics' 63 facts at the tail as
+		// unfinished business. This task stages every one of them within the
+		// ladder (tier 2 for their 1/3/5, tier 3 for their 7/2/4/6), so the
+		// tail now holds only the five interval atoms no available tier's
+		// chords need (m2, M2, P4, m6, P8).
 		const order = curriculumOrder();
-		const tailStart = order.length - 63;
-		expect(tailStart).toBe(129);
-		expect(order.slice(tailStart).every((fact) => fact.factKind === 'scale-degree')).toBe(true);
-		// D-flat is the tonic right after C in MAJOR_SCALE_ROOTS, and C's own
-		// 7 degrees are already fully promoted (staged at tiers 1 and 3), so
-		// the tail's first fact is D-flat's, not C's.
-		expect(order[tailStart].factId).toBe('scale-degree:D♭:1');
+		const scaleDegreeCount = order.filter((fact) => fact.factKind === 'scale-degree').length;
+		expect(scaleDegreeCount).toBe(84);
+		const last5 = order.slice(-5);
+		expect(last5.every((fact) => fact.factKind === 'interval-size')).toBe(true);
+		expect(last5.some((fact) => fact.factKind === 'scale-degree')).toBe(false);
+	});
+
+	it('stages exactly the 12 MAJOR_SCALE_ROOTS tonics, no tonic missing or duplicated', () => {
+		// A typo in REMAINING_SCALE_TONICS would either drop a tonic's 7 facts
+		// to the (now-unused) tail loop, or duplicate one at another tonic's
+		// expense. Both are silent without this check: buildCurriculum's `seen`
+		// guard means a duplicate entry is simply ignored, not an error.
+		for (const tonic of MAJOR_SCALE_ROOTS) {
+			for (const degree of [1, 2, 3, 4, 5, 6, 7]) {
+				expect(curriculumTierOf(scaleDegreeFactId(tonic, degree))).not.toBeNull();
+			}
+		}
 	});
 
 	it('leaves the catalog order itself untouched (display order is a separate concern)', () => {
@@ -230,9 +246,29 @@ describe('curriculumTierOf', () => {
 		expect(curriculumTierOf('scale-degree:C:6')).toBe(3);
 	});
 
-	it('places every non-promoted tonics scale-degree facts past the ladder', () => {
-		expect(curriculumTierOf('scale-degree:D:1')).toBe(5);
-		expect(curriculumTierOf('scale-degree:B:7')).toBe(5);
+	it('places the 9 remaining tonics 1/3/5 at tier 2, this tasks finished promotion', () => {
+		// Tier 1's roots are WHITE_KEY_ROOTS only, so D/E/A/B (natural, but not
+		// among PROMOTED_SCALE_TONICS) wait for tier 2 same as the accidental
+		// roots (D♭/E♭/F♯/A♭/B♭), even though D/E/A/B's OWN triads already
+		// exist at tier 1: tier 1's degree-fact pool is deliberately kept at
+		// exactly what #54 shipped (see TRIAD_DEGREE_TIER's docstring).
+		expect(curriculumTierOf('scale-degree:D:1')).toBe(2);
+		expect(curriculumTierOf('scale-degree:B♭:3')).toBe(2);
+		expect(curriculumTierOf('scale-degree:F♯:5')).toBe(2);
+	});
+
+	it('places every tonics 7/2/4/6 at tier 3, including the 9 this task finishes', () => {
+		expect(curriculumTierOf('scale-degree:D:7')).toBe(3);
+		expect(curriculumTierOf('scale-degree:B♭:2')).toBe(3);
+		expect(curriculumTierOf('scale-degree:B:7')).toBe(3);
+		expect(curriculumTierOf('scale-degree:F♯:6')).toBe(3);
+	});
+
+	it('leaves nothing scale-degree past the ladder anymore', () => {
+		for (const fact of allFacts()) {
+			if (fact.factKind !== 'scale-degree') continue;
+			expect(curriculumTierOf(fact.factId)).toBeLessThanOrEqual(3);
+		}
 	});
 
 	it('is total: an unknown factId returns null', () => {
@@ -298,11 +334,20 @@ describe('introductionOrder: the first facts a NEW user meets (the day-1 contrac
 	});
 
 	it('the first 20 facts of the fully unlocked ladder pin the whole early curriculum (THIS TASKs deliverable)', () => {
-		// Before this task: the 20th fact was 'chord-formula:Eb', with the first
-		// scale-degree fact roughly ten days away. Now, as soon as a fresh
-		// user's first 14 triads are taught, the very next facts are the scale
-		// those triads come from, numbered - proving "the same shape in every
-		// key" while it is still the freshest possible context.
+		// Before PR #38: the 20th fact was 'chord-formula:Eb', with the first
+		// scale-degree fact roughly ten days away. #54 fixed that: as soon as a
+		// fresh user's first 14 triads are taught, the very next facts are the
+		// scale those triads come from, numbered.
+		//
+		// This task (finishing the promotion for the other 9 tonics) leaves
+		// this exact list UNCHANGED, deliberately: C/G/F stay the first tonics
+		// taught (tier 1, untouched - see TRIAD_DEGREE_TIER's docstring), and
+		// the 9 newly-finished tonics land at tier 2 and tier 3, both past
+		// position 20. Before/after this task are byte-identical here; the
+		// visible change is further down the order (tier 2 now carries a
+		// 27-fact scale-degree stage that did not exist before, and tier 3's
+		// stage grows from 12 facts to 48 - see curriculum.ts's buildCurriculum
+		// docstring for the full accounting).
 		expect(ids(introductionOrder(4)).slice(0, 20)).toEqual([
 			'interval-size:m3',
 			'interval-size:M3',
@@ -329,10 +374,14 @@ describe('introductionOrder: the first facts a NEW user meets (the day-1 contrac
 });
 
 describe('introductionOrder: the tier gate', () => {
-	it('gates strictly by tier: each rung adds its own atoms, chords, and (at tiers 1 and 3) promoted scale-degree facts', () => {
+	it('gates strictly by tier: each rung adds its own atoms, chords, and scale-degree facts', () => {
+		// Tier 1: unchanged by this task (9 = C/G/F x 1/3/5).
 		expect(introductionOrder(1)).toHaveLength(3 + 14 + 9);
-		expect(introductionOrder(2)).toHaveLength(3 + 14 + 9 + 1 + 22);
-		expect(introductionOrder(3)).toHaveLength(3 + 14 + 9 + 1 + 22 + 2 + 36 + 12);
+		// Tier 2: this task's new stage, 27 = the other 9 tonics x 1/3/5.
+		expect(introductionOrder(2)).toHaveLength(3 + 14 + 9 + 1 + 22 + 27);
+		// Tier 3: this task grows the existing stage from 12 (C/G/F x 7/2/4/6)
+		// to 48 (all 12 tonics x 7/2/4/6).
+		expect(introductionOrder(3)).toHaveLength(3 + 14 + 9 + 1 + 22 + 27 + 2 + 36 + 48);
 		expect(introductionOrder(4)).toHaveLength(allFacts().length);
 	});
 
@@ -348,11 +397,13 @@ describe('introductionOrder: the tier gate', () => {
 		}
 	});
 
-	it('withholds the non-promoted tonics scale-degree facts until the whole ladder is unlocked', () => {
-		for (const tier of [1, 2, 3] as const) {
-			expect(ids(introductionOrder(tier))).not.toContain('scale-degree:D:1');
-		}
-		expect(ids(introductionOrder(4))).toContain('scale-degree:D:1');
+	it('withholds the 9 finished tonics 1/3/5 until tier 2, and their 7/2/4/6 until tier 3', () => {
+		expect(ids(introductionOrder(1))).not.toContain('scale-degree:D:1');
+		expect(ids(introductionOrder(2))).toContain('scale-degree:D:1');
+
+		expect(ids(introductionOrder(1))).not.toContain('scale-degree:D:7');
+		expect(ids(introductionOrder(2))).not.toContain('scale-degree:D:7');
+		expect(ids(introductionOrder(3))).toContain('scale-degree:D:7');
 	});
 
 	it('does NOT withhold the promoted C/G/F scale-degree facts: they open at tiers 1 and 3, same as any other fact at that tier', () => {

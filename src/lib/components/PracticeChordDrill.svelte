@@ -6,11 +6,13 @@
 	import { matchChord, type MatchResult } from '$lib/drills/matchChord';
 	import { toAsciiAccidentals } from '$lib/theory/interval';
 	import { ensureAudioReady, playChord } from '$lib/audio/audio';
+	import { buildProvenanceIndex, songsForSymbol } from '$lib/practice/songProvenance';
 	import PianoKeyboard from './PianoKeyboard.svelte';
 	import ChordGlyph from './ChordGlyph.svelte';
 	import CountingChipRow from './CountingChipRow.svelte';
 	import HintLadder from './HintLadder.svelte';
 	import RevealInsight from './RevealInsight.svelte';
+	import SongMark from './SongMark.svelte';
 	import Button from './Button.svelte';
 	import { t } from '$lib/i18n/locale.svelte';
 
@@ -122,6 +124,21 @@
 	 * deliberate init-time snapshot, not a reactive dependency on `symbol`.
 	 */
 	const target = untrack(() => spellChord(symbol));
+
+	/**
+	 * Song provenance (retention audit item, this task): "you'll meet this one
+	 * in Autumn Leaves" is the one genuinely variable-reward hook the domain
+	 * offers for free, already shipped on Lookup, RecallSession and
+	 * ProgressionDrill but absent from this component - the app's busiest
+	 * drill surface, where the overwhelming majority of daily items are asked
+	 * (see the file docstring). Built once per instance (mirrors
+	 * ProgressionDrill's own `buildProvenanceIndex()` at mount, not a prop
+	 * threaded from the host: this component already gets a fresh instance
+	 * per queue item via the host's `{#key}` wrapper, so "per mount" already
+	 * means "per question").
+	 */
+	const provenanceIndex = buildProvenanceIndex();
+	const provenanceSongs = untrack(() => songsForSymbol(symbol, provenanceIndex));
 
 	/** True for the two modes answered by picking a symbol from the choice grid. */
 	const identifying = $derived(mode !== 'see-play');
@@ -251,6 +268,7 @@
 	{:else if mode === 'see-play'}
 		<div class="flex items-start gap-4" data-testid="chord-drill-play-prompt">
 			<ChordGlyph root={target.root} quality={targetQuality} />
+			<SongMark songs={provenanceSongs} />
 		</div>
 		<p class="text-body mt-4">{t('recall.prompt.see-play')}</p>
 
@@ -312,6 +330,14 @@
 
 	{#if answered}
 		<div class="mt-4 stamp" data-testid="chord-drill-feedback">
+			{#if mode !== 'see-play'}
+				<!--
+					'formula'/'hear-name' ask the user to NAME this symbol, so showing
+					the mark any earlier would leak the answer; see-play already shows
+					it at the prompt above, since there the symbol IS the question.
+				-->
+				<SongMark songs={provenanceSongs} />
+			{/if}
 			{#if correct}
 				<p class="text-body font-bold" data-testid="chord-drill-correct">
 					<span aria-hidden="true">✓</span>

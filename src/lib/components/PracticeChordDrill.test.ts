@@ -2,6 +2,7 @@ import { render, screen, fireEvent, within, cleanup } from '@testing-library/sve
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import PracticeChordDrill from './PracticeChordDrill.svelte';
 import { setLocale } from '$lib/i18n/locale.svelte';
+import { saveSong, type Song } from '$lib/practice/songs';
 
 /**
  * Component test for PracticeChordDrill (Phase 27 Plan 03): the name-it
@@ -508,5 +509,86 @@ describe('PracticeChordDrill: confusion contrast on the wrong path', () => {
 
 		expect(screen.getByTestId('mnemonic-line')).toBeInTheDocument();
 		expect(screen.queryByTestId('contrast-line')).not.toBeInTheDocument();
+	});
+});
+
+describe('PracticeChordDrill: song provenance (retention audit item)', () => {
+	function song(overrides: Partial<Song> = {}): Song {
+		return {
+			id: 'song-1',
+			name: 'Autumn Leaves (my chart)',
+			chordSymbols: ['Cm7'],
+			createdAt: '2026-07-20T00:00:00.000Z',
+			source: 'custom',
+			active: true,
+			...overrides
+		};
+	}
+
+	beforeEach(() => {
+		localStorage.clear();
+	});
+
+	afterEach(() => {
+		localStorage.clear();
+	});
+
+	it('see-play shows the mark immediately, next to the given prompt symbol (no spoiler risk)', () => {
+		saveSong(song());
+		render(PracticeChordDrill, { props: { symbol: 'Cm7', mode: 'see-play', onComplete: vi.fn() } });
+
+		const prompt = screen.getByTestId('chord-drill-play-prompt');
+		expect(prompt.querySelector('[data-testid="song-mark"]')).toHaveTextContent(
+			'Autumn Leaves (my chart)'
+		);
+	});
+
+	it('formula and hear-name withhold the mark until after answering, since the symbol is the answer', () => {
+		saveSong(song());
+		render(PracticeChordDrill, { props: { symbol: 'Cm7', mode: 'formula', onComplete: vi.fn() } });
+
+		expect(screen.queryByTestId('song-mark')).not.toBeInTheDocument();
+	});
+
+	it('formula shows the mark on reveal, correct or not', async () => {
+		saveSong(song());
+		render(PracticeChordDrill, { props: { symbol: 'Cm7', mode: 'formula', onComplete: vi.fn() } });
+
+		await fireEvent.click(choiceButton('Cm7'));
+
+		const feedback = screen.getByTestId('chord-drill-feedback');
+		expect(feedback.querySelector('[data-testid="song-mark"]')).toHaveTextContent(
+			'Autumn Leaves (my chart)'
+		);
+	});
+
+	it('hear-name shows the mark on reveal after Play then answering', async () => {
+		saveSong(song());
+		render(PracticeChordDrill, { props: { symbol: 'Cm7', mode: 'hear-name', onComplete: vi.fn() } });
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Play' }));
+		await fireEvent.click(choiceButton('Cm7'));
+
+		const feedback = screen.getByTestId('chord-drill-feedback');
+		expect(feedback.querySelector('[data-testid="song-mark"]')).toHaveTextContent(
+			'Autumn Leaves (my chart)'
+		);
+	});
+
+	it('renders nothing when no active song contains this symbol', async () => {
+		render(PracticeChordDrill, { props: { symbol: 'Cm7', mode: 'formula', onComplete: vi.fn() } });
+
+		await fireEvent.click(choiceButton('Cm7'));
+
+		expect(screen.queryByTestId('song-mark')).not.toBeInTheDocument();
+	});
+
+	it('an inactive song never surfaces its mark', async () => {
+		saveSong(song({ active: false }));
+		render(PracticeChordDrill, { props: { symbol: 'Cm7', mode: 'formula', onComplete: vi.fn() } });
+
+		await fireEvent.click(choiceButton('Cm7'));
+
+		expect(screen.queryByTestId('song-mark')).not.toBeInTheDocument();
 	});
 });
