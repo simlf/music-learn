@@ -1,10 +1,18 @@
 import type { LocaleDict } from './index';
 
 /**
- * Masthead chrome: the 8 nav labels, the brand, and the EN|FR toggle's own
- * accessible-name strings (I18N-01). The brand key is intentionally
+ * Masthead chrome: the four hub nav labels, the brand, and the EN|FR toggle's
+ * own accessible-name strings (I18N-01). The brand key is intentionally
  * IDENTICAL in en and fr - "MUSIC LEARN" is a proper noun and never
  * translates (locked in 20-UI-SPEC.md).
+ *
+ * The nav set is exactly the four hubs the masthead and bottom tab bar render
+ * (`NAV_LINKS` in `+layout.svelte`): Lookup, Practice, Learn, Progress. The
+ * pre-consolidation ten-link nav labels (`nav.drills`, `nav.more`,
+ * `nav.build`, `nav.recall`, `nav.scales`, `nav.songs`, `nav.theory`,
+ * `nav.progressions`, `nav.voicings`) and `chrome.sheet.close` (the deleted
+ * BottomSheet) were removed once those routes became 308 redirects; the
+ * `unusedKeys.test.ts` gate now keeps the set honest.
  *
  * `nav.due.aria` (B7) carries TWO placeholders: {LABEL} takes the tab's own
  * translated label and {N} the due-card count, so the badged tab's accessible
@@ -14,12 +22,6 @@ import type { LocaleDict } from './index';
 export const chrome = {
 	en: {
 		'nav.lookup': 'Lookup',
-		'nav.drills': 'Drills',
-		'nav.build': 'Build',
-		'nav.recall': 'Recall',
-		'nav.scales': 'Scales',
-		'nav.songs': 'Songs',
-		'nav.theory': 'Theory',
 		'nav.progress': 'Progress',
 		'nav.practice': 'Practice',
 		'nav.learn': 'Learn',
@@ -30,20 +32,10 @@ export const chrome = {
 		'pwa.update.message': 'Update available.',
 		'pwa.update.action': 'Reload',
 		'pwa.update.dismiss': 'Dismiss',
-		'chrome.sheet.close': 'Close',
-		'nav.more': 'More',
-		'nav.progressions': 'Progressions',
-		'nav.voicings': 'Voicings',
 		'nav.due.aria': '{LABEL}, {N} due'
 	},
 	fr: {
 		'nav.lookup': 'Rechercher',
-		'nav.drills': 'Exercices',
-		'nav.build': 'Construire',
-		'nav.recall': 'Révision',
-		'nav.scales': 'Gammes',
-		'nav.songs': 'Morceaux',
-		'nav.theory': 'Théorie',
 		'nav.progress': 'Progrès',
 		'nav.practice': 'Pratiquer',
 		'nav.learn': 'Apprendre',
@@ -54,10 +46,6 @@ export const chrome = {
 		'pwa.update.message': 'Mise à jour disponible.',
 		'pwa.update.action': 'Recharger',
 		'pwa.update.dismiss': 'Ignorer',
-		'chrome.sheet.close': 'Fermer',
-		'nav.more': 'Plus',
-		'nav.progressions': 'Progressions',
-		'nav.voicings': 'Voicings',
 		'nav.due.aria': '{LABEL}, {N} à revoir'
 	}
 } satisfies LocaleDict;

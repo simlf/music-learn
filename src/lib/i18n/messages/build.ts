@@ -100,10 +100,7 @@ export const build = {
 		'build.confirm.3': 'Spot on, mon ami.',
 		'build.wrong.0': 'Not quite.',
 		'build.wrong.1': 'Close, but no cigar.',
-		'build.wrong.2': 'Not this time.',
-
-		'build.page.title': 'Build It',
-		'build.page.subtitle': "Earn every note. Stack the interval, don't just read it."
+		'build.wrong.2': 'Not this time.'
 	},
 	fr: {
 		'build.kind.chords': 'Accords',
@@ -192,9 +189,6 @@ export const build = {
 		'build.confirm.3': 'Exactement, mon ami.',
 		'build.wrong.0': 'Pas tout à fait.',
 		'build.wrong.1': 'Presque, mais pas cette fois.',
-		'build.wrong.2': 'Pas cette fois-ci.',
-
-		'build.page.title': 'Construire',
-		'build.page.subtitle': "Gagne chaque note. Empile l'intervalle, ne te contente pas de le lire."
+		'build.wrong.2': 'Pas cette fois-ci.'
 	}
 } satisfies LocaleDict;

@@ -18,9 +18,6 @@ import type { LocaleDict } from './index';
  */
 export const progressions = {
 	en: {
-		'progressions.page.title': 'Progressions',
-		'progressions.page.subtitle': 'Earn each chord symbol by naming it, then playing it.',
-
 		'progressions.key.banner.label': 'KEY:',
 		'progressions.key.major': 'MAJOR',
 		'progressions.key.minor': 'MINOR',
@@ -84,9 +81,6 @@ export const progressions = {
 		'progressions.hint.closing': 'The symbol stays hidden. You still earn it.'
 	},
 	fr: {
-		'progressions.page.title': 'Progressions',
-		'progressions.page.subtitle': 'Gagne chaque symbole en le nommant, puis en le jouant.',
-
 		'progressions.key.banner.label': 'TON :',
 		'progressions.key.major': 'MAJEUR',
 		'progressions.key.minor': 'MINEUR',

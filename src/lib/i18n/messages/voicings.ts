@@ -39,10 +39,6 @@ import type { LocaleDict } from './index';
  */
 export const voicings = {
 	en: {
-		'voicings.page.title': 'Shell Voicings',
-		'voicings.page.subtitle':
-			'Left-hand guide tones, staged to how well you know each chord.',
-
 		'voicings.step.meet': '1 MEET',
 		'voicings.step.subtract': '2 SUBTRACT',
 		'voicings.step.drill': '3 DRILL',
@@ -83,10 +79,6 @@ export const voicings = {
 			'No shell to drill on this symbol: a shell keeps the third and the seventh, and this one does not spell both.'
 	},
 	fr: {
-		'voicings.page.title': 'Shell Voicings',
-		'voicings.page.subtitle':
-			'Les tons de guidage de la main gauche, dosés selon ta maîtrise de chaque accord.',
-
 		'voicings.step.meet': '1 VOIR',
 		'voicings.step.subtract': '2 RETIRER',
 		'voicings.step.drill': '3 EXO',

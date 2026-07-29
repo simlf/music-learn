@@ -338,10 +338,10 @@ describe('No raw-key leak across every domain (I18N-02)', () => {
 
 	it('t() resolves a representative key from every domain under both locales', () => {
 		const sample: MessageKey[] = [
-			'nav.drills', // chrome
+			'nav.practice', // chrome
 			'recall.grade.again', // recall
 			'build.caption.root', // build
-			'drills.page.title', // drills
+			'drills.score.right', // drills
 			'songs.page.title', // songs
 			'theory.page.title', // theory
 			'scales.page.title', // scales

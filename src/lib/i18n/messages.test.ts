@@ -41,7 +41,9 @@ describe('en/fr message parity (I18N-02)', () => {
 
 	it('t() returns the correct French nav label after setLocale("fr")', () => {
 		setLocale('fr');
-		expect(t('nav.drills')).toBe('Exercices');
+		// nav.practice, not the retired nav.drills: /drills is a 308 redirect and
+		// its label key was removed with the rest of the pre-consolidation nav.
+		expect(t('nav.practice')).toBe('Pratiquer');
 	});
 });
 
