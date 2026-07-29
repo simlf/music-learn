@@ -465,9 +465,14 @@ describe('RecallSession (MEM-01/MEM-02: reveal-then-grade review session)', () =
  * >20 pre-due backlog, and consults/consumes remainingIntroBudget /
  * consumeIntroBudget for the remaining case. introBudget is fully mocked
  * (module-level vi.mock above) so these tests never touch real localStorage.
+ *
+ * The gate measures the backlog in FACTS, the unit the budget it gates is in.
+ * Every fixture below uses one card per distinct factId, so its card count and
+ * its fact count coincide and the boundary cases read the same as they always
+ * did; the fact-vs-card distinction itself is covered in its own describe below.
  */
 describe('RecallSession daily intro budget + backlog gate (260722-0ex, BACKLOG-1)', () => {
-	it('with more than 20 pre-due cards, introduceNewCards is never called (backlog gate)', async () => {
+	it('with more than 20 pre-due facts, introduceNewCards is never called (backlog gate)', async () => {
 		const manyDueCards = Array.from({ length: 21 }, (_, i) =>
 			makeCard(`interval-size:fake-${i}`, 'interval-size')
 		);
@@ -483,7 +488,7 @@ describe('RecallSession daily intro budget + backlog gate (260722-0ex, BACKLOG-1
 		expect(screen.getByTestId('recall-register')).toHaveTextContent('21 LEFT TODAY');
 	});
 
-	it('with exactly 20 pre-due cards (at, not over, the gate), the budget path still runs (introduceNewCards is called)', async () => {
+	it('with exactly 20 pre-due facts (at, not over, the gate), the budget path still runs (introduceNewCards is called)', async () => {
 		const twentyDueCards = Array.from({ length: 20 }, (_, i) =>
 			makeCard(`interval-size:fake-${i}`, 'interval-size')
 		);
@@ -497,7 +502,7 @@ describe('RecallSession daily intro budget + backlog gate (260722-0ex, BACKLOG-1
 		expect(introduceNewCardsMock).toHaveBeenCalledTimes(1);
 	});
 
-	it('with <= 20 pre-due cards and remaining budget, introduceNewCards is called with the remaining value and consumeIntroBudget is called with the returned fact count', async () => {
+	it('with <= 20 pre-due facts and remaining budget, introduceNewCards is called with the remaining value and consumeIntroBudget is called with the returned fact count', async () => {
 		const card = makeCard('chord-formula:Cm7', 'chord-formula');
 		getDueCardsMock.mockResolvedValue([card]);
 		getAllCardsMock.mockResolvedValue([card]);
@@ -554,6 +559,126 @@ describe('RecallSession daily intro budget + backlog gate (260722-0ex, BACKLOG-1
 		expect(getDueCardsMock).toHaveBeenCalledTimes(2);
 		expect(consumeIntroBudgetMock).toHaveBeenCalledWith(1, expect.any(Date));
 		expect(screen.getByTestId('recall-register')).toHaveTextContent('2 LEFT TODAY');
+	});
+});
+
+/**
+ * The units half of the backlog gate. This gate compared a CARD count against a
+ * threshold expressed in FACTS: the budget it protects
+ * (introBudget's MAX_NEW_CARDS_PER_DAY) is a FACT budget of 10 a day, and a
+ * chord fact seeds a teach cluster of 3 cards, so one day's own introduction is
+ * about 30 cards and every day a cohort came back the gate saw 30 > 20 and
+ * locked new material out. /practice had the identical bug and was fixed in
+ * c55b1d8; this is the same fix on the surface that kept the second copy.
+ *
+ * `interval-size` fixtures are used for the multi-card-per-fact cases rather
+ * than chord facts, so the cards come back through selectReviewCards without a
+ * teach-cluster special case muddying what is being measured.
+ */
+describe('RecallSession backlog gate counts FACTS, not cards', () => {
+	/** Builds `perFact` due cards for each of `factCount` distinct facts. */
+	function dueCardsFor(factCount: number, perFact: number): CardRecord[] {
+		const cards: CardRecord[] = [];
+		const modes: CardRecord['mode'][] = ['formula', 'see-play', 'formula-build'];
+		for (let f = 0; f < factCount; f++) {
+			for (let m = 0; m < perFact; m++) {
+				cards.push(
+					makeCard(`chord-formula:Fake${f}`, 'chord-formula', modes[m % modes.length])
+				);
+			}
+		}
+		return cards;
+	}
+
+	it('a day-one teach cohort (10 facts x 3 cluster cards = 30 cards) does NOT trip the gate', async () => {
+		// The exact shape that used to lock intake out: 30 cards is over the old
+		// card-count gate of 20, but it is only 10 FACTS, which is one single day
+		// of the 10-facts-a-day budget and must never read as a backlog.
+		const cohort = dueCardsFor(10, 3);
+		expect(cohort).toHaveLength(30);
+		getDueCardsMock.mockResolvedValue(cohort);
+		getAllCardsMock.mockResolvedValue(cohort);
+		remainingIntroBudgetMock.mockReturnValue(10);
+		introduceNewCardsMock.mockResolvedValue(0);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-register'));
+
+		expect(introduceNewCardsMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('20 facts spread over 60 cards does NOT trip the gate (three times the old card threshold)', async () => {
+		const at = dueCardsFor(20, 3);
+		expect(at).toHaveLength(60);
+		getDueCardsMock.mockResolvedValue(at);
+		getAllCardsMock.mockResolvedValue(at);
+		remainingIntroBudgetMock.mockReturnValue(10);
+		introduceNewCardsMock.mockResolvedValue(0);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-register'));
+
+		expect(introduceNewCardsMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('21 facts spread over 63 cards DOES trip the gate', async () => {
+		const over = dueCardsFor(21, 3);
+		getDueCardsMock.mockResolvedValue(over);
+		getAllCardsMock.mockResolvedValue(over);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-register'));
+
+		expect(introduceNewCardsMock).not.toHaveBeenCalled();
+	});
+
+	/**
+	 * These two pin the threshold to the REAL constant rather than to the literal
+	 * beside it, which is the whole reason the literal is allowed to stay a
+	 * literal. `vi.importActual` deliberately bypasses this file's module-level
+	 * `vi.mock('$lib/srs/introBudget')`: an ordinary import would hand back the
+	 * mock (which exports only the two functions), MAX_NEW_CARDS_PER_DAY would be
+	 * undefined, and the assertion would silently compare against NaN. That is
+	 * precisely the failure the gate itself would suffer if it imported the
+	 * constant, and is exactly why the relationship is asserted here instead.
+	 *
+	 * Asserted through the gate's observable BEHAVIOUR at the boundary rather
+	 * than by reading the constant back: the constant is module-private to the
+	 * component, and the behaviour is the thing that actually has to hold.
+	 */
+	async function maxNewCardsPerDay(): Promise<number> {
+		const actual = await vi.importActual<typeof import('$lib/srs/introBudget')>(
+			'$lib/srs/introBudget'
+		);
+		expect(actual.MAX_NEW_CARDS_PER_DAY).toBeGreaterThan(0);
+		return actual.MAX_NEW_CARDS_PER_DAY;
+	}
+
+	it('two unpracticed days of intake (2 x the real MAX_NEW_CARDS_PER_DAY facts) still passes the gate', async () => {
+		const max = await maxNewCardsPerDay();
+		const twoDays = dueCardsFor(2 * max, 1);
+		remainingIntroBudgetMock.mockReturnValue(max);
+		introduceNewCardsMock.mockResolvedValue(0);
+		getDueCardsMock.mockResolvedValue(twoDays);
+		getAllCardsMock.mockResolvedValue(twoDays);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-register'));
+
+		expect(introduceNewCardsMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('one fact past two days of intake closes the gate', async () => {
+		const max = await maxNewCardsPerDay();
+		const overByOne = dueCardsFor(2 * max + 1, 1);
+		remainingIntroBudgetMock.mockReturnValue(max);
+		getDueCardsMock.mockResolvedValue(overByOne);
+		getAllCardsMock.mockResolvedValue(overByOne);
+
+		renderRecallSession();
+		await waitFor(() => screen.getByTestId('recall-register'));
+
+		expect(introduceNewCardsMock).not.toHaveBeenCalled();
 	});
 });
 

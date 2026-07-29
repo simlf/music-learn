@@ -35,6 +35,18 @@ let lastIndex = -1;
  * broken record (D-08). The anti-repeat index is shared across locales
  * (rotation state, not per-language state) - a locale switch mid-run just
  * means the next pick avoids the last index in whichever pool is now active.
+ *
+ * The anti-repeat step is ONE deterministic hop, not an unbounded redraw loop.
+ * This used to re-roll `Math.random()` in a `while` until it differed from the
+ * last pick, which is a rejection loop whose termination depends entirely on a
+ * randomness source this module does not own: if `Math.random` ever returns a
+ * constant, the loop never exits. That is not theoretical - it is the normal
+ * shape of a deterministic test (`vi.spyOn(Math, 'random').mockReturnValue(x)`),
+ * and it is exactly how the twin loop in copy/streak.ts hung, where a spun spy
+ * also recorded every call so the hang surfaced as heap exhaustion in unrelated
+ * test files rather than as an honest timeout. A single modular step keeps the
+ * guarantee the loop existed for (with more than one line, the pick is never the
+ * previous one) and always terminates.
  */
 export function pickHint(): string {
 	const pool = currentLocale() === 'fr' ? errorHintsFr : errorHints;
@@ -45,8 +57,8 @@ export function pickHint(): string {
 	}
 
 	let index = Math.floor(Math.random() * pool.length);
-	while (index === lastIndex) {
-		index = Math.floor(Math.random() * pool.length);
+	if (index === lastIndex) {
+		index = (index + 1) % pool.length;
 	}
 	lastIndex = index;
 	return pool[index];
@@ -79,7 +91,8 @@ let lastSuggestionIndex = -1;
 
 /**
  * Picks a suggestion variant from the current-locale pool, avoiding an
- * immediate repeat, mirroring pickHint's anti-repeat logic exactly but
+ * immediate repeat, mirroring pickHint's anti-repeat logic exactly (the same
+ * single deterministic modular hop, for the same reason - see pickHint) but
  * tracked by its own independent lastSuggestionIndex so the two rotations
  * never cross-contaminate.
  */
@@ -92,8 +105,8 @@ export function pickSuggestionHint(): string {
 	}
 
 	let index = Math.floor(Math.random() * pool.length);
-	while (index === lastSuggestionIndex) {
-		index = Math.floor(Math.random() * pool.length);
+	if (index === lastSuggestionIndex) {
+		index = (index + 1) % pool.length;
 	}
 	lastSuggestionIndex = index;
 	return pool[index];

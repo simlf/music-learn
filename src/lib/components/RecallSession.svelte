@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import { Note } from 'tonal';
 	import {
 		introduceNewCards,
 		getDueCards,
@@ -22,7 +21,7 @@
 		type QueueItem
 	} from '$lib/srs/session';
 	import { spellChord } from '$lib/theory/chord';
-	import { intervalFromShort, toAsciiAccidentals, transposeFrom } from '$lib/theory/interval';
+	import { chromaOf, intervalFromShort, transposeFrom } from '$lib/theory/interval';
 	import { majorScaleNotes } from '$lib/theory/scale';
 	import { formulaFor } from '$lib/lookup/chordPresentation';
 	import { matchChord, type MatchResult } from '$lib/drills/matchChord';
@@ -299,22 +298,79 @@
 	/**
 	 * Daily new-card intro budget + due-backlog gate (260722-0ex, BACKLOG-1):
 	 * getDueCards() runs FIRST so the backlog gate can inspect the PRE-
-	 * introduction due count. A backlog over 20 cards means zero new facts are
+	 * introduction backlog. A backlog over the gate means zero new facts are
 	 * introduced this mount, no matter how much of today's budget remains -
 	 * the deck's job right now is clearing the backlog, not growing it
 	 * further. Otherwise, up to the remaining daily budget is introduced
 	 * (introduceNewCards returns a FACT count per the 13-01 convention, which
 	 * is exactly what the budget consumes) and due cards are RE-FETCHED so
 	 * any freshly-introduced New cards (due = now) enter this session.
+	 *
+	 * The threshold is in FACTS, the unit the budget it gates is in. This used to
+	 * compare a CARD count against 20 while the budget it protects
+	 * (introBudget's MAX_NEW_CARDS_PER_DAY) is a FACT budget of 10 a day, and a
+	 * chord fact seeds a teach cluster of 3 cards. One day's own introduction is
+	 * therefore about 30 cards, so on every single day a cohort came back the
+	 * gate saw 30 > 20 and locked new material out: from roughly day 4 intake
+	 * self-throttled into a stop-start pattern with no cause the user could see
+	 * or fix.
+	 *
+	 * 20 is kept, but it now means 2 x MAX_NEW_CARDS_PER_DAY in the SAME unit as
+	 * the budget, which turns a coincidence into a rule: one unpracticed day of
+	 * intake is 10 facts and passes, two days is 20 and still passes (`>`, not
+	 * `>=`), three days is 30 and is a genuine backlog worth clearing before
+	 * growing the deck further.
+	 *
+	 * Deliberately a LITERAL rather than an import of MAX_NEW_CARDS_PER_DAY:
+	 * recallSession.test.ts mocks `$lib/srs/introBudget` down to two functions
+	 * (remainingIntroBudget, consumeIntroBudget), so importing the constant here
+	 * would silently resolve to undefined inside every one of those tests and
+	 * turn this comparison into `> NaN` - a gate that never fires and never says
+	 * so. The relationship to the real constant is asserted in
+	 * recallSession.test.ts against an unmocked import instead, which cannot be
+	 * mocked away.
+	 *
+	 * DUPLICATED POLICY, ON PURPOSE FOR NOW: /practice owns the same gate as
+	 * practiceQueue.ts's DUE_BACKLOG_GATE_FACTS + backlogFactCount, and this
+	 * units bug survived here precisely BECAUSE there were two copies (c55b1d8
+	 * fixed that one and left this one). The two are not mergeable as they stand:
+	 * the threshold only means "two days of intake" in combination with a
+	 * fact-counting measure whose answerability filter matches the surface, and
+	 * the two surfaces genuinely disagree about that filter (see
+	 * backlogFactCount below). Unifying them needs a shared module exporting the
+	 * threshold AND a count parameterized by the caller's answerability
+	 * predicate, which is a follow-up: keep the two in sync until then.
 	 */
-	const DUE_BACKLOG_GATE = 20;
+	const DUE_BACKLOG_GATE_FACTS = 20;
+
+	/**
+	 * How many distinct FACTS have a due card this surface can actually ask: the
+	 * gate's own measure of "backlog". Facts, not cards, because that is the unit
+	 * the intro budget spends.
+	 *
+	 * No answerability filter here, and that is the deliberate difference from
+	 * /practice's backlogFactCount rather than an omission. /practice must filter
+	 * on familyForCard because it DROPS all 84 scale-degree facts (scales are a
+	 * separate surface there), so their cards are due forever and counting them
+	 * would let a pile of permanently-unanswerable cards freeze intake
+	 * permanently. This surface is the one that does ask them: RecallSession
+	 * renders a prompt, a reveal and a grade for all three factKinds
+	 * (chord-formula, interval-size, scale-degree), so every due card here is
+	 * backlog the user can actually clear, and excluding any of it would hide a
+	 * real backlog from the gate.
+	 */
+	function backlogFactCount(due: CardRecord[]): number {
+		const facts = new Set<string>();
+		for (const card of due) facts.add(card.factId);
+		return facts.size;
+	}
 
 	async function load(): Promise<void> {
 		pageState = 'loading';
 		try {
 			const preDue = await getDueCards();
 			let dueBase: CardRecord[];
-			if (preDue.length > DUE_BACKLOG_GATE) {
+			if (backlogFactCount(preDue) > DUE_BACKLOG_GATE_FACTS) {
 				dueBase = preDue;
 			} else {
 				const remaining = remainingIntroBudget(new Date());
@@ -383,12 +439,23 @@
 	 * isExtraLetter/wrongLetters): a selected letter whose chroma is in the
 	 * graded result's `extra` set gets the gray fill + ✕ mark once the
 	 * keyboard transforms into its wrong-answer reveal.
+	 *
+	 * Chroma goes through the shared `chromaOf`, never a bare `Note.chroma`,
+	 * which for this particular check was not merely fail-closed-by-luck like its
+	 * sibling in handleModeACheck: `Array.prototype.includes` compares with
+	 * SameValueZero, and SameValueZero says NaN EQUALS NaN. So an unparseable
+	 * letter's `NaN` matched any `NaN` that had leaked into `extra` from the
+	 * grading site below, and the letter got marked wrong for the wrong reason. An
+	 * unresolvable letter is now simply never marked extra, which is consistent
+	 * with it never being graded either.
 	 */
 	const extraLettersPlayed = $derived(
 		new Set(
-			[...selected].filter((letter) =>
-				modeAResult?.extra.includes(Note.chroma(toAsciiAccidentals(letter))) ?? false
-			)
+			[...selected].filter((letter) => {
+				const chroma = chromaOf(letter);
+				if (chroma === undefined) return false;
+				return modeAResult?.extra.includes(chroma) ?? false;
+			})
 		)
 	);
 
@@ -433,13 +500,25 @@
 	 * fire-and-forget (D-04 auto-rating) so the write can never block the
 	 * feedback/Next flow: a rejection is silently swallowed and the card
 	 * simply stays in its pre-write state until a later successful write.
+	 *
+	 * The PLAYED side resolves chroma through the shared `chromaOf` and drops what
+	 * does not resolve. matchChord normalizes only the TARGET side, so the played
+	 * side is the caller's responsibility: a bare `Note.chroma` put `NaN` straight
+	 * into the graded set, where it happened to fail closed (a `NaN` never equals a
+	 * real chroma, so it landed in `extra` and forced `correct: false`) but only by
+	 * luck, and it leaked into `extra` for the reveal above to trip over. Dropping
+	 * an unresolvable letter cannot turn a wrong answer into a right one either,
+	 * since a chord whose notes are all present still needs nothing extra and an
+	 * unresolvable letter contributes no target chroma.
 	 */
 	function handleModeACheck(): void {
 		if (!currentFact || currentFact.factKind !== 'chord-formula') return;
 
 		const target = spellChord(currentFact.symbol);
 		const playedChroma = new Set(
-			[...selected].map((letter) => Note.chroma(toAsciiAccidentals(letter)))
+			[...selected]
+				.map((letter) => chromaOf(letter))
+				.filter((chroma): chroma is number => chroma !== undefined)
 		);
 		const result = matchChord(playedChroma, target);
 		modeAResult = result;
