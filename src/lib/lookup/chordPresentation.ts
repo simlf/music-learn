@@ -244,13 +244,46 @@ export function stackedThirdsFor(chord: ChordResult, startRole?: IntervalRole): 
  * Appending makes every equation true instead. The bass comes from
  * chord.bass, which spellChord has already glyph-converted, and the leading
  * form is displaySymbol's (one glyph-rebuild path, not a second copy).
+ *
+ * BUG PIN (chart-vocabulary sweep): four of tonal's quality aliases contain a
+ * slash of their own - "6/9", "m/ma7", "m/maj7", "m/M7" - and appending a bass
+ * to those produced a two-slash form that reads as a nested inversion and that
+ * the app itself rejects on re-entry:
+ *
+ *   aliasLine(spellChord('C69/E'))      "C69/E = C6add9/E = C6/9/E = ..."
+ *   aliasLine(spellChord('CmMaj7/G'))   "CmMaj7/G = Cm/ma7/G = Cm/maj7/G = ..."
+ *
+ * spellChord('C6/9/E') and spellChord('Cm/ma7/G') are both UNRECOGNIZED, so
+ * the line was offering the learner symbols the lookup cannot parse, on the
+ * inversion surface where he is least sure what he is reading. Slash-bearing
+ * aliases are therefore dropped on a slash chord only; every other alias
+ * still gets its bass appended, and a root-position chord's line is
+ * unchanged (it still shows C6/9 and Cm/ma7, which do parse).
+ *
+ * BUG PIN 2 (same sweep, root-position too): an alias whose first character is
+ * an ACCIDENTAL gets absorbed into the root's own accidental slot when the two
+ * are concatenated, silently renaming the root:
+ *
+ *   aliasLine(spellChord('C7b9sus'))  "C7b9sus = Cphryg = Cb9sus"
+ *
+ * "Cb9sus" reads back as C FLAT 9sus, a different chord on a different root,
+ * so the line stated a falsehood for all 12 roots of this type (tonal's
+ * `b9sus` is the only alias in its whole dictionary that begins with an
+ * accidental, so this is exactly 24 recognized symbols: the 7b9sus/phryg
+ * spellings). Dropped rather than parenthesised, since the app's canonical
+ * form for that chord ("C7b9sus") is already in the line.
  */
 export function aliasLine(chord: ChordResult): string {
 	const bassSuffix = chord.bass === undefined ? '' : `/${chord.bass}`;
-	const forms = [
-		displaySymbol(chord),
-		...chord.aliases.map((alias) => chord.root + alias + bassSuffix)
-	];
+	const aliases = chord.aliases.filter(
+		(alias) =>
+			// Would be swallowed by the root's accidental slot: "C" + "b9sus".
+			!/^[b#]/.test(alias) &&
+			// Would read as a nested inversion once a bass is appended:
+			// "C" + "6/9" + "/E". Harmless (and useful) with no bass.
+			!(chord.bass !== undefined && alias.includes('/'))
+	);
+	const forms = [displaySymbol(chord), ...aliases.map((alias) => chord.root + alias + bassSuffix)];
 	return [...new Set(forms)].join(' = ');
 }
 

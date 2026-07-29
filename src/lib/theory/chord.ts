@@ -114,12 +114,87 @@ export function spellChord(symbol: string): ChordResult {
  * Normalizes chord-symbol accidentals and the half-diminished glyph into the
  * ASCII form tonal's Chord.get accepts. tonal accepts ASCII #/b and the °
  * glyph directly, but not ♯/♭ glyphs or ø - so those are converted here.
+ *
+ * BUG PIN (chart-vocabulary sweep): three families of PRINTED notation were
+ * rejected outright, with no did-you-mean fallback (didYouMean draws only from
+ * the 8 QUALITY_SUFFIXES, so it returns null for all of them). Measured
+ * against tonal 6.4.3:
+ *
+ *   C7(b9)  Cm7(b5)  C7(#11)  C7(b5)  C7(#9)  C7(b13)  C(add9)  C7(alt)
+ *                                            all UNRECOGNIZED
+ *   Cm(maj7)  Cmi(maj7)  Cmin(maj7)  Cmmaj7  C-M7  CmΔ7      all UNRECOGNIZED
+ *   C∆  C∆7  CΔ7                                             all UNRECOGNIZED
+ *
+ * The parenthesised alteration is how a fake book actually prints an altered
+ * dominant, and `m(maj7)` is the standard minor ii-V-i tonic the tier-4 blurb
+ * advertises, so this was the app's core value failing on its core input.
+ *
+ * Fixed by mapping printed spellings onto tonal's OWN alias vocabulary and
+ * letting tonal do every note computation (per CLAUDE.md: never hand-roll a
+ * chord parser). Nothing here derives a pitch. Verified: no chord type in
+ * tonal's dictionary has an alias containing "(", ")" or ",", so stripping
+ * them cannot shadow a symbol that already worked; and QUALITY_REWRITES
+ * applied to tonal's whole alias set rewrites only the six minor-major
+ * aliases it already recognizes (mM7, mMaj7, -Δ7, mΔ, -^7, -maj7), each onto
+ * the same 1P 3m 5P 7M chord, so every rewrite is idempotent.
  */
 function normalizeSymbol(symbol: string): string {
-	return symbol
+	const ascii = symbol
 		.replace(/♯/g, '#')
 		.replace(/♭/g, 'b')
+		// U+2206 INCREMENT vs U+0394 GREEK CAPITAL DELTA: visually identical,
+		// and ∆ is what most keyboards and many engravings emit. tonal only
+		// knows the Greek one (Δ, Δ9, Δ#11, -Δ7, mΔ).
+		.replace(/∆/g, 'Δ')
+		// Printed alteration grouping: C7(b9), Cm7(b5), C7(b9,b13), C(add9).
+		.replace(/[(),\s]/g, '')
 		.replace(/ø7?/g, 'm7b5');
+	return canonicalizeQuality(ascii);
+}
+
+/**
+ * Splits a chord symbol into root + quality + optional slash bass. The bass
+ * group deliberately requires a NOTE after the final slash ([A-G] plus
+ * accidentals), so tonal's own slash-bearing quality aliases stay in the
+ * quality group: "Cm/ma7" parses as root C + quality "m/ma7" (no bass), and
+ * "C6/9" as root C + quality "6/9", while "Cmaj7/G" parses as root C +
+ * quality "maj7" + bass "/G".
+ */
+const SYMBOL_SHAPE = /^([A-Ga-g][#b]{0,2})(.*?)(\/[A-Ga-g][#b]{0,2})?$/;
+
+/**
+ * Printed quality spellings rewritten onto the equivalent tonal alias. Each
+ * pattern is anchored to the WHOLE quality token, so a rewrite can never fire
+ * on a fragment of a longer symbol.
+ */
+const QUALITY_REWRITES: [RegExp, string][] = [
+	// Minor-major seventh: tonal knows mMaj7 / mM7 / mΔ / -Δ7 / -^7 / -maj7,
+	// but a chart also prints m(maj7) (-> mmaj7 once the parens are stripped),
+	// mi(maj7), min(maj7), -M7 and mΔ7.
+	[/^(?:m|mi|min|-)(?:maj|Maj|MAJ|ma|Ma|M)7$/, 'mMaj7'],
+	[/^(?:m|mi|min|-)(?:Δ|\^)7?$/, 'mMaj7'],
+	// Major seventh written with the delta AND an explicit 7: tonal has Δ, Δ9
+	// and Δ#11 but not Δ7.
+	[/^Δ7$/, 'Δ'],
+	// Sixth-ninth in the minor family: tonal has 6/9 and m69, but not m6/9.
+	[/^(?:m|mi|min|-)6\/9$/, 'm69']
+];
+
+/**
+ * Rewrites the quality token of a chord symbol onto tonal's canonical alias
+ * when it is a printed spelling tonal does not list. Root and slash bass are
+ * passed through byte-identical, and a symbol whose shape does not match (or
+ * whose quality matches no rewrite) is returned unchanged, so this is a no-op
+ * for every symbol that already parsed.
+ */
+function canonicalizeQuality(symbol: string): string {
+	const shape = SYMBOL_SHAPE.exec(symbol);
+	if (shape === null) return symbol;
+	const [, root, quality, bass = ''] = shape;
+	for (const [pattern, replacement] of QUALITY_REWRITES) {
+		if (pattern.test(quality)) return `${root}${replacement}${bass}`;
+	}
+	return symbol;
 }
 
 /** Converts tonal's ASCII accidentals back to display glyphs (♯ ♭). */
