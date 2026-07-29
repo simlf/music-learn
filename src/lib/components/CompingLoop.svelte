@@ -46,6 +46,15 @@
 	let barIndex = $state(0);
 	let running = $state(false);
 	let starting = $state(false);
+	/**
+	 * "Loop this bar" (improvisation.md 3.4/design section 4.3.1's recommended
+	 * single extension): repeats the CURRENTLY DISPLAYED bar instead of
+	 * advancing through the form, so a change like unit 11's G7 resolution can
+	 * be drilled on repeat at a chosen tempo. No engine change: `startCompLoop`
+	 * already accepts any `CompLoopBar[]`, so this passes a one-bar slice
+	 * instead of the whole form and simply never advances `barIndex`.
+	 */
+	let holdBar = $state(false);
 
 	let handle: CompLoopHandle | null = null;
 	/**
@@ -64,14 +73,20 @@
 	async function start(): Promise<void> {
 		const mine = ++intent;
 		starting = true;
+		// Holding: play only the one bar currently on screen, on repeat, and
+		// never move barIndex - the on-screen bar IS the held bar for the whole
+		// run. Not holding: the full form, advancing as it always has.
+		const loopBars = holdBar ? bars.slice(barIndex, barIndex + 1) : bars;
 		const started = await startCompLoop({
-			bars: bars.map((bar) => ({ pitches: bar.pitches })),
+			bars: loopBars.map((bar) => ({ pitches: bar.pitches })),
 			bpm: tempo,
 			beatsPerBar: BEATS_PER_BAR,
 			roll: studyOn,
-			onBar: (index) => {
-				if (intent === mine) barIndex = index;
-			}
+			onBar: holdBar
+				? undefined
+				: (index) => {
+						if (intent === mine) barIndex = index;
+					}
 		});
 		if (mine !== intent) {
 			// Stopped, restarted, or unmounted while the piano was loading.
@@ -95,6 +110,22 @@
 	function toggle(): void {
 		if (running || starting) stop();
 		else void start();
+	}
+
+	/**
+	 * Flips hold on or off. If a loop is already running, restarts it under
+	 * the new mode on the SAME bar the player was just hearing: `stop()`
+	 * zeroes `barIndex`, so the bar to resume on is captured before it runs.
+	 */
+	function toggleHold(): void {
+		const wasPlaying = running || starting;
+		const resumeIndex = barIndex;
+		holdBar = !holdBar;
+		if (wasPlaying) {
+			stop();
+			barIndex = resumeIndex;
+			void start();
+		}
 	}
 
 	/** Changing the form or the key restarts the loop from bar 1 if it is playing. */
@@ -201,6 +232,17 @@
 	</div>
 </div>
 
+<div class="flex flex-col gap-2">
+	<p class="text-label font-mono uppercase" style="letter-spacing: 0.08em;">
+		{t('learn.comping.holdLabel')}
+	</p>
+	<div class="flex flex-wrap gap-2" data-testid="comping-hold-row">
+		<Button type="button" variant={holdBar ? 'primary' : 'ghost'} aria-pressed={holdBar} onclick={toggleHold}>
+			{t('learn.comping.holdBar')}
+		</Button>
+	</div>
+</div>
+
 <div>
 	<Button type="button" variant="primary" disabled={!soundOn} onclick={toggle}>
 		{#if starting}
@@ -257,6 +299,11 @@
 		{#if studyOn}
 			<p class="text-body text-muted" data-testid="comping-study-note">
 				{t('learn.comping.studyNote')}
+			</p>
+		{/if}
+		{#if holdBar}
+			<p class="text-body text-muted" data-testid="comping-hold-note">
+				{t('learn.comping.holdNote')}
 			</p>
 		{/if}
 	</div>

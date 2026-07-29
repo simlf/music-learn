@@ -76,6 +76,20 @@ export const theory = {
 			'ii V I is the jazz sentence: approach, push, arrive. In C that is Dm7, G7, Cmaj7, and the roots fall by fifths, D to G to C. The push in the middle is a tritone resolving, which the next lesson takes apart.',
 		'theory.function.hearButton': 'Hear ii V I',
 
+		'theory.guideTones.label': 'Guide tones',
+		'theory.guideTones.heading': 'Why two notes sound like music',
+		'theory.guideTones.body':
+			'The shell is two notes: the 3rd and the 7th. Play a ii V I and the 7th of one chord falls a half step to become the 3rd of the next, while the other note holds still. That fall, not the notes alone, is why two notes read as music.',
+		'theory.guideTones.caption.ii':
+			'F is the 3rd. It says Dm7 is minor. C is the 7th. Together, that is all Dm7 needs.',
+		'theory.guideTones.caption.v':
+			"F holds: it was Dm7's 3rd, now it is G7's 7th. C falls one half step to B, G7's 3rd.",
+		'theory.guideTones.caption.i':
+			"B holds: it was G7's 3rd, now it is Cmaj7's 7th. F falls one half step to E, Cmaj7's 3rd.",
+		'theory.guideTones.hearButton': 'Hear it move',
+		'theory.guideTones.practiceNote':
+			'The shell voicing drill on /practice already grades this, in every key.',
+
 		'theory.dominant.label': 'The dominant engine',
 		'theory.dominant.heading': 'Why 7 pulls home',
 		'theory.dominant.body':
@@ -158,6 +172,20 @@ export const theory = {
 		'theory.function.sentence':
 			"ii V I, c'est la phrase du jazz : on approche, on pousse, on arrive. En Do : Dm7, G7, Cmaj7, et les fondamentales descendent de quinte en quinte, D, G, C. La poussée du milieu est un triton qui se résout, et la leçon suivante le démonte.",
 		'theory.function.hearButton': 'Écouter ii V I',
+
+		'theory.guideTones.label': 'Tons de guidage',
+		'theory.guideTones.heading': 'Pourquoi deux notes sonnent comme de la musique',
+		'theory.guideTones.body':
+			"Le shell, ce sont deux notes : la tierce et la septième. Joue un ii V I et la septième d'un accord descend d'un demi-ton pour devenir la tierce du suivant, pendant que l'autre note reste en place. Cette descente, pas les notes seules, est ce qui fait que deux notes sonnent comme de la musique.",
+		'theory.guideTones.caption.ii':
+			"F, c'est la tierce. Elle dit que Dm7 est mineur. C, c'est la septième. À elles deux, c'est tout ce qu'il faut à Dm7.",
+		'theory.guideTones.caption.v':
+			"F reste : c'était la tierce de Dm7, c'est maintenant la septième de G7. C descend d'un demi-ton vers B, la tierce de G7.",
+		'theory.guideTones.caption.i':
+			"B reste : c'était la tierce de G7, c'est maintenant la septième de Cmaj7. F descend d'un demi-ton vers E, la tierce de Cmaj7.",
+		'theory.guideTones.hearButton': 'Écouter le mouvement',
+		'theory.guideTones.practiceNote':
+			"L'exercice de voicing en shell, sur /practice, note déjà ça, dans tous les tons.",
 
 		'theory.dominant.label': 'Le moteur dominant',
 		'theory.dominant.heading': 'Pourquoi 7 tire vers la maison',

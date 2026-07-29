@@ -121,6 +121,15 @@ describe('it reads as a companion, not an exercise', () => {
 
 		expect(localStorage.length).toBe(0);
 	});
+
+	it('persists nothing at all with "loop this bar" engaged either', async () => {
+		render(CompingLoop);
+		await fireEvent.click(screen.getByRole('button', { name: 'Loop this bar' }));
+		await clickStart();
+		await fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
+
+		expect(localStorage.length).toBe(0);
+	});
 });
 
 describe('three controls: form, key, tempo', () => {
@@ -166,10 +175,10 @@ describe('three controls: form, key, tempo', () => {
 		expect(screen.getByTestId('comping-tempo-value')).toHaveTextContent('120 BPM');
 	});
 
-	it('shows no other option: the only buttons are the forms, the keys, the tempo pair, and start', () => {
+	it('shows no other option: the only buttons are the forms, the keys, the tempo pair, hold, and start', () => {
 		render(CompingLoop);
 		const all = screen.getAllByRole('button');
-		expect(all).toHaveLength(3 + 12 + 2 + 1);
+		expect(all).toHaveLength(3 + 12 + 2 + 1 + 1);
 	});
 });
 
@@ -324,6 +333,79 @@ describe('starting, following, and stopping', () => {
 	});
 });
 
+/**
+ * "Loop this bar" (improvisation.md's one recommended comping-loop
+ * extension, section 3.4/4.3.1): repeats whichever bar is on screen instead
+ * of advancing through the form, so a single change (e.g. unit 11's G7
+ * resolution) can be drilled on repeat. No engine change: `startCompLoop`
+ * already takes any `CompLoopBar[]`, so holding just sends a one-bar slice
+ * and stops advancing `barIndex`.
+ */
+describe('loop this bar (hold)', () => {
+	function holdButton(): HTMLElement {
+		return screen.getByRole('button', { name: 'Loop this bar' });
+	}
+
+	it('is off by default', () => {
+		render(CompingLoop);
+		expect(holdButton()).toHaveAttribute('aria-pressed', 'false');
+		expect(screen.queryByTestId('comping-hold-note')).not.toBeInTheDocument();
+	});
+
+	it('starting while held sends only the current bar, repeated, and never advances barIndex', async () => {
+		render(CompingLoop);
+		await fireEvent.click(holdButton());
+		expect(holdButton()).toHaveAttribute('aria-pressed', 'true');
+		expect(screen.getByTestId('comping-hold-note')).toBeInTheDocument();
+
+		await clickStart();
+
+		expect(lastStart().bars.map((bar) => bar.pitches)).toEqual([['D3', 'F4', 'C5']]);
+		expect(lastStart().onBar).toBeUndefined();
+		expect(screen.getByTestId('comping-position')).toHaveTextContent('BAR 1 / 3');
+	});
+
+	it('toggling hold on while running pins the bar that was just sounding, not bar 1', async () => {
+		render(CompingLoop);
+		await clickStart();
+		flushSync(() => lastStart().onBar?.(1));
+		expect(currentChip()).toHaveTextContent('G7');
+
+		await fireEvent.click(holdButton());
+
+		expect(startCalls).toHaveLength(2);
+		expect(lastStart().bars.map((bar) => bar.pitches)).toEqual([['G3', 'B4', 'F5']]);
+		expect(currentChip()).toHaveTextContent('G7');
+		expect(screen.getByTestId('comping-position')).toHaveTextContent('BAR 2 / 3');
+
+		// It stays there: a fake onBar(0) from a stray late callback would be
+		// wrong anyway, but held mode does not even wire one up.
+		expect(lastStart().onBar).toBeUndefined();
+	});
+
+	it('toggling hold off while running resumes the full form from the bar that was held', async () => {
+		render(CompingLoop);
+		await fireEvent.click(holdButton());
+		await clickStart();
+
+		await fireEvent.click(holdButton());
+
+		expect(startCalls).toHaveLength(2);
+		expect(lastStart().bars).toHaveLength(3);
+		expect(currentChip()).toHaveTextContent('Dm7');
+		flushSync(() => lastStart().onBar?.(1));
+		expect(currentChip()).toHaveTextContent('G7');
+	});
+
+	it('does not restart anything when toggled while stopped', async () => {
+		render(CompingLoop);
+		await fireEvent.click(holdButton());
+
+		expect(startCalls).toEqual([]);
+		expect(screen.getByRole('button', { name: 'Start the loop' })).toBeInTheDocument();
+	});
+});
+
 describe('clean teardown', () => {
 	it('stops the loop when the page is left', async () => {
 		const { unmount } = render(CompingLoop);
@@ -402,6 +484,7 @@ describe('French parity (I18N-02)', () => {
 		expect(screen.getByText(/tu improvises dessus/)).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Lancer la boucle' })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Plus vite' })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Boucler cette mesure' })).toBeInTheDocument();
 		expect(screen.getByTestId('comping-position')).toHaveTextContent('TON: C MAJEUR');
 		expect(screen.getByTestId('comping-position')).toHaveTextContent('MESURE 1 / 3');
 		// Immune: the roman shapes and the chord symbols never translate.

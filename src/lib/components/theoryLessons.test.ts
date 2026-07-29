@@ -221,3 +221,161 @@ describe('major-scale build lesson: reachability (x3-scale-lesson audit fix)', (
 		expect(scaleSection().textContent).not.toMatch(/—|–/);
 	});
 });
+
+/**
+ * Guide tones and voice leading (guided-path unit 11). Content pin for the
+ * shell-voicing pedagogy audit fix: the app already asserted the 3rd + 7th
+ * shell (shellVoicing.ts) without ever teaching WHY those two notes carry a
+ * chord change, and voicings.subtract.teach's old copy claimed a global
+ * "3rd + 7th tritone" that was false for 3 of 5 seventh families (6a13ade).
+ * This unit is the missing reason: the 7th of one chord in a ii V I falls a
+ * half step to become the 3rd of the next, while the other voice holds. No
+ * tritone claim appears anywhere in this unit - that mechanism belongs to
+ * the dominant lesson (theory.test.ts's "only ever attributes the tritone to
+ * a dominant chord" gate would fail on a guideTones key that mentioned it).
+ */
+describe('guide tones and voice leading (unit 11)', () => {
+	function guideTonesSection() {
+		return screen.getByTestId('section-guide-tones');
+	}
+
+	it('sits right after the function/ii-V-I section, the material it depends on', () => {
+		render(TheoryLessons);
+		const sections = Array.from(
+			document.querySelectorAll<HTMLElement>('[data-testid^="section-"]')
+		).map((element) => element.dataset.testid);
+
+		expect(sections.indexOf('section-guide-tones')).toBe(sections.indexOf('section-function') + 1);
+	});
+
+	it('states the one idea: a falling half step, not the notes alone, is why two notes read as music', () => {
+		render(TheoryLessons);
+		const text = guideTonesSection().textContent ?? '';
+
+		expect(text).toContain('The shell is two notes: the 3rd and the 7th');
+		expect(text).toContain('falls a half step to become the 3rd of the next');
+	});
+
+	it('defaults to the ii chord (Dm7), lighting only its shell (F and C)', () => {
+		render(TheoryLessons);
+		const section = guideTonesSection();
+
+		const chips = within(section)
+			.getByTestId('guide-tone-pick-row')
+			.querySelectorAll('button');
+		expect(Array.from(chips).map((c) => c.textContent?.replace(/\s+/g, ' ').trim())).toEqual([
+			'ii Dm7',
+			'V G7',
+			'I Cmaj7'
+		]);
+
+		const keyboard = within(section).getByTestId('guide-tone-caption');
+		expect(keyboard).toHaveTextContent(
+			'F is the 3rd. It says Dm7 is minor. C is the 7th. Together, that is all Dm7 needs.'
+		);
+
+		const lit = section.querySelectorAll(
+			'.piano-keyboard__key--third, .piano-keyboard__key--seventh'
+		);
+		expect(
+			Array.from(lit).map((key) => key.querySelector('.note-label__letter')?.textContent)
+		).toEqual(['F', 'C']);
+	});
+
+	it('tapping V shows the resolution into G7: F holds, C falls a half step to B', async () => {
+		render(TheoryLessons);
+		const section = guideTonesSection();
+
+		await fireEvent.click(within(section).getByRole('button', { name: /G7/ }));
+
+		expect(within(section).getByTestId('guide-tone-caption')).toHaveTextContent(
+			"F holds: it was Dm7's 3rd, now it is G7's 7th. C falls one half step to B, G7's 3rd."
+		);
+		const lit = section.querySelectorAll(
+			'.piano-keyboard__key--third, .piano-keyboard__key--seventh'
+		);
+		expect(
+			Array.from(lit).map((key) => key.querySelector('.note-label__letter')?.textContent)
+		).toEqual(['B', 'F']);
+	});
+
+	it('tapping I shows the resolution into Cmaj7: B holds, F falls a half step to E', async () => {
+		render(TheoryLessons);
+		const section = guideTonesSection();
+
+		await fireEvent.click(within(section).getByRole('button', { name: /Cmaj7/ }));
+
+		expect(within(section).getByTestId('guide-tone-caption')).toHaveTextContent(
+			"B holds: it was G7's 3rd, now it is Cmaj7's 7th. F falls one half step to E, Cmaj7's 3rd."
+		);
+		const lit = section.querySelectorAll(
+			'.piano-keyboard__key--third, .piano-keyboard__key--seventh'
+		);
+		expect(
+			Array.from(lit).map((key) => key.querySelector('.note-label__letter')?.textContent)
+		).toEqual(['E', 'B']);
+	});
+
+	it('never mentions a tritone: that mechanism belongs to the dominant lesson, not here', () => {
+		render(TheoryLessons);
+		expect(guideTonesSection().textContent).not.toMatch(/tritone/i);
+	});
+
+	it('"Hear it move" plays the three two-note shells in sequence, never the full triads', async () => {
+		vi.useFakeTimers();
+		try {
+			render(TheoryLessons);
+			await fireEvent.click(
+				within(guideTonesSection()).getByRole('button', { name: 'Hear it move' })
+			);
+
+			expect(playChordMock).toHaveBeenCalledWith(['F', 'C']);
+			vi.advanceTimersByTime(800);
+			expect(playChordMock).toHaveBeenCalledWith(['B', 'F']);
+			vi.advanceTimersByTime(800);
+			expect(playChordMock).toHaveBeenCalledWith(['E', 'B']);
+			expect(playChordMock).not.toHaveBeenCalledWith(['D', 'F', 'A', 'C']);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('points at the shell voicing drill as the proof, without creating a card or posting an answer event', async () => {
+		render(TheoryLessons);
+		const section = guideTonesSection();
+
+		expect(section.textContent).toContain(
+			'The shell voicing drill on /practice already grades this, in every key.'
+		);
+
+		await fireEvent.click(within(section).getByRole('button', { name: /G7/ }));
+		await fireEvent.click(within(section).getByRole('button', { name: /Cmaj7/ }));
+		await fireEvent.click(within(section).getByRole('button', { name: 'Hear it move' }));
+
+		expect(getCardMock).not.toHaveBeenCalled();
+		expect(recordGradeMock).not.toHaveBeenCalled();
+		expect(recordPracticeAnswerMock).not.toHaveBeenCalled();
+	});
+
+	it('renders the whole unit in French, with musically correct terms (tons de guidage, demi-ton)', () => {
+		setLocale('fr');
+		render(TheoryLessons);
+		const text = guideTonesSection().textContent ?? '';
+
+		expect(text).toContain('Tons de guidage');
+		expect(text).toContain(
+			"Le shell, ce sont deux notes : la tierce et la septième. Joue un ii V I et la septième d'un accord descend d'un demi-ton"
+		);
+		expect(
+			within(guideTonesSection())
+				.getByTestId('guide-tone-pick-row')
+				.querySelectorAll('button')
+		).toHaveLength(3);
+		expect(screen.getByRole('button', { name: 'Écouter le mouvement' })).toBeInTheDocument();
+	});
+
+	it('renders no em or en dashes in the new section copy', () => {
+		render(TheoryLessons);
+		expect(guideTonesSection().textContent).not.toMatch(/—|–/);
+	});
+});

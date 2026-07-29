@@ -303,3 +303,35 @@ describe('/learn: function is defined before any drill asserts it (T5 R3)', () =
 		expect(text).toContain("c'est la phrase du jazz");
 	});
 });
+
+/**
+ * Unit 11 (guide tones and voice leading, guided-path): reachable from
+ * /learn as a peer of the other units, right after the function/ii-V-I
+ * material it depends on. Full content coverage (per-bar captions, audio
+ * sequencing, no-card/no-answer-event, French parity) lives in
+ * theoryLessons.test.ts; this is the hub-level reachability smoke test.
+ */
+describe('/learn: guide tones and voice leading is reachable, right after function/ii-V-I (unit 11)', () => {
+	it('renders between the function section and the dominant lesson', () => {
+		renderPage();
+		const sections = Array.from(
+			document.querySelectorAll<HTMLElement>('[data-testid^="section-"]')
+		).map((element) => element.dataset.testid);
+
+		expect(sections.indexOf('section-guide-tones')).toBeGreaterThan(
+			sections.indexOf('section-function')
+		);
+		expect(sections.indexOf('section-guide-tones')).toBeLessThan(
+			sections.indexOf('section-dominant')
+		);
+	});
+
+	it('states the falling-half-step mechanism and points at the shell voicing drill, creating no card', () => {
+		renderPage();
+		const section = screen.getByTestId('section-guide-tones');
+		const text = section.textContent ?? '';
+
+		expect(text).toContain('falls a half step to become the 3rd of the next');
+		expect(text).toContain('The shell voicing drill on /practice already grades this');
+	});
+});

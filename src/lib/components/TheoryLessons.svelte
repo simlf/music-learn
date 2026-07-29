@@ -5,9 +5,11 @@
 	import ChordExample from '$lib/components/ChordExample.svelte';
 	import ChordGlyph from '$lib/components/ChordGlyph.svelte';
 	import NoteLabel from '$lib/components/NoteLabel.svelte';
+	import PianoKeyboard from '$lib/components/PianoKeyboard.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import InteractiveLesson from '$lib/components/InteractiveLesson.svelte';
 	import BuildSession from '$lib/components/BuildSession.svelte';
+	import { GUIDE_TONE_BARS, shellPitches, type GuideToneBar } from '$lib/lessons/guideTones';
 	import { t, type MessageKey } from '$lib/i18n/locale.svelte';
 
 	/**
@@ -104,6 +106,25 @@
 	let seventhPick = $state(SEVENTH_SHAPES[0]);
 	let anchorPick = $state(ANCHOR_CHORDS[0]);
 
+	/**
+	 * Unit 11 (guide tones and voice leading): which of the fixed three bars
+	 * (ii, V, I in C, from `guideTones.ts`) is currently shown. The bars and
+	 * their shells are computed, never hand-typed - see that module's own doc
+	 * comment for why. Roman numeral maps to its caption key since the
+	 * caption differs per bar (the first has no incoming motion to describe).
+	 */
+	let guideTonePick = $state(GUIDE_TONE_BARS[0]);
+
+	const GUIDE_TONE_CAPTION_KEYS: Record<string, MessageKey> = {
+		ii: 'theory.guideTones.caption.ii',
+		V: 'theory.guideTones.caption.v',
+		I: 'theory.guideTones.caption.i'
+	};
+
+	function guideToneCaptionKey(bar: GuideToneBar): MessageKey {
+		return GUIDE_TONE_CAPTION_KEYS[bar.roman] ?? 'theory.guideTones.caption.ii';
+	}
+
 	/** The V7 to I demo: G7 first, C major on the next beat. */
 	let resolutionTimer: ReturnType<typeof setTimeout> | undefined;
 	function hearResolution() {
@@ -133,9 +154,30 @@
 		);
 	}
 
+	/**
+	 * Unit 11's "Hear it move": the three SHELLS (never the full triads) in
+	 * sequence, same 800ms pacing as hearSentence so the two demos feel like
+	 * the same instrument. This is the audible half of the lesson - two notes
+	 * at a time, the falling voice landing on each beat.
+	 */
+	let guideToneTimers: ReturnType<typeof setTimeout>[] = [];
+	function clearGuideToneTimers() {
+		for (const timer of guideToneTimers) clearTimeout(timer);
+		guideToneTimers = [];
+	}
+	function hearGuideTones() {
+		void ensureAudioReady();
+		clearGuideToneTimers();
+		playChord(shellPitches(GUIDE_TONE_BARS[0]));
+		guideToneTimers = GUIDE_TONE_BARS.slice(1).map((bar, i) =>
+			setTimeout(() => playChord(shellPitches(bar)), (i + 1) * 800)
+		);
+	}
+
 	onDestroy(() => {
 		clearTimeout(resolutionTimer);
 		clearSentenceTimers();
+		clearGuideToneTimers();
 	});
 </script>
 
@@ -297,6 +339,50 @@
 			>{t('theory.function.hearButton')}</Button
 		>
 	</div>
+</section>
+
+<section
+	class="border-ink bg-paper-bright flex flex-col gap-4 border-2 px-4 py-6"
+	data-testid="section-guide-tones"
+>
+	<p class="text-label font-mono uppercase" style="letter-spacing: 0.08em;">
+		{t('theory.guideTones.label')}
+	</p>
+	<h2 class="text-heading font-bold">{t('theory.guideTones.heading')}</h2>
+	<p class="text-body">
+		{t('theory.guideTones.body')}
+	</p>
+	<div class="flex flex-wrap gap-2" data-testid="guide-tone-pick-row">
+		{#each GUIDE_TONE_BARS as bar (bar.symbol)}
+			<Button
+				type="button"
+				variant={guideTonePick.symbol === bar.symbol ? 'primary' : 'ghost'}
+				onclick={() => (guideTonePick = bar)}
+			>
+				<span class="anchor-pick flex flex-col items-center">
+					<span class="text-label font-mono">{bar.roman}</span>
+					<span>{bar.symbol}</span>
+				</span>
+			</Button>
+		{/each}
+	</div>
+	{#key guideTonePick.symbol}
+		<div class="flex items-start gap-4">
+			<ChordGlyph root={guideTonePick.root} quality={guideTonePick.quality} />
+		</div>
+		<div style="max-width: 100%;">
+			<PianoKeyboard notes={guideTonePick.shell} />
+		</div>
+		<p class="text-body" data-testid="guide-tone-caption">
+			{t(guideToneCaptionKey(guideTonePick))}
+		</p>
+	{/key}
+	<div>
+		<Button type="button" variant="ghost" onclick={hearGuideTones}
+			>{t('theory.guideTones.hearButton')}</Button
+		>
+	</div>
+	<p class="text-body text-muted">{t('theory.guideTones.practiceNote')}</p>
 </section>
 
 <section
