@@ -12,8 +12,6 @@
 		syntheticProgressionItems,
 		syntheticInversionItems,
 		filterVoicingsBySong,
-		backlogFactCount,
-		DUE_BACKLOG_GATE_FACTS,
 		isLowMasterySession,
 		type HybridQueueItem,
 		type VoicingQueueItem,
@@ -33,22 +31,17 @@
 	import { localDateString } from '$lib/api/progress';
 	import { localStreak, recordPracticeDay } from '$lib/practice/practiceDays';
 	import { pickStreakLine } from '$lib/copy/streak';
-	import {
-		getDueCards,
-		getAllCards,
-		introduceNewCards,
-		recordGrade,
-		type CardRecord,
-		type Mode
-	} from '$lib/srs/deck';
+	import { getAllCards, recordGrade, type CardRecord, type Mode } from '$lib/srs/deck';
 	import { selectReviewCards, interleaveQueue } from '$lib/srs/rotation';
-	import { remainingIntroBudget, consumeIntroBudget } from '$lib/srs/introBudget';
 	import { Rating, newCard } from '$lib/srs/scheduler';
 	import { factById } from '$lib/srs/facts';
 	import { consumeDrillSeeds, consumeLessonSeeds, setDrillSeeds } from '$lib/practice/drillSeeds';
 	import { readSongFilter } from '$lib/practice/songFilterPref';
 	import { buildProvenanceIndex, symbolHasProvenance } from '$lib/practice/songProvenance';
 	import { recordPracticeAnswer } from '$lib/practice/answerTelemetry';
+	import { loadDueWithIntroduction, applySongFilter } from '$lib/practice/reviewLoad';
+	import { createGradeGuard } from '$lib/practice/reviewGuard.svelte';
+	import { elapsedSinceQuestionStart, startQuestionClock } from '$lib/practice/questionClock';
 	import { t } from '$lib/i18n/locale.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import PracticeChordDrill from '$lib/components/PracticeChordDrill.svelte';
@@ -186,42 +179,15 @@
 	const provenanceIndex = buildProvenanceIndex();
 
 	/**
-	 * Byte-faithful to RecallSession's applySongFilter (SONG-02/PRAC-04): keeps
-	 * only chord-formula cards with provenance when the filter is ON and the
-	 * index is non-empty; otherwise passes every due card through unchanged.
-	 *
-	 * W1, the degree family's song-filter policy, stated rather than left
-	 * implicit: a scale-degree card is filtered OUT while "From my songs" is on,
-	 * unchanged from this function's existing behavior and identical to how an
-	 * interval-size card is already treated. Song provenance in this app is
-	 * indexed by CHORD SYMBOL (songProvenance.ts), and a scale degree has no
-	 * chord symbol. The one alternative would be to infer each song's KEY from
-	 * its chords and keep only degrees in those keys, which is a guess (a chart
-	 * with Dm7 G7 Cmaj7 is in C, or in F, or modal) and would silently invent a
-	 * fact the song file does not state. Omitting them is the honest reading of
-	 * "from my songs": the filter narrows practice to the chords the user's own
-	 * charts contain, and turning it off is where the rest of the deck lives.
-	 */
-	function applySongFilter(due: CardRecord[]): CardRecord[] {
-		if (!songFilterOn || provenanceIndex.size === 0) return due;
-		return due.filter((card) => {
-			const fact = factById(card.factId);
-			return (
-				fact !== undefined &&
-				fact.factKind === 'chord-formula' &&
-				symbolHasProvenance(fact.symbol, provenanceIndex)
-			);
-		});
-	}
-
-	/**
-	 * Daily new-card intro budget + due-backlog gate. The gate's threshold and
-	 * its "how much backlog is there" measure both live in practiceQueue.ts (the
-	 * pure module) rather than inline here, since both are pure card arithmetic
-	 * and this host is meant to be thin. See DUE_BACKLOG_GATE_FACTS there for why
-	 * it counts FACTS rather than cards, and why a card no family can ask must
-	 * never gate intake (scale-degree cards were the original reason; W1 gave
-	 * them a family, so they are ordinary countable backlog now).
+	 * Y1 consolidation: the song filter and the daily intro-budget/due-backlog
+	 * gate both used to be a byte-faithful inline copy of RecallSession's own
+	 * versions (documented here as such, and in RecallSession as "DUPLICATED
+	 * POLICY, ON PURPOSE FOR NOW" - the two-copies-in-sync-by-hand problem a
+	 * kill-list audit flagged). Both now live in `$lib/practice/reviewLoad`:
+	 * `applySongFilter` (imported above) and `loadDueWithIntroduction`, called
+	 * from `load()` below - this is also the single remaining call site of
+	 * `introduceNewCards` in the app (RecallSession no longer introduces cards
+	 * at all; see its own load()).
 	 */
 
 	/**
@@ -304,19 +270,8 @@
 		try {
 			const seededItems = await buildSeededItems();
 
-			const preDue = await getDueCards();
-			let dueBase: CardRecord[];
-			if (backlogFactCount(preDue) > DUE_BACKLOG_GATE_FACTS) {
-				dueBase = preDue;
-			} else {
-				const remaining = remainingIntroBudget(new Date());
-				if (remaining > 0) {
-					const introduced = await introduceNewCards(remaining);
-					if (introduced > 0) consumeIntroBudget(introduced, new Date());
-				}
-				dueBase = await getDueCards();
-			}
-			const due = applySongFilter(dueBase);
+			const dueBase = await loadDueWithIntroduction();
+			const due = applySongFilter(dueBase, songFilterOn, provenanceIndex);
 			if (due.length === 0 && seededItems.length === 0) {
 				// MD-02: distinguish "the filter hid everything" from "truly
 				// nothing due" - dueBase is only non-empty here when
@@ -521,15 +476,16 @@
 	const remaining = $derived(Math.max(0, Math.min(queue.length, roundTarget - asked)));
 
 	/**
-	 * Per-item telemetry clock (mirrors RecallSession's questionShownAt): a
-	 * plain, non-reactive variable - drives no rendering, only the
-	 * fire-and-forget durationMs computation at grade time. Set when the
-	 * user taps Start and again after every advance.
+	 * Per-item telemetry clock (Y1 consolidation: `$lib/practice/questionClock`,
+	 * shared with RecallSession's own clock instead of each keeping a separate
+	 * `Date.now()` snapshot-then-diff copy): a plain, non-reactive variable -
+	 * drives no rendering, only the fire-and-forget durationMs computation at
+	 * grade time. Set when the user taps Start and again after every advance.
 	 */
-	let questionShownAt = Date.now();
+	let questionShownAt = startQuestionClock();
 
 	function startSession(): void {
-		questionShownAt = Date.now();
+		questionShownAt = startQuestionClock();
 		pageState = 'reviewing';
 	}
 
@@ -547,7 +503,7 @@
 		extraRound = remainingDailyTarget() === 0;
 		await load();
 		if (pageState === 'pre-start' && roundSize > 0) {
-			questionShownAt = Date.now();
+			questionShownAt = startQuestionClock();
 			pageState = 'reviewing';
 		}
 	}
@@ -725,14 +681,14 @@
 	}
 
 	/**
-	 * In-flight guard for completeCarded (CR-02, adversarial-review fix):
-	 * mirrors RecallSession.svelte's own `grading` flag (its "In-flight guard
-	 * for handleGrade" precedent) - a double-tap on Next before the first
-	 * recordGrade await resolves must never double-commit the FSRS grade,
-	 * double-count the score register (finishItem), or double-advance the
-	 * queue.
+	 * In-flight guard for completeCarded (CR-02, adversarial-review fix; Y1
+	 * consolidation: `$lib/practice/reviewGuard`, shared with RecallSession's
+	 * own guard for the identical hazard) - a double-tap on Next before the
+	 * first recordGrade await resolves must never double-commit the FSRS
+	 * grade, double-count the score register (finishItem), or double-advance
+	 * the queue.
 	 */
-	let grading = $state(false);
+	const gradeGuard = createGradeGuard();
 
 	/**
 	 * The families completeCarded actually grades. WR-01: an ALLOWLIST, not a
@@ -776,15 +732,13 @@
 
 	/** Grades + advances a carded (name-it/play-it/ear-it/interval/degree) item: FSRS commit via deck.recordGrade (PRAC-03/REG-01/T-27-04-01). */
 	async function completeCarded(correct: boolean): Promise<void> {
-		if (grading) return;
 		const item = currentItem;
 		if (item === undefined || !isHostGraded(item)) {
 			return;
 		}
-		grading = true;
-		try {
+		await gradeGuard.run(async () => {
 			const rating = correct ? Rating.Good : Rating.Again;
-			const durationMs = Date.now() - questionShownAt;
+			const durationMs = elapsedSinceQuestionStart(questionShownAt);
 			// CR-01: capture the CardRecord recordGrade actually persisted and
 			// re-enqueue THAT (not the stale pre-grade snapshot still held by
 			// `item`/`queue[0]`), so a re-enqueued Again item is graded from its
@@ -795,12 +749,10 @@
 			finishItem(item, correct);
 			const updatedItem = { ...item, card: updatedCard };
 			queue = advanceHybridQueue([updatedItem, ...queue.slice(1)], rating, RETRY_OPTIONS);
-			questionShownAt = Date.now();
+			questionShownAt = startQuestionClock();
 			cardEpoch += 1;
 			maybeFinishRound();
-		} finally {
-			grading = false;
-		}
+		});
 	}
 
 	/**
@@ -817,7 +769,7 @@
 		const item = currentItem;
 		if (item === undefined || item.family !== 'build-it') return;
 		const correct = rating !== Rating.Again;
-		const durationMs = Date.now() - questionShownAt;
+		const durationMs = elapsedSinceQuestionStart(questionShownAt);
 		recordPracticeAnswer({
 			item: item.symbol ?? '',
 			kind: 'chord',
@@ -826,7 +778,7 @@
 		});
 		finishItem(item, correct);
 		queue = advanceHybridQueue(queue, rating, RETRY_OPTIONS);
-		questionShownAt = Date.now();
+		questionShownAt = startQuestionClock();
 		cardEpoch += 1;
 		maybeFinishRound();
 	}
@@ -868,7 +820,7 @@
 			return;
 		finishItem(item, firstTry);
 		queue = advanceHybridQueue(queue, Rating.Good, RETRY_OPTIONS);
-		questionShownAt = Date.now();
+		questionShownAt = startQuestionClock();
 		cardEpoch += 1;
 		maybeFinishRound();
 	}

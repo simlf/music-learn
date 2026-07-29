@@ -138,7 +138,7 @@ describe('the due-backlog gate counts facts, not cards', () => {
 
 		// 30 cards would have tripped the old card-count gate; 10 facts does not
 		// trip the fact-count gate, so the day's remaining budget is still spent.
-		expect(introduceNewCardsMock).toHaveBeenCalledWith(10);
+		expect(introduceNewCardsMock).toHaveBeenCalledWith(10, expect.any(Date));
 	});
 
 	it('still blocks new facts on a genuine multi-day backlog (30 distinct facts)', async () => {
@@ -199,7 +199,7 @@ describe('the due-backlog gate counts facts, not cards', () => {
 		render(PracticePage);
 		await screen.findByTestId('practice-pre-start');
 
-		expect(introduceNewCardsMock).toHaveBeenCalledWith(10);
+		expect(introduceNewCardsMock).toHaveBeenCalledWith(10, expect.any(Date));
 	});
 
 	/**

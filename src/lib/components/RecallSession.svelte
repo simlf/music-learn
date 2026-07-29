@@ -1,15 +1,7 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import {
-		introduceNewCards,
-		getDueCards,
-		getAllCards,
-		recordGrade,
-		type CardRecord,
-		type Mode
-	} from '$lib/srs/deck';
+	import { getDueCards, getAllCards, recordGrade, type CardRecord, type Mode } from '$lib/srs/deck';
 	import { selectReviewCards, interleaveQueue } from '$lib/srs/rotation';
-	import { remainingIntroBudget, consumeIntroBudget } from '$lib/srs/introBudget';
 	import { previewGrades, Rating } from '$lib/srs/scheduler';
 	import { factById } from '$lib/srs/facts';
 	import {
@@ -28,9 +20,12 @@
 	import { pickDistractors } from '$lib/drills/generateQuestion';
 	import { ensureAudioReady, playChord, playNote } from '$lib/audio/audio';
 	import { toPitch } from '$lib/audio/voicing';
-	import { symbolHasProvenance, songsForSymbol } from '$lib/practice/songProvenance';
+	import { songsForSymbol } from '$lib/practice/songProvenance';
 	import { logConfidence, type Confidence } from '$lib/practice/confidenceLog';
 	import { recordPracticeAnswer } from '$lib/practice/answerTelemetry';
+	import { applySongFilter as applySongFilterShared } from '$lib/practice/reviewLoad';
+	import { createGradeGuard } from '$lib/practice/reviewGuard.svelte';
+	import { elapsedSinceQuestionStart, startQuestionClock } from '$lib/practice/questionClock';
 	import { t } from '$lib/i18n/locale.svelte';
 	import ChordGlyph from './ChordGlyph.svelte';
 	import IntervalChip from './IntervalChip.svelte';
@@ -181,13 +176,14 @@
 	let revealed = $state(false);
 	let reviewedCount = $state(0);
 	/**
-	 * In-flight guard for handleGrade (adversarial-review fix): a double-tap
+	 * In-flight guard for handleGrade (adversarial-review fix; Y1
+	 * consolidation: `$lib/practice/reviewGuard`, shared with `/practice`'s
+	 * identical `grading`-flag hazard instead of a second copy) - a double-tap
 	 * on a grade button while the first tap's recordGrade await is still
 	 * pending would otherwise double-fire recordPracticeAnswer telemetry and
-	 * double-advance the queue. Set true at the top of handleGrade, reset in
-	 * a finally so it clears on both the success and error paths.
+	 * double-advance the queue.
 	 */
-	let grading = $state(false);
+	const gradeGuard = createGradeGuard();
 	/**
 	 * Sketch 020-B: optional confidence pick for the current formula-mode
 	 * card. undefined = no dot picked (logs as 'unrated' on grade). Lives in
@@ -203,9 +199,11 @@
 	 * state" discipline - it drives no rendering, only a fire-and-forget
 	 * durationMs computation at grade time). Set once when a card becomes
 	 * current: at the point load() enters the 'reviewing' state, and again
-	 * inside resetPerCardState() (which already runs after every advance).
+	 * inside resetPerCardState() (which already runs after every advance). Y1
+	 * consolidation: `$lib/practice/questionClock`, shared with `/practice`'s
+	 * identical snapshot-then-diff copy of the same idiom.
 	 */
-	let questionShownAt = Date.now();
+	let questionShownAt = startQuestionClock();
 	/**
 	 * Bumped on every card advance (resetPerCardState) so the Mode C
 	 * `{#key}` block below always remounts a fresh BuildSession, even when
@@ -262,24 +260,18 @@
 	}
 
 	/**
-	 * SONG-02's queue restriction: when the filter is ON and a non-empty
-	 * provenance index is available, keep only chord-formula cards whose
-	 * symbol belongs to an active song (dropping non-song chords AND
-	 * non-chord facts like interval-size/scale-degree). When the filter is ON
-	 * but the index is empty (no derivable song chords), leave `due`
-	 * unchanged so the session never dead-ends - the page already surfaces
-	 * the fallback note in that case.
+	 * SONG-02's queue restriction (Y1 consolidation: `$lib/practice/reviewLoad`
+	 * .applySongFilter, shared with `/practice`'s identical byte-faithful copy
+	 * rather than a second one kept in sync by hand): when the filter is ON
+	 * and a non-empty provenance index is available, keep only chord-formula
+	 * cards whose symbol belongs to an active song (dropping non-song chords
+	 * AND non-chord facts like interval-size/scale-degree). When the filter is
+	 * ON but the index is empty (no derivable song chords), `due` passes
+	 * through unchanged so the session never dead-ends - the page already
+	 * surfaces the fallback note in that case.
 	 */
 	function applySongFilter(due: CardRecord[]): CardRecord[] {
-		if (!songFilterOn || !provenanceIndex || provenanceIndex.size === 0) return due;
-		return due.filter((card) => {
-			const fact = factById(card.factId);
-			return (
-				fact !== undefined &&
-				fact.factKind === 'chord-formula' &&
-				symbolHasProvenance(fact.symbol, provenanceIndex)
-			);
-		});
+		return applySongFilterShared(due, songFilterOn, provenanceIndex);
 	}
 
 	/**
@@ -296,90 +288,28 @@
 	}
 
 	/**
-	 * Daily new-card intro budget + due-backlog gate (260722-0ex, BACKLOG-1):
-	 * getDueCards() runs FIRST so the backlog gate can inspect the PRE-
-	 * introduction backlog. A backlog over the gate means zero new facts are
-	 * introduced this mount, no matter how much of today's budget remains -
-	 * the deck's job right now is clearing the backlog, not growing it
-	 * further. Otherwise, up to the remaining daily budget is introduced
-	 * (introduceNewCards returns a FACT count per the 13-01 convention, which
-	 * is exactly what the budget consumes) and due cards are RE-FETCHED so
-	 * any freshly-introduced New cards (due = now) enter this session.
+	 * Y1 consolidation (single introduction point): `/practice` is now the
+	 * ONE surface that calls `introduceNewCards` - it is the PWA `start_url`,
+	 * carries the due badge, and owns the bounded daily session, so it is the
+	 * surface that decides when new material enters the deck. This used to
+	 * duplicate `/practice`'s own daily intro-budget + due-backlog gate
+	 * (DUPLICATED POLICY, ON PURPOSE FOR NOW - the comment that used to sit
+	 * here - and the exact reason a units bug survived in one copy for a
+	 * while, c55b1d8/T13). RecallSession no longer introduces cards at all: it
+	 * reads whatever `getDueCards()` reports and reviews/grades it, so a user
+	 * who never opens `/practice` sees an honest "nothing due" here rather
+	 * than a second, independently-throttled introduction path competing with
+	 * the first for the same shared daily budget (introBudget.ts).
 	 *
-	 * The threshold is in FACTS, the unit the budget it gates is in. This used to
-	 * compare a CARD count against 20 while the budget it protects
-	 * (introBudget's MAX_NEW_CARDS_PER_DAY) is a FACT budget of 10 a day, and a
-	 * chord fact seeds a teach cluster of 3 cards. One day's own introduction is
-	 * therefore about 30 cards, so on every single day a cohort came back the
-	 * gate saw 30 > 20 and locked new material out: from roughly day 4 intake
-	 * self-throttled into a stop-start pattern with no cause the user could see
-	 * or fix.
-	 *
-	 * 20 is kept, but it now means 2 x MAX_NEW_CARDS_PER_DAY in the SAME unit as
-	 * the budget, which turns a coincidence into a rule: one unpracticed day of
-	 * intake is 10 facts and passes, two days is 20 and still passes (`>`, not
-	 * `>=`), three days is 30 and is a genuine backlog worth clearing before
-	 * growing the deck further.
-	 *
-	 * Deliberately a LITERAL rather than an import of MAX_NEW_CARDS_PER_DAY:
-	 * recallSession.test.ts mocks `$lib/srs/introBudget` down to two functions
-	 * (remainingIntroBudget, consumeIntroBudget), so importing the constant here
-	 * would silently resolve to undefined inside every one of those tests and
-	 * turn this comparison into `> NaN` - a gate that never fires and never says
-	 * so. The relationship to the real constant is asserted in
-	 * recallSession.test.ts against an unmocked import instead, which cannot be
-	 * mocked away.
-	 *
-	 * DUPLICATED POLICY, ON PURPOSE FOR NOW: /practice owns the same gate as
-	 * practiceQueue.ts's DUE_BACKLOG_GATE_FACTS + backlogFactCount, and this
-	 * units bug survived here precisely BECAUSE there were two copies (c55b1d8
-	 * fixed that one and left this one). The two are not mergeable as they stand:
-	 * the threshold only means "two days of intake" in combination with a
-	 * fact-counting measure whose answerability filter matches the surface, and
-	 * the two surfaces genuinely disagree about that filter (see
-	 * backlogFactCount below). Unifying them needs a shared module exporting the
-	 * threshold AND a count parameterized by the caller's answerability
-	 * predicate, which is a follow-up: keep the two in sync until then.
+	 * Everything else this surface uniquely offers - self-grading via the
+	 * four FSRS buttons with live day-interval labels, the pre-reveal
+	 * confidence dots feeding confidenceLog.ts's /progress calibration
+	 * display, and the hint-ladder-gated ear flow - is untouched below.
 	 */
-	const DUE_BACKLOG_GATE_FACTS = 20;
-
-	/**
-	 * How many distinct FACTS have a due card this surface can actually ask: the
-	 * gate's own measure of "backlog". Facts, not cards, because that is the unit
-	 * the intro budget spends.
-	 *
-	 * No answerability filter here, and that is the deliberate difference from
-	 * /practice's backlogFactCount rather than an omission. /practice must filter
-	 * on familyForCard because it DROPS all 84 scale-degree facts (scales are a
-	 * separate surface there), so their cards are due forever and counting them
-	 * would let a pile of permanently-unanswerable cards freeze intake
-	 * permanently. This surface is the one that does ask them: RecallSession
-	 * renders a prompt, a reveal and a grade for all three factKinds
-	 * (chord-formula, interval-size, scale-degree), so every due card here is
-	 * backlog the user can actually clear, and excluding any of it would hide a
-	 * real backlog from the gate.
-	 */
-	function backlogFactCount(due: CardRecord[]): number {
-		const facts = new Set<string>();
-		for (const card of due) facts.add(card.factId);
-		return facts.size;
-	}
-
 	async function load(): Promise<void> {
 		pageState = 'loading';
 		try {
-			const preDue = await getDueCards();
-			let dueBase: CardRecord[];
-			if (backlogFactCount(preDue) > DUE_BACKLOG_GATE_FACTS) {
-				dueBase = preDue;
-			} else {
-				const remaining = remainingIntroBudget(new Date());
-				if (remaining > 0) {
-					const introduced = await introduceNewCards(remaining);
-					if (introduced > 0) consumeIntroBudget(introduced, new Date());
-				}
-				dueBase = await getDueCards();
-			}
+			const dueBase = await getDueCards();
 			const due = applySongFilter(dueBase);
 			if (due.length === 0) {
 				// MD-02: distinguish "the filter hid everything" from "truly
@@ -408,7 +338,7 @@
 			queue = buildQueue(orderedCards.map((card) => ({ factId: card.factId, mode: card.mode })));
 			revealed = false;
 			reviewedCount = 0;
-			questionShownAt = Date.now();
+			questionShownAt = startQuestionClock();
 			pageState = 'reviewing';
 		} catch {
 			pageState = 'error';
@@ -466,7 +396,7 @@
 	 */
 	function resetPerCardState(): void {
 		revealed = false;
-		questionShownAt = Date.now();
+		questionShownAt = startQuestionClock();
 		cardEpoch += 1;
 		selectedConfidence = undefined;
 		selected = new Set();
@@ -543,7 +473,7 @@
 			item: currentFact.symbol,
 			kind: 'chord',
 			correct: result.correct,
-			durationMs: Date.now() - questionShownAt
+			durationMs: elapsedSinceQuestionStart(questionShownAt)
 		});
 
 		const cardToGrade = currentCard;
@@ -657,7 +587,7 @@
 
 		const rating = choice === currentFact.symbol ? Rating.Good : Rating.Again;
 		hearNameCommittedRating = rating;
-		const durationMs = Date.now() - questionShownAt;
+		const durationMs = elapsedSinceQuestionStart(questionShownAt);
 
 		if (rating === Rating.Good) {
 			const [text, index] = pickVariant(CORRECT_VARIANTS, confirmationIndex);
@@ -824,57 +754,57 @@
 	 * decrements below its pre-re-enqueue value on an Again grade.
 	 */
 	async function handleGrade(rating: Rating): Promise<void> {
-		if (grading || !currentCard) return;
-		grading = true;
+		if (!currentCard) return;
 		// Snapshotted before any await, mirroring logConfidence's own
 		// currentCard-derived (never currentItem's) factId discipline below -
 		// advanceQueue may reshuffle the queue once this resolves.
-		const gradedFactId = currentCard.factId;
-		const durationMs = Date.now() - questionShownAt;
-		try {
-			// Sketch 020-B: log the (picked or 'unrated') confidence pick paired
-			// with correctness BEFORE the grade commits, using the card's own
-			// factId/mode (never currentItem's, in case advanceQueue reshuffles
-			// the queue below). logConfidence is already a total function (25-04
-			// swallows quota/parse errors internally); the try/catch here keeps
-			// the whole grade path resilient even against an unexpected throw, so
-			// a full store can never block the review loop.
+		const cardToGrade = currentCard;
+		const gradedFactId = cardToGrade.factId;
+		const durationMs = elapsedSinceQuestionStart(questionShownAt);
+		await gradeGuard.run(async () => {
 			try {
-				logConfidence({
-					factId: currentCard.factId,
-					mode: currentCard.mode,
-					confidence: selectedConfidence ?? 'unrated',
-					// FSRS semantics: Hard is a PASSING grade (recalled, with
-					// effort); only Again is a lapse. Counting Hard as wrong would
-					// record an honest certain-then-Hard review as confident-but-
-					// wrong, inflating the MISCALIBRATED flag and the /progress
-					// danger list (WR-06).
-					correct: rating !== Rating.Again,
-					at: new Date().toISOString()
-				});
+				// Sketch 020-B: log the (picked or 'unrated') confidence pick paired
+				// with correctness BEFORE the grade commits, using the card's own
+				// factId/mode (never currentItem's, in case advanceQueue reshuffles
+				// the queue below). logConfidence is already a total function (25-04
+				// swallows quota/parse errors internally); the try/catch here keeps
+				// the whole grade path resilient even against an unexpected throw, so
+				// a full store can never block the review loop.
+				try {
+					logConfidence({
+						factId: cardToGrade.factId,
+						mode: cardToGrade.mode,
+						confidence: selectedConfidence ?? 'unrated',
+						// FSRS semantics: Hard is a PASSING grade (recalled, with
+						// effort); only Again is a lapse. Counting Hard as wrong would
+						// record an honest certain-then-Hard review as confident-but-
+						// wrong, inflating the MISCALIBRATED flag and the /progress
+						// danger list (WR-06).
+						correct: rating !== Rating.Again,
+						at: new Date().toISOString()
+					});
+				} catch {
+					// Never let a logging failure block grading.
+				}
+				const updated = await recordGrade(cardToGrade, rating, new Date());
+				cardsByKey = new Map(cardsByKey).set(cardKey(updated.factId, updated.mode), updated);
+
+				// 260722-0ex (BACKLOG-2): recall telemetry, fire-and-forget, exactly
+				// once per grade path. Mirrors logConfidence's correctness semantics
+				// (Hard is a pass, only Again is a lapse).
+				const descriptor = telemetryDescriptor(factById(gradedFactId));
+				if (descriptor) {
+					recordPracticeAnswer({ ...descriptor, correct: rating !== Rating.Again, durationMs });
+				}
+
+				queue = advanceQueue(queue, rating);
+				resetPerCardState();
+				reviewedCount += 1;
+				if (isSessionComplete(queue)) pageState = 'complete';
 			} catch {
-				// Never let a logging failure block grading.
+				pageState = 'error';
 			}
-			const updated = await recordGrade(currentCard, rating, new Date());
-			cardsByKey = new Map(cardsByKey).set(cardKey(updated.factId, updated.mode), updated);
-
-			// 260722-0ex (BACKLOG-2): recall telemetry, fire-and-forget, exactly
-			// once per grade path. Mirrors logConfidence's correctness semantics
-			// (Hard is a pass, only Again is a lapse).
-			const descriptor = telemetryDescriptor(factById(gradedFactId));
-			if (descriptor) {
-				recordPracticeAnswer({ ...descriptor, correct: rating !== Rating.Again, durationMs });
-			}
-
-			queue = advanceQueue(queue, rating);
-			resetPerCardState();
-			reviewedCount += 1;
-			if (isSessionComplete(queue)) pageState = 'complete';
-		} catch {
-			pageState = 'error';
-		} finally {
-			grading = false;
-		}
+		});
 	}
 
 	const GRADES = $derived.by(
@@ -932,7 +862,7 @@
 				<Button
 					type="button"
 					variant="ghost"
-					disabled={grading}
+					disabled={gradeGuard.active}
 					style={gradeButtonStyle(grade.rating)}
 					data-testid={`recall-grade-${grade.label.toLowerCase()}`}
 					onclick={() => handleGrade(grade.rating)}
