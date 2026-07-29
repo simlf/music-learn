@@ -1,5 +1,6 @@
 import { Scale } from 'tonal';
 import { letterToSolfege } from './solfege';
+import { toAsciiAccidentals, toGlyphAccidentals } from './interval';
 import type { IntervalRole, SpelledNote } from './types';
 
 /**
@@ -35,24 +36,16 @@ const DEGREE_ROLES: readonly IntervalRole[] = [
 	'seventh'
 ] as const;
 
-function toAscii(letter: string): string {
-	return letter.replace(/♯/g, '#').replace(/♭/g, 'b');
-}
-
-function toGlyphs(letter: string): string {
-	return letter.replace(/#/g, '♯').replace(/b/g, '♭');
-}
-
 /**
  * The seven spelled notes of `root` major, tagged with their degree-class
  * roles and French solfège, ready for PianoKeyboard/IntervalChip. Accepts
  * display glyphs or ASCII. Total: an unknown root returns [].
  */
 export function majorScaleNotes(root: string): SpelledNote[] {
-	const letters = Scale.get(`${toAscii(root)} major`).notes;
+	const letters = Scale.get(`${toAsciiAccidentals(root)} major`).notes;
 	if (letters.length !== DEGREE_ROLES.length) return [];
 	return letters.map((ascii, index) => {
-		const letter = toGlyphs(ascii);
+		const letter = toGlyphAccidentals(ascii);
 		return {
 			letter,
 			solfege: letterToSolfege(letter),

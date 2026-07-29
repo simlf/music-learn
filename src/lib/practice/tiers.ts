@@ -81,44 +81,6 @@ export const TIERS: TierDef[] = [
 	}
 ];
 
-/**
- * The within-tier difficulty ladder (R3 section 1): new material always
- * enters at a low-retrieval step and fades scaffolding as accuracy accrues.
- * `assisted` steps never count toward unlock accuracy (R3 section 2).
- */
-export type LadderStep = 'guided' | 'identification' | 'hinted' | 'cold';
-
-export interface LadderStepDef {
-	step: LadderStep;
-	/** One-line description of the retrieval demand at this step. */
-	description: string;
-	/** True when answers at this step are marked assisted and excluded from unlock stats. */
-	assisted: boolean;
-}
-
-export const DIFFICULTY_LADDER: LadderStepDef[] = [
-	{
-		step: 'guided',
-		description: 'Formula and spelled notes shown, user plays them. Worked example.',
-		assisted: true
-	},
-	{
-		step: 'identification',
-		description: 'Multiple choice recognition, 4 options.',
-		assisted: false
-	},
-	{
-		step: 'hinted',
-		description: 'Construction with the formula behind a Show formula tap.',
-		assisted: true
-	},
-	{
-		step: 'cold',
-		description: 'Cold construction. The transfer task unlock criteria measure.',
-		assisted: false
-	}
-];
-
 /** Looks up a tier by id. Total over TierId, so the non-null assertion is safe. */
 export function tierById(id: TierId): TierDef {
 	return TIERS.find((tier) => tier.id === id) as TierDef;
@@ -151,14 +113,6 @@ export function itemsForTiers(ids: TierId[]): string[] {
 		}
 	}
 	return [...items];
-}
-
-/** The LOWEST tier that introduces a quality, or null when no tier knows it. */
-export function tierForQuality(quality: string): TierId | null {
-	for (const tier of TIERS) {
-		if (tier.qualities.includes(quality)) return tier.id;
-	}
-	return null;
 }
 
 /**

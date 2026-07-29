@@ -3,11 +3,9 @@ import { ROOTS, QUALITY_SUFFIXES } from '$lib/theory/randomChord';
 import { spellChord } from '$lib/theory/chord';
 import {
 	TIERS,
-	DIFFICULTY_LADDER,
 	tierById,
 	itemsForTier,
 	itemsForTiers,
-	tierForQuality,
 	splitSymbol,
 	availableTierIds
 } from './tiers';
@@ -103,25 +101,6 @@ describe('itemsForTiers', () => {
 	});
 });
 
-describe('tierForQuality', () => {
-	it('maps each quality to the lowest tier that introduces it', () => {
-		expect(tierForQuality('')).toBe(1);
-		expect(tierForQuality('m')).toBe(1);
-		expect(tierForQuality('dim')).toBe(2);
-		expect(tierForQuality('maj7')).toBe(3);
-		expect(tierForQuality('m7')).toBe(3);
-		expect(tierForQuality('7')).toBe(3);
-		expect(tierForQuality('m7b5')).toBe(4);
-		expect(tierForQuality('dim7')).toBe(4);
-		expect(tierForQuality('m6')).toBe(5);
-		expect(tierForQuality('9')).toBe(6);
-	});
-
-	it('returns null for a quality no tier knows', () => {
-		expect(tierForQuality('alt')).toBeNull();
-	});
-});
-
 describe('splitSymbol', () => {
 	it('splits a symbol into root and quality, preferring the longest root match', () => {
 		expect(splitSymbol('F#m7')).toEqual({ root: 'F#', quality: 'm7' });
@@ -132,24 +111,5 @@ describe('splitSymbol', () => {
 
 	it('returns null for a symbol outside the known root set', () => {
 		expect(splitSymbol('H7')).toBeNull();
-	});
-});
-
-describe('difficulty ladder metadata (R3 section 1)', () => {
-	it('orders the four steps from guided to cold construction', () => {
-		expect(DIFFICULTY_LADDER.map((step) => step.step)).toEqual([
-			'guided',
-			'identification',
-			'hinted',
-			'cold'
-		]);
-	});
-
-	it('marks guided and hinted steps as assisted (excluded from unlock accuracy)', () => {
-		const byStep = Object.fromEntries(DIFFICULTY_LADDER.map((entry) => [entry.step, entry]));
-		expect(byStep['guided'].assisted).toBe(true);
-		expect(byStep['hinted'].assisted).toBe(true);
-		expect(byStep['identification'].assisted).toBe(false);
-		expect(byStep['cold'].assisted).toBe(false);
 	});
 });

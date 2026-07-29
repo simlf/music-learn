@@ -1,5 +1,5 @@
-import { Note } from 'tonal';
 import { currentLocale } from '$lib/i18n/locale.svelte';
+import { chromaOf, toAsciiAccidentals } from './interval';
 import { spellChord } from './chord';
 import { letterToSolfege } from './solfege';
 import type { ChordResult } from './types';
@@ -17,15 +17,10 @@ import type { ChordResult } from './types';
  * return null rather than throwing or emitting mush.
  */
 
-/** tonal's Note.chroma only understands ASCII accidentals (#/b), not display glyphs (♯/♭). */
-function toAsciiAccidentals(letter: string): string {
-	return letter.replace(/♯/g, '#').replace(/♭/g, 'b');
-}
-
 /** A chord's pitch-class set, from its spelled glyph letters. */
 function chromaSet(chord: ChordResult): Set<number> {
 	const chromas = chord.notes
-		.map((note) => Note.chroma(toAsciiAccidentals(note.letter)))
+		.map((note) => chromaOf(note.letter))
 		.filter((chroma): chroma is number => chroma !== undefined);
 	return new Set(chromas);
 }
@@ -46,7 +41,7 @@ function displaySymbol(chord: ChordResult): string {
 function notesMissingFrom(chord: ChordResult, other: Set<number>): string[] {
 	return chord.notes
 		.filter((note) => {
-			const chroma = Note.chroma(toAsciiAccidentals(note.letter));
+			const chroma = chromaOf(note.letter);
 			return chroma !== undefined && !other.has(chroma);
 		})
 		.map((note) => note.letter);
@@ -97,8 +92,8 @@ export function contrastLine(correctSymbol: string, givenSymbol: string): string
 	const correctName = displaySymbol(correct);
 	const givenName = displaySymbol(given);
 
-	const correctRootChroma = Note.chroma(toAsciiAccidentals(correct.root));
-	const givenRootChroma = Note.chroma(toAsciiAccidentals(given.root));
+	const correctRootChroma = chromaOf(correct.root);
+	const givenRootChroma = chromaOf(given.root);
 	if (correctRootChroma === undefined || givenRootChroma === undefined) return null;
 
 	const fr = currentLocale() === 'fr';
