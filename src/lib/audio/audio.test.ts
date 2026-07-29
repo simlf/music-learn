@@ -70,6 +70,7 @@ import {
 	_resetForTests,
 	audioState,
 	ensureAudioReady,
+	isAppAudioActive,
 	noteOff,
 	noteOn,
 	playArpeggio,
@@ -567,5 +568,93 @@ describe('audioState', () => {
 		playNote('C4');
 		await flush();
 		expect(synth().triggerAttackRelease).toHaveBeenCalled();
+	});
+});
+
+/**
+ * The mic verifier's (Spike 025) app-audio gate: the mic panel polls
+ * `isAppAudioActive()` every analysis frame and suppresses detection while
+ * true, because the spike measured a 97.2% false accept without this gate
+ * (the app playing its own answer through the speaker). These tests use
+ * fake timers, scoped to this describe block only, so `Date.now()` (the
+ * clock `markAudioBusyFor` reads) is fully controlled.
+ */
+describe('isAppAudioActive', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('is false when nothing has ever played', () => {
+		expect(isAppAudioActive()).toBe(false);
+	});
+
+	it('is true immediately after playNote, and clears once its gate window elapses', () => {
+		playNote('C4');
+		expect(isAppAudioActive()).toBe(true);
+		vi.advanceTimersByTime(1199);
+		expect(isAppAudioActive()).toBe(true);
+		vi.advanceTimersByTime(2);
+		expect(isAppAudioActive()).toBe(false);
+	});
+
+	it('is true immediately after playChord, with a longer gate window than a single note', () => {
+		playChord(['C', 'E', 'G']);
+		expect(isAppAudioActive()).toBe(true);
+		vi.advanceTimersByTime(1300); // well past playNote's own (shorter) window
+		expect(isAppAudioActive()).toBe(true);
+		vi.advanceTimersByTime(2000);
+		expect(isAppAudioActive()).toBe(false);
+	});
+
+	it('playArpeggio gates for its full stagger length plus a note-attack tail', () => {
+		playArpeggio(['C', 'E', 'G'], { staggerMs: 300 });
+		expect(isAppAudioActive()).toBe(true);
+		// 3 notes * 300ms stagger = 900ms, plus the note gate window, minus a
+		// hair: still active just before that point.
+		vi.advanceTimersByTime(900 + 1199);
+		expect(isAppAudioActive()).toBe(true);
+		vi.advanceTimersByTime(2);
+		expect(isAppAudioActive()).toBe(false);
+	});
+
+	it('is true for a held note (noteOn) regardless of elapsed time, then tails off after noteOff', () => {
+		noteOn('C4');
+		vi.advanceTimersByTime(10_000);
+		expect(isAppAudioActive()).toBe(true); // still held, however long
+		noteOff('C4');
+		expect(isAppAudioActive()).toBe(true); // release tail
+		vi.advanceTimersByTime(900); // past the sampler's 0.8s release tail
+		expect(isAppAudioActive()).toBe(false);
+	});
+
+	it('a second held note keeps the gate active after the first is released', () => {
+		noteOn('C4');
+		noteOn('E4');
+		noteOff('C4');
+		expect(isAppAudioActive()).toBe(true); // E4 is still held
+		noteOff('E4');
+		vi.advanceTimersByTime(900);
+		expect(isAppAudioActive()).toBe(false);
+	});
+
+	it('turning sound off clears the gate immediately, even mid-window', () => {
+		playChord(['C', 'E', 'G']);
+		expect(isAppAudioActive()).toBe(true);
+		setSoundEnabled(false);
+		expect(isAppAudioActive()).toBe(false);
+		setSoundEnabled(true);
+	});
+
+	it('never gates at all while sound is disabled, since no play call attacks anything', () => {
+		setSoundEnabled(false);
+		playNote('C4');
+		playChord(['C', 'E', 'G']);
+		playArpeggio(['C', 'E', 'G'], { staggerMs: 50 });
+		expect(isAppAudioActive()).toBe(false);
+		setSoundEnabled(true);
 	});
 });

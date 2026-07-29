@@ -50,6 +50,19 @@ const RETRIGGER_WINDOW_MS = 50;
 const MAX_HELD_VOICES = 16;
 const SAMPLER_RELEASE_SEC = 0.8;
 /**
+ * Conservative post-attack gate windows (ms) for `isAppAudioActive()`
+ * (Spike 025 / the mic verifier, ARCHITECTURE-CONTRACTS.md Track A). Not
+ * tempo-exact: NOTE_DURATION/CHORD_DURATION are Tone.js time strings ('8n',
+ * '2n') that only resolve to real seconds against a live Transport, and
+ * gating accuracy does not need that precision - it only needs to comfortably
+ * outlast any real playback plus the sampler's release tail, so a caller
+ * polling this signal never mistakes ring-out for silence. Spike 025 found
+ * that WITHOUT this gate, a mic-based chord verifier accepted an unplayed
+ * chord 97.2% of the time because it was hearing the app's own speaker.
+ */
+const NOTE_AUDIO_GATE_MS = 1200;
+const CHORD_AUDIO_GATE_MS = 2600;
+/**
  * Comp velocity, deliberately under CHORD_VELOCITY: the loop is an
  * accompaniment the player improvises OVER, so it must sit below whatever the
  * player is doing rather than compete with it.
@@ -83,6 +96,12 @@ const lastAttackAt = new Map<string, number>();
 const heldNotes: string[] = [];
 /** The single running comping loop, or null. See startCompLoop. */
 let activeLoop: ActiveLoop | null = null;
+/**
+ * Timestamp (Date.now()) until which a one-shot playNote/playChord/
+ * playArpeggio attack might still be ringing. Read only through
+ * `isAppAudioActive()`, alongside the held-notes and comp-loop checks there.
+ */
+let audioBusyUntilMs = 0;
 /**
  * Monotonic loop generation. Bumped by every start AND every stop, so an
  * in-flight `startCompLoop` whose awaits resolve after the component unmounted
@@ -122,7 +141,29 @@ export function setSoundEnabled(value: boolean): void {
 	if (!value) {
 		stopCompLoop();
 		releaseAll();
+		audioBusyUntilMs = 0;
 	}
+}
+
+/**
+ * True while app-triggered sound might still be audible: a held note or
+ * comping loop is currently running, or a recent one-shot play call's
+ * conservative gate window (see NOTE/CHORD_AUDIO_GATE_MS) has not elapsed.
+ * The seam a mic-based verifier (Spike 025) polls to suppress detection
+ * while the app's own speaker could be sounding the answer - see
+ * MicCheckPanel.svelte, which resets its stability tracker whenever this is
+ * true rather than letting a frame count toward a confirmed match.
+ */
+export function isAppAudioActive(): boolean {
+	if (heldNotes.length > 0) return true;
+	if (activeLoop !== null) return true;
+	return Date.now() < audioBusyUntilMs;
+}
+
+/** Extends (never shortens) the audio-busy gate window. See isAppAudioActive. */
+function markAudioBusyFor(ms: number): void {
+	const until = Date.now() + ms;
+	if (until > audioBusyUntilMs) audioBusyUntilMs = until;
 }
 
 function readStoredStudyMode(): boolean {
@@ -258,6 +299,7 @@ export function playNote(note: string, opts: PlayOpts = {}): void {
 	if (!soundEnabled()) return;
 	const pitch = toAsciiPitchClass(note);
 	if (isRetriggerSpam(pitch)) return;
+	markAudioBusyFor(NOTE_AUDIO_GATE_MS);
 	void withInstrument((instrument) => {
 		instrument.triggerAttackRelease(
 			pitch,
@@ -289,6 +331,10 @@ export function noteOff(note: string): void {
 	const pitch = toAsciiPitchClass(note);
 	const heldIndex = heldNotes.lastIndexOf(pitch);
 	if (heldIndex !== -1) heldNotes.splice(heldIndex, 1);
+	// A held note's own release tail: isAppAudioActive's heldNotes check ends
+	// the instant this note is removed, so extend the busy window a little
+	// further to cover the sampler's actual decay.
+	if (heldNotes.length === 0) markAudioBusyFor(SAMPLER_RELEASE_SEC * 1000);
 	// Nothing has ever sounded: do not load a whole audio stack to release.
 	if (!toneModule) return;
 	releasePitch(pitch);
@@ -303,6 +349,7 @@ export function playChord(notes: string[], opts: PlayOpts = {}): void {
 	if (!soundEnabled()) return;
 	if (notes.length === 0) return;
 	const pitches = toAscendingPitches(notes);
+	markAudioBusyFor(CHORD_AUDIO_GATE_MS);
 	void withInstrument((instrument) => {
 		instrument.triggerAttackRelease(
 			pitches,
@@ -334,6 +381,7 @@ export function playArpeggio(
 	if (notes.length === 0) return;
 	const pitches = toAscendingPitches(notes);
 	const startDelayMs = opts.startDelayMs ?? 0;
+	markAudioBusyFor(startDelayMs + pitches.length * opts.staggerMs + NOTE_AUDIO_GATE_MS);
 	pitches.forEach((pitch, index) => {
 		setTimeout(() => {
 			void withInstrument((instrument) => {
@@ -430,6 +478,9 @@ function teardownActiveLoop(): void {
 		// Never throw from teardown.
 	}
 	releaseAll();
+	// isAppAudioActive's activeLoop check ends the instant activeLoop is
+	// nulled above; extend the busy window to cover the last bar's release.
+	markAudioBusyFor(CHORD_AUDIO_GATE_MS);
 }
 
 /**
@@ -582,6 +633,7 @@ export function audioState(): { instrument: InstrumentKind; samplesLoaded: boole
  */
 export function _resetForTests(): void {
 	teardownActiveLoop();
+	audioBusyUntilMs = 0;
 	loopToken = 0;
 	tonePromise = null;
 	toneModule = null;

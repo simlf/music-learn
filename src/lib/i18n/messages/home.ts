@@ -52,7 +52,32 @@ export const home = {
 		'home.disambig.chip-major-prefix': '',
 		'home.disambig.chip-major-suffix': ': major',
 		'home.slash.explain':
-			'The slash means {BASS} is the lowest note: play {CHORD} with {BASS} at the bottom.'
+			'The slash means {BASS} is the lowest note: play {CHORD} with {BASS} at the bottom.',
+		'home.mic.label': 'Mic check',
+		'home.mic.heading': 'Check it on your piano',
+		'home.mic.intro':
+			'Play the chord above on an acoustic piano near this device. This listens through the microphone and confirms once it hears the right notes, held steady.',
+		'home.mic.fifthNote':
+			"It cannot verify the fifth by ear. That note is naturally present in any root note's own overtones, so this check skips it and grades the rest: root, third and seventh, plus any extensions.",
+		'home.mic.start': 'Start listening',
+		'home.mic.requesting': 'Asking for microphone access...',
+		'home.mic.stop': 'Stop listening',
+		'home.mic.status-waiting': 'Listening. Play the chord.',
+		'home.mic.status-missing': 'Not yet. Missing {NOTES}.',
+		'home.mic.status-extra': 'Not yet. Extra {NOTE}.',
+		'home.mic.status-holding': 'Almost. Hold it: {RUN} of {STABILITY}.',
+		'home.mic.status-confirmed': 'Yes. That is the chord.',
+		'home.mic.status-muted': 'Paused while the app plays its own sound.',
+		'home.mic.hearing-prefix': 'Hearing:',
+		'home.mic.hearing-none': 'nothing yet',
+		'home.mic.unavailable-unsupported':
+			'Microphone check needs a browser with microphone support, such as Chrome or Firefox.',
+		'home.mic.unavailable-insecure':
+			'Microphone check needs a secure connection: https, or http://localhost during development.',
+		'home.mic.unavailable-permission-denied':
+			"Microphone access was denied. Allow it in the browser's site settings to use this check.",
+		'home.mic.unavailable-no-device': 'No microphone was found on this device.',
+		'home.mic.unavailable-unknown': 'The microphone could not be started. Try again in a moment.'
 	},
 	fr: {
 		'home.title': "Recherche d'accord",
@@ -90,6 +115,31 @@ export const home = {
 		'home.disambig.chip-major-prefix': '',
 		'home.disambig.chip-major-suffix': ': majeur',
 		'home.slash.explain':
-			'La barre oblique indique que {BASS} est la note la plus basse : jouez {CHORD} en plaçant {BASS} en bas.'
+			'La barre oblique indique que {BASS} est la note la plus basse : jouez {CHORD} en plaçant {BASS} en bas.',
+		'home.mic.label': 'Vérif micro',
+		'home.mic.heading': 'Vérifier au piano',
+		'home.mic.intro':
+			"Jouez l'accord ci-dessus sur un piano acoustique près de cet appareil. Ceci écoute via le microphone et confirme dès qu'il entend les bonnes notes, tenues quelques instants.",
+		'home.mic.fifthNote':
+			"Il ne peut pas vérifier la quinte à l'oreille. Cette note fait naturellement partie des harmoniques de la fondamentale elle-même, donc ce test l'ignore et évalue le reste : fondamentale, tierce et septième, plus les extensions éventuelles.",
+		'home.mic.start': 'Commencer à écouter',
+		'home.mic.requesting': "Demande d'accès au microphone...",
+		'home.mic.stop': "Arrêter l'écoute",
+		'home.mic.status-waiting': "En écoute. Jouez l'accord.",
+		'home.mic.status-missing': 'Pas encore. Il manque {NOTES}.',
+		'home.mic.status-extra': 'Pas encore. En trop : {NOTE}.',
+		'home.mic.status-holding': 'Presque. Tenez : {RUN} sur {STABILITY}.',
+		'home.mic.status-confirmed': "Oui. C'est le bon accord.",
+		'home.mic.status-muted': "En pause pendant que l'application joue son propre son.",
+		'home.mic.hearing-prefix': 'Entendu :',
+		'home.mic.hearing-none': "rien pour l'instant",
+		'home.mic.unavailable-unsupported':
+			'La vérification au micro nécessite un navigateur compatible, comme Chrome ou Firefox.',
+		'home.mic.unavailable-insecure':
+			'La vérification au micro nécessite une connexion sécurisée : https, ou http://localhost en développement.',
+		'home.mic.unavailable-permission-denied':
+			"L'accès au microphone a été refusé. Autorisez-le dans les réglages du site de votre navigateur pour utiliser ce test.",
+		'home.mic.unavailable-no-device': 'Aucun microphone trouvé sur cet appareil.',
+		'home.mic.unavailable-unknown': "Le microphone n'a pas pu démarrer. Réessayez dans un instant."
 	}
 } satisfies LocaleDict;
