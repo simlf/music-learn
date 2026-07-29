@@ -59,9 +59,24 @@
 	interface Props {
 		embedFact?: { kind: 'chord'; symbol: string } | { kind: 'scale'; tonic: string };
 		onComplete?: (rating: Rating) => void;
+		/**
+		 * Suppresses the FSRS card write entirely, for the WHOLE lifetime of
+		 * this instance (every completion, chord or scale, including any
+		 * "Build Another" round-trip through the standalone picker): when
+		 * true, recordConstructionOutcome becomes a no-op. Exists for /learn's
+		 * major-scale lesson (TheoryLessons.svelte), which embeds the scale
+		 * branch to teach the W-W-H-W-W-W-H pattern but must never create a
+		 * scale-formula card - that factKind is deliberately absent from
+		 * srs/facts.ts's CATALOG (an owner decision), so a lesson embed must
+		 * not organically create the one thing the catalog was designed to
+		 * keep out. Defaults to false, so every existing embed (RecallSession
+		 * Mode C, /practice's build-it family) keeps writing its card exactly
+		 * as before.
+		 */
+		noCard?: boolean;
 	}
 
-	let { embedFact, onComplete }: Props = $props();
+	let { embedFact, onComplete, noCard = false }: Props = $props();
 
 	type SessionState = 'picking' | 'building' | 'complete';
 	type Kind = 'chords' | 'scales';
@@ -445,9 +460,15 @@
 	 * synchronously and are clickable the instant this fires, so re-reading
 	 * live component state after an await boundary risks throwing on
 	 * undefined and having the bare catch swallow a genuine write.
+	 *
+	 * `noCard` short-circuits before any of that: no getCard/recordGrade call
+	 * is ever reached, so `fsrsSaved` stays false and the "SAVED TO RECALL"
+	 * status line naturally never renders (it is already gated on
+	 * `fsrsSaved`), with no separate suppression needed there.
 	 */
 	async function recordConstructionOutcome(): Promise<void> {
 		if (!construction || !construction.done) return;
+		if (noCard) return;
 		// Snapshot every input the async continuation needs before any `await` -
 		// nothing below this line reads live component state again.
 		const wrongTapCount = construction.wrongTapCount;

@@ -7,6 +7,7 @@
 	import NoteLabel from '$lib/components/NoteLabel.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import InteractiveLesson from '$lib/components/InteractiveLesson.svelte';
+	import BuildSession from '$lib/components/BuildSession.svelte';
 	import { t, type MessageKey } from '$lib/i18n/locale.svelte';
 
 	/**
@@ -61,6 +62,33 @@
 		{ roman: 'V', root: 'G', quality: '7', notes: ['G', 'B', 'D', 'F'] },
 		{ roman: 'I', root: 'C', quality: 'maj7', notes: ['C', 'E', 'G', 'B'] }
 	];
+
+	/**
+	 * The three tonics offered by the major-scale build lesson (audit fix:
+	 * `createScaleConstruction`/BuildSession's scale branch produced the
+	 * app's only statement of W-W-H-W-W-W-H, but were unreachable - both
+	 * BuildSession mount sites only ever passed a chord embedFact). C (no
+	 * accidentals, the reference case), G (one sharp) and F (one flat): one
+	 * tonic on each side of C already proves the pattern transposes in both
+	 * directions, which is the whole point, without burying that point under
+	 * a phone-width wall of all 12 MAJOR_SCALE_ROOTS. Reuses
+	 * createScaleConstruction (via BuildSession's own scale branch) for all
+	 * three; nothing here re-derives scale spelling.
+	 */
+	const SCALE_LESSON_TONICS = ['C', 'G', 'F'] as const;
+
+	let scaleLessonTonic = $state<string | undefined>();
+
+	/**
+	 * Returns to the tonic row so the reader can build a different (or the
+	 * same) scale. Passed as BuildSession's `onComplete`, which replaces its
+	 * standalone "Build Another"/"Recall It Now" completion CTAs with a
+	 * single "Next" - appropriate here since `noCard` (below) means there is
+	 * nothing to recall: no card is ever created by this embed.
+	 */
+	function resetScaleLesson() {
+		scaleLessonTonic = undefined;
+	}
 
 	/** The full letter-to-solfege map for the French reader. */
 	const SOLFEGE_MAP = [
@@ -128,6 +156,41 @@
 	data-testid="section-interactive-lesson"
 >
 	<InteractiveLesson />
+</section>
+
+<section
+	class="border-ink bg-paper-bright flex flex-col gap-4 border-2 px-4 py-6"
+	data-testid="section-scale"
+>
+	<p class="text-label font-mono uppercase" style="letter-spacing: 0.08em;">
+		{t('theory.scale.label')}
+	</p>
+	<h2 class="text-heading font-bold">{t('theory.scale.heading')}</h2>
+	<p class="text-body">
+		{t('theory.scale.body')}
+	</p>
+	<p class="text-label font-mono uppercase">{t('build.caption.tonic')}</p>
+	<div class="flex flex-wrap gap-2" data-testid="scale-tonic-row">
+		{#each SCALE_LESSON_TONICS as tonic (tonic)}
+			<Button
+				type="button"
+				variant={scaleLessonTonic === tonic ? 'primary' : 'ghost'}
+				aria-pressed={scaleLessonTonic === tonic}
+				onclick={() => (scaleLessonTonic = tonic)}
+			>
+				{tonic} {t('build.word.major')}
+			</Button>
+		{/each}
+	</div>
+	{#if scaleLessonTonic}
+		{#key scaleLessonTonic}
+			<BuildSession
+				embedFact={{ kind: 'scale', tonic: scaleLessonTonic }}
+				onComplete={resetScaleLesson}
+				noCard
+			/>
+		{/key}
+	{/if}
 </section>
 
 <section

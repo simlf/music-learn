@@ -64,8 +64,31 @@ describe('/learn: hub structure and section presence', () => {
 		const theorySection = screen.getByTestId('learn-theory');
 		expect(theorySection).toBeInTheDocument();
 		expect(within(theorySection).getByTestId('section-interactive-lesson')).toBeInTheDocument();
+		expect(within(theorySection).getByTestId('section-scale')).toBeInTheDocument();
 		expect(within(theorySection).getByTestId('section-symbol')).toBeInTheDocument();
 		expect(within(theorySection).getByTestId('section-sevenths')).toBeInTheDocument();
+	});
+
+	/**
+	 * x3-scale-lesson: the major-scale build lesson (making
+	 * createScaleConstruction/BuildSession's scale branch reachable, per the
+	 * pedagogy audit) sits right after the thirds lesson that establishes the
+	 * "half steps" vocabulary it reuses, and before the symbol lesson.
+	 */
+	it('renders the major-scale lesson between the thirds lesson and the symbol lesson, with its tonic picker', () => {
+		renderPage();
+		const sections = Array.from(
+			document.querySelectorAll<HTMLElement>('[data-testid^="section-"]')
+		).map((element) => element.dataset.testid);
+
+		expect(sections.indexOf('section-scale')).toBeGreaterThan(
+			sections.indexOf('section-interactive-lesson')
+		);
+		expect(sections.indexOf('section-scale')).toBeLessThan(sections.indexOf('section-symbol'));
+
+		const scaleSection = screen.getByTestId('section-scale');
+		expect(within(scaleSection).getByTestId('scale-tonic-row')).toBeInTheDocument();
+		expect(within(scaleSection).queryByTestId('build-session')).not.toBeInTheDocument();
 	});
 
 	it('renders the Scale Explore section with the tonic picker and no mode toggle (exploreOnly)', () => {

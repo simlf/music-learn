@@ -35,6 +35,11 @@ export const theory = {
 			'The beginner course on /drills will show you chords like these and ask for the notes. The third you just measured is what decides a triad: four half steps up from the root gives a major triad, three gives a minor one.',
 		'theory.lesson.handoff.cta': 'Try this in a drill →',
 
+		'theory.scale.label': 'The major scale',
+		'theory.scale.heading': 'One ruler, every key',
+		'theory.scale.body':
+			'A major scale is seven notes measured off one fixed ruler: whole, whole, half, whole, whole, whole, half. Move that ruler to any starting note and the letters change, but the gaps between them never do. Pick a tonic and build it, one step at a time.',
+
 		'theory.symbol.label': 'Reading a chord symbol',
 		'theory.symbol.heading': 'Root, then quality',
 		'theory.symbol.body':
@@ -109,6 +114,11 @@ export const theory = {
 		'theory.lesson.handoff.body':
 			"Le parcours débutant sur /drills te montrera des accords comme ceux-ci et te demandera les notes. La tierce que tu viens de mesurer est ce qui décide d'une triade : quatre demi-tons au-dessus de la fondamentale donnent une triade majeure, trois en donnent une mineure.",
 		'theory.lesson.handoff.cta': 'Essayer dans un exercice →',
+
+		'theory.scale.label': 'La gamme majeure',
+		'theory.scale.heading': 'Une règle, tous les tons',
+		'theory.scale.body':
+			"Une gamme majeure, ce sont sept notes mesurées sur une règle fixe : ton, ton, demi-ton, ton, ton, ton, demi-ton. Déplace cette règle sur n'importe quelle note de départ et les lettres changent, mais les écarts entre elles ne changent jamais. Choisis une tonique et construis-la, étape par étape.",
 
 		'theory.symbol.label': "Lire un symbole d'accord",
 		'theory.symbol.heading': 'Fondamentale, puis qualité',

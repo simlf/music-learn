@@ -894,6 +894,98 @@ describe('BuildSession embedding seam (13-05, Task 1)', () => {
 });
 
 /**
+ * `noCard` (the /learn major-scale lesson's no-card seam, x3-scale-lesson):
+ * the "embedding seam" tests above show a scale embed writes a scale-formula
+ * card by DEFAULT (noCard omitted) - that is unchanged, deliberate behavior.
+ * /learn's new major-scale lesson (TheoryLessons.svelte) embeds this same
+ * scale branch to teach W-W-H-W-W-W-H, but must never create the one thing
+ * srs/facts.ts's CATALOG deliberately keeps out (scale-formula is NOT a
+ * catalog FactKind; see that file's own comment and facts.test.ts's
+ * regression pin). These tests pin the suppression this prop adds.
+ */
+describe("BuildSession noCard prop (no FSRS write, for /learn's major-scale lesson)", () => {
+	it('completing an embedded G major scale build with noCard writes no card at all: getCard/recordGrade never called, no SAVED TO RECALL status line, and the rule statement still renders (the audit-cited dead line, now reachable)', async () => {
+		render(BuildSession, {
+			props: { embedFact: { kind: 'scale', tonic: 'G' }, noCard: true }
+		});
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'B key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[1]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D key' })[1]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'E key' })[1]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'F♯ key' })[1]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[1]);
+		// A generous settle window with no waitFor target (there is, by
+		// design, no status line to wait on): long enough that a regression
+		// reintroducing the write would still have fired its mock by the time
+		// this resolves.
+		await new Promise((resolve) => setTimeout(resolve, 700));
+
+		expect(screen.getByTestId('build-complete')).toBeInTheDocument();
+		expect(screen.getByTestId('build-complete-rule')).toHaveTextContent(
+			'G major: whole, whole, half, whole, whole, whole, half.'
+		);
+		expect(screen.queryByTestId('build-fsrs-status')).not.toBeInTheDocument();
+		expect(getCardMock).not.toHaveBeenCalled();
+		expect(recordGradeMock).not.toHaveBeenCalled();
+	}, 20000);
+
+	it('noCard also suppresses a CHORD completion\'s FSRS write (the prop is total, not scale-specific)', async () => {
+		render(BuildSession, {
+			props: { embedFact: { kind: 'chord', symbol: 'Cm7' }, noCard: true }
+		});
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+
+		expect(screen.getByTestId('build-complete')).toBeInTheDocument();
+		expect(screen.queryByTestId('build-fsrs-status')).not.toBeInTheDocument();
+		expect(getCardMock).not.toHaveBeenCalled();
+		expect(recordGradeMock).not.toHaveBeenCalled();
+	});
+
+	it('omitting noCard on a scale embed keeps writing the card (default false: byte-identical to the pre-existing embed behavior)', async () => {
+		render(BuildSession, {
+			props: { embedFact: { kind: 'scale', tonic: 'G' } }
+		});
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'A key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'B key' })[0]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[1]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D key' })[1]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'E key' })[1]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'F♯ key' })[1]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[1]);
+		await new Promise((resolve) => setTimeout(resolve, 700));
+
+		await waitFor(() => expect(screen.getByTestId('build-fsrs-status')).toBeInTheDocument());
+		expect(getCardMock).toHaveBeenCalledWith('scale-formula:G', 'formula-build');
+		expect(recordGradeMock).toHaveBeenCalledWith(
+			expect.objectContaining({ factId: 'scale-formula:G', factKind: 'scale-formula' }),
+			Rating.Easy,
+			expect.any(Date)
+		);
+	}, 20000);
+});
+
+/**
  * Component test for BuildSession's constructable input keyboard: it renders
  * inline in the build-active flow, both standalone (`/build`) and embedded
  * (Mode C, `embedFact` set).
