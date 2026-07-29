@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
 	assignNotesToKeys,
 	blackKeysForOctaves,
+	firstRowWhiteCount,
 	fitsWithoutScrolling,
 	MIN_WHITE_KEY_PX,
 	minBoardWidthPx,
 	octavesForWidth,
+	shouldStackRows,
+	splitBoardIntoRows,
 	whiteKeyCountForOctaves,
 	whiteLettersForOctaves
 } from './keyboardLayout';
@@ -91,6 +94,153 @@ describe('the fingertip floor for both spans', () => {
 			expect(boardWidth / whiteKeyCountForOctaves(octaves), `${width}px`).toBeGreaterThanOrEqual(
 				MIN_WHITE_KEY_PX
 			);
+		}
+	});
+});
+
+/**
+ * `shouldStackRows` decides the two-row wrap that replaces horizontal
+ * scrolling (LOCKED user decision): whenever a span could not fit without
+ * scrolling before AND stacking would actually clear the fingertip floor for
+ * BOTH rows, it stacks into two rows instead.
+ *
+ * NOT simply `!fitsWithoutScrolling`: a live-browser regression (found after
+ * this function first shipped as exactly `!fitsWithoutScrolling`) showed a
+ * one-octave board stacking at a 304px container - under row 1's own 308px
+ * (7 * 44) floor, the BINDING floor for a one-octave span since row 1 (7
+ * keys) is wider than row 2 (1 key, just the trailing C) - so row 1's keys
+ * rendered at 43.42px, still short of 44px. For a two-octave span the binding
+ * floor is row 2's own 352px (8 keys), since there row 2 is the wider one.
+ * The corrected rule requires whichever row is wider to independently clear
+ * the floor at the given width; below that, stacking cannot help and the
+ * single-row + horizontal-scroll fallback remains the honest answer.
+ */
+describe('shouldStackRows', () => {
+	it('never stacks a one-octave board below its own binding row-1 floor (7 keys, 308px)', () => {
+		expect(shouldStackRows(1, 43)).toBe(false);
+		expect(shouldStackRows(1, 44)).toBe(false);
+	});
+
+	it('never stacks a one-octave board when row 1 (7 keys, 308px) could not itself clear the floor', () => {
+		// 304px (the real container width measured live at a 320px viewport,
+		// #260729-ert follow-up) is below row 1's 308px floor - must NOT stack.
+		expect(shouldStackRows(1, 304)).toBe(false);
+		expect(shouldStackRows(1, 307)).toBe(false);
+	});
+
+	it('stacks a one-octave board once row 1 (the binding 308px floor) clears, up to the point it no longer needs to stack', () => {
+		expect(shouldStackRows(1, 308)).toBe(true);
+		expect(shouldStackRows(1, 351)).toBe(true);
+	});
+
+	it('never stacks once the one-octave span already fits unstacked (>= 352px)', () => {
+		expect(shouldStackRows(1, 352)).toBe(false);
+		expect(shouldStackRows(1, 500)).toBe(false);
+	});
+
+	it('never stacks a two-octave board below its own binding row-2 floor (8 keys, 352px)', () => {
+		// 340px triggers the OLD (incorrect) !fitsWithoutScrolling(2, ...)
+		// check (< 660px) but is under row 2's own 352px floor - must NOT stack.
+		expect(shouldStackRows(2, 340)).toBe(false);
+		expect(shouldStackRows(2, 351)).toBe(false);
+	});
+
+	it('stacks a two-octave board once row 2 (the binding 352px floor) clears and unstacked still would not fit', () => {
+		expect(shouldStackRows(2, 352)).toBe(true);
+		expect(shouldStackRows(2, 659)).toBe(true);
+	});
+
+	it('never stacks once the two-octave span already fits unstacked (>= 660px)', () => {
+		expect(shouldStackRows(2, 660)).toBe(false);
+		expect(shouldStackRows(2, 1200)).toBe(false);
+	});
+
+	it('never stacks at very narrow widths where even the wider row could not clear the floor', () => {
+		expect(shouldStackRows(1, 0)).toBe(false);
+		expect(shouldStackRows(2, 0)).toBe(false);
+		expect(shouldStackRows(2, 100)).toBe(false);
+	});
+
+	it('always implies fitsWithoutScrolling is false (stacking only ever replaces a scroll, never an already-fitting row)', () => {
+		for (const octaves of [1, 2] as const) {
+			for (const width of [0, 44, 100, 304, 308, 340, 344, 351, 352, 359, 374, 400, 500, 659, 660, 1200]) {
+				if (shouldStackRows(octaves, width)) {
+					expect(
+						fitsWithoutScrolling(octaves, width),
+						`${octaves}oct @ ${width}px: stacked but also fits unstacked`
+					).toBe(false);
+				}
+			}
+		}
+	});
+
+	it('always implies both rows individually clear the fingertip floor whenever it stacks', () => {
+		for (const octaves of [1, 2] as const) {
+			for (const width of [0, 44, 100, 304, 308, 340, 344, 351, 352, 359, 374, 400, 500, 659, 660, 1200]) {
+				if (!shouldStackRows(octaves, width)) continue;
+				const rows = splitBoardIntoRows(octaves);
+				for (const row of rows) {
+					const rowFloor = row.whiteLetters.length * MIN_WHITE_KEY_PX;
+					expect(
+						width,
+						`${octaves}oct @ ${width}px: a stacked row (${row.whiteLetters.length} white keys) needs ${rowFloor}px`
+					).toBeGreaterThanOrEqual(rowFloor);
+				}
+			}
+		}
+	});
+});
+
+/**
+ * The split seam is white-index 7 (the trailing C after B): the ONLY seam
+ * with no black key on either side (`BLACK_KEY_PATTERN` has no
+ * `afterWhiteIndex: 6` entry), so splitting there never orphans a black key
+ * from its adjacent white key.
+ */
+describe('firstRowWhiteCount', () => {
+	it('is 7 for both one- and two-octave spans (the B-to-C seam)', () => {
+		expect(firstRowWhiteCount(1)).toBe(7);
+		expect(firstRowWhiteCount(2)).toBe(7);
+	});
+});
+
+describe('splitBoardIntoRows', () => {
+	it('splits a one-octave board into a 7-white/5-black row 1 and a 1-white/0-black row 2', () => {
+		const rows = splitBoardIntoRows(1);
+		expect(rows).toHaveLength(2);
+
+		expect(rows[0].whiteLetters).toEqual(['C', 'D', 'E', 'F', 'G', 'A', 'B']);
+		expect(rows[0].startWhiteIndex).toBe(0);
+		expect(rows[0].blackKeys).toEqual(blackKeysForOctaves(1));
+
+		expect(rows[1].whiteLetters).toEqual(['C']);
+		expect(rows[1].startWhiteIndex).toBe(7);
+		expect(rows[1].blackKeys).toEqual([]);
+	});
+
+	it('splits a two-octave board into a 7-white/5-black row 1 and an 8-white/5-black row 2', () => {
+		const rows = splitBoardIntoRows(2);
+		expect(rows).toHaveLength(2);
+
+		expect(rows[0].whiteLetters).toEqual(['C', 'D', 'E', 'F', 'G', 'A', 'B']);
+		expect(rows[0].startWhiteIndex).toBe(0);
+		expect(rows[0].blackKeys).toEqual(blackKeysForOctaves(1));
+
+		expect(rows[1].whiteLetters).toEqual(['C', 'D', 'E', 'F', 'G', 'A', 'B', 'C']);
+		expect(rows[1].startWhiteIndex).toBe(7);
+		// Row 2 is itself a valid standalone board at index 0: the second
+		// octave's black-key pattern re-indexed by subtracting startWhiteIndex,
+		// equal to a fresh one-octave black-key pattern.
+		expect(rows[1].blackKeys).toEqual(blackKeysForOctaves(1));
+	});
+
+	it('every row white-letter count plus black-key count reproduces the full unsplit board', () => {
+		for (const octaves of [1, 2] as const) {
+			const rows = splitBoardIntoRows(octaves);
+			const totalWhite = rows.reduce((sum, row) => sum + row.whiteLetters.length, 0);
+			const totalBlack = rows.reduce((sum, row) => sum + row.blackKeys.length, 0);
+			expect(totalWhite).toBe(whiteLettersForOctaves(octaves).length);
+			expect(totalBlack).toBe(blackKeysForOctaves(octaves).length);
 		}
 	});
 });

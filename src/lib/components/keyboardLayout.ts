@@ -168,6 +168,130 @@ export function blackKeysForOctaves(octaves: 1 | 2): BlackKeyPattern[] {
 	return blackKeys;
 }
 
+/**
+ * How many white keys belong in the first row when a board wraps to two rows:
+ * 7, for both one- and two-octave spans (C through B, before the trailing/
+ * next C). White-index 7 is the ONLY seam in `BLACK_KEY_PATTERN` with no
+ * black key on either side (there is no `afterWhiteIndex: 6` entry, i.e. no
+ * black key between B and C) - so splitting exactly here never orphans a
+ * black key from its adjacent white key, no matter which octave count is
+ * being split.
+ */
+export function firstRowWhiteCount(_octaves: 1 | 2): 7 {
+	return 7;
+}
+
+/**
+ * How many white keys the SECOND row holds: the remainder after
+ * `firstRowWhiteCount`, i.e. 1 for a one-octave span (just the trailing C) or
+ * 8 for a two-octave span (the second octave plus its own trailing C). NOT
+ * necessarily >= row 1's count - the one-octave span's row 2 (1 key) is
+ * narrower than its row 1 (7 keys), which is exactly what an earlier revision
+ * of `shouldStackRows` got wrong (see that function's own comment).
+ */
+function secondRowWhiteCount(octaves: 1 | 2): number {
+	return whiteKeyCountForOctaves(octaves) - firstRowWhiteCount(octaves);
+}
+
+/**
+ * The narrowest a container can be while BOTH stacked rows independently
+ * clear the fingertip floor: the wider row's own white-key count times
+ * `minWhiteKeyPx` - i.e. `max(firstRowWhiteCount, secondRowWhiteCount) *
+ * minWhiteKeyPx`. For one octave that is row 1 (7 keys, 308px; row 2 is only
+ * 1 key/44px). For two octaves that is row 2 (8 keys, 352px; row 1 is 7
+ * keys/308px).
+ */
+function stackedRowFloorPx(octaves: 1 | 2, minWhiteKeyPx = MIN_WHITE_KEY_PX): number {
+	return Math.max(firstRowWhiteCount(octaves), secondRowWhiteCount(octaves)) * minWhiteKeyPx;
+}
+
+/**
+ * Whether an `octaves`-wide span, given `availableWidthPx`, must wrap into two
+ * stacked rows instead of rendering one row.
+ *
+ * NOT simply `!fitsWithoutScrolling(...)` (an earlier revision of this
+ * function was, and shipped a real defect - #260729-ert follow-up, caught by
+ * a live-browser check, not by unit tests): for a ONE-octave span,
+ * `fitsWithoutScrolling(1, ...)` fails below 352px, but row 1 only has 7
+ * white keys and clears the fingertip floor at 308px (7 * 44) - so a
+ * container between 308px and 352px would have "stacked" into two rows where
+ * row 1's own keys were STILL under the floor, achieving nothing (measured
+ * live in Chromium at a 304px container: row 1's keys rendered at 43.42px,
+ * still short). The same latent gap exists for the two-octave span's row 2
+ * (352px floor, the wider row there) at any width between itself and the
+ * original 660px trigger.
+ *
+ * The correct rule: only stack when doing so actually clears the floor for
+ * BOTH rows, i.e. the available width must reach `stackedRowFloorPx` (the
+ * WIDER row's own minimum width - which row that is differs by octave count,
+ * see that function). Below that, stacking cannot help and the pre-existing
+ * single-row + horizontal-scroll fallback is the honest answer for that
+ * (sub-308px on any real device this app targets) width - matching
+ * PianoKeyboard's own "kept as a last resort" comment on its scroll wrapper.
+ */
+export function shouldStackRows(
+	octaves: 1 | 2,
+	availableWidthPx: number,
+	minWhiteKeyPx = MIN_WHITE_KEY_PX
+): boolean {
+	if (fitsWithoutScrolling(octaves, availableWidthPx, minWhiteKeyPx)) return false;
+	return availableWidthPx >= stackedRowFloorPx(octaves, minWhiteKeyPx);
+}
+
+/** One stacked row of a split keyboard: a standalone board layout at index 0. */
+export interface KeyboardRow {
+	whiteLetters: string[];
+	blackKeys: BlackKeyPattern[];
+	/** This row's first white key's absolute index on the full (unsplit) board. */
+	startWhiteIndex: number;
+}
+
+/**
+ * Splits an `octaves`-wide board into two stacked rows at the white-index-7
+ * seam (see `firstRowWhiteCount`), each row being a valid STANDALONE board
+ * layout starting at its own index 0 - not a raw slice of the full board's
+ * absolute indices. This matters because `PianoKeyboard.svelte` computes each
+ * row's own `leftPct`/`widthPct` percentages from that row's OWN white-letter
+ * count, so a row's black keys must be re-indexed to `afterWhiteIndex -
+ * startWhiteIndex` (relative to the row's own white keys) rather than kept at
+ * their absolute-board index, or the percentage math would place them past
+ * the row's own right edge.
+ *
+ * Row 1: white indices `[0, firstRowWhiteCount)`, i.e. the first 7 letters
+ * (C D E F G A B) plus every black key whose `afterWhiteIndex` falls before
+ * that boundary (exactly one octave's worth, 5 keys).
+ *
+ * Row 2: the remainder - for 1 octave, just the trailing C (0 black keys,
+ * the degenerate single-trailing-key case); for 2 octaves, the second
+ * octave's 7 letters plus the final trailing C (8 letters total) and that
+ * octave's own 5 black keys, re-indexed to start at 0.
+ */
+export function splitBoardIntoRows(octaves: 1 | 2): [KeyboardRow, KeyboardRow] {
+	const whiteLetters = whiteLettersForOctaves(octaves);
+	const blackKeys = blackKeysForOctaves(octaves);
+	const seam = firstRowWhiteCount(octaves);
+
+	const row1: KeyboardRow = {
+		whiteLetters: whiteLetters.slice(0, seam),
+		blackKeys: blackKeys.filter(({ afterWhiteIndex }) => afterWhiteIndex < seam),
+		startWhiteIndex: 0
+	};
+
+	const row2: KeyboardRow = {
+		whiteLetters: whiteLetters.slice(seam),
+		blackKeys: blackKeys
+			.filter(({ afterWhiteIndex }) => afterWhiteIndex >= seam)
+			.map(({ afterWhiteIndex, sharpLetter, flatLetter }) => ({
+				afterWhiteIndex: afterWhiteIndex - seam,
+				sharpLetter,
+				flatLetter
+			})),
+		startWhiteIndex: seam
+	};
+
+	return [row1, row2];
+}
+
 function candidatesForNote(
 	note: SpelledNote,
 	whiteLetters: string[],

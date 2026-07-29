@@ -28,6 +28,8 @@
 		blackKeysForOctaves,
 		minBoardWidthPx,
 		octavesForWidth,
+		shouldStackRows,
+		splitBoardIntoRows,
 		whiteLettersForOctaves,
 		type BlackKeyPattern,
 		type KeyCandidate
@@ -247,16 +249,35 @@
 	 */
 	let pressedKey: { letter: string; octave: number } | undefined = $state(undefined);
 
-	// Self-measure only when `octaves` isn't explicitly provided. Reads the
-	// container's width and derives octave count from it via `$derived` below
-	// - never writes anything back that affects the observed element's size,
-	// so there is no observe -> resize -> observe feedback loop (T-09-01).
-	// Guarded for jsdom/older browsers lacking ResizeObserver: falls back to
-	// the default of 2 octaves (matches every pre-existing display/interactive
-	// test).
+	// Always self-measure, even when `octaves` is explicitly provided. The two
+	// concerns are separate: an explicit `octaves` fixes the SPAN (a construction
+	// drill wants both octaves regardless of screen), while the measured width
+	// decides only whether that span renders as one row or wraps to two. Gating
+	// the observer on `octaves === undefined` (as this did) left `measuredWidth`
+	// permanently undefined for every caller that pins its span - which is every
+	// `octaves={2}` drill - so two-row stacking could never engage there and the
+	// board fell back to scrolling sideways on a phone.
+	//
+	// Reads the container's width and never writes anything back that affects the
+	// observed element's size, so there is no observe -> resize -> observe
+	// feedback loop (T-09-01). Guarded for jsdom/older browsers lacking
+	// ResizeObserver: falls back to the default of 2 unstacked octaves (matches
+	// every pre-existing display/interactive test).
 	$effect(() => {
-		if (octaves !== undefined) return;
-		if (!containerEl || typeof ResizeObserver === 'undefined') return;
+		if (!containerEl) return;
+
+		// Seed the measurement synchronously from the bound element. A
+		// ResizeObserver alone is not enough here: the callback is asynchronous,
+		// and `stacked` gates the very markup whose width the observer reports, so
+		// relying on the callback left `measuredWidth` undefined through the render
+		// that actually decides single-vs-two-row - the board shipped unstacked and
+		// scrolled sideways on a phone. Reading `clientWidth` up front makes the
+		// first render already correct; the observer below only tracks later
+		// changes (rotation, resize, container reflow).
+		const seed = containerEl.clientWidth;
+		if (seed > 0) measuredWidth = seed;
+
+		if (typeof ResizeObserver === 'undefined') return;
 
 		const observer = new ResizeObserver((entries) => {
 			const entry = entries[0];
@@ -498,6 +519,93 @@
 	);
 
 	/**
+	 * Two-row wrap (replaces horizontal scrolling, LOCKED user decision):
+	 * whenever the measured container width falls under the current span's
+	 * fingertip floor, the board renders as two stacked mini-keyboards instead
+	 * of one row scrolling sideways. `measuredWidth === undefined` (no
+	 * ResizeObserver, e.g. jsdom, or the `octaves` prop overriding self-
+	 * measurement) always renders unstacked, matching the component's existing
+	 * "unmeasurable -> desktop-safe default" convention and keeping every
+	 * pre-existing jsdom test byte-identical.
+	 */
+	const stacked = $derived(
+		measuredWidth !== undefined && shouldStackRows(effectiveOctaves, measuredWidth)
+	);
+
+	interface KeyboardRowView {
+		/** This row's own white keys, indexed locally (0-based within the row). */
+		whiteKeys: WhiteKey[];
+		/** This row's own black keys, indexed locally (0-based within the row). */
+		blackKeys: BlackKey[];
+		/** This row's own white-key-count-derived percentage widths. */
+		whiteKeyWidthPct: number;
+		blackKeyWidthPct: number;
+	}
+
+	/**
+	 * Builds each stacked row's OWN white/black key view: local `leftPct`
+	 * percentages computed from THAT row's white-letter count (7 for row 1, up
+	 * to 8 for row 2), so each row independently satisfies the fingertip floor
+	 * at the measured container width. Note lookup still goes through the
+	 * single, unsplit `noteAssignment` map via each row's absolute index
+	 * (`startWhiteIndex` offset for white keys, the row's own already-
+	 * re-indexed `blackKeys` pattern plus that offset for black keys) - the
+	 * assignment itself is never recomputed per row, only WHERE an
+	 * already-assigned key is rendered changes.
+	 */
+	const rows: KeyboardRowView[] = $derived.by(() => {
+		if (!stacked) return [];
+
+		return splitBoardIntoRows(effectiveOctaves).map((row) => {
+			const rowWhiteKeyWidthPct = 100 / row.whiteLetters.length;
+			const rowBlackKeyWidthPct = rowWhiteKeyWidthPct * 0.6;
+
+			const rowWhiteKeys: WhiteKey[] = row.whiteLetters.map((letter, localIndex) => {
+				const absoluteIndex = row.startWhiteIndex + localIndex;
+				return {
+					index: absoluteIndex,
+					letter,
+					leftPct: localIndex * rowWhiteKeyWidthPct,
+					note: noteAtWhiteIndex(absoluteIndex)
+				};
+			});
+
+			const rowBlackKeys: BlackKey[] = row.blackKeys.map(
+				({ afterWhiteIndex, sharpLetter, flatLetter }, localBlackIndex) => {
+					const absoluteAfterWhiteIndex = afterWhiteIndex + row.startWhiteIndex;
+					// The row's own black-key list was already re-indexed by
+					// `splitBoardIntoRows` (afterWhiteIndex relative to the row),
+					// but `noteAtBlackIndex` looks up by the FULL BOARD's black-key
+					// array index, which for row 2 continues after row 1's 5
+					// entries. Row 1's blackIndex is already absolute (starts at
+					// 0); row 2's needs `firstRowWhiteCount`-worth of black keys
+					// (always 5, one octave's pattern) added back.
+					const absoluteBlackIndex =
+						row.startWhiteIndex === 0
+							? localBlackIndex
+							: blackKeysForOctaves(effectiveOctaves).findIndex(
+									(pattern) => pattern.afterWhiteIndex === absoluteAfterWhiteIndex
+								);
+					return {
+						position: afterWhiteIndex + 1,
+						leftPct: (afterWhiteIndex + 1) * rowWhiteKeyWidthPct - rowBlackKeyWidthPct / 2,
+						sharpLetter,
+						flatLetter,
+						note: noteAtBlackIndex(absoluteBlackIndex)
+					};
+				}
+			);
+
+			return {
+				whiteKeys: rowWhiteKeys,
+				blackKeys: rowBlackKeys,
+				whiteKeyWidthPct: rowWhiteKeyWidthPct,
+				blackKeyWidthPct: rowBlackKeyWidthPct
+			};
+		});
+	});
+
+	/**
 	 * Reveal chord-strike pulse (Phase 16, HEAR-01, T-16-03): flips off then
 	 * on whenever `pulseToken` changes to a new value, so the shared
 	 * `.pulse-once` class (app.css) is genuinely removed-then-re-added -
@@ -703,27 +811,33 @@
 	}
 </script>
 
-<div
-	class="piano-keyboard"
-	role="img"
-	aria-label={keyboardAriaLabel(effectiveOctaves)}
-	style="touch-action: manipulation;"
-	bind:this={containerEl}
->
-<!--
-	The board carries the fingertip floor as a px min-width and the wrapper above
-	scrolls when the container cannot supply it, so a white key is never narrower
-	than MIN_WHITE_KEY_PX at ANY viewport (measured: 43.80px keys on a 43.32px
-	pitch at 375px before this). This is the same scroll-wrap + min-width board
-	shape ScaleKeyboardDrill already used, which is why the scale drill's own
-	keyboard never had the defect. The min-width is on the BOARD, never on the
-	keys: a per-key px floor is the 09-02 defect (see the note in the stylesheet),
-	because it fights the percentage `left`/`width` layout and overlaps
-	neighbors. Percentages resolve against the widened board instead, so key
-	geometry stays exactly proportional.
--->
-	<div class="piano-keyboard__board" style="min-width: {minBoardWidthPx(effectiveOctaves)}px;">
-	{#each whiteKeys as key (key.index)}
+{#snippet board(
+	boardWhiteKeys: WhiteKey[],
+	boardBlackKeys: BlackKey[],
+	boardWhiteKeyWidthPct: number,
+	boardBlackKeyWidthPct: number,
+	boardMinWidthPx: number | undefined
+)}
+	<!--
+		The board carries the fingertip floor as a px min-width and the wrapper above
+		scrolls when the container cannot supply it, so a white key is never narrower
+		than MIN_WHITE_KEY_PX at ANY viewport (measured: 43.80px keys on a 43.32px
+		pitch at 375px before this). This is the same scroll-wrap + min-width board
+		shape ScaleKeyboardDrill already used, which is why the scale drill's own
+		keyboard never had the defect. The min-width is on the BOARD, never on the
+		keys: a per-key px floor is the 09-02 defect (see the note in the stylesheet),
+		because it fights the percentage `left`/`width` layout and overlaps
+		neighbors. Percentages resolve against the widened board instead, so key
+		geometry stays exactly proportional. When stacked (two rows), each row's own
+		min-width is always <= the measured container width (that is what
+		triggered stacking in the first place), so no min-width style is applied
+		to a stacked row's board - it fills the row's own 100% width instead.
+	-->
+	<div
+		class="piano-keyboard__board"
+		style={boardMinWidthPx !== undefined ? `min-width: ${boardMinWidthPx}px;` : undefined}
+	>
+	{#each boardWhiteKeys as key (key.index)}
 		<!-- svelte-ignore a11y_no_noninteractive_tabindex -- role is dynamically 'button' whenever tabindex is set (both gated by `interactive`) -->
 		<div
 			class="piano-keyboard__key piano-keyboard__key--white {roleClass(
@@ -746,7 +860,7 @@
 				octaveForWhiteIndex(key.index),
 				key.note?.role
 			)} {bassHintClass(key.note?.letter ?? key.letter, octaveForWhiteIndex(key.index))}"
-			style="left: {key.leftPct}%; width: {whiteKeyWidthPct}%;"
+			style="left: {key.leftPct}%; width: {boardWhiteKeyWidthPct}%;"
 			role={keysActive ? 'button' : undefined}
 			tabindex={keysActive ? 0 : undefined}
 			aria-pressed={interactive ? (selected?.has(key.letter) ?? false) : undefined}
@@ -781,7 +895,7 @@
 			{/if}
 		</div>
 	{/each}
-	{#each blackKeys as key, i (i)}
+	{#each boardBlackKeys as key, i (i)}
 		<!-- svelte-ignore a11y_no_noninteractive_tabindex -- role is dynamically 'button' whenever tabindex is set (both gated by `interactive`) -->
 		<div
 			class="piano-keyboard__key piano-keyboard__key--black {roleClass(
@@ -807,7 +921,7 @@
 				key.note?.letter ?? key.sharpLetter,
 				octaveForBlackAfterWhiteIndex(key.position - 1)
 			)}"
-			style="left: {key.leftPct}%; width: {blackKeyWidthPct}%;"
+			style="left: {key.leftPct}%; width: {boardBlackKeyWidthPct}%;"
 			role={keysActive ? 'button' : undefined}
 			tabindex={keysActive ? 0 : undefined}
 			aria-pressed={interactive ? (selected?.has(key.sharpLetter) ?? false) : undefined}
@@ -851,6 +965,30 @@
 		</div>
 	{/each}
 	</div>
+{/snippet}
+
+<div
+	class="piano-keyboard"
+	role="img"
+	aria-label={keyboardAriaLabel(effectiveOctaves)}
+	style="touch-action: manipulation;"
+	bind:this={containerEl}
+>
+	{#if stacked}
+		<div class="piano-keyboard__rows">
+			{#each rows as row, rowIndex (rowIndex)}
+				{@render board(
+					row.whiteKeys,
+					row.blackKeys,
+					row.whiteKeyWidthPct,
+					row.blackKeyWidthPct,
+					undefined
+				)}
+			{/each}
+		</div>
+	{:else}
+		{@render board(whiteKeys, blackKeys, whiteKeyWidthPct, blackKeyWidthPct, minBoardWidthPx(effectiveOctaves))}
+	{/if}
 </div>
 
 <style>
@@ -887,6 +1025,21 @@
 		position: relative;
 		width: 100%;
 		height: 160px;
+	}
+
+	/*
+	 * Two-row wrap wrapper (replaces horizontal scrolling on phone-width
+	 * viewports, LOCKED user decision): stacks two independently-correct
+	 * `.piano-keyboard__board` mini-keyboards vertically, each filling the full
+	 * measured container width (never wider than it, since stacking only
+	 * triggers once a single row could not fit that width - see
+	 * `shouldStackRows`). Reuses the existing `--spacing-sm` token, matching
+	 * ShellVoicingDrill's own spacing-token usage.
+	 */
+	.piano-keyboard__rows {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-sm);
 	}
 
 	/*

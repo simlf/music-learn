@@ -581,10 +581,26 @@
 		color: var(--color-paper-bright);
 	}
 
+	/*
+	 * Mobile-first: single column by default so each `.vcard` (and the
+	 * `PianoKeyboard` inside it) gets the full card width on phone, matching
+	 * this component's own documented "compare card... stacked" intent
+	 * (contextual-learning-metacognition.md) instead of squeezing a
+	 * half-column PianoKeyboard's measured container width. Two-column layout
+	 * is an enhancement at the app's existing 640px-class breakpoint (mirrors
+	 * app.css's `@media (max-width: 639.98px)` convention, inverted as the
+	 * min-width equivalent).
+	 */
 	.vcards {
 		display: grid;
-		grid-template-columns: repeat(2, 1fr);
+		grid-template-columns: 1fr;
 		gap: var(--spacing-md);
+	}
+
+	@media (min-width: 640px) {
+		.vcards {
+			grid-template-columns: repeat(2, 1fr);
+		}
 	}
 
 	.vcard {
@@ -592,8 +608,16 @@
 		padding: var(--spacing-sm);
 	}
 
+	/*
+	 * flex-wrap allows the right-aligned `.vcard__use` caption to wrap onto its
+	 * own line within the card instead of clipping off the right edge once the
+	 * card column narrows (phone default) - `min-width: 0` on both children is
+	 * required for a flex child to actually shrink/wrap instead of imposing its
+	 * content's intrinsic width as a floor on the row.
+	 */
 	.vcard__head {
 		display: flex;
+		flex-wrap: wrap;
 		justify-content: space-between;
 		align-items: baseline;
 		gap: var(--spacing-sm);
@@ -606,13 +630,20 @@
 		font-size: var(--text-label);
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
+		min-width: 0;
 	}
 
 	.vcard__use {
 		font-family: var(--font-mono);
 		font-size: var(--text-label);
 		color: var(--color-muted);
-		text-align: right;
+		min-width: 0;
+	}
+
+	@media (min-width: 640px) {
+		.vcard__use {
+			text-align: right;
+		}
 	}
 
 	.teach-panel {

@@ -734,19 +734,25 @@
 	(`/build`) and embedded (Recall's Mode C). `containerEl`'s `bind:this`
 	lives here rather than at the call site so `scrollRootIntoView` still
 	resolves the real DOM node.
+
+	No local scroll pane and no min-width board wrapper: both used to pre-inflate
+	this container to 15 * 44 = 660px, which is what PianoKeyboard's own
+	ResizeObserver then measured. That made the measured width self-referential -
+	the component could never see the real (359px on a 375px phone) constraint, so
+	its two-row stacking never engaged and the board scrolled sideways instead.
+	Letting the wrapper take its natural width hands PianoKeyboard the true
+	available width; it owns the fingertip floor and the stack-vs-single decision.
 -->
 {#snippet buildKeyboard()}
 	{#if construction}
-		<div class="scroll-wrap mt-4" bind:this={containerEl}>
-			<div style="min-width: {15 * 44}px;">
-				<PianoKeyboard
-					notes={construction.earnedNotes}
-					constructable
-					octaves={2}
-					onConstructTap={handleConstructTap}
-					flashWrongKey={flashKey}
-				/>
-			</div>
+		<div class="mt-4" bind:this={containerEl}>
+			<PianoKeyboard
+				notes={construction.earnedNotes}
+				constructable
+				octaves={2}
+				onConstructTap={handleConstructTap}
+				flashWrongKey={flashKey}
+			/>
 		</div>
 	{/if}
 {/snippet}
@@ -992,11 +998,6 @@
 </div>
 
 <style>
-	.scroll-wrap {
-		overflow-x: auto;
-		-webkit-overflow-scrolling: touch;
-	}
-
 	.formula-chip--placeholder {
 		display: inline-flex;
 		align-items: center;

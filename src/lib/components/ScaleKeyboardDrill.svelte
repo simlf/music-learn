@@ -17,7 +17,9 @@
 	import {
 		whiteLettersForOctaves,
 		blackKeysForOctaves,
-		MIN_WHITE_KEY_PX
+		firstRowWhiteCount,
+		minBoardWidthPx,
+		shouldStackRows
 	} from '$lib/components/keyboardLayout';
 	import type { SpelledNote } from '$lib/theory/types';
 	import { t } from '$lib/i18n/locale.svelte';
@@ -65,6 +67,42 @@
 	let wrongKey = $state<{ kind: KeyKind; keyIndex: number } | null>(null);
 	let wrongTimer: ReturnType<typeof setTimeout> | undefined;
 	let containerEl: HTMLDivElement | undefined = $state();
+	let measuredWidth: number | undefined = $state(undefined);
+
+	/**
+	 * Self-measures the key-strip container's width via ResizeObserver, mirroring
+	 * PianoKeyboard.svelte's own measurement effect exactly (same "never write
+	 * anything back that affects the observed element's size" no-feedback-loop
+	 * guarantee, T-09-01; same jsdom/older-browser guard - `measuredWidth` simply
+	 * stays undefined there, which `stacked` below treats as "cannot stack",
+	 * matching every pre-existing jsdom test's single-row expectation).
+	 *
+	 * This drill was fixed at `SCALE_DRILL_OCTAVES` (2) with an unconditional
+	 * `min-width: 15 * 44px` board and a horizontally-scrolling wrapper - the
+	 * exact "grows past its container and scrolls" defect the practice page's
+	 * voicing card had (quick task 260729-ert), just never fixed here because
+	 * this component renders its own keys rather than delegating to
+	 * PianoKeyboard. Two-row stacking (LOCKED user decision: no horizontal
+	 * scroll, no octave-range shrink) applies here too.
+	 */
+	$effect(() => {
+		if (!containerEl || typeof ResizeObserver === 'undefined') return;
+
+		const observer = new ResizeObserver((entries) => {
+			const entry = entries[0];
+			if (entry) {
+				measuredWidth = entry.contentRect.width;
+			}
+		});
+		observer.observe(containerEl);
+
+		return () => observer.disconnect();
+	});
+
+	/** Two-row wrap decision: identical rule to PianoKeyboard's own `stacked`. */
+	const stacked = $derived(
+		measuredWidth !== undefined && shouldStackRows(SCALE_DRILL_OCTAVES, measuredWidth)
+	);
 
 	/** The 8 ascending degree placements (degree 8 is the distinct octave key). */
 	const placements = $derived(placeAscendingScaleKeys(notes));
@@ -257,6 +295,70 @@
 		octave: blackKeyOctave(afterWhiteIndex),
 		leftPct: (afterWhiteIndex + 1) * whiteKeyWidthPct - blackKeyWidthPct / 2
 	}));
+
+	/**
+	 * Two-row wrap (mirrors PianoKeyboard.svelte's own row-split, quick task
+	 * 260729-ert): each stacked row keeps every existing render-key field
+	 * (`index`/`letter`/`sharpLetter`/`octave`) identical to the unstacked
+	 * arrays above - `filledMap`/`wrongKey`/`placementByKey` are all keyed by
+	 * absolute `kind:keyIndex`, unaffected by which row a key visually renders
+	 * in - and only `leftPct` is recomputed against that row's own key count so
+	 * each row independently satisfies the fingertip floor at the measured
+	 * width. The seam is always white-index `firstRowWhiteCount` (the B-to-C
+	 * gap, no adjacent black key), matching PianoKeyboard's own split point.
+	 */
+	const rowSeam = firstRowWhiteCount(SCALE_DRILL_OCTAVES);
+
+	interface KeyRow {
+		whiteKeys: RenderWhiteKey[];
+		blackKeys: RenderBlackKey[];
+		whiteKeyWidthPct: number;
+		blackKeyWidthPct: number;
+	}
+
+	const rows: KeyRow[] = $derived.by(() => {
+		if (!stacked) return [];
+
+		const row1WhiteLetters = whiteLetters.slice(0, rowSeam);
+		const row2WhiteLetters = whiteLetters.slice(rowSeam);
+		const row1WhiteWidthPct = 100 / row1WhiteLetters.length;
+		const row2WhiteWidthPct = 100 / row2WhiteLetters.length;
+		const row1BlackWidthPct = row1WhiteWidthPct * 0.6;
+		const row2BlackWidthPct = row2WhiteWidthPct * 0.6;
+
+		const row1: KeyRow = {
+			whiteKeys: whiteKeys.slice(0, rowSeam).map((key) => ({ ...key, leftPct: key.index * row1WhiteWidthPct })),
+			blackKeys: blackKeys
+				.filter((key) => blackKeyPatterns[key.index].afterWhiteIndex < rowSeam)
+				.map((key) => ({
+					...key,
+					leftPct:
+						(blackKeyPatterns[key.index].afterWhiteIndex + 1) * row1WhiteWidthPct -
+						row1BlackWidthPct / 2
+				})),
+			whiteKeyWidthPct: row1WhiteWidthPct,
+			blackKeyWidthPct: row1BlackWidthPct
+		};
+
+		const row2: KeyRow = {
+			whiteKeys: whiteKeys.slice(rowSeam).map((key) => ({
+				...key,
+				leftPct: (key.index - rowSeam) * row2WhiteWidthPct
+			})),
+			blackKeys: blackKeys
+				.filter((key) => blackKeyPatterns[key.index].afterWhiteIndex >= rowSeam)
+				.map((key) => ({
+					...key,
+					leftPct:
+						(blackKeyPatterns[key.index].afterWhiteIndex - rowSeam + 1) * row2WhiteWidthPct -
+						row2BlackWidthPct / 2
+				})),
+			whiteKeyWidthPct: row2WhiteWidthPct,
+			blackKeyWidthPct: row2BlackWidthPct
+		};
+
+		return [row1, row2];
+	});
 </script>
 
 <div class="scale-keyboard-drill" data-testid="scale-keyboard-drill">
@@ -282,6 +384,58 @@
 	{/if}
 </div>
 
+{#snippet keyBoard(
+	boardWhiteKeys: RenderWhiteKey[],
+	boardBlackKeys: RenderBlackKey[],
+	boardWhiteKeyWidthPct: number,
+	boardBlackKeyWidthPct: number,
+	boardMinWidthPx: number | undefined
+)}
+	<div
+		class="keys"
+		style={boardMinWidthPx !== undefined ? `min-width: ${boardMinWidthPx}px;` : undefined}
+	>
+		{#each boardWhiteKeys as key (key.index)}
+			{@const placement = filledMap.get(`white:${key.index}`)}
+			<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+			<div
+				class="key key--white {roleClass('white', key.index)} {wrongClass('white', key.index)}"
+				style="left: {key.leftPct}%; width: {boardWhiteKeyWidthPct}%;"
+				role="button"
+				tabindex="0"
+				aria-label={ariaLabelFor('white', key.index, key.letter, key.octave)}
+				aria-current={isExpectedKey('white', key.index) ? 'step' : undefined}
+				data-tonic-key={isTonicKey('white', key.index)}
+				onclick={() => handleTap('white', key.index, key.letter)}
+				onkeydown={(event) => handleKeydown(event, () => handleTap('white', key.index, key.letter))}
+			>
+				{#if placement}
+					<NoteLabel letter={placement.letter} solfege={placement.solfege} highlighted />
+				{/if}
+			</div>
+		{/each}
+		{#each boardBlackKeys as key (key.index)}
+			{@const placement = filledMap.get(`black:${key.index}`)}
+			<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+			<div
+				class="key key--black {roleClass('black', key.index)} {wrongClass('black', key.index)}"
+				style="left: {key.leftPct}%; width: {boardBlackKeyWidthPct}%;"
+				role="button"
+				tabindex="0"
+				aria-label={ariaLabelFor('black', key.index, key.sharpLetter, key.octave)}
+				aria-current={isExpectedKey('black', key.index) ? 'step' : undefined}
+				data-tonic-key={isTonicKey('black', key.index)}
+				onclick={() => handleTap('black', key.index, key.sharpLetter)}
+				onkeydown={(event) => handleKeydown(event, () => handleTap('black', key.index, key.sharpLetter))}
+			>
+				{#if placement}
+					<NoteLabel letter={placement.letter} solfege={placement.solfege} highlighted />
+				{/if}
+			</div>
+		{/each}
+	</div>
+{/snippet}
+
 {#snippet keyStrip()}
 	<div
 		class="scroll-wrap mt-2"
@@ -289,49 +443,27 @@
 		role="group"
 		aria-label={t('scales.drill.groupLabel').replace('{TONIC}', tonic)}
 	>
-		<div
-			class="keys"
-			style="min-width: {whiteLetters.length * MIN_WHITE_KEY_PX}px;"
-		>
-			{#each whiteKeys as key (key.index)}
-				{@const placement = filledMap.get(`white:${key.index}`)}
-				<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-				<div
-					class="key key--white {roleClass('white', key.index)} {wrongClass('white', key.index)}"
-					style="left: {key.leftPct}%; width: {whiteKeyWidthPct}%;"
-					role="button"
-					tabindex="0"
-					aria-label={ariaLabelFor('white', key.index, key.letter, key.octave)}
-					aria-current={isExpectedKey('white', key.index) ? 'step' : undefined}
-					data-tonic-key={isTonicKey('white', key.index)}
-					onclick={() => handleTap('white', key.index, key.letter)}
-					onkeydown={(event) => handleKeydown(event, () => handleTap('white', key.index, key.letter))}
-				>
-					{#if placement}
-						<NoteLabel letter={placement.letter} solfege={placement.solfege} highlighted />
-					{/if}
-				</div>
-			{/each}
-			{#each blackKeys as key (key.index)}
-				{@const placement = filledMap.get(`black:${key.index}`)}
-				<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-				<div
-					class="key key--black {roleClass('black', key.index)} {wrongClass('black', key.index)}"
-					style="left: {key.leftPct}%; width: {blackKeyWidthPct}%;"
-					role="button"
-					tabindex="0"
-					aria-label={ariaLabelFor('black', key.index, key.sharpLetter, key.octave)}
-					aria-current={isExpectedKey('black', key.index) ? 'step' : undefined}
-					data-tonic-key={isTonicKey('black', key.index)}
-					onclick={() => handleTap('black', key.index, key.sharpLetter)}
-					onkeydown={(event) => handleKeydown(event, () => handleTap('black', key.index, key.sharpLetter))}
-				>
-					{#if placement}
-						<NoteLabel letter={placement.letter} solfege={placement.solfege} highlighted />
-					{/if}
-				</div>
-			{/each}
-		</div>
+		{#if stacked}
+			<div class="rows">
+				{#each rows as row, rowIndex (rowIndex)}
+					{@render keyBoard(
+						row.whiteKeys,
+						row.blackKeys,
+						row.whiteKeyWidthPct,
+						row.blackKeyWidthPct,
+						undefined
+					)}
+				{/each}
+			</div>
+		{:else}
+			{@render keyBoard(
+				whiteKeys,
+				blackKeys,
+				whiteKeyWidthPct,
+				blackKeyWidthPct,
+				minBoardWidthPx(SCALE_DRILL_OCTAVES)
+			)}
+		{/if}
 	</div>
 {/snippet}
 
@@ -341,9 +473,24 @@
 		flex-direction: column;
 	}
 
+	/*
+	 * Fallback only once two-row stacking covers every phone-class width this
+	 * drill targets (mirrors PianoKeyboard.svelte's own "dead-code-safe
+	 * fallback" note): kept for an extremely narrow (<308px) viewport, not
+	 * removed, since that is unrelated scope.
+	 */
 	.scroll-wrap {
 		overflow-x: auto;
 		-webkit-overflow-scrolling: touch;
+	}
+
+	/* Two-row wrap wrapper (quick task 260729-ert, mirrors PianoKeyboard's own
+	   .piano-keyboard__rows): stacks two independently-correct mini-keyboards
+	   vertically, each filling the full measured container width. */
+	.rows {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-sm);
 	}
 
 	.keys {

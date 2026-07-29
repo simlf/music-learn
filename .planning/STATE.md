@@ -477,6 +477,7 @@ Recent decisions affecting current work:
 | 260720-vm6 | Deploy CI: skip on doc-only pushes, skip gate tests on already-tested merges | 2026-07-20 | 9845fca | [260720-vm6-deploy-ci-md-filter-and-test-skip](./quick/260720-vm6-deploy-ci-md-filter-and-test-skip/) |
 | 260723-dkp | Deploy CI: docker prune on failed deploy (disk-full recovery), removed invalid script_stop input | 2026-07-23 | d9d36ae | [260723-dkp-docker-prune-on-deploy-failure](./quick/260723-dkp-docker-prune-on-deploy-failure/) |
 | 260720-v9u | Move "From my songs" filter to Songs page as single global preference | 2026-07-20 | eec9db4 | [260720-v9u-move-the-from-my-songs-review-pool-filte](./quick/260720-v9u-move-the-from-my-songs-review-pool-filte/) |
+| 260729-ert | Mobile voicing card: wrap keyboard to two rows on phone, stop header clipping | 2026-07-29 | 5c11bf4 | [260729-ert-fix-mobile-broken-voicing-card-wrap-pian](./quick/260729-ert-fix-mobile-broken-voicing-card-wrap-pian/) |
 
 ## Deferred Items
 
