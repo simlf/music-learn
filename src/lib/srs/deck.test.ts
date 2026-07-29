@@ -173,17 +173,21 @@ describe('deck', () => {
 		expect(cards[0].mode).toBe('formula');
 	});
 
-	it('the tier gate bounds introduction: a fresh tier 1 deck stops at 17 facts, and a further call introduces 0', async () => {
+	it('the tier gate bounds introduction: a fresh tier 1 deck stops at 26 facts (3 atoms + 14 triads + 9 promoted C/G/F degree facts), and a further call introduces 0', async () => {
 		// Running out of new material at a tier is the gate working: nothing new
 		// arrives while the user still has a tier to master.
 		// levelState.advanceTierOnMastery opens the next rung on evidence.
 		const firstCount = await introduceNewCards(1000, now0);
-		expect(firstCount).toBe(3 + 14);
+		expect(firstCount).toBe(3 + 14 + 9);
 
 		const allCards = await getAllCards();
-		expect(allCards).toHaveLength(3 * 1 + 14 * 3);
-		expect(new Set(allCards.map((c) => c.factId)).size).toBe(17);
-		expect(allCards.some((c) => c.factKind === 'scale-degree')).toBe(false);
+		// Interval/scale-degree facts seed a single 'formula' card each; chord
+		// facts seed a 3-card teach cluster.
+		expect(allCards).toHaveLength(3 * 1 + 14 * 3 + 9 * 1);
+		expect(new Set(allCards.map((c) => c.factId)).size).toBe(26);
+		const scaleDegreeCards = allCards.filter((c) => c.factKind === 'scale-degree');
+		expect(scaleDegreeCards).toHaveLength(9);
+		expect(scaleDegreeCards.every((c) => c.mode === 'formula')).toBe(true);
 
 		expect(await introduceNewCards(1000, now0)).toBe(0);
 	});
@@ -416,9 +420,28 @@ describe('deck', () => {
 		expect(intervalFactIds).toEqual(
 			new Set(['m3', 'M3', 'A4', 'P5', 'M6', 'm7', 'M7'].map(intervalSizeFactId))
 		);
-		// Still no scale-degree facts: they stay behind the whole ladder
-		// because /practice cannot render them (practiceQueue.familyForCard).
-		expect(cards.some((c) => c.factKind === 'scale-degree')).toBe(false);
+		// The 9 promoted C/G/F degree-1/3/5 facts ARE tier-1 material in their
+		// own right (this task), so they arrive same as any other tier-1 fact -
+		// no chord-formula catch-up needed for them. The 12 tier-3 promoted
+		// facts (degree 7, 2, 4, 6) and the remaining 63-fact tail still stay
+		// behind tiers this returning user's masteryDayCount (0, in this
+		// fixture) has not actually cleared.
+		const scaleDegreeFactIds = new Set(
+			cards.filter((c) => c.factKind === 'scale-degree').map((c) => c.factId)
+		);
+		expect(scaleDegreeFactIds).toEqual(
+			new Set([
+				'scale-degree:C:1',
+				'scale-degree:G:1',
+				'scale-degree:F:1',
+				'scale-degree:C:3',
+				'scale-degree:G:3',
+				'scale-degree:F:3',
+				'scale-degree:C:5',
+				'scale-degree:G:5',
+				'scale-degree:F:5'
+			])
+		);
 	});
 
 	it("CardRecordSchema's widened mode enum accepts 'see-play' and 'hear-name' records without dropping them via safeParse", async () => {

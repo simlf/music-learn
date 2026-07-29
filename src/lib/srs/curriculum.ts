@@ -1,4 +1,11 @@
-import { allFacts, chordFormulaFactId, factById, intervalSizeFactId, type Fact } from '$lib/srs/facts';
+import {
+	allFacts,
+	chordFormulaFactId,
+	factById,
+	intervalSizeFactId,
+	scaleDegreeFactId,
+	type Fact
+} from '$lib/srs/facts';
 import { DRILL_INTERVALS, intervalBetween, intervalFromShort } from '$lib/theory/interval';
 import { spellChord } from '$lib/theory/chord';
 import {
@@ -159,9 +166,11 @@ const LADDER: readonly TierId[] = availableTierIds();
 const LAST_TIER: TierId = LADDER[LADDER.length - 1];
 
 /**
- * The pseudo-tier every fact that no available tier's chords require sorts
- * into: the five unneeded interval atoms and all 84 scale-degree facts. Only
- * reachable once the whole ladder is unlocked.
+ * The pseudo-tier every fact that no available tier's chords require, and
+ * that no earlier stage promoted, sorts into: the five unneeded interval
+ * atoms and the 63 scale-degree facts for the 9 tonics NOT promoted (see
+ * PROMOTED_SCALE_TONICS below). Only reachable once the whole ladder is
+ * unlocked.
  */
 const BEYOND_LADDER = (LAST_TIER + 1) as TierId;
 
@@ -172,23 +181,110 @@ interface CurriculumEntry {
 }
 
 /**
+ * The three tonics whose scale-degree facts are promoted ahead of the rest
+ * of the 84-fact scale-degree space (PROMOTION, this task). C, G, F: the
+ * simplest key signatures (0, 1 sharp, 1 flat), mirroring NATURAL_ROOTS'
+ * own natural-before-accidental convention above and matching
+ * .planning/design/guided-path.md's own choice of tonics for its unit 3
+ * sketch ("8 of the 21 scale-degree facts for tonics C, G, F"). Curated
+ * rather than exhaustive: promoting all 12 tonics' 84 facts ahead of the
+ * chord ladder would front-load a third of the whole catalog before the
+ * app's core chord-symbol-fluency value, which is exactly the failure mode
+ * this task exists to avoid repeating in the other direction. Three tonics
+ * is enough to prove "the same shape in every key" (the actual point of
+ * teaching degrees at all) without displacing more than a couple of days
+ * of new chord vocabulary.
+ */
+const PROMOTED_SCALE_TONICS: readonly string[] = ['C', 'G', 'F'];
+
+/**
+ * Degrees 1, 3, 5: what a TRIAD is built from, staged alongside tier 1 (the
+ * first chords the user ever meets). Degree 1 is trivially the tonic, but
+ * still worth anchoring first: "third" and "fifth" only mean something
+ * relative to a root already named. 3 and 5 are the two degrees a major or
+ * minor triad actually leans on.
+ */
+const TRIAD_DEGREES: readonly number[] = [1, 3, 5];
+
+/**
+ * Degree 7 (what a SEVENTH chord adds on top of a triad) plus 2, 4, 6 (the
+ * three degrees no chord this app drills ever needs - there is no sus4,
+ * add9, m6, or 13 fact in the catalog, and the qualities that would need
+ * them are tiers 5-6, permanently `available: false`). Staged alongside
+ * tier 3 (the first sevenths): 7 completes the chord-tone story degree-by-
+ * degree, and 2/4/6 ride along in the same pass to finish the promoted
+ * tonics' full diatonic literacy in one place rather than three, since no
+ * later available tier gives 2/4/6 a "just taught this" moment to wait for.
+ * Full literacy (all 7 degrees, not just the chord-tone four) is what a
+ * later roman-numeral/diatonic-harmony feature needs: "ii in B flat" is
+ * degree 2, not a chord tone of anything drilled today.
+ */
+const SCALE_COMPLETING_DEGREES: readonly number[] = [7, 2, 4, 6];
+
+/**
+ * The tier whose freshly-taught chords make TRIAD_DEGREES meaningful (tier
+ * 1 teaches the first triads) and the tier whose freshly-taught chords make
+ * SCALE_COMPLETING_DEGREES's leading member meaningful (tier 3 teaches the
+ * first sevenths). Named constants rather than bare literals in the loop
+ * below, so the coupling reads as intentional rather than a magic number.
+ */
+const TRIAD_DEGREE_TIER: TierId = 1;
+const SEVENTH_DEGREE_TIER: TierId = 3;
+
+/**
  * The full curriculum, built once at module load. Stage per tier: the tier's
  * interval ATOMS first, then the tier's chord facts, so a prerequisite is
  * always introduced in the same pass as (or an earlier pass than) the chords
- * that need it. Then, past the ladder, the interval atoms no tier's chords
- * require, and finally the scale-degree facts.
+ * that need it. Two tiers additionally stage a batch of PROMOTED_SCALE_TONICS
+ * facts (see below). Then, past the ladder, the interval atoms no tier's
+ * chords require, and finally every remaining scale-degree fact.
  *
- * WHY SCALE DEGREES ARE LAST, despite being atoms too. `practiceQueue
- * .familyForCard` returns null for `scale-degree`, and `cardsToQueueItems`
- * drops null-family cards, so all 84 scale-degree facts are seeded into the
- * deck and then never appear on /practice at all. They are only reviewable on
- * /progress > Recall. Promoting them ahead of the chord vocabulary would be
- * pedagogically righter and practically worse: it would spend the 10-facts-
- * per-day budget on cards the primary daily surface silently discards. They
- * therefore keep exactly the catalog position they have today (last), and
- * moving them up to sit beside the interval atoms is BLOCKED ON
- * `familyForCard` gaining a scale family. That is a one-line move here once
- * it does.
+ * WHY SCALE DEGREES WERE LAST (PR #38's original call, no longer true).
+ * `practiceQueue.familyForCard` used to return null for `scale-degree`, and
+ * `cardsToQueueItems` dropped null-family cards, so all 84 scale-degree
+ * facts were seeded into the deck and then never appeared on /practice at
+ * all - reviewable only on /progress > Recall. Promoting them ahead of the
+ * chord vocabulary would have been pedagogically righter and practically
+ * worse: spending the 10-facts-per-day budget on cards the primary daily
+ * surface silently discarded. #38 therefore left all 84 at the catalog's
+ * tail and named the exact blocker: `familyForCard` gaining a scale family.
+ *
+ * PR #51 gave scale-degree facts a real `degree` family with its own /practice
+ * surface (both directions: degree-to-note and note-to-degree), so that
+ * blocker is gone - every scale-degree fact seeded below is now genuine,
+ * clearable practice work, not silent deck bloat.
+ *
+ * WHY ONLY C/G/F, AND WHY STAGED IN TWO PLACES RATHER THAN MOVED TO THE
+ * FRONT WHOLESALE. Scale degrees are a real prerequisite for diatonic
+ * harmony and roman numerals (both taught elsewhere in the app: harmonising
+ * a scale produces the same seven qualities in the same order in every key,
+ * and "ii in B flat" means degree 2 of B flat major), but the app's stated
+ * core value is chord-symbol fluency, not scale theory. Moving all 84 facts
+ * to the front would spend roughly two weeks of the 10-facts-per-day budget
+ * on scale degrees before a second chord quality ever arrives. Instead:
+ *
+ * - A curated 3-tonic subset (PROMOTED_SCALE_TONICS) proves "the same shape
+ *   in every key" - the actual point of numbering degrees at all - without
+ *   displacing more than a couple of days of new chord vocabulary.
+ * - That subset arrives in two stages, each tied to the chord milestone that
+ *   makes it meaningful rather than dumped in one 21-fact block: degrees
+ *   1/3/5 land beside the first triads (tier 1), degree 7 (plus the
+ *   scale-completing 2/4/6) lands beside the first sevenths (tier 3).
+ * - The remaining 63 facts (the other 9 tonics) keep the catalog's tail
+ *   position, exactly as #38 left the whole set - `push`'s `seen` guard
+ *   means the tail loop below needs no change to know which facts are "the
+ *   rest": the 21 already staged are silently skipped there.
+ *
+ * A note on cost. `introduceNewCards` counts FACTS against the 10-per-day
+ * budget, not raw records, so a scale-degree fact (one `formula` card) costs
+ * the budget exactly as much as a chord fact (a 3-card teach cluster) -
+ * neither promotion nor deferral changes that arithmetic. What promoting
+ * scale-degree facts DOES change is the mix of what a promoted day teaches:
+ * every scale-degree fact swapped in for a chord fact is one FACT of budget
+ * spent on a single new review card instead of three, so the curated
+ * promotion above adds real teaching material (21 facts total, split 9/12
+ * across two days' worth of budget) without proportionally growing the
+ * day's total review load the way an equivalent 21 new chords would.
  */
 const CURRICULUM: readonly CurriculumEntry[] = buildCurriculum();
 
@@ -207,12 +303,34 @@ function buildCurriculum(): CurriculumEntry[] {
 		entries.push({ fact, tier });
 	};
 
+	/**
+	 * Stages one batch of PROMOTED_SCALE_TONICS' scale-degree facts,
+	 * degree-outer / tonic-inner: the DEGREE is the transposable schema
+	 * ("the fifth" means the same thing, relative to its own tonic, in every
+	 * key), mirroring chordOrderForTier's own quality-outer / root-inner
+	 * choice for exactly the same reason.
+	 */
+	const pushScaleDegrees = (degrees: readonly number[], tier: TierId): void => {
+		for (const degree of degrees) {
+			for (const tonic of PROMOTED_SCALE_TONICS) {
+				push(scaleDegreeFactId(tonic, degree), tier);
+			}
+		}
+	};
+
 	for (const tier of LADDER) {
 		for (const atom of intervalAtomsForTier(tier)) push(intervalSizeFactId(atom), tier);
 		for (const symbol of chordOrderForTier(tier)) push(chordFormulaFactId(symbol), tier);
+
+		if (tier === TRIAD_DEGREE_TIER) pushScaleDegrees(TRIAD_DEGREES, tier);
+		if (tier === SEVENTH_DEGREE_TIER) pushScaleDegrees(SCALE_COMPLETING_DEGREES, tier);
 	}
 
 	for (const atom of DRILL_INTERVALS) push(intervalSizeFactId(atom), BEYOND_LADDER);
+	// The remaining 63 scale-degree facts (the 9 tonics NOT staged above), in
+	// catalog order. No change needed to know which facts are "the rest":
+	// `push`'s `seen` guard already skips the 21 PROMOTED_SCALE_TONICS facts
+	// staged inside the ladder loop above.
 	for (const fact of allFacts()) {
 		if (fact.factKind === 'scale-degree') push(fact.factId, BEYOND_LADDER);
 	}
@@ -264,11 +382,15 @@ function catchUpAtoms(introduced: ReadonlySet<string>): Set<string> {
  * `curriculumOrder()` truncated by the tier gate: the facts a user at
  * `maxTier` may currently be taught, in curriculum order.
  *
- * - Facts belonging to tiers at or below `maxTier` are teachable.
- * - Facts past the ladder (the five unneeded interval atoms, then every
- *   scale-degree fact) open only once the whole ladder is unlocked, so a
- *   beginner is never handed 84 /practice-invisible scale-degree facts
- *   instead of the chord vocabulary they are still working through.
+ * - Facts belonging to tiers at or below `maxTier` are teachable. This now
+ *   includes the 21 PROMOTED_SCALE_TONICS facts staged at tiers 1 and 3
+ *   (buildCurriculum): a tier-1 user meets C/G/F's 1st/3rd/5th degrees
+ *   alongside their first triads, same as any other tier-1 fact.
+ * - Facts past the ladder (the five unneeded interval atoms, then the
+ *   remaining 63 scale-degree facts for the 9 tonics NOT promoted) open only
+ *   once the whole ladder is unlocked, so a beginner is never handed dozens
+ *   of scale-degree facts instead of the chord vocabulary they are still
+ *   working through.
  * - Interval atoms required by an already-introduced chord fact are always
  *   teachable (see catchUpAtoms).
  *

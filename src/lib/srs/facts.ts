@@ -83,7 +83,7 @@ function buildScaleDegreeFacts(): ScaleDegreeFact[] {
 	for (const tonic of MAJOR_SCALE_ROOTS) {
 		for (let degree = 1; degree <= SCALE_DEGREE_COUNT; degree++) {
 			facts.push({
-				factId: `scale-degree:${tonic}:${degree}`,
+				factId: scaleDegreeFactId(tonic, degree),
 				factKind: 'scale-degree',
 				tonic,
 				degree
@@ -139,6 +139,16 @@ export function chordFormulaFactId(symbol: string): string {
 /** The catalog's own interval-size factId shape, for the same reason as chordFormulaFactId. */
 export function intervalSizeFactId(short: string): string {
 	return `interval-size:${short}`;
+}
+
+/**
+ * The catalog's own scale-degree factId shape, for the same reason as
+ * chordFormulaFactId/intervalSizeFactId (srs/curriculum.ts's promoted-tonic
+ * staging needs to build these ids the same way buildScaleDegreeFacts does,
+ * without re-spelling the `scale-degree:` prefix by hand).
+ */
+export function scaleDegreeFactId(tonic: string, degree: number): string {
+	return `scale-degree:${tonic}:${degree}`;
 }
 
 /**

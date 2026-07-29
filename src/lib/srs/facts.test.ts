@@ -4,6 +4,7 @@ import {
 	chordFormulaFactId,
 	factById,
 	intervalSizeFactId,
+	scaleDegreeFactId,
 	scaleFormulaFactId
 } from './facts';
 import { ROOTS, QUALITY_SUFFIXES } from '$lib/theory/randomChord';
@@ -162,6 +163,14 @@ describe('factId builders (the catalog own id shapes)', () => {
 		for (const fact of allFacts()) {
 			if (fact.factKind !== 'interval-size') continue;
 			expect(intervalSizeFactId(fact.short)).toBe(fact.factId);
+		}
+	});
+
+	it('scaleDegreeFactId matches the ids the catalog actually holds (curriculum.ts promotion staging needs this)', () => {
+		expect(scaleDegreeFactId('G', 3)).toBe('scale-degree:G:3');
+		for (const fact of allFacts()) {
+			if (fact.factKind !== 'scale-degree') continue;
+			expect(scaleDegreeFactId(fact.tonic, fact.degree)).toBe(fact.factId);
 		}
 	});
 });
