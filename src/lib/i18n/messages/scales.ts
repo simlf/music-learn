@@ -52,6 +52,31 @@ export const scales = {
 		'scales.drill.complete': 'Voila. {TONIC} major, up and down, clean.',
 		'scales.drill.runAgain': 'Run it again',
 
+		// Practice hub DEGREE family (PracticeDegreeDrill.svelte), the surface
+		// that made the catalog's 84 scale-degree facts answerable on /practice.
+		// {TONIC}, {NOTE}, {N}, {M}, {PICKED} and {CORRECT} are substituted at
+		// the call site (t() has no interpolation). Note letters and degree
+		// NUMBERS are immune and interpolated verbatim, never routed through t().
+		'scales.degreeDrill.promptNote': 'Degree {N} of {TONIC} major.',
+		'scales.degreeDrill.promptNoteHelp': 'Play it',
+		'scales.degreeDrill.promptDegree': 'Which degree is {NOTE} in {TONIC} major?',
+		'scales.degreeDrill.degreeRowLabel': 'Scale degree',
+		'scales.degreeDrill.degreeChoiceAria': 'Degree {N}',
+		'scales.degreeDrill.answerLine': 'Degree {N} of {TONIC} major is {NOTE}.',
+		'scales.degreeDrill.tappedInScale': 'You played {NOTE}. That is degree {M}.',
+		'scales.degreeDrill.tappedOutside': 'You played {NOTE}. That note is not in {TONIC} major.',
+		'scales.degreeDrill.pickedVsCorrect': 'You picked {PICKED}. The answer is {CORRECT}.',
+		'scales.degreeDrill.stripLabel': 'THE WHOLE SCALE, NUMBERED',
+		// The idea the family exists for, restated on every reveal.
+		'scales.degreeDrill.whyNumbers':
+			'1 3 5 is the same shape in every key. C E G is only true in C.',
+		'scales.degreeDrill.hintTier': 'Counting it',
+		'scales.degreeDrill.hintBodyUp':
+			'Start on {TONIC} and climb the major scale: 2 2 1 2 2 2 1 half steps. Stop on step {N}.',
+		'scales.degreeDrill.hintBodyDown':
+			'Start on {TONIC} and climb the major scale: 2 2 1 2 2 2 1 half steps. Count the steps up to {NOTE}.',
+		'scales.degreeDrill.hintClosing': 'That is the whole method. It works in every key.',
+
 		// InspectRegister idleText prop (owned by 20-09; this key only supplies
 		// the translated value, InspectRegister.svelte itself is untouched).
 		'scales.inspect.idle': 'Tap a key to inspect it.'
@@ -79,6 +104,27 @@ export const scales = {
 		'scales.drill.descending': 'descendant',
 		'scales.drill.complete': 'Voilà. Gamme de {TONIC} majeur, montée puis descente, nickel.',
 		'scales.drill.runAgain': 'Recommencer',
+
+		'scales.degreeDrill.promptNote': 'Degré {N} de {TONIC} majeur.',
+		'scales.degreeDrill.promptNoteHelp': 'Joue-le',
+		'scales.degreeDrill.promptDegree': 'Quel degré est {NOTE} dans {TONIC} majeur ?',
+		'scales.degreeDrill.degreeRowLabel': 'Degré de la gamme',
+		'scales.degreeDrill.degreeChoiceAria': 'Degré {N}',
+		'scales.degreeDrill.answerLine': 'Le degré {N} de {TONIC} majeur est {NOTE}.',
+		'scales.degreeDrill.tappedInScale': 'Tu as joué {NOTE}. C\'est le degré {M}.',
+		'scales.degreeDrill.tappedOutside':
+			"Tu as joué {NOTE}. Cette note n'est pas dans {TONIC} majeur.",
+		'scales.degreeDrill.pickedVsCorrect': 'Tu as choisi {PICKED}. La réponse est {CORRECT}.',
+		'scales.degreeDrill.stripLabel': 'TOUTE LA GAMME, NUMÉROTÉE',
+		'scales.degreeDrill.whyNumbers':
+			"1 3 5, c'est la même forme dans toutes les tonalités. Do Mi Sol n'est vrai qu'en Do.",
+		'scales.degreeDrill.hintTier': 'Compter les degrés',
+		'scales.degreeDrill.hintBodyUp':
+			'Pars de {TONIC} et monte la gamme majeure : 2 2 1 2 2 2 1 demi-tons. Arrête-toi au degré {N}.',
+		'scales.degreeDrill.hintBodyDown':
+			'Pars de {TONIC} et monte la gamme majeure : 2 2 1 2 2 2 1 demi-tons. Compte les degrés jusqu\'à {NOTE}.',
+		'scales.degreeDrill.hintClosing':
+			"C'est toute la méthode. Elle marche dans toutes les tonalités.",
 
 		'scales.inspect.idle': "Touche une note pour l'inspecter."
 	}

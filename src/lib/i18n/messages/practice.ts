@@ -112,12 +112,16 @@ export const practice = {
 		// mislabeled "NAME IT" because they were rendered as the name-it
 		// question. Now they ask their own question, so the cue names it. Both
 		// stay verbs in the same imperative register as the existing cues.
+		// W1 added degree: the scale-degree family. Its 84 facts were seeded into
+		// the deck and then silently dropped by the queue composer, so they had
+		// no cue because they had no question.
 		'practice.cue.nameIt': 'NAME IT',
 		'practice.cue.playIt': 'PLAY IT',
 		'practice.cue.hearIt': 'BY EAR',
 		'practice.cue.buildIt': 'BUILD IT',
 		'practice.cue.voicing': 'VOICING',
 		'practice.cue.interval': 'INTERVAL',
+		'practice.cue.degree': 'DEGREE',
 		'practice.cue.progression': 'PROGRESSION',
 		'practice.cue.inversion': 'INVERSION'
 	},
@@ -171,6 +175,7 @@ export const practice = {
 		'practice.cue.buildIt': 'CONSTRUIRE',
 		'practice.cue.voicing': 'VOICING',
 		'practice.cue.interval': 'INTERVALLE',
+		'practice.cue.degree': 'DEGRÉ',
 		'practice.cue.progression': 'PROGRESSION',
 		'practice.cue.inversion': 'INVERSION'
 	}

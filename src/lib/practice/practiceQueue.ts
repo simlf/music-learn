@@ -7,8 +7,8 @@ import { inversionCountFor } from './inversions';
 
 /**
  * The pure, DOM-free HYBRID queue composer (27-CONTEXT "Queue model =
- * HYBRID"): turns FSRS due-cards (the five carded families - name-it,
- * play-it, ear-it, build-it, interval) plus synthetic, non-persisted voicing/progression
+ * HYBRID"): turns FSRS due-cards (the six carded families - name-it,
+ * play-it, ear-it, build-it, interval, degree) plus synthetic, non-persisted voicing/progression
  * items into one interleaved practice queue. No Svelte, no DOM, no direct
  * Dexie/localStorage access - CardRecord/Mode/FactKind are type-only
  * imports from srs/deck and srs/facts (single-source, no re-implementation
@@ -45,9 +45,10 @@ import { inversionCountFor } from './inversions';
  */
 
 /**
- * The eight practice-hub drill families (27-CONTEXT domain boundary;
+ * The nine practice-hub drill families (27-CONTEXT domain boundary;
  * 'inversion' added by Phase 35, INV-03 - synthetic, not carded; 'play-it'
- * and 'ear-it' added by T13, see familyForCard).
+ * and 'ear-it' added by T13, see familyForCard; 'degree' added by W1, which is
+ * what finally made the catalog's 84 scale-degree facts reachable here).
  */
 export type PracticeFamily =
 	| 'name-it'
@@ -55,19 +56,20 @@ export type PracticeFamily =
 	| 'ear-it'
 	| 'build-it'
 	| 'interval'
+	| 'degree'
 	| 'voicing'
 	| 'progression'
 	| 'inversion';
 
-/** The five FSRS-backed families this module maps from a CardRecord. */
-export type CardedFamily = 'name-it' | 'play-it' | 'ear-it' | 'build-it' | 'interval';
+/** The six FSRS-backed families this module maps from a CardRecord. */
+export type CardedFamily = 'name-it' | 'play-it' | 'ear-it' | 'build-it' | 'interval' | 'degree';
 
 /**
  * The two "scaffold-heavy" families (Phase 36's QUEUE-01 term, 36-CONTEXT):
  * progression and inversion both lean on a prior family's foundation
  * (spelling/voicing) rather than being answerable cold - a bad first item
  * for a low-mastery session. Their complement, the "simpler" families, is
- * name-it/play-it/ear-it/build-it/interval/voicing. Single source of truth: reused by
+ * name-it/play-it/ear-it/build-it/interval/degree/voicing. Single source of truth: reused by
  * composePracticeQueue's first-pick guard below AND by the host/tests -
  * never re-listed as a duplicated string literal elsewhere.
  */
@@ -117,6 +119,10 @@ export interface CardedQueueItem {
 	symbol?: string;
 	/** The interval short code, populated for interval-size (interval) items only. */
 	short?: string;
+	/** The scale tonic in display glyphs, populated for scale-degree (degree) items only. */
+	tonic?: string;
+	/** The scale degree 1..7, populated for scale-degree (degree) items only. */
+	degree?: number;
 	card: CardRecord;
 }
 
@@ -149,9 +155,25 @@ export type HybridQueueItem = CardedQueueItem | VoicingQueueItem | ProgressionQu
 
 /**
  * Maps a CardRecord to its practice family: ONE family per chord-formula
- * MODE, plus 'interval' for interval-size regardless of mode, plus null for
- * scale-degree/scale-formula - scales practice is Phase 28, so those facts
- * must never enter this queue (T-27-01-02).
+ * MODE, plus 'interval' for interval-size and 'degree' for scale-degree
+ * regardless of mode, plus null for scale-formula (a factId shape the catalog
+ * deliberately does not hold, so no card of that kind can be asked here).
+ *
+ * W1 (the scale-degree blackout): this returned null for `scale-degree` too,
+ * and cardsToQueueItems drops null-family cards, so all 84 scale-degree
+ * facts - 44% of the 192-fact catalog - were introduced into the deck by
+ * introduceNewCards and then never appeared on /practice at all. They were
+ * gradable only inside RecallSession, which is several taps deep in Progress
+ * and rarely visited, so for a user who lives on /practice they were
+ * permanently-due dead weight: cards accruing lapses against material the
+ * primary surface would never ask. `composed.length === 0` could even render
+ * "Nothing due today" while that work sat unreachable.
+ *
+ * Returning 'degree' here is the single line that fixes it. Everything
+ * downstream follows automatically, including backlogFactCount below (those
+ * facts now count as real, clearable backlog because they finally are) and
+ * srs/curriculum.ts, which no longer has to park them at the tail of the
+ * teaching order to avoid spending the daily budget on invisible cards.
  *
  * T13 (mode collapse): this used to fold formula, see-play and hear-name into
  * a single 'name-it' family, and the host rendered every one of them as the
@@ -167,6 +189,13 @@ export type HybridQueueItem = CardedQueueItem | VoicingQueueItem | ProgressionQu
  *   - 'play-it'  <- 'see-play'   : see the symbol, play the notes (keyboard)
  *   - 'ear-it'   <- 'hear-name'  : hear the chord, name it (choices)
  *   - 'build-it' <- 'formula-build': the step-by-step construction flow
+ *
+ * The scale-degree fact kind takes the opposite shape on purpose: ONE family
+ * over ONE card, with the question DIRECTION drawn per appearance
+ * (practice/degreeQuestion.ts). That is the interval family's proven pattern,
+ * not this mode-collapse defect: the deck seeds a single mode for a
+ * scale-degree fact, so there are no separately-scheduled modes here to
+ * flatten. See degreeQuestion.ts for the full trade against a second Mode.
  *
  * This is a RENDER-ROUTING change only. Nothing here touches how a card is
  * scheduled: the host still commits the same Rating for the same (factId,
@@ -192,6 +221,9 @@ export function familyForCard(card: CardRecord): CardedFamily | null {
 	}
 	if (card.factKind === 'interval-size') {
 		return 'interval';
+	}
+	if (card.factKind === 'scale-degree') {
+		return 'degree';
 	}
 	return null;
 }
@@ -225,18 +257,17 @@ export const DUE_BACKLOG_GATE_FACTS = 20;
  * How many distinct FACTS have a due card this practice surface can actually
  * ask: the gate's own measure of "backlog".
  *
- * The familyForCard filter is load-bearing, not defensive decoration. All 84
- * scale-degree facts are introduced by the deck and then dropped here
- * (familyForCard returns null for them - scales practice is a separate surface
- * that does not exist yet), so their cards are due forever and no amount of
- * practice can ever clear them. Counting them would let a growing pile of
- * permanently-unanswerable cards permanently freeze new intake, which is a worse
- * version of the very bug being fixed. A card this surface cannot ask is not a
- * backlog the user can clear, so it must not gate.
+ * The familyForCard filter is the rule, not defensive decoration: a card this
+ * surface cannot ask is not a backlog the user can clear, so it must not gate.
+ * Counting unaskable cards would let a growing pile of them permanently freeze
+ * new intake, a worse version of the very bug the gate was written to fix.
  *
- * When a scale-degree question surface lands and familyForCard starts returning a
- * family for those cards, they begin counting here automatically, with no change
- * at the call site.
+ * That filter used to drop all 84 scale-degree facts, which was the whole
+ * reason it existed. W1 gave those facts a real family, so they now count here
+ * automatically, with no change at this call site and none needed - they are
+ * genuine, clearable backlog today. The filter stays because the rule stays:
+ * the moment any future fact kind is seeded before its question surface exists,
+ * it must not be able to freeze intake either.
  */
 export function backlogFactCount(due: CardRecord[]): number {
 	const facts = new Set<string>();
@@ -255,9 +286,10 @@ function cardedItemId(factId: string, mode: Mode): string {
 /**
  * Maps already-FSRS-ordered cards to CardedQueueItems, preserving input
  * order and dropping any card whose family is excluded (familyForCard
- * returns null). Derives `symbol`/`short` via factById(factId) - never by
- * string-slicing the factId - so a chord-formula card gets its `symbol` and
- * an interval-size card gets its `short`.
+ * returns null). Derives `symbol`/`short`/`tonic`+`degree` via
+ * factById(factId) - never by string-slicing the factId - so a chord-formula
+ * card gets its `symbol`, an interval-size card gets its `short`, and a
+ * scale-degree card gets its `tonic` and `degree`.
  */
 export function cardsToQueueItems(orderedCards: CardRecord[]): CardedQueueItem[] {
 	const items: CardedQueueItem[] = [];
@@ -268,6 +300,9 @@ export function cardsToQueueItems(orderedCards: CardRecord[]): CardedQueueItem[]
 		const fact = factById(card.factId);
 		const symbol = fact !== undefined && fact.factKind === 'chord-formula' ? fact.symbol : undefined;
 		const short = fact !== undefined && fact.factKind === 'interval-size' ? fact.short : undefined;
+		const isScaleDegree = fact !== undefined && fact.factKind === 'scale-degree';
+		const tonic = isScaleDegree ? fact.tonic : undefined;
+		const degree = isScaleDegree ? fact.degree : undefined;
 
 		items.push({
 			id: cardedItemId(card.factId, card.mode),
@@ -277,6 +312,8 @@ export function cardsToQueueItems(orderedCards: CardRecord[]): CardedQueueItem[]
 			factKind: card.factKind,
 			symbol,
 			short,
+			tonic,
+			degree,
 			card
 		});
 	}
@@ -595,16 +632,17 @@ export interface AdvanceOptions {
 	rng?: () => number;
 }
 
-/** The five FSRS-backed families, as a runtime set. Single source for isCardedItem below and for callers that need the same test. */
+/** The six FSRS-backed families, as a runtime set. Single source for isCardedItem below and for callers that need the same test. */
 const CARDED_FAMILIES: ReadonlySet<PracticeFamily> = new Set<PracticeFamily>([
 	'name-it',
 	'play-it',
 	'ear-it',
 	'build-it',
-	'interval'
+	'interval',
+	'degree'
 ]);
 
-/** True for the five FSRS-backed families (a CardedQueueItem), false for synthetic ones. */
+/** True for the six FSRS-backed families (a CardedQueueItem), false for synthetic ones. */
 function isCardedItem(item: HybridQueueItem): item is CardedQueueItem {
 	return CARDED_FAMILIES.has(item.family);
 }

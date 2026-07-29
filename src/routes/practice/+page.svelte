@@ -57,6 +57,7 @@
 	import ShellVoicingDrill from '$lib/components/ShellVoicingDrill.svelte';
 	import ProgressionDrill from '$lib/components/ProgressionDrill.svelte';
 	import InversionDrill from '$lib/components/InversionDrill.svelte';
+	import PracticeDegreeDrill from '$lib/components/PracticeDegreeDrill.svelte';
 	import ScaleKeyboardDrill from '$lib/components/ScaleKeyboardDrill.svelte';
 	import { MAJOR_SCALE_ROOTS, majorScaleNotes } from '$lib/theory/scale';
 
@@ -188,6 +189,18 @@
 	 * Byte-faithful to RecallSession's applySongFilter (SONG-02/PRAC-04): keeps
 	 * only chord-formula cards with provenance when the filter is ON and the
 	 * index is non-empty; otherwise passes every due card through unchanged.
+	 *
+	 * W1, the degree family's song-filter policy, stated rather than left
+	 * implicit: a scale-degree card is filtered OUT while "From my songs" is on,
+	 * unchanged from this function's existing behavior and identical to how an
+	 * interval-size card is already treated. Song provenance in this app is
+	 * indexed by CHORD SYMBOL (songProvenance.ts), and a scale degree has no
+	 * chord symbol. The one alternative would be to infer each song's KEY from
+	 * its chords and keep only degrees in those keys, which is a guess (a chart
+	 * with Dm7 G7 Cmaj7 is in C, or in F, or modal) and would silently invent a
+	 * fact the song file does not state. Omitting them is the honest reading of
+	 * "from my songs": the filter narrows practice to the chords the user's own
+	 * charts contain, and turning it off is where the rest of the deck lives.
 	 */
 	function applySongFilter(due: CardRecord[]): CardRecord[] {
 		if (!songFilterOn || provenanceIndex.size === 0) return due;
@@ -206,8 +219,9 @@
 	 * its "how much backlog is there" measure both live in practiceQueue.ts (the
 	 * pure module) rather than inline here, since both are pure card arithmetic
 	 * and this host is meant to be thin. See DUE_BACKLOG_GATE_FACTS there for why
-	 * it counts FACTS rather than cards, and why permanently-unanswerable
-	 * scale-degree cards deliberately do not gate.
+	 * it counts FACTS rather than cards, and why a card no family can ask must
+	 * never gate intake (scale-degree cards were the original reason; W1 gave
+	 * them a family, so they are ordinary countable backlog now).
 	 */
 
 	/**
@@ -408,10 +422,10 @@
 			 * QUEUE-01 (36-CONTEXT): a session is cold/low-mastery when the
 			 * carded half actually entering the weave is overwhelmingly
 			 * New/Learning, with mature (State.Review) cards a minority -
-			 * isLowMasterySession reads cardedItems (not selectedCards) so
-			 * scale-family cards already dropped by cardsToQueueItems never
-			 * skew the signal. When set and a simpler family (name-it/
-			 * build-it/interval/voicing) is present, the composer keeps a
+			 * isLowMasterySession reads cardedItems (not selectedCards) so any
+			 * card dropped by cardsToQueueItems never skews the signal. When
+			 * set and a simpler family (name-it/
+			 * build-it/interval/degree/voicing) is present, the composer keeps a
 			 * scaffold-heavy progression/inversion item out of the very
 			 * first slot only; seeded items are prepended after composition
 			 * and always lead regardless. The warm path (majority-mature or
@@ -423,8 +437,11 @@
 			});
 
 			if (composed.length === 0 && seededItems.length === 0) {
-				// Every due card belonged to an excluded family (scale
-				// practice, Phase 28) - nothing practiceable is due right now.
+				// Every due card belonged to a family this surface cannot render
+				// - nothing practiceable is due right now. Before W1 this branch
+				// could fire while 84 genuinely-due scale-degree cards sat
+				// unreachable, so "Nothing due today" was sometimes a lie; those
+				// cards now compose into the queue like any other.
 				pageState = 'empty-none-due';
 				return;
 			}
@@ -604,6 +621,7 @@
 			'build-it': t('practice.cue.buildIt'),
 			voicing: t('practice.cue.voicing'),
 			interval: t('practice.cue.interval'),
+			degree: t('practice.cue.degree'),
 			progression: t('practice.cue.progression'),
 			inversion: t('practice.cue.inversion')
 		})
@@ -612,6 +630,13 @@
 	/** The item's own display label for the end-card's missed-item chips - every family carries one. */
 	function missedLabelFor(item: HybridQueueItem): string {
 		if (item.family === 'interval') return item.short ?? '';
+		// A degree item has no chord symbol, so without this branch it labelled
+		// itself '' and every missed degree collapsed into one blank chip.
+		// "E♭ 5" reads as the question it was; it never resolves through
+		// factById('chord-formula:...'), so it stays inert text rather than
+		// becoming a re-drill action that could seed an empty round (see
+		// seedableMisses).
+		if (item.family === 'degree') return `${item.tonic ?? ''} ${item.degree ?? ''}`.trim();
 		if (item.family === 'progression') return `${item.templateId} ${item.key}`;
 		return item.symbol ?? '';
 	}
@@ -720,17 +745,36 @@
 	 *
 	 * A type predicate rather than an array `.includes` so the narrowing to
 	 * CardedQueueItem (and therefore `item.card`) survives the check.
+	 *
+	 * W1 adds 'degree': an ordinary carded item whose FSRS grade this host
+	 * commits, exactly like interval. PracticeDegreeDrill never touches the deck
+	 * itself, so it must be on this allowlist or its grade would never persist.
 	 */
 	function isHostGraded(item: HybridQueueItem): item is CardedQueueItem {
 		return (
 			item.family === 'name-it' ||
 			item.family === 'play-it' ||
 			item.family === 'ear-it' ||
-			item.family === 'interval'
+			item.family === 'interval' ||
+			item.family === 'degree'
 		);
 	}
 
-	/** Grades + advances a carded (name-it/play-it/ear-it/interval) item: FSRS commit via deck.recordGrade (PRAC-03/REG-01/T-27-04-01). */
+	/**
+	 * The telemetry (item, kind) pair for a host-graded item. Verified against
+	 * AnswerEvent's `kind: 'chord' | 'scale' | 'interval'` union in
+	 * api/progress.ts - no new kind is introduced here. A degree item reports
+	 * `{ item: '{tonic} major', kind: 'scale' }`, byte-identical to
+	 * RecallSession's own telemetryDescriptor for the same fact kind, so the two
+	 * surfaces cannot disagree about what a scale answer is on the server.
+	 */
+	function telemetryFor(item: CardedQueueItem): { item: string; kind: 'chord' | 'interval' | 'scale' } {
+		if (item.family === 'interval') return { item: item.short ?? '', kind: 'interval' };
+		if (item.family === 'degree') return { item: `${item.tonic ?? ''} major`, kind: 'scale' };
+		return { item: item.symbol ?? '', kind: 'chord' };
+	}
+
+	/** Grades + advances a carded (name-it/play-it/ear-it/interval/degree) item: FSRS commit via deck.recordGrade (PRAC-03/REG-01/T-27-04-01). */
 	async function completeCarded(correct: boolean): Promise<void> {
 		if (grading) return;
 		const item = currentItem;
@@ -747,12 +791,7 @@
 			// current FSRS state on its next pass - mirrors RecallSession's own
 			// cardsByKey-refresh-after-grade pattern.
 			const updatedCard = await recordGrade(item.card, rating);
-			recordPracticeAnswer({
-				item: item.family === 'interval' ? (item.short ?? '') : (item.symbol ?? ''),
-				kind: item.family === 'interval' ? 'interval' : 'chord',
-				correct,
-				durationMs
-			});
+			recordPracticeAnswer({ ...telemetryFor(item), correct, durationMs });
 			finishItem(item, correct);
 			const updatedItem = { ...item, card: updatedCard };
 			queue = advanceHybridQueue([updatedItem, ...queue.slice(1)], rating, RETRY_OPTIONS);
@@ -993,6 +1032,12 @@
 				/>
 			{:else if currentItem.family === 'interval'}
 				<PracticeIntervalDrill short={currentItem.short ?? ''} onComplete={(correct) => completeCarded(correct)} />
+			{:else if currentItem.family === 'degree'}
+				<PracticeDegreeDrill
+					tonic={currentItem.tonic ?? ''}
+					degree={currentItem.degree ?? 0}
+					onComplete={(correct) => completeCarded(correct)}
+				/>
 			{:else if currentItem.family === 'build-it'}
 				<BuildSession
 					embedFact={{ kind: 'chord', symbol: currentItem.symbol ?? '' }}

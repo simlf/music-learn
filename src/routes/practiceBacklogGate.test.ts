@@ -176,18 +176,23 @@ describe('the due-backlog gate counts facts, not cards', () => {
 	});
 
 	/**
-	 * The zombie-card interaction, end to end. All 84 scale-degree facts are
-	 * introduced by the deck and then dropped by familyForCard, so their cards are
-	 * due forever and no amount of practice clears them. If the gate counted them,
-	 * intake would freeze permanently once 21 of them existed.
+	 * The gate counts only facts a practice surface can actually ask, so a pile of
+	 * cards no amount of practice can clear could never freeze intake permanently.
+	 *
+	 * This used to be demonstrated with the 84 scale-degree facts, which the deck
+	 * introduced and familyForCard then dropped. They are now askable by their own
+	 * family, so they are real work and legitimately count (see the next test).
+	 * scale-formula is the honest example now: that kind is deliberately absent
+	 * from CATALOG, so no such card is ever created and the exclusion is defence in
+	 * depth rather than a live leak.
 	 */
-	it('is not frozen by permanently-due scale-degree cards no surface can ask', async () => {
-		const zombies: CardRecord[] = [];
-		for (let i = 1; i <= 84; i++) {
-			zombies.push(makeCard(`scale-degree:C:${i}`, 'scale-degree', 'formula'));
+	it('is not frozen by cards no surface can ask', async () => {
+		const unaskable: CardRecord[] = [];
+		for (const tonic of ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']) {
+			unaskable.push(makeCard(`scale-formula:${tonic}`, 'scale-formula', 'formula-build'));
 		}
 		getDueCardsMock.mockResolvedValue([
-			...zombies,
+			...unaskable,
 			makeCard('chord-formula:Cm7', 'chord-formula', 'formula')
 		]);
 
@@ -195,5 +200,25 @@ describe('the due-backlog gate counts facts, not cards', () => {
 		await screen.findByTestId('practice-pre-start');
 
 		expect(introduceNewCardsMock).toHaveBeenCalledWith(10);
+	});
+
+	/**
+	 * The flip side of making scale degrees reachable: they are now real practice
+	 * work, so a genuine backlog of them SHOULD hold new material back, exactly as
+	 * a backlog of chord or interval facts does. That is the gate working, not the
+	 * zombie bug returning, because these cards are clearable now that a surface
+	 * asks them.
+	 */
+	it('is held back by a real backlog of scale-degree facts, which are now askable', async () => {
+		const degrees: CardRecord[] = [];
+		for (let i = 0; i < 21; i++) {
+			degrees.push(makeCard(`scale-degree:C:${i}`, 'scale-degree', 'formula'));
+		}
+		getDueCardsMock.mockResolvedValue(degrees);
+
+		render(PracticePage);
+		await screen.findByTestId('practice-pre-start');
+
+		expect(introduceNewCardsMock).not.toHaveBeenCalled();
 	});
 });

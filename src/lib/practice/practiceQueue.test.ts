@@ -121,13 +121,17 @@ describe('familyForCard', () => {
 		expect(familyForCard(card)).toBe('interval');
 	});
 
-	it('returns null for scale-degree (scales practice is Phase 28)', () => {
+	// Was `returns null for scale-degree`. That assertion encoded the defect: all
+	// 84 scale-degree facts were introduced by the deck and then silently dropped
+	// here, so 44% of the catalog was unreachable from /practice and gradable
+	// only inside RecallSession. They now have their own family.
+	it('returns degree for scale-degree', () => {
 		const card = makeCardRecord({
 			factId: 'scale-degree:C:1',
 			factKind: 'scale-degree',
 			mode: 'formula'
 		});
-		expect(familyForCard(card)).toBeNull();
+		expect(familyForCard(card)).toBe('degree');
 	});
 
 	it('returns null for scale-formula (scales practice is Phase 28)', () => {
@@ -141,14 +145,25 @@ describe('familyForCard', () => {
 });
 
 describe('cardsToQueueItems', () => {
+	// scale-degree used to be the excluded kind here. It is now askable, so
+	// scale-formula is the remaining null-family kind: those facts are
+	// deliberately absent from CATALOG, so no such card is ever created, and the
+	// exclusion is defence in depth rather than a live path.
 	it('preserves input order and drops excluded (null-family) cards', () => {
 		const cards: CardRecord[] = [
 			makeCardRecord({ factId: 'chord-formula:Cm7', factKind: 'chord-formula', mode: 'formula' }),
-			makeCardRecord({ factId: 'scale-degree:C:1', factKind: 'scale-degree', mode: 'formula' }),
+			makeCardRecord({ factId: 'scale-formula:C', factKind: 'scale-formula', mode: 'formula-build' }),
 			makeCardRecord({ factId: 'interval-size:M3', factKind: 'interval-size', mode: 'formula' })
 		];
 		const items = cardsToQueueItems(cards);
 		expect(items.map((item) => item.factId)).toEqual(['chord-formula:Cm7', 'interval-size:M3']);
+	});
+
+	it('keeps scale-degree cards now that a surface can ask them', () => {
+		const cards: CardRecord[] = [
+			makeCardRecord({ factId: 'scale-degree:C:5', factKind: 'scale-degree', mode: 'formula' })
+		];
+		expect(cardsToQueueItems(cards).map((item) => item.factId)).toEqual(['scale-degree:C:5']);
 	});
 
 	it('populates symbol from factById for a chord-formula card', () => {
@@ -940,26 +955,49 @@ describe('due-backlog gate (T13)', () => {
 	});
 
 	/**
-	 * The zombie-card interaction. All 84 scale-degree facts are introduced by the
-	 * deck and then dropped by familyForCard, so their cards are due forever and
-	 * unclearable. If they counted here, a growing pile of questions the surface
-	 * cannot ask would permanently freeze intake - a worse version of the bug
-	 * being fixed.
+	 * The gate counts only facts a practice surface can actually ask, so a pile of
+	 * unclearable cards can never permanently freeze intake.
+	 *
+	 * This test used to use the 84 scale-degree facts as its unaskable pile, which
+	 * was the whole point: they were introduced by the deck and then dropped by
+	 * familyForCard, so they were due forever. **They are now askable**, so they
+	 * legitimately count, and the invariant is demonstrated with scale-formula
+	 * instead. That kind is deliberately absent from CATALOG so no such card is
+	 * ever created, which makes it the honest example of defence in depth rather
+	 * than a live leak.
 	 */
 	it('ignores cards no practice surface can ask, so unclearable cards can never freeze intake', () => {
-		const zombies: CardRecord[] = [];
-		for (let i = 1; i <= 84; i++) {
-			zombies.push(
-				makeCardRecord({ factId: `scale-degree:C:${i}`, factKind: 'scale-degree', mode: 'formula' })
+		const unaskable: CardRecord[] = [];
+		for (const tonic of ['C', 'D', 'E', 'F', 'G', 'A', 'B']) {
+			unaskable.push(
+				makeCardRecord({
+					factId: `scale-formula:${tonic}`,
+					factKind: 'scale-formula',
+					mode: 'formula-build'
+				})
 			);
 		}
-		expect(backlogFactCount(zombies)).toBe(0);
+		expect(backlogFactCount(unaskable)).toBe(0);
 
 		// And they do not drown out the real signal either.
 		const withOneRealFact = [
-			...zombies,
+			...unaskable,
 			makeCardRecord({ factId: 'chord-formula:Cm7', factKind: 'chord-formula', mode: 'formula' })
 		];
 		expect(backlogFactCount(withOneRealFact)).toBe(1);
+	});
+
+	it('counts scale-degree facts now that a surface can ask them', () => {
+		const degrees: CardRecord[] = [];
+		for (let degree = 1; degree <= 7; degree++) {
+			degrees.push(
+				makeCardRecord({
+					factId: `scale-degree:C:${degree}`,
+					factKind: 'scale-degree',
+					mode: 'formula'
+				})
+			);
+		}
+		expect(backlogFactCount(degrees)).toBe(7);
 	});
 });
