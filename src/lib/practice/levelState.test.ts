@@ -11,7 +11,7 @@ import {
 	earnedTier,
 	advanceTierOnMastery
 } from './levelState';
-import { itemsForTier } from './tiers';
+import { itemsForTier, type TierId } from './tiers';
 
 beforeEach(() => {
 	localStorage.clear();
@@ -39,7 +39,7 @@ function formulaCard(symbol: string, masteryDayCount: number): CardRecord {
 }
 
 /** Every chord of `tier` mastered at MASTERY_DAY_COUNT. */
-function masteredTierCards(tier: 1 | 2 | 3 | 4): CardRecord[] {
+function masteredTierCards(tier: TierId): CardRecord[] {
 	return itemsForTier(tier).map((symbol) => formulaCard(symbol, MASTERY_DAY_COUNT));
 }
 
@@ -53,9 +53,18 @@ describe('getLevelState defaults and persistence', () => {
 		expect(getLevelState()).toEqual({ currentTier: 1, unlockedTiers: [1] });
 	});
 
-	it('resets a stored locked tier (5 or 6) to the default', () => {
-		localStorage.setItem(LEVEL_KEY, JSON.stringify({ currentTier: 5, unlockedTiers: [1, 5] }));
+	it('resets a stored out-of-range tier (not a real TierId) to the default', () => {
+		// Tiers 5 and 6 are real, available TierIds as of n1-tier-unlock (mastery
+		// gates who REACHES them, not this validity check), so a stored
+		// currentTier of 5 is now legitimate and no longer resets. Only a value
+		// outside 1..6 entirely is still rejected.
+		localStorage.setItem(LEVEL_KEY, JSON.stringify({ currentTier: 7, unlockedTiers: [1, 7] }));
 		expect(getLevelState().currentTier).toBe(1);
+	});
+
+	it('accepts a stored currentTier of 5 or 6 (n1-tier-unlock: no longer locked)', () => {
+		localStorage.setItem(LEVEL_KEY, JSON.stringify({ currentTier: 5, unlockedTiers: [1, 5] }));
+		expect(getLevelState().currentTier).toBe(5);
 	});
 
 	it('a legacy record carrying the removed snooze field still loads (extra keys are ignored)', () => {
@@ -90,9 +99,16 @@ describe('setCurrentTier (manual override)', () => {
 		expect(state.unlockedTiers).toEqual([1, 2, 3, 4]);
 	});
 
-	it('ignores locked tiers 5 and 6', () => {
+	it('applies tier 5 or 6 (n1-tier-unlock: no longer locked, manual override reaches every available tier)', () => {
 		setCurrentTier(3);
-		const state = setCurrentTier(5 as 1);
+		const state = setCurrentTier(5);
+		expect(state.currentTier).toBe(5);
+		expect(state.unlockedTiers).toEqual([1, 2, 3, 4, 5]);
+	});
+
+	it('ignores a tier id outside the real TierId range', () => {
+		setCurrentTier(3);
+		const state = setCurrentTier(7 as 1);
 		expect(state.currentTier).toBe(3);
 	});
 });
@@ -130,8 +146,16 @@ describe('tierMastered (deck-derived, offline, no server)', () => {
 		expect(tierMastered(2, cards)).toBe(false);
 	});
 
-	it('a locked tier is never mastered, however much evidence exists', () => {
-		expect(tierMastered(5 as 1, masteredTierCards(4))).toBe(false);
+	it('tier 5 mastery needs its OWN evidence: tier 4 cards alone do not satisfy it (n1-tier-unlock: tier 5 is unlocked, not a permanently-locked id)', () => {
+		expect(tierMastered(5, masteredTierCards(4))).toBe(false);
+	});
+
+	it('tier 5 is mastered once every one of its own 48 chords clears the mastery gate', () => {
+		expect(tierMastered(5, masteredTierCards(5))).toBe(true);
+	});
+
+	it('tier 6 is mastered once every one of its own 24 chords clears the mastery gate', () => {
+		expect(tierMastered(6, masteredTierCards(6))).toBe(true);
 	});
 
 	it('MASTERY_DAY_COUNT is 2, the same successive-relearning gate deriveCellState uses', () => {
@@ -153,14 +177,45 @@ describe('earnedTier (pure progression)', () => {
 		expect(earnedTier({ currentTier: 1, unlockedTiers: [1] }, cards)).toBe(4);
 	});
 
-	it('never climbs past tier 4 while tiers 5 and 6 are locked', () => {
-		const cards = [
-			...masteredTierCards(1),
-			...masteredTierCards(2),
-			...masteredTierCards(3),
-			...masteredTierCards(4)
-		];
-		expect(earnedTier({ currentTier: 4, unlockedTiers: [1, 2, 3, 4] }, cards)).toBe(4);
+	it("THE CORE CONTRACT (n1-tier-unlock): tier 5 opens on tier 4's mastery alone, not on tiers 1 through 4 combined", () => {
+		// Tiers 1-3 deliberately carry NO mastery evidence here: the owner's
+		// stated unlock rule is "previous tier mastered", specifically so a
+		// couple of stubborn chords elsewhere on the ladder can never stall
+		// progression indefinitely. Only tier 4's own 24 chords need to clear
+		// the gate for tier 5 to open.
+		const state = { currentTier: 4 as const, unlockedTiers: [1, 2, 3, 4] as TierId[] };
+		expect(earnedTier(state, masteredTierCards(4))).toBe(5);
+	});
+
+	it('climbs from 4 all the way to 6 in one pass once tiers 4 and 5 are both mastered', () => {
+		const cards = [...masteredTierCards(4), ...masteredTierCards(5)];
+		const state = { currentTier: 4 as const, unlockedTiers: [1, 2, 3, 4] as TierId[] };
+		expect(earnedTier(state, cards)).toBe(6);
+	});
+
+	it('a user who has NOT mastered tier 4 sees ZERO behavior change: stays at 4 exactly as before this task', () => {
+		// The migration-safety proof: with no tier-4 mastery evidence at all
+		// (or with tier 4 evidence one day short), earnedTier's result for a
+		// tier-4 user is identical to what it was before tiers 5/6 existed.
+		const noEvidence = { currentTier: 4 as const, unlockedTiers: [1, 2, 3, 4] as TierId[] };
+		expect(earnedTier(noEvidence, [])).toBe(4);
+
+		const oneChordShort = masteredTierCards(4);
+		oneChordShort[oneChordShort.length - 1] = {
+			...oneChordShort[oneChordShort.length - 1],
+			masteryDayCount: 1
+		};
+		expect(earnedTier(noEvidence, oneChordShort)).toBe(4);
+	});
+
+	it('stops at tier 5 once mastered but tier 6 is not yet (does not skip ahead without its own evidence)', () => {
+		const state = { currentTier: 4 as const, unlockedTiers: [1, 2, 3, 4] as TierId[] };
+		expect(earnedTier(state, [...masteredTierCards(4), ...masteredTierCards(5)])).toBe(6);
+		// Without tier 5's own mastery, stays at 4 even with tier 6 fully carded
+		// (impossible in practice since tier 6 is never introduced before tier
+		// 5 is earned, but earnedTier itself is pure evidence-in/tier-out, so
+		// this pins that it never "skips ahead" on the wrong evidence).
+		expect(earnedTier(state, masteredTierCards(6))).toBe(4);
 	});
 
 	it('never descends, even with no mastery evidence at the current tier', () => {

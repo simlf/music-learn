@@ -368,17 +368,13 @@ describe('practice settings section (Track B)', () => {
 		);
 	});
 
-	it('offers all 6 tiers with 5 and 6 locked as coming later', () => {
+	it('offers all 6 tiers, every one enabled (n1-tier-unlock: mastery gates who reaches a tier, not this switch)', () => {
 		render(ProgressPage);
 
 		const settings = screen.getByTestId('practice-settings');
-		for (const tier of [1, 2, 3, 4]) {
+		for (const tier of [1, 2, 3, 4, 5, 6]) {
 			expect(within(settings).getByRole('button', { name: `Set tier ${tier}` })).toBeEnabled();
 		}
-		for (const tier of [5, 6]) {
-			expect(within(settings).getByRole('button', { name: `Set tier ${tier}` })).toBeDisabled();
-		}
-		expect(settings).toHaveTextContent('TIERS 5 AND 6: COMING LATER');
 	});
 
 	it('manual tier override applies immediately and updates the display', async () => {

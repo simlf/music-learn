@@ -91,7 +91,6 @@ export const progress = {
 		'progress.settings.tierBlurb':
 			'Your tier decides which chords come next. It moves up on its own once every chord here has come back to you on two separate days. Setting it yourself is fine too.',
 		'progress.settings.setTierAria': 'Set tier {N}',
-		'progress.settings.tiersComingLater': 'TIERS 5 AND 6: COMING LATER',
 
 		'progress.settings.sound.label': 'SOUND',
 		'progress.settings.sound.on': 'SOUND ON',
@@ -121,9 +120,9 @@ export const progress = {
 		'progress.tier.4.blurb':
 			'Half-diminished and diminished seventh chords, the color of a minor ii-V-i.',
 		'progress.tier.5.name': 'Sixths and sus',
-		'progress.tier.5.blurb': 'Sixth chords and sus chords. Coming later.',
+		'progress.tier.5.blurb': 'Sixth chords and sus chords.',
 		'progress.tier.6.name': 'Extensions and alterations',
-		'progress.tier.6.blurb': '9ths, altered dominants, and more color tones. Coming later.',
+		'progress.tier.6.blurb': 'Altered dominant colors: the flat nine and the sharp five.',
 
 		// Confidence calibration card (sketch 020-C).
 		'progress.calibration.heading': 'Confidence Check',
@@ -184,7 +183,6 @@ export const progress = {
 		'progress.settings.tierBlurb':
 			"Votre niveau décide des accords qui arrivent ensuite. Il monte tout seul dès que chaque accord d'ici vous revient sur deux jours différents. Le régler vous-même ne pose aucun souci.",
 		'progress.settings.setTierAria': 'Définir le niveau {N}',
-		'progress.settings.tiersComingLater': 'NIVEAUX 5 ET 6 : BIENTÔT DISPONIBLES',
 
 		'progress.settings.sound.label': 'SON',
 		'progress.settings.sound.on': 'SON ACTIVÉ',
@@ -211,10 +209,10 @@ export const progress = {
 		'progress.tier.4.blurb':
 			"Les accords demi-diminués et diminués de septième, la couleur d'un ii-V-i mineur.",
 		'progress.tier.5.name': 'Sixtes et sus',
-		'progress.tier.5.blurb': 'Les accords de sixte et les accords sus. Bientôt disponible.',
+		'progress.tier.5.blurb': 'Les accords de sixte et les accords sus.',
 		'progress.tier.6.name': 'Extensions et altérations',
 		'progress.tier.6.blurb':
-			"Neuvièmes, dominantes altérées et d'autres couleurs harmoniques. Bientôt disponible.",
+			'Couleurs de dominante altérée : la neuvième bémol et la quinte augmentée.',
 
 		'progress.calibration.heading': 'Vérification de confiance',
 		'progress.calibration.body':

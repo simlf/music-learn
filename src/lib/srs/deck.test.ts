@@ -21,6 +21,7 @@ import type { CardRecord } from './deck';
 import { allFacts, chordFormulaFactId, intervalSizeFactId } from '$lib/srs/facts';
 import { introductionOrder } from '$lib/srs/curriculum';
 import { LEVEL_KEY } from '$lib/practice/levelState';
+import { ROOTS, V1_QUALITY_SUFFIXES } from '$lib/theory/randomChord';
 
 /**
  * Fixed instant so due-date comparisons below are exact and reproducible
@@ -192,19 +193,40 @@ describe('deck', () => {
 		expect(await introduceNewCards(1000, now0)).toBe(0);
 	});
 
-	it('exhaustion at the top of the ladder: introduceNewCards(1000, now, 4) seeds all 192 facts and a further call introduces 0', async () => {
+	it("maxTier 4 is no longer the top of the ladder (n1-tier-unlock): it seeds exactly the original 187 tier-1..4 facts, not the whole (now larger) catalog", async () => {
+		// MIGRATION SAFETY: 187 and 379 are the exact facts/records tier 1-4
+		// always produced (7 interval atoms x1 card + 96 chord facts x3-card
+		// teach cluster + 84 scale-degree facts x1 card = 7+288+84 = 379). Tiers
+		// 5/6 existing now changes NOTHING about this: they simply are not part
+		// of what maxTier=4 reaches.
 		const firstCount = await introduceNewCards(1000, now0, 4);
-		expect(firstCount).toBe(192);
+		expect(firstCount).toBe(187);
 
 		const allCards = await getAllCards();
-		expect(allCards).toHaveLength(384);
-		expect(new Set(allCards.map((c) => c.factId)).size).toBe(192);
+		expect(allCards).toHaveLength(379);
+		expect(new Set(allCards.map((c) => c.factId)).size).toBe(187);
 
 		const secondCount = await introduceNewCards(1000, now0, 4);
 		expect(secondCount).toBe(0);
 
 		const stillAllCards = await getAllCards();
-		expect(stillAllCards).toHaveLength(384);
+		expect(stillAllCards).toHaveLength(379);
+	});
+
+	it('exhaustion at the NEW top of the ladder: introduceNewCards(1000, now, 6) seeds all 264 facts and a further call introduces 0', async () => {
+		const firstCount = await introduceNewCards(1000, now0, 6);
+		expect(firstCount).toBe(264);
+
+		const allCards = await getAllCards();
+		// 12 interval atoms x1 + 168 chord facts x3-card cluster + 84 scale-degree x1.
+		expect(allCards).toHaveLength(12 + 168 * 3 + 84);
+		expect(new Set(allCards.map((c) => c.factId)).size).toBe(264);
+
+		const secondCount = await introduceNewCards(1000, now0, 6);
+		expect(secondCount).toBe(0);
+
+		const stillAllCards = await getAllCards();
+		expect(stillAllCards).toHaveLength(12 + 168 * 3 + 84);
 	});
 
 	it('an explicit maxTier never writes the stored level: the tier read/write is skipped entirely', async () => {
@@ -397,15 +419,19 @@ describe('deck', () => {
 		expect(after.has(`${chordFormulaFactId('Cdim7')}|formula`)).toBe(false);
 	});
 
-	it("MIGRATION: a returning user's already-taught chords pull their interval prerequisites forward, whatever the stored tier says", async () => {
-		// The owner's real deck: all 96 chord spellings introduced (that IS the
-		// defect) and not one interval fact. A prerequisite of something
-		// already taught is overdue, not premature, so the tier gate must not
-		// withhold it. Without this, a stored tier of 1 would hand them only
-		// m3/M3/P5 and withhold A4/m7/M7/M6 forever.
-		const chordSymbols = allFacts()
-			.filter((fact) => fact.factKind === 'chord-formula')
-			.map((fact) => fact.factId);
+	it("MIGRATION (n1-tier-unlock: extended to a deck that PREDATES the new qualities): a returning user's already-taught chords pull their interval prerequisites forward, whatever the stored tier says", async () => {
+		// The owner's real deck: all 96 ORIGINAL chord spellings introduced
+		// (that IS the defect) and not one interval fact. A deck that predates
+		// this task can only ever hold the original 96 (V1_QUALITY_SUFFIXES x
+		// ROOTS) chord facts, never a tier 5/6 one, so this fixture is built
+		// from that fixed set rather than the now-larger allFacts() - the
+		// precise "zero behavior change for pre-existing data" scenario. A
+		// prerequisite of something already taught is overdue, not premature,
+		// so the tier gate must not withhold it. Without this, a stored tier of
+		// 1 would hand them only m3/M3/P5 and withhold A4/m7/M7/M6 forever.
+		const chordSymbols = ROOTS.flatMap((root) =>
+			V1_QUALITY_SUFFIXES.map((quality) => chordFormulaFactId(`${root}${quality}`))
+		);
 		await _database().cards.bulkPut(
 			chordSymbols.map((factId) =>
 				makeCardRecord({ factId, factKind: 'chord-formula', mode: 'formula', state: State.Review })
@@ -441,6 +467,31 @@ describe('deck', () => {
 				'scale-degree:G:5',
 				'scale-degree:F:5'
 			])
+		);
+	});
+
+	it('MIGRATION generalization: a deck that ALSO already has tier 5/6 chords pulls their prerequisites (P4, m2, m6) forward too', async () => {
+		// Not a real scenario for today's owner (whose deck predates tier 5/6),
+		// but proves catchUpAtoms generalizes to the new qualities via the same
+		// unmodified mechanism, rather than needing new special-casing.
+		const chordSymbols = allFacts()
+			.filter((fact) => fact.factKind === 'chord-formula')
+			.map((fact) => fact.factId);
+		await _database().cards.bulkPut(
+			chordSymbols.map((factId) =>
+				makeCardRecord({ factId, factKind: 'chord-formula', mode: 'formula', state: State.Review })
+			)
+		);
+
+		await introduceNewCards(1000, now0);
+		const cards = await getAllCards();
+		const intervalFactIds = new Set(
+			cards.filter((c) => c.factKind === 'interval-size').map((c) => c.factId)
+		);
+		expect(intervalFactIds).toEqual(
+			new Set(
+				['m3', 'M3', 'A4', 'P5', 'M6', 'm7', 'M7', 'P4', 'm2', 'm6'].map(intervalSizeFactId)
+			)
 		);
 	});
 
@@ -731,10 +782,10 @@ describe('formula-build mode seam (Phase 12 D-09)', () => {
 		expect(miss).toBeUndefined();
 	});
 
-	it('regression pin (updated for 13-01 teach-cluster): introduceNewCards(1000, now, 4) produces formula-build ONLY for chord-formula facts, never for interval-size/scale-degree facts', async () => {
+	it('regression pin (updated for 13-01 teach-cluster, and for n1-tier-unlock: maxTier 4 is no longer the whole catalog): introduceNewCards(1000, now, 4) produces formula-build ONLY for chord-formula facts, never for interval-size/scale-degree facts', async () => {
 		await introduceNewCards(1000, now0, 4);
 		const cards = await getAllCards();
-		expect(cards.length).toBe(384);
+		expect(cards.length).toBe(379);
 
 		const nonChordCards = cards.filter((c) => c.factKind !== 'chord-formula');
 		expect(nonChordCards.every((c) => c.mode === 'formula')).toBe(true);

@@ -133,3 +133,119 @@ describe('reference chord matrix (THEORY-01, THEORY-03)', () => {
 		expect(letters).not.toContain('D♭');
 	});
 });
+
+/**
+ * n1-tier-unlock extension: the 6 tier 5/6 quality suffixes unlocked
+ * alongside this matrix (6, m6, sus4, 7sus4, 7b9, 7#5), same 12 roots, same
+ * hand-verified-against-tonal discipline as REFERENCE_CHORD_MATRIX above.
+ * Notable ugly spellings, double-checked against standard interval math
+ * (never accepted on tonal's say-so alone):
+ *
+ *   Db7b9  -> ...C♭ E♭♭     (the ♭9 of D♭ is E♭, flattened again to E♭♭)
+ *   Ab7b9  -> ...G♭ B♭♭     (the ♭9 of A♭ is B♭, flattened again to B♭♭)
+ *   F#7#5  -> F♯ A♯ C♯♯ E   (the ♯5 of F♯ is C♯, sharpened again to C♯♯)
+ *   B7#5   -> B D♯ F♯♯ A    (the ♯5 of B is F♯, sharpened again to F♯♯)
+ */
+const TIER_5_6_REFERENCE_MATRIX: {
+	root: string;
+	quality: string;
+	symbol: string;
+	notes: string[];
+}[] = [
+	{ root: 'C', quality: 'six', symbol: 'C6', notes: ['C', 'E', 'G', 'A'] },
+	{ root: 'D♭', quality: 'six', symbol: 'Db6', notes: ['D♭', 'F', 'A♭', 'B♭'] },
+	{ root: 'D', quality: 'six', symbol: 'D6', notes: ['D', 'F♯', 'A', 'B'] },
+	{ root: 'E♭', quality: 'six', symbol: 'Eb6', notes: ['E♭', 'G', 'B♭', 'C'] },
+	{ root: 'E', quality: 'six', symbol: 'E6', notes: ['E', 'G♯', 'B', 'C♯'] },
+	{ root: 'F', quality: 'six', symbol: 'F6', notes: ['F', 'A', 'C', 'D'] },
+	{ root: 'F♯', quality: 'six', symbol: 'F#6', notes: ['F♯', 'A♯', 'C♯', 'D♯'] },
+	{ root: 'G', quality: 'six', symbol: 'G6', notes: ['G', 'B', 'D', 'E'] },
+	{ root: 'A♭', quality: 'six', symbol: 'Ab6', notes: ['A♭', 'C', 'E♭', 'F'] },
+	{ root: 'A', quality: 'six', symbol: 'A6', notes: ['A', 'C♯', 'E', 'F♯'] },
+	{ root: 'B♭', quality: 'six', symbol: 'Bb6', notes: ['B♭', 'D', 'F', 'G'] },
+	{ root: 'B', quality: 'six', symbol: 'B6', notes: ['B', 'D♯', 'F♯', 'G♯'] },
+	{ root: 'C', quality: 'min6', symbol: 'Cm6', notes: ['C', 'E♭', 'G', 'A'] },
+	{ root: 'D♭', quality: 'min6', symbol: 'Dbm6', notes: ['D♭', 'F♭', 'A♭', 'B♭'] },
+	{ root: 'D', quality: 'min6', symbol: 'Dm6', notes: ['D', 'F', 'A', 'B'] },
+	{ root: 'E♭', quality: 'min6', symbol: 'Ebm6', notes: ['E♭', 'G♭', 'B♭', 'C'] },
+	{ root: 'E', quality: 'min6', symbol: 'Em6', notes: ['E', 'G', 'B', 'C♯'] },
+	{ root: 'F', quality: 'min6', symbol: 'Fm6', notes: ['F', 'A♭', 'C', 'D'] },
+	{ root: 'F♯', quality: 'min6', symbol: 'F#m6', notes: ['F♯', 'A', 'C♯', 'D♯'] },
+	{ root: 'G', quality: 'min6', symbol: 'Gm6', notes: ['G', 'B♭', 'D', 'E'] },
+	{ root: 'A♭', quality: 'min6', symbol: 'Abm6', notes: ['A♭', 'C♭', 'E♭', 'F'] },
+	{ root: 'A', quality: 'min6', symbol: 'Am6', notes: ['A', 'C', 'E', 'F♯'] },
+	{ root: 'B♭', quality: 'min6', symbol: 'Bbm6', notes: ['B♭', 'D♭', 'F', 'G'] },
+	{ root: 'B', quality: 'min6', symbol: 'Bm6', notes: ['B', 'D', 'F♯', 'G♯'] },
+	{ root: 'C', quality: 'sus4', symbol: 'Csus4', notes: ['C', 'F', 'G'] },
+	{ root: 'D♭', quality: 'sus4', symbol: 'Dbsus4', notes: ['D♭', 'G♭', 'A♭'] },
+	{ root: 'D', quality: 'sus4', symbol: 'Dsus4', notes: ['D', 'G', 'A'] },
+	{ root: 'E♭', quality: 'sus4', symbol: 'Ebsus4', notes: ['E♭', 'A♭', 'B♭'] },
+	{ root: 'E', quality: 'sus4', symbol: 'Esus4', notes: ['E', 'A', 'B'] },
+	{ root: 'F', quality: 'sus4', symbol: 'Fsus4', notes: ['F', 'B♭', 'C'] },
+	{ root: 'F♯', quality: 'sus4', symbol: 'F#sus4', notes: ['F♯', 'B', 'C♯'] },
+	{ root: 'G', quality: 'sus4', symbol: 'Gsus4', notes: ['G', 'C', 'D'] },
+	{ root: 'A♭', quality: 'sus4', symbol: 'Absus4', notes: ['A♭', 'D♭', 'E♭'] },
+	{ root: 'A', quality: 'sus4', symbol: 'Asus4', notes: ['A', 'D', 'E'] },
+	{ root: 'B♭', quality: 'sus4', symbol: 'Bbsus4', notes: ['B♭', 'E♭', 'F'] },
+	{ root: 'B', quality: 'sus4', symbol: 'Bsus4', notes: ['B', 'E', 'F♯'] },
+	{ root: 'C', quality: 'dom7sus4', symbol: 'C7sus4', notes: ['C', 'F', 'G', 'B♭'] },
+	{ root: 'D♭', quality: 'dom7sus4', symbol: 'Db7sus4', notes: ['D♭', 'G♭', 'A♭', 'C♭'] },
+	{ root: 'D', quality: 'dom7sus4', symbol: 'D7sus4', notes: ['D', 'G', 'A', 'C'] },
+	{ root: 'E♭', quality: 'dom7sus4', symbol: 'Eb7sus4', notes: ['E♭', 'A♭', 'B♭', 'D♭'] },
+	{ root: 'E', quality: 'dom7sus4', symbol: 'E7sus4', notes: ['E', 'A', 'B', 'D'] },
+	{ root: 'F', quality: 'dom7sus4', symbol: 'F7sus4', notes: ['F', 'B♭', 'C', 'E♭'] },
+	{ root: 'F♯', quality: 'dom7sus4', symbol: 'F#7sus4', notes: ['F♯', 'B', 'C♯', 'E'] },
+	{ root: 'G', quality: 'dom7sus4', symbol: 'G7sus4', notes: ['G', 'C', 'D', 'F'] },
+	{ root: 'A♭', quality: 'dom7sus4', symbol: 'Ab7sus4', notes: ['A♭', 'D♭', 'E♭', 'G♭'] },
+	{ root: 'A', quality: 'dom7sus4', symbol: 'A7sus4', notes: ['A', 'D', 'E', 'G'] },
+	{ root: 'B♭', quality: 'dom7sus4', symbol: 'Bb7sus4', notes: ['B♭', 'E♭', 'F', 'A♭'] },
+	{ root: 'B', quality: 'dom7sus4', symbol: 'B7sus4', notes: ['B', 'E', 'F♯', 'A'] },
+	{ root: 'C', quality: 'dom7b9', symbol: 'C7b9', notes: ['C', 'E', 'G', 'B♭', 'D♭'] },
+	{ root: 'D♭', quality: 'dom7b9', symbol: 'Db7b9', notes: ['D♭', 'F', 'A♭', 'C♭', 'E♭♭'] },
+	{ root: 'D', quality: 'dom7b9', symbol: 'D7b9', notes: ['D', 'F♯', 'A', 'C', 'E♭'] },
+	{ root: 'E♭', quality: 'dom7b9', symbol: 'Eb7b9', notes: ['E♭', 'G', 'B♭', 'D♭', 'F♭'] },
+	{ root: 'E', quality: 'dom7b9', symbol: 'E7b9', notes: ['E', 'G♯', 'B', 'D', 'F'] },
+	{ root: 'F', quality: 'dom7b9', symbol: 'F7b9', notes: ['F', 'A', 'C', 'E♭', 'G♭'] },
+	{ root: 'F♯', quality: 'dom7b9', symbol: 'F#7b9', notes: ['F♯', 'A♯', 'C♯', 'E', 'G'] },
+	{ root: 'G', quality: 'dom7b9', symbol: 'G7b9', notes: ['G', 'B', 'D', 'F', 'A♭'] },
+	{ root: 'A♭', quality: 'dom7b9', symbol: 'Ab7b9', notes: ['A♭', 'C', 'E♭', 'G♭', 'B♭♭'] },
+	{ root: 'A', quality: 'dom7b9', symbol: 'A7b9', notes: ['A', 'C♯', 'E', 'G', 'B♭'] },
+	{ root: 'B♭', quality: 'dom7b9', symbol: 'Bb7b9', notes: ['B♭', 'D', 'F', 'A♭', 'C♭'] },
+	{ root: 'B', quality: 'dom7b9', symbol: 'B7b9', notes: ['B', 'D♯', 'F♯', 'A', 'C'] },
+	{ root: 'C', quality: 'dom7#5', symbol: 'C7#5', notes: ['C', 'E', 'G♯', 'B♭'] },
+	{ root: 'D♭', quality: 'dom7#5', symbol: 'Db7#5', notes: ['D♭', 'F', 'A', 'C♭'] },
+	{ root: 'D', quality: 'dom7#5', symbol: 'D7#5', notes: ['D', 'F♯', 'A♯', 'C'] },
+	{ root: 'E♭', quality: 'dom7#5', symbol: 'Eb7#5', notes: ['E♭', 'G', 'B', 'D♭'] },
+	{ root: 'E', quality: 'dom7#5', symbol: 'E7#5', notes: ['E', 'G♯', 'B♯', 'D'] },
+	{ root: 'F', quality: 'dom7#5', symbol: 'F7#5', notes: ['F', 'A', 'C♯', 'E♭'] },
+	{ root: 'F♯', quality: 'dom7#5', symbol: 'F#7#5', notes: ['F♯', 'A♯', 'C♯♯', 'E'] },
+	{ root: 'G', quality: 'dom7#5', symbol: 'G7#5', notes: ['G', 'B', 'D♯', 'F'] },
+	{ root: 'A♭', quality: 'dom7#5', symbol: 'Ab7#5', notes: ['A♭', 'C', 'E', 'G♭'] },
+	{ root: 'A', quality: 'dom7#5', symbol: 'A7#5', notes: ['A', 'C♯', 'E♯', 'G'] },
+	{ root: 'B♭', quality: 'dom7#5', symbol: 'Bb7#5', notes: ['B♭', 'D', 'F♯', 'A♭'] },
+	{ root: 'B', quality: 'dom7#5', symbol: 'B7#5', notes: ['B', 'D♯', 'F♯♯', 'A'] }
+];
+
+describe('tier 5/6 reference chord matrix (n1-tier-unlock)', () => {
+	it('covers all 12 roots x 6 newly-unlocked qualities (72 cells)', () => {
+		expect(TIER_5_6_REFERENCE_MATRIX).toHaveLength(72);
+	});
+
+	for (const cell of TIER_5_6_REFERENCE_MATRIX) {
+		it(`spells ${cell.symbol} (${cell.root} ${cell.quality}) as ${cell.notes.join(' ')}`, () => {
+			const result = spellChord(cell.symbol);
+			expect(result.notes.map((n) => n.letter)).toEqual(cell.notes);
+		});
+	}
+
+	it('double-accidental spellings check out against plain interval math, not tonal alone', () => {
+		// b9 = a minor 2nd above the root, always: D♭'s own 2nd is E♭, so its
+		// b9 is E♭ flattened again.
+		expect(spellChord('Db7b9').notes.map((n) => n.letter)).toContain('E♭♭');
+		expect(spellChord('Ab7b9').notes.map((n) => n.letter)).toContain('B♭♭');
+		// #5 = an augmented 5th above the root, always: F♯'s own 5th is C♯, so
+		// its #5 is C♯ sharpened again.
+		expect(spellChord('F#7#5').notes.map((n) => n.letter)).toContain('C♯♯');
+		expect(spellChord('B7#5').notes.map((n) => n.letter)).toContain('F♯♯');
+	});
+});

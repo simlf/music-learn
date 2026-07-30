@@ -9,8 +9,9 @@ import {
 } from './curriculum';
 import { allFacts, chordFormulaFactId, intervalSizeFactId, scaleDegreeFactId } from './facts';
 import { DRILL_INTERVALS } from '$lib/theory/interval';
-import { itemsForTier, availableTierIds } from '$lib/practice/tiers';
+import { itemsForTier, availableTierIds, splitSymbol } from '$lib/practice/tiers';
 import { MAJOR_SCALE_ROOTS } from '$lib/theory/scale';
+import { ROOTS, TIER_5_6_QUALITY_SUFFIXES, V1_QUALITY_SUFFIXES } from '$lib/theory/randomChord';
 
 /**
  * The introduction order is a CONTRACT, not an accident. The catalog order it
@@ -88,16 +89,21 @@ describe('intervalAtomsForTier', () => {
 		expect(intervalAtomsForTier(4)).toEqual(['m3', 'A4', 'M6', 'm7']);
 	});
 
-	it('a locked tier needs nothing (itemsForTier is empty for it)', () => {
-		expect(intervalAtomsForTier(5)).toEqual([]);
-		expect(intervalAtomsForTier(6)).toEqual([]);
+	it("tier 5 adds P4 (sus4/7sus4's fourth); its 6/m6 sixth and sus4/7sus4's fifth+seventh are already needed by earlier tiers", () => {
+		expect(intervalAtomsForTier(5)).toEqual(['m3', 'M3', 'P4', 'P5', 'M6', 'm7']);
 	});
 
-	it('the whole available ladder needs 7 of the 12 drilled intervals; the other 5 appear in no tier chord', () => {
+	it("tier 6 adds m2 (7b9's flat ninth) and m6 (7#5's sharp five, semitone-equivalent to a minor 6th)", () => {
+		expect(intervalAtomsForTier(6)).toEqual(['m2', 'M3', 'P5', 'm6', 'm7']);
+	});
+
+	it('the whole ladder (n1-tier-unlock: all 6 tiers available) needs 10 of the 12 drilled intervals; only M2 and P8 appear in no tier chord', () => {
 		const needed = new Set(availableTierIds().flatMap((tier) => intervalAtomsForTier(tier)));
-		expect([...needed].sort()).toEqual(['A4', 'M3', 'M6', 'M7', 'P5', 'm3', 'm7'].sort());
+		expect([...needed].sort()).toEqual(
+			['A4', 'M3', 'M6', 'M7', 'P4', 'P5', 'm2', 'm3', 'm6', 'm7'].sort()
+		);
 		const unneeded = DRILL_INTERVALS.filter((short) => !needed.has(short));
-		expect(unneeded).toEqual(['m2', 'M2', 'P4', 'm6', 'P8']);
+		expect(unneeded).toEqual(['M2', 'P8']);
 	});
 });
 
@@ -141,8 +147,10 @@ describe('chordOrderForTier (quality-outer / root-inner, naturals first)', () =>
 		expect(firstOf('m7')).toBeLessThan(firstOf('7'));
 	});
 
-	it('a locked tier contributes no chords', () => {
-		expect(chordOrderForTier(5)).toEqual([]);
+	it('tier 5 (unlocked, n1-tier-unlock) is a 48-item permutation of its own qualities x roots', () => {
+		const order = chordOrderForTier(5);
+		expect(order).toHaveLength(48);
+		expect([...order].sort()).toEqual([...itemsForTier(5)].sort());
 	});
 });
 
@@ -179,18 +187,27 @@ describe('curriculumOrder (a total permutation of the catalog)', () => {
 		expect(order[17].factId).toBe('scale-degree:C:1');
 	});
 
-	it('finishes the promotion (this task): no scale-degree fact is left at the catalogs tail', () => {
+	it('finishes the promotion (PR #54/this-task history): no scale-degree fact is left at the catalogs tail', () => {
 		// #54 deliberately left the other 9 tonics' 63 facts at the tail as
-		// unfinished business. This task stages every one of them within the
-		// ladder (tier 2 for their 1/3/5, tier 3 for their 7/2/4/6), so the
-		// tail now holds only the five interval atoms no available tier's
-		// chords need (m2, M2, P4, m6, P8).
+		// unfinished business; that promotion finished staging every
+		// scale-degree fact within tiers 1-3 before this task began. This task
+		// (n1-tier-unlock) then extended the LADDER itself with tiers 5/6, so
+		// the true tail is no longer scale-degree OR the old 5-atom orphan set:
+		// tier 5/6's own 72 new chord facts land after all 84 scale-degree
+		// facts, and only M2 + P8 (the two atoms genuinely unneeded by any of
+		// the 6 tiers' chords) sort after THAT, as the very last 2 entries.
 		const order = curriculumOrder();
 		const scaleDegreeCount = order.filter((fact) => fact.factKind === 'scale-degree').length;
 		expect(scaleDegreeCount).toBe(84);
-		const last5 = order.slice(-5);
-		expect(last5.every((fact) => fact.factKind === 'interval-size')).toBe(true);
-		expect(last5.some((fact) => fact.factKind === 'scale-degree')).toBe(false);
+
+		const lastScaleDegreeIndex = order.findLastIndex((fact) => fact.factKind === 'scale-degree');
+		const firstTier5ChordIndex = order.findIndex(
+			(fact) => fact.factKind === 'chord-formula' && fact.symbol.endsWith('6')
+		);
+		expect(lastScaleDegreeIndex).toBeLessThan(firstTier5ChordIndex);
+
+		const last2 = order.slice(-2);
+		expect(last2.map((fact) => fact.factId)).toEqual(['interval-size:M2', 'interval-size:P8']);
 	});
 
 	it('stages exactly the 12 MAJOR_SCALE_ROOTS tonics, no tonic missing or duplicated', () => {
@@ -206,10 +223,16 @@ describe('curriculumOrder (a total permutation of the catalog)', () => {
 	});
 
 	it('leaves the catalog order itself untouched (display order is a separate concern)', () => {
+		// facts.ts appends the tier 5/6 quality block after the original 96
+		// chord facts (see its "CHORD-FORMULA BUILD ORDER" docstring), so the
+		// original block boundary (facts[95]) is untouched; only the
+		// interval-size/scale-degree block START indices moved later (96->168,
+		// 108->180) because more chord content now precedes them.
 		const catalog = allFacts();
 		expect(catalog[0].factId).toBe('chord-formula:C');
-		expect(catalog[96].factId).toBe('interval-size:m2');
-		expect(catalog[108].factId).toBe('scale-degree:C:1');
+		expect(catalog[95].factId).toBe('chord-formula:Bdim7');
+		expect(catalog[168].factId).toBe('interval-size:m2');
+		expect(catalog[180].factId).toBe('scale-degree:C:1');
 	});
 });
 
@@ -229,9 +252,15 @@ describe('curriculumTierOf', () => {
 		expect(curriculumTierOf('interval-size:M6')).toBe(4);
 	});
 
-	it('places the atoms no tier chord needs past the ladder', () => {
-		expect(curriculumTierOf('interval-size:m2')).toBe(5);
-		expect(curriculumTierOf('interval-size:P8')).toBe(5);
+	it("places tier 5/6's own new atoms (P4, m2, m6) at the tier that first needs them (n1-tier-unlock)", () => {
+		expect(curriculumTierOf('interval-size:P4')).toBe(5);
+		expect(curriculumTierOf('interval-size:m2')).toBe(6);
+		expect(curriculumTierOf('interval-size:m6')).toBe(6);
+	});
+
+	it('places the two atoms no tier chord needs (M2, P8) past the whole 6-tier ladder', () => {
+		expect(curriculumTierOf('interval-size:M2')).toBe(7);
+		expect(curriculumTierOf('interval-size:P8')).toBe(7);
 	});
 
 	it('places promoted C/G/F scale-degree facts at the tier that makes them meaningful', () => {
@@ -377,19 +406,36 @@ describe('introductionOrder: the tier gate', () => {
 	it('gates strictly by tier: each rung adds its own atoms, chords, and scale-degree facts', () => {
 		// Tier 1: unchanged by this task (9 = C/G/F x 1/3/5).
 		expect(introductionOrder(1)).toHaveLength(3 + 14 + 9);
-		// Tier 2: this task's new stage, 27 = the other 9 tonics x 1/3/5.
+		// Tier 2: the other 9 tonics x 1/3/5.
 		expect(introductionOrder(2)).toHaveLength(3 + 14 + 9 + 1 + 22 + 27);
-		// Tier 3: this task grows the existing stage from 12 (C/G/F x 7/2/4/6)
-		// to 48 (all 12 tonics x 7/2/4/6).
+		// Tier 3: all 12 tonics x 7/2/4/6.
 		expect(introductionOrder(3)).toHaveLength(3 + 14 + 9 + 1 + 22 + 27 + 2 + 36 + 48);
-		expect(introductionOrder(4)).toHaveLength(allFacts().length);
+		// Tier 4 (n1-tier-unlock: no longer the top of the ladder, so this is
+		// STRICTLY LESS than allFacts().length now - the 24 tier-4 chords plus
+		// their one new atom (M6), nothing more). This is the exact proof that
+		// an unmastered-tier-4 user's introduction order is unaffected by the
+		// catalog growing underneath them: every one of these 187 facts is
+		// identical, in identical order, to what tiers 1-4 always produced.
+		expect(introductionOrder(4)).toHaveLength(3 + 14 + 9 + 1 + 22 + 27 + 2 + 36 + 48 + 1 + 24);
+		expect(introductionOrder(4)).toHaveLength(187);
+		expect(introductionOrder(4).length).toBeLessThan(allFacts().length);
+
+		// Tier 5 (n1-tier-unlock): its one new atom (P4) plus its 48 chords.
+		expect(introductionOrder(5)).toHaveLength(187 + 1 + 48);
+		// Tier 6 (n1-tier-unlock, the new top of the ladder): its two new atoms
+		// (m2, m6) plus its 24 chords, plus - since tier 6 is now the actual
+		// ceiling - the 2 atoms (M2, P8) no tier's chords need at all.
+		expect(introductionOrder(6)).toHaveLength(236 + 2 + 24 + 2);
+		expect(introductionOrder(6)).toHaveLength(allFacts().length);
 	});
 
 	it('a lower tier order is always a prefix of a higher one (no reshuffling on unlock)', () => {
 		for (const [lower, higher] of [
 			[1, 2],
 			[2, 3],
-			[3, 4]
+			[3, 4],
+			[4, 5],
+			[5, 6]
 		] as const) {
 			const low = ids(introductionOrder(lower));
 			const high = ids(introductionOrder(higher));
@@ -417,50 +463,92 @@ describe('introductionOrder: the tier gate', () => {
 		expect(ids(introductionOrder(3))).toContain('scale-degree:C:7');
 	});
 
-	it('withholds the five atoms no tier chord needs until the ladder is complete', () => {
-		expect(ids(introductionOrder(3))).not.toContain('interval-size:m2');
-		expect(ids(introductionOrder(4))).toContain('interval-size:m2');
+	it('withholds each newly-unlocked atom until the tier that needs it (n1-tier-unlock)', () => {
+		expect(ids(introductionOrder(4))).not.toContain('interval-size:P4');
+		expect(ids(introductionOrder(5))).toContain('interval-size:P4');
+
+		expect(ids(introductionOrder(5))).not.toContain('interval-size:m2');
+		expect(ids(introductionOrder(6))).toContain('interval-size:m2');
+	});
+
+	it('withholds M2 and P8 (needed by no tier chord at all) until the whole ladder is mastered', () => {
+		expect(ids(introductionOrder(5))).not.toContain('interval-size:M2');
+		expect(ids(introductionOrder(6))).toContain('interval-size:M2');
+		expect(ids(introductionOrder(5))).not.toContain('interval-size:P8');
+		expect(ids(introductionOrder(6))).toContain('interval-size:P8');
 	});
 
 	it('defaults to the bottom of the ladder rather than the whole catalog', () => {
 		expect(ids(introductionOrder())).toEqual(ids(introductionOrder(1)));
 	});
 
-	it('never emits a locked tier 5 or 6 quality at any tier', () => {
+	it('introductionOrder(4) never emits a tier 5/6 quality: unlocked (available) is not the same as reachable (mastery-gated)', () => {
+		const tier56 = new Set(TIER_5_6_QUALITY_SUFFIXES);
 		for (const fact of introductionOrder(4)) {
 			if (fact.factKind !== 'chord-formula') continue;
-			expect(fact.symbol).not.toMatch(/(sus4|add9|maj9|m9|m6|13|#5|b9)/);
+			const split = splitSymbol(fact.symbol);
+			expect(split).not.toBeNull();
+			expect(tier56.has(split!.quality)).toBe(false);
 		}
+	});
+
+	it('introductionOrder(5) emits tier 5 qualities but withholds tier 6 ones until tier 6', () => {
+		expect(ids(introductionOrder(5))).toContain(chordFormulaFactId('C6'));
+		expect(ids(introductionOrder(5))).not.toContain(chordFormulaFactId('C7b9'));
+		expect(ids(introductionOrder(6))).toContain(chordFormulaFactId('C7b9'));
 	});
 });
 
 describe('introductionOrder: prerequisite catch-up for a returning user', () => {
-	const allChordIds = new Set(
-		allFacts()
-			.filter((fact) => fact.factKind === 'chord-formula')
-			.map((fact) => fact.factId)
+	// A PRE-EXISTING deck (n1-tier-unlock migration safety): a real returning
+	// user's deck can only ever hold cards for facts that existed before this
+	// task, i.e. the original 96 chord-formula facts (V1_QUALITY_SUFFIXES x
+	// ROOTS). Built from that fixed 96-symbol space, never from the
+	// now-larger allFacts()/QUALITY_SUFFIXES, so this fixture keeps
+	// representing "the owner's real deck" even as the catalog grows further.
+	const v1ChordIds = new Set(
+		ROOTS.flatMap((root) => V1_QUALITY_SUFFIXES.map((quality) => chordFormulaFactId(`${root}${quality}`)))
 	);
 
-	it('hands a user who already has every chord fact the atoms those chords need, whatever tier says', () => {
+	it('hands a user who already has every ORIGINAL (v1) chord fact the atoms those chords need, whatever tier says', () => {
 		// The owner's real deck: all 96 chord spellings introduced before the
 		// first interval fact (that IS the defect). A prerequisite of something
 		// already taught is overdue, not premature, so the tier gate must not
 		// withhold it.
-		const order = ids(introductionOrder(1, allChordIds));
+		const order = ids(introductionOrder(1, v1ChordIds));
 		for (const atom of ['m3', 'M3', 'A4', 'P5', 'M6', 'm7', 'M7']) {
 			expect(order).toContain(intervalSizeFactId(atom));
 		}
 	});
 
-	it('catch-up adds atoms only, never chords or scale degrees from a higher tier', () => {
+	it('MIGRATION SAFETY (n1-tier-unlock): a pre-existing 96-chord deck catches up on EXACTLY the same 4 atoms as before this task, never P4/m2/m6', () => {
+		// A deck that predates tier 5/6 has zero sus4/7b9/7#5-family cards, so
+		// it can never trigger catch-up for the atoms those NEW qualities alone
+		// need (P4, m2, m6) - this is the precise "zero behavior change for
+		// pre-existing data" proof for the catch-up path.
 		const gated = new Set(ids(introductionOrder(1)));
-		const extra = ids(introductionOrder(1, allChordIds)).filter((factId) => !gated.has(factId));
+		const extra = ids(introductionOrder(1, v1ChordIds)).filter((factId) => !gated.has(factId));
 		expect(extra).toEqual([
 			'interval-size:A4',
 			'interval-size:m7',
 			'interval-size:M7',
 			'interval-size:M6'
 		]);
+	});
+
+	it('a deck that ALSO already has tier 5/6 chords (e.g. after this task ships) catches up on their atoms too (P4, m2, m6)', () => {
+		const allChordIds = new Set(
+			allFacts()
+				.filter((fact) => fact.factKind === 'chord-formula')
+				.map((fact) => fact.factId)
+		);
+		const gated = new Set(ids(introductionOrder(1)));
+		const extra = ids(introductionOrder(1, allChordIds)).filter((factId) => !gated.has(factId));
+		expect(new Set(extra)).toEqual(
+			new Set(
+				['A4', 'm7', 'M7', 'M6', 'P4', 'm2', 'm6'].map((atom) => intervalSizeFactId(atom))
+			)
+		);
 	});
 
 	it('changes nothing for a fresh deck (no introduced facts, no catch-up)', () => {

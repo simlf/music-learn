@@ -325,25 +325,53 @@ describe('isNotableSpelling', () => {
 });
 
 describe('full-catalog reachability sweep (BUILD-01/02 success criterion)', () => {
-	it('every chord (ROOTS x QUALITY_SUFFIXES, 96 targets) and every scale (MAJOR_SCALE_ROOTS, 12 targets) is fully constructible and reachable within the fixed 2-octave C4-C6 board', () => {
-		const SEVENTH_QUALITIES = new Set(['maj7', 'm7', '7', 'm7b5', 'dim7']);
+	/**
+	 * Notes-past-the-root count for every quality QUALITY_SUFFIXES holds
+	 * today (n1-tier-unlock grew this from 8 to 14 - see randomChord.ts).
+	 * Triads (2 notes past root: third, fifth) and the five original seventh
+	 * families (3: third, fifth, seventh) are unchanged; the 6 newly-unlocked
+	 * qualities were individually verified by executing spellChord across all
+	 * 12 roots before being added here: 6/m6 add a sixth (3), sus4 swaps the
+	 * third for a fourth (2), 7sus4 adds a seventh on top of that (3), 7b9
+	 * adds a ninth on top of a full seventh chord (4), 7#5 alters the fifth
+	 * without adding a note (3).
+	 */
+	const STEP_COUNT_BY_QUALITY: Record<string, number> = {
+		'': 2,
+		m: 2,
+		dim: 2,
+		maj7: 3,
+		m7: 3,
+		'7': 3,
+		m7b5: 3,
+		dim7: 3,
+		'6': 3,
+		m6: 3,
+		sus4: 2,
+		'7sus4': 3,
+		'7b9': 4,
+		'7#5': 3
+	};
+
+	it('every chord (ROOTS x QUALITY_SUFFIXES, 168 targets) and every scale (MAJOR_SCALE_ROOTS, 12 targets) is fully constructible and reachable within the fixed 2-octave C4-C6 board', () => {
+		expect(Object.keys(STEP_COUNT_BY_QUALITY).sort()).toEqual([...QUALITY_SUFFIXES].sort());
 		let sweptCount = 0;
 
 		for (const root of ROOTS) {
 			for (const quality of QUALITY_SUFFIXES) {
 				const symbol = `${root}${quality}`;
 				const state = createChordConstruction(symbol);
-				const expectedStepCount = SEVENTH_QUALITIES.has(quality) ? 3 : 2;
+				const expectedStepCount = STEP_COUNT_BY_QUALITY[quality];
 
-				expect(state.steps.length).toBe(expectedStepCount);
+				expect(state.steps.length, symbol).toBe(expectedStepCount);
 				for (const step of state.steps) {
-					expect(step.midi).toBeGreaterThanOrEqual(60);
-					expect(step.midi).toBeLessThanOrEqual(84);
+					expect(step.midi, symbol).toBeGreaterThanOrEqual(60);
+					expect(step.midi, symbol).toBeLessThanOrEqual(84);
 				}
 
 				const final = walkAllCorrect(state);
-				expect(final.done).toBe(true);
-				expect(final.wrongTapCount).toBe(0);
+				expect(final.done, symbol).toBe(true);
+				expect(final.wrongTapCount, symbol).toBe(0);
 				sweptCount += 1;
 			}
 		}
@@ -363,6 +391,6 @@ describe('full-catalog reachability sweep (BUILD-01/02 success criterion)', () =
 			sweptCount += 1;
 		}
 
-		expect(sweptCount).toBe(96 + 12);
+		expect(sweptCount).toBe(168 + 12);
 	});
 });

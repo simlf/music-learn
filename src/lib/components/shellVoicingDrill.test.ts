@@ -4,6 +4,8 @@ import ShellVoicingDrill from './ShellVoicingDrill.svelte';
 import { newCard, State } from '$lib/srs/scheduler';
 import type { CardRecord } from '$lib/srs/deck';
 import { hasVoicingMet } from '$lib/practice/voicingMet';
+import { hasDrillableShell, seventhChordSymbols } from '$lib/practice/shellVoicing';
+import { spellChord } from '$lib/theory/chord';
 import { setLocale } from '$lib/i18n/locale.svelte';
 
 /**
@@ -40,6 +42,18 @@ vi.mock('$lib/srs/deck', async (importOriginal) => {
 		getAllCards: (...args: unknown[]) => getAllCardsMock(...args)
 	};
 });
+
+/**
+ * Mirrors ShellVoicingDrill.svelte's own drawSymbol(): seventhChordSymbols()
+ * filtered to hasDrillableShell (n1-tier-unlock added 7sus4 to the seventh
+ * matrix, but its shell is a single note - see shellVoicing.test.ts). Any
+ * test that forces a draw by mocking Math.random must index into THIS array
+ * and normalize against ITS length, not the raw seventhChordSymbols() pool,
+ * since the two now differ in size.
+ */
+function drillablePool(): string[] {
+	return seventhChordSymbols().filter((symbol) => hasDrillableShell(spellChord(symbol)));
+}
 
 /** Mirrors PracticeIntervalDrill.test.ts's audio-module mock convention (no real AudioContext/tone import in jsdom). */
 const playNoteMock = vi.fn();
@@ -108,8 +122,15 @@ describe('ShellVoicingDrill: stage derived from card maturity', () => {
 		// Force the draw onto 'Ebmaj7' (flat root E♭, flat fifth B♭): its ghost
 		// entries carry spellChord's flat spellings, which must land on the
 		// keyboard's sharp-labeled black keys (D♯/A♯) via chroma comparison.
-		const { seventhChordSymbols } = await import('$lib/practice/shellVoicing');
-		const symbols = seventhChordSymbols();
+		//
+		// n1-tier-unlock: drawSymbol() indexes into the HAS-DRILLABLE-SHELL
+		// FILTERED pool (seventhChordSymbols() minus the 12 7sus4 entries,
+		// which now also carry a seventh role but have no third to shell), not
+		// the raw seventhChordSymbols() array - so the mocked Math.random
+		// fraction must be normalized against that same filtered array's
+		// length, or it silently draws the wrong chord once the two arrays'
+		// lengths diverge (they were always equal pre-n1-tier-unlock).
+		const symbols = drillablePool();
 		const idx = symbols.indexOf('Ebmaj7');
 		expect(idx).toBeGreaterThan(-1);
 		vi.spyOn(Math, 'random').mockReturnValue((idx + 0.5) / symbols.length);
@@ -129,8 +150,7 @@ describe('ShellVoicingDrill: stage derived from card maturity', () => {
 		// audio octave would put the fifth on D5, a key that does not exist on
 		// a one-octave (phone) keyboard. Markers must pin to the keyboard's
 		// base octave 4 instead.
-		const { seventhChordSymbols } = await import('$lib/practice/shellVoicing');
-		const symbols = seventhChordSymbols();
+		const symbols = drillablePool();
 		const idx = symbols.indexOf('G7');
 		expect(idx).toBeGreaterThan(-1);
 		vi.spyOn(Math, 'random').mockReturnValue((idx + 0.5) / symbols.length);

@@ -1,7 +1,21 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { mnemonicFor, familyLineFor } from './mnemonics';
-import { QUALITY_SUFFIXES } from '$lib/theory/randomChord';
+import { QUALITY_SUFFIXES, TIER_5_6_QUALITY_SUFFIXES, V1_QUALITY_SUFFIXES } from '$lib/theory/randomChord';
 import { setLocale } from '$lib/i18n/locale.svelte';
+
+/**
+ * n1-tier-unlock scoping note: every exhaustiveness/totality check below is
+ * scoped to V1_QUALITY_SUFFIXES (the original 8), not the now-larger
+ * QUALITY_SUFFIXES. This is the R3-learning.md Track D "KEEP-rated hook"
+ * contract's own original scope (mnemonics.ts's docstring: "Total function:
+ * unknown input never throws... across all 8 v1 QUALITY_SUFFIXES"), and
+ * unlocking tier 5/6 does not implicitly grow it: new copy hooks for 6, m6,
+ * sus4, 7sus4, 7b9, 7#5 are unwritten, deliberately (better none than
+ * cheesy), not a gap this task introduces. See the "tier 5/6 qualities"
+ * describe block below for what mnemonicFor/familyLineFor actually do for
+ * them today (both null; HintLadder's `{#if familyBody}` guard already
+ * renders nothing rather than breaking).
+ */
 
 afterEach(() => {
 	setLocale('en');
@@ -26,14 +40,14 @@ const EXPECTED: Record<string, string | null> = {
 };
 
 describe('mnemonicFor: full v1 quality set (deliberate snapshot)', () => {
-	for (const suffix of QUALITY_SUFFIXES) {
+	for (const suffix of V1_QUALITY_SUFFIXES) {
 		it(`returns the pinned value for "${suffix || '(major triad)'}"`, () => {
 			expect(mnemonicFor(suffix)).toBe(EXPECTED[suffix]);
 		});
 	}
 
 	it('covers every v1 quality suffix in the pinned table', () => {
-		expect(Object.keys(EXPECTED).sort()).toEqual([...QUALITY_SUFFIXES].sort());
+		expect(Object.keys(EXPECTED).sort()).toEqual([...V1_QUALITY_SUFFIXES].sort());
 	});
 });
 
@@ -68,8 +82,29 @@ describe('mnemonicFor: never invents filler', () => {
 	);
 });
 
+describe('tier 5/6 qualities (n1-tier-unlock): unlocked for drilling, but outside this hook-copy contract', () => {
+	it('mnemonicFor has no hook for any of the 6 newly-unlocked qualities (honest, not a regression: none ever existed)', () => {
+		for (const suffix of TIER_5_6_QUALITY_SUFFIXES) {
+			expect(mnemonicFor(suffix)).toBeNull();
+		}
+	});
+
+	it('familyLineFor also has nothing for them (only the 3 v1 triad qualities get a family line)', () => {
+		for (const suffix of TIER_5_6_QUALITY_SUFFIXES) {
+			expect(familyLineFor(suffix)).toBeNull();
+		}
+	});
+
+	it('QUALITY_SUFFIXES did grow to include them, confirming this is a deliberate scoping choice, not a stale fixture', () => {
+		for (const suffix of TIER_5_6_QUALITY_SUFFIXES) {
+			expect(QUALITY_SUFFIXES).toContain(suffix);
+			expect(V1_QUALITY_SUFFIXES).not.toContain(suffix);
+		}
+	});
+});
+
 describe('mnemonicFor: copy quality bar', () => {
-	const shipped = QUALITY_SUFFIXES.map((suffix) => mnemonicFor(suffix)).filter(
+	const shipped = V1_QUALITY_SUFFIXES.map((suffix) => mnemonicFor(suffix)).filter(
 		(line): line is string => line !== null
 	);
 
@@ -123,10 +158,10 @@ describe('mnemonicFor: FR locale (I18N-02)', () => {
 	});
 
 	it('covers the same suffix key set as the EN pinned table', () => {
-		expect(Object.keys(EXPECTED_FR).sort()).toEqual([...QUALITY_SUFFIXES].sort());
+		expect(Object.keys(EXPECTED_FR).sort()).toEqual([...V1_QUALITY_SUFFIXES].sort());
 	});
 
-	for (const suffix of QUALITY_SUFFIXES) {
+	for (const suffix of V1_QUALITY_SUFFIXES) {
 		it(`returns the pinned FR value for "${suffix || '(major triad)'}" under fr`, () => {
 			setLocale('fr');
 			expect(mnemonicFor(suffix)).toBe(EXPECTED_FR[suffix]);
@@ -147,7 +182,7 @@ describe('mnemonicFor: FR locale (I18N-02)', () => {
 
 	it('contains no em dashes in any shipped FR line', () => {
 		setLocale('fr');
-		const shippedFr = QUALITY_SUFFIXES.map((suffix) => mnemonicFor(suffix)).filter(
+		const shippedFr = V1_QUALITY_SUFFIXES.map((suffix) => mnemonicFor(suffix)).filter(
 			(line): line is string => line !== null
 		);
 		for (const line of shippedFr) {
@@ -215,7 +250,7 @@ describe('familyLineFor: the 3 triad qualities (deliberate snapshot)', () => {
 });
 
 describe('Layer 1 resolution order: mnemonicFor(q) ?? familyLineFor(q) is total', () => {
-	for (const suffix of QUALITY_SUFFIXES) {
+	for (const suffix of V1_QUALITY_SUFFIXES) {
 		it(`resolves non-null for "${suffix || '(major triad)'}"`, () => {
 			expect(mnemonicFor(suffix) ?? familyLineFor(suffix)).not.toBeNull();
 		});

@@ -20,19 +20,19 @@ import { spellChord } from '$lib/theory/chord';
  * (D-05) and a total factById lookup.
  */
 describe('allFacts', () => {
-	it('returns exactly 192 facts', () => {
-		expect(allFacts().length).toBe(192);
+	it('returns exactly 264 facts (n1-tier-unlock grew the chord-formula block from 96 to 168)', () => {
+		expect(allFacts().length).toBe(264);
 	});
 
-	it('has exactly 96 chord-formula, 12 interval-size, and 84 scale-degree facts', () => {
+	it('has exactly 168 chord-formula, 12 interval-size, and 84 scale-degree facts', () => {
 		const facts = allFacts();
-		expect(facts.filter((f) => f.factKind === 'chord-formula').length).toBe(96);
+		expect(facts.filter((f) => f.factKind === 'chord-formula').length).toBe(168);
 		expect(facts.filter((f) => f.factKind === 'interval-size').length).toBe(12);
 		expect(facts.filter((f) => f.factKind === 'scale-degree').length).toBe(84);
 	});
 
-	it('has 96 = ROOTS.length x QUALITY_SUFFIXES.length and 84 = MAJOR_SCALE_ROOTS.length x 7', () => {
-		expect(ROOTS.length * QUALITY_SUFFIXES.length).toBe(96);
+	it('has 168 = ROOTS.length x QUALITY_SUFFIXES.length and 84 = MAJOR_SCALE_ROOTS.length x 7', () => {
+		expect(ROOTS.length * QUALITY_SUFFIXES.length).toBe(168);
 		expect(MAJOR_SCALE_ROOTS.length * 7).toBe(84);
 		expect(DRILL_INTERVALS.length).toBe(12);
 	});
@@ -40,7 +40,7 @@ describe('allFacts', () => {
 	it('every factId is unique across the full catalog', () => {
 		const facts = allFacts();
 		const ids = new Set(facts.map((f) => f.factId));
-		expect(ids.size).toBe(192);
+		expect(ids.size).toBe(264);
 	});
 
 	it('every chord-formula fact symbol is recognized by spellChord', () => {
@@ -135,16 +135,34 @@ describe('allFacts', () => {
 		// enumerates it) and it is deliberately NOT the teaching order, which
 		// lives in srs/curriculum.ts. Pinned so a future curriculum change
 		// cannot quietly reshuffle the recall map's rows.
+		//
+		// n1-tier-unlock grew the chord-formula block from 96 to 168 (12 roots
+		// x 6 newly-unlocked qualities appended after the original 96), which
+		// is why the block boundaries below moved from 96/108/191 to
+		// 168/180/263 - but facts[0] and facts[95] (the original block's own
+		// first and last entries) are BYTE-IDENTICAL to before: the two-pass
+		// build in facts.ts's buildChordFormulaFacts appends the new quality
+		// block after the original one rather than interleaving it, so no
+		// existing fact's index, content or order ever changes.
 		const facts = allFacts();
 		expect(facts[0].factId).toBe('chord-formula:C');
 		expect(facts[95].factId).toBe('chord-formula:Bdim7');
-		expect(facts[96].factId).toBe('interval-size:m2');
-		expect(facts[107].factId).toBe('interval-size:P8');
-		expect(facts[108].factId).toBe('scale-degree:C:1');
-		expect(facts[191].factId).toBe('scale-degree:B:7');
-		expect(facts.slice(0, 96).every((f) => f.factKind === 'chord-formula')).toBe(true);
-		expect(facts.slice(96, 108).every((f) => f.factKind === 'interval-size')).toBe(true);
-		expect(facts.slice(108).every((f) => f.factKind === 'scale-degree')).toBe(true);
+		expect(facts[167].factId).toBe('chord-formula:B7#5');
+		expect(facts[168].factId).toBe('interval-size:m2');
+		expect(facts[179].factId).toBe('interval-size:P8');
+		expect(facts[180].factId).toBe('scale-degree:C:1');
+		expect(facts[263].factId).toBe('scale-degree:B:7');
+		expect(facts.slice(0, 168).every((f) => f.factKind === 'chord-formula')).toBe(true);
+		expect(facts.slice(168, 180).every((f) => f.factKind === 'interval-size')).toBe(true);
+		expect(facts.slice(180).every((f) => f.factKind === 'scale-degree')).toBe(true);
+	});
+
+	it('the newly-appended chord-formula block (indices 96-167) is ROOTS x TIER_5_6_QUALITY_SUFFIXES, root-outer/quality-inner, same shape as the original block', () => {
+		const facts = allFacts().filter((f) => f.factKind === 'chord-formula');
+		// First appended entry: root C, first new quality ('6').
+		expect(facts[96].factId).toBe('chord-formula:C6');
+		// Last appended entry: last root (B), last new quality ('7#5').
+		expect(facts[167].factId).toBe('chord-formula:B7#5');
 	});
 });
 
@@ -181,8 +199,8 @@ describe('scaleFormulaFactId (Phase 12 D-09 seam)', () => {
 		expect(scaleFormulaFactId('F♯')).toBe('scale-formula:F♯');
 	});
 
-	it('regression pin: allFacts().length is still exactly 192 (unchanged catalog size)', () => {
-		expect(allFacts().length).toBe(192);
+	it('regression pin: allFacts().length is still exactly 264 (n1-tier-unlock catalog size)', () => {
+		expect(allFacts().length).toBe(264);
 	});
 
 	it('regression pin: no fact in the catalog carries factKind scale-formula', () => {

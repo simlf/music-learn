@@ -41,8 +41,8 @@ describe('the 6-tier table (R3)', () => {
 		expect(itemsForTier(4)).toHaveLength(24);
 	});
 
-	it('tiers 1 to 4 need zero engine work: every quality sits in QUALITY_SUFFIXES', () => {
-		for (const id of [1, 2, 3, 4] as const) {
+	it('every defined tier needs zero further engine work: every quality sits in QUALITY_SUFFIXES', () => {
+		for (const id of [1, 2, 3, 4, 5, 6] as const) {
 			for (const quality of tierById(id).qualities) {
 				expect(QUALITY_SUFFIXES).toContain(quality);
 			}
@@ -50,19 +50,29 @@ describe('the 6-tier table (R3)', () => {
 		}
 	});
 
-	it('tiers 5 and 6 are defined but locked as coming later (engine matrix is 12x8 today)', () => {
-		expect(tierById(5).available).toBe(false);
+	it('tier 5 is sixths and sus, unlocked (n1-tier-unlock): 6, m6, sus4, 7sus4 (48 items)', () => {
+		expect(tierById(5).available).toBe(true);
 		expect(tierById(5).qualities).toEqual(['6', 'm6', 'sus4', '7sus4']);
-		expect(tierById(6).available).toBe(false);
-		expect(tierById(6).qualities).toEqual(['9', 'maj9', 'm9', '7b9', '7#5', '13']);
+		expect(itemsForTier(5)).toHaveLength(48);
 	});
 
-	it('availableTierIds returns only tiers 1 through 4', () => {
-		expect(availableTierIds()).toEqual([1, 2, 3, 4]);
+	it('tier 6 is altered-dominant extensions, unlocked (n1-tier-unlock): only 7b9 and 7#5 (24 items)', () => {
+		// 9, maj9, m9 and 13 were drafted for tier 6 but held back: their extra
+		// 9th/13th tone overflows the construction drill's fixed 2-octave
+		// keyboard for at least one root (verified by executing the engine;
+		// see randomChord.ts's TIER_5_6_QUALITY_SUFFIXES docstring), and that
+		// drill has no guard against an unreachable target.
+		expect(tierById(6).available).toBe(true);
+		expect(tierById(6).qualities).toEqual(['7b9', '7#5']);
+		expect(itemsForTier(6)).toHaveLength(24);
 	});
 
-	it('every tier 1-4 item is recognized by spellChord', () => {
-		for (const id of [1, 2, 3, 4] as const) {
+	it('availableTierIds returns all 6 tiers (n1-tier-unlock: mastery gates who reaches a tier, not this flag)', () => {
+		expect(availableTierIds()).toEqual([1, 2, 3, 4, 5, 6]);
+	});
+
+	it('every tier 1-6 item is recognized by spellChord', () => {
+		for (const id of [1, 2, 3, 4, 5, 6] as const) {
 			for (const symbol of itemsForTier(id)) {
 				expect(spellChord(symbol).recognized).toBe(true);
 			}
@@ -77,8 +87,8 @@ describe('tier blurbs (beginner on-ramp, sketch 007)', () => {
 			2: 'All twelve roots now: major, minor, and diminished triads.',
 			3: 'The seventh chords that show up everywhere: maj7, m7, and dominant 7.',
 			4: 'Half-diminished and diminished seventh chords, the color of a minor ii-V-i.',
-			5: 'Sixth chords and sus chords. Coming later.',
-			6: '9ths, altered dominants, and more color tones. Coming later.'
+			5: 'Sixth chords and sus chords.',
+			6: 'Altered dominant colors: the flat nine and the sharp five.'
 		};
 		for (const tier of TIERS) {
 			expect(tier.blurb).toBe(expected[tier.id]);
@@ -96,9 +106,18 @@ describe('itemsForTiers', () => {
 		expect(new Set(items).size).toBe(items.length);
 	});
 
-	it('skips unavailable tiers even if asked for', () => {
-		expect(itemsForTiers([5, 6])).toHaveLength(0);
+	it('unions tier 5 and 6 (both unlocked, n1-tier-unlock): 48 + 24, no overlap with each other', () => {
+		const items = itemsForTiers([5, 6]);
+		expect(items).toHaveLength(48 + 24);
+		expect(new Set(items).size).toBe(items.length);
 	});
+
+	// itemsForTier's own `!tier.available` branch (locked tiers contribute
+	// nothing) has no live tier to exercise it against as of n1-tier-unlock:
+	// every id in TierId (1-6) is now available. Kept as dead-code-safe
+	// defensive logic (matching curriculum.ts's own "safety net for future
+	// catalog growth" convention) rather than removed, in case a 7th tier is
+	// ever drafted `available: false` before its engine work lands.
 });
 
 describe('splitSymbol', () => {

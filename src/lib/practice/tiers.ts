@@ -1,10 +1,23 @@
 /**
  * The 6-tier learning ladder (R3-learning.md section 1). Tier gating is a
  * FILTER over the proven ROOTS x QUALITY_SUFFIXES matrix, not a new question
- * engine: tiers 1 to 4 map exactly onto the existing 96-item space. Tiers 5
- * and 6 are defined here so the shape of the ladder is visible in settings,
- * but stay locked (available: false) until the engine matrix grows beyond
- * 12x8.
+ * engine: tiers 1 to 4 map exactly onto the original 96-item space.
+ *
+ * TIERS 5 AND 6 (n1-tier-unlock). Both are now `available: true`, gated
+ * entirely by mastery (levelState.ts's `tierMastered`/`earnedTier`): tier 5
+ * opens once every tier-4 chord is mastered, tier 6 once every tier-5 chord
+ * is. A user who has not yet mastered tier 4 sees zero behavior change -
+ * `currentTier` simply never advances past 4 for them, `available` here
+ * only controls whether the RUNG EXISTS at all, not who can reach it.
+ *
+ * Tier 6's quality list is deliberately NOT the full "9, maj9, m9, 7b9,
+ * 7#5, 13" set once drafted for it: 9, maj9, m9 and 13 were held back after
+ * verifying the whole pipeline by executing it (see
+ * randomChord.ts's TIER_5_6_QUALITY_SUFFIXES docstring) - their extra
+ * 9th/13th tone pushes the construction ("build it") drill's fixed
+ * 2-octave keyboard past its top for at least one root, which that drill
+ * has no guard against. Only 7b9 and 7#5 (verified safe on every root)
+ * ship in tier 6.
  *
  * Pure data module: no DOM, no Svelte, no storage (levelState.ts owns
  * persistence).
@@ -21,7 +34,12 @@ export interface TierDef {
 	roots: string[];
 	/** Chord-quality symbol suffixes drilled at this tier. */
 	qualities: string[];
-	/** False for tiers whose qualities need engine work (new suffixes + reference tests). */
+	/**
+	 * False for a tier whose qualities need engine work (new suffixes +
+	 * reference tests) before it can exist at all. As of n1-tier-unlock every
+	 * defined tier (1-6) is true; WHO can reach a given tier is a separate,
+	 * mastery-gated question owned by levelState.ts, not this flag.
+	 */
 	available: boolean;
 	/** One plain, encouraging sentence describing the tier for the beginner on-ramp (sketch 007). No em dashes. */
 	blurb: string;
@@ -68,16 +86,16 @@ export const TIERS: TierDef[] = [
 		name: 'Sixths and sus',
 		roots: [...ROOTS],
 		qualities: ['6', 'm6', 'sus4', '7sus4'],
-		available: false,
-		blurb: 'Sixth chords and sus chords. Coming later.'
+		available: true,
+		blurb: 'Sixth chords and sus chords.'
 	},
 	{
 		id: 6,
 		name: 'Extensions and alterations',
 		roots: [...ROOTS],
-		qualities: ['9', 'maj9', 'm9', '7b9', '7#5', '13'],
-		available: false,
-		blurb: '9ths, altered dominants, and more color tones. Coming later.'
+		qualities: ['7b9', '7#5'],
+		available: true,
+		blurb: 'Altered dominant colors: the flat nine and the sharp five.'
 	}
 ];
 

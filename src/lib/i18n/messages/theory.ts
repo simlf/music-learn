@@ -62,7 +62,7 @@ export const theory = {
 		'theory.sevenths.label': 'The seventh shapes',
 		'theory.sevenths.heading': 'One triad, one seventh',
 		'theory.sevenths.body':
-			'Every seventh chord is a triad plus one more third. Two choices name them all: which triad (major, minor, diminished) and which 7th (7, ♭7, or ♭♭7). Tap through the five on C.',
+			'Every seventh chord is a triad plus one more third. Two choices build most of them: which triad (major, minor, diminished) and which 7th (7, ♭7, or ♭♭7). Tap through the five most common on C.',
 		'theory.sevenths.caption.maj7': 'Major triad + 7. At rest.',
 		'theory.sevenths.caption.dom7': 'Major triad + ♭7. Pushes.',
 		'theory.sevenths.caption.m7': 'Minor triad + ♭7. Travels.',
@@ -162,7 +162,7 @@ export const theory = {
 		'theory.sevenths.label': 'Les formes de septième',
 		'theory.sevenths.heading': 'Une triade, une septième',
 		'theory.sevenths.body':
-			"Chaque accord de septième est une triade plus une tierce de plus. Deux choix suffisent à tous les nommer : quelle triade (majeure, mineure, diminuée) et quelle septième (7, ♭7, ou ♭♭7). Touche les cinq sur C.",
+			"Chaque accord de septième est une triade plus une tierce de plus. Deux choix en construisent la plupart : quelle triade (majeure, mineure, diminuée) et quelle septième (7, ♭7, ou ♭♭7). Touche les cinq plus courants sur C.",
 		'theory.sevenths.caption.maj7': 'Triade majeure + 7. Au repos.',
 		'theory.sevenths.caption.dom7': 'Triade majeure + ♭7. Ça pousse.',
 		'theory.sevenths.caption.m7': 'Triade mineure + ♭7. Ça voyage.',

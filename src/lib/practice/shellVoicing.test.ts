@@ -135,12 +135,47 @@ describe('shellVoicing', () => {
 			expect(chord.notes).toHaveLength(4);
 		});
 
-		it('the seventh matrix is byte-identical: root/third/fifth/seventh, exactly as before', () => {
+		it('the original seventh matrix (5 qualities) is byte-identical: root/third/fifth/seventh, exactly as before', () => {
+			// n1-tier-unlock added 7sus4 and 7b9 to the catalog, both of which
+			// also carry a seventh role and so now also appear in
+			// seventhChordSymbols() - but 7sus4 has no third (a fourth in its
+			// place) and 7b9 adds a genuine 5th note (the ♭9, role 'second'), so
+			// both are EXCLUDED here rather than widening this pin. 7#5 stays a
+			// plain 4-note root/third/fifth/seventh shape (it ALTERS the fifth,
+			// never adds a note), so it needs no exclusion.
 			for (const symbol of seventhChordSymbols()) {
+				if (symbol.includes('7sus4') || symbol.includes('7b9')) continue;
 				const chord = spellChord(symbol);
 				expect(fullStackNotes(chord).map((n) => n.role), symbol).toEqual([
 					'root',
 					'third',
+					'fifth',
+					'seventh'
+				]);
+			}
+		});
+
+		it('7b9 (n1-tier-unlock: a genuine 5-note extension) is root/third/fifth/seventh/second', () => {
+			for (const symbol of seventhChordSymbols()) {
+				if (!symbol.includes('7b9')) continue;
+				const chord = spellChord(symbol);
+				expect(fullStackNotes(chord).map((n) => n.role), symbol).toEqual([
+					'root',
+					'third',
+					'fifth',
+					'seventh',
+					'second'
+				]);
+			}
+		});
+
+		it('7sus4 (n1-tier-unlock: newly in the seventh matrix, no third) is root/fourth/fifth/seventh', () => {
+			for (const symbol of seventhChordSymbols()) {
+				if (!symbol.includes('7sus4')) continue;
+				const chord = spellChord(symbol);
+				expect(fullStackNotes(chord).map((n) => n.role), symbol).toEqual([
+					'root',
+					'fourth',
 					'fifth',
 					'seventh'
 				]);
@@ -171,10 +206,23 @@ describe('shellVoicing', () => {
 			expect(hasDrillableShell(spellChord('C'))).toBe(false);
 		});
 
-		it('is true for every symbol the drill actually draws today', () => {
+		it('is true for every symbol in the seventh matrix EXCEPT 7sus4 (no third to pair with its seventh)', () => {
+			// n1-tier-unlock: seventhChordSymbols() now includes 7sus4 (it has a
+			// seventh role), but its shell (third+seventh) has no third to offer
+			// - shellNotes(C7sus4) is a single note [seventh]. The drill's own
+			// drawSymbol() filters by hasDrillableShell before drawing (falling
+			// back to the unfiltered pool only if that ever empties it, which it
+			// does not here), and embedSymbol/practiceQueue paths that CAN still
+			// reach an undrillable chord fall through to the tested
+			// "shell-unavailable" notice (ShellVoicingDrill's Bug E guard) rather
+			// than an unanswerable question.
 			const symbols = seventhChordSymbols();
 			expect(symbols.length).toBeGreaterThan(0);
 			for (const symbol of symbols) {
+				if (symbol.includes('7sus4')) {
+					expect(hasDrillableShell(spellChord(symbol)), symbol).toBe(false);
+					continue;
+				}
 				expect(hasDrillableShell(spellChord(symbol)), symbol).toBe(true);
 			}
 		});

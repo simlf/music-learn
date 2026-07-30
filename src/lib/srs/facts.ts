@@ -1,4 +1,4 @@
-import { ROOTS, QUALITY_SUFFIXES } from '$lib/theory/randomChord';
+import { ROOTS, V1_QUALITY_SUFFIXES, TIER_5_6_QUALITY_SUFFIXES } from '$lib/theory/randomChord';
 import { DRILL_INTERVALS } from '$lib/theory/interval';
 import { MAJOR_SCALE_ROOTS } from '$lib/theory/scale';
 import { spellChord } from '$lib/theory/chord';
@@ -9,7 +9,7 @@ import { spellChord } from '$lib/theory/chord';
  * recall map (11-06) enumerates. Generated entirely FROM the existing theory
  * engine's own proven fact spaces (D-06) so the deck always mirrors it:
  *
- * - chord-formula: the 12-root x 8-quality reference matrix
+ * - chord-formula: the 12-root x 14-quality reference matrix
  *   (randomChord.ts's ROOTS/QUALITY_SUFFIXES, proven recognized by
  *   reference-chords.test.ts).
  * - interval-size: the 12-entry drill interval pool (interval.ts's
@@ -21,6 +21,19 @@ import { spellChord } from '$lib/theory/chord';
  * never denormalized note/interval data - consumers re-derive prompt/reveal
  * content via spellChord/intervalFromShort/transposeFrom/majorScaleNotes, the
  * same functions Drills and Scales already use (single source of truth).
+ *
+ * CHORD-FORMULA BUILD ORDER (n1-tier-unlock). `buildChordFormulaFacts` walks
+ * ROOTS x `V1_QUALITY_SUFFIXES` FIRST, byte-identical to the original 96-fact
+ * matrix, then ROOTS x `TIER_5_6_QUALITY_SUFFIXES` as a second, wholly
+ * APPENDED pass - never one interleaved walk over the combined
+ * `QUALITY_SUFFIXES`. This is deliberate, not incidental: `allFacts()` is
+ * read as ROW ORDER by RecallMap and enumerated by
+ * shellVoicing.seventhChordSymbols(), and facts.test.ts pins the original
+ * 96 facts at their exact original indices (`facts[95]` is still
+ * 'chord-formula:Bdim7'). Appending a new quality block after the old one
+ * keeps every existing fact's index, content and order untouched; the only
+ * thing that moves is where the (still internally unchanged) interval-size
+ * and scale-degree blocks start.
  *
  * Pure module: no DOM, no Svelte, no Dexie imports.
  */
@@ -51,10 +64,10 @@ export type Fact = ChordFormulaFact | IntervalSizeFact | ScaleDegreeFact;
 /** Number of degrees in a major scale; every scale-degree fact's degree is 1..SCALE_DEGREE_COUNT. */
 const SCALE_DEGREE_COUNT = 7;
 
-function buildChordFormulaFacts(): ChordFormulaFact[] {
-	const facts: ChordFormulaFact[] = [];
+/** Appends one ROOTS x `suffixes` block of chord-formula facts to `facts`, in place. */
+function pushChordFormulaBlock(facts: ChordFormulaFact[], suffixes: readonly string[]): void {
 	for (const root of ROOTS) {
-		for (const suffix of QUALITY_SUFFIXES) {
+		for (const suffix of suffixes) {
 			const symbol = `${root}${suffix}`;
 			// Defensive check: the whole ROOTS x QUALITY_SUFFIXES matrix is
 			// proven recognized by reference-chords.test.ts, but only include
@@ -67,6 +80,15 @@ function buildChordFormulaFacts(): ChordFormulaFact[] {
 			});
 		}
 	}
+}
+
+function buildChordFormulaFacts(): ChordFormulaFact[] {
+	const facts: ChordFormulaFact[] = [];
+	// Two separate passes, not one walk over QUALITY_SUFFIXES - see the
+	// module docstring's "CHORD-FORMULA BUILD ORDER" note: the original 96
+	// facts must keep their exact original index and order.
+	pushChordFormulaBlock(facts, V1_QUALITY_SUFFIXES);
+	pushChordFormulaBlock(facts, TIER_5_6_QUALITY_SUFFIXES);
 	return facts;
 }
 

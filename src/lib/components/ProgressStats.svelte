@@ -442,9 +442,6 @@
 			</Button>
 		{/each}
 	</div>
-	<p class="text-label text-muted mt-2 font-mono uppercase">
-		{t('progress.settings.tiersComingLater')}
-	</p>
 
 	<div class="mt-6">
 		<p class="text-label font-mono uppercase">{t('progress.settings.sound.label')}</p>
