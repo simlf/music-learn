@@ -26,6 +26,7 @@
 	import {
 		assignNotesToKeys,
 		blackKeysForOctaves,
+		MIN_ONE_OCTAVE_WHITE_KEY_PX,
 		minBoardWidthPx,
 		octavesForWidth,
 		shouldStackRows,
@@ -532,6 +533,27 @@
 		measuredWidth !== undefined && shouldStackRows(effectiveOctaves, measuredWidth)
 	);
 
+	/**
+	 * The px floor handed to an UNSTACKED board's `min-width`. A TWO-octave span
+	 * keeps the 44px fingertip floor (660px); a ONE-octave span drops to the
+	 * lower `MIN_ONE_OCTAVE_WHITE_KEY_PX` floor (320px, the width below which
+	 * its black keys would breach WCAG's 24px minimum) - 260730-q3f.
+	 *
+	 * Why the one-octave span is treated differently: it no longer wraps to two
+	 * rows (`shouldStackRows`, since its split leaves a lone C on row 2), so a
+	 * 352px floor inside a narrower container is exactly what clipped the
+	 * keyboard off the screen - a board wider than its container either scrolls
+	 * inside itself (top C hidden) or, where an ancestor grid/flex track takes
+	 * its min-content width as a floor, drags the whole card past the viewport.
+	 * At 320px and below the floor still wins and the wrapper still scrolls;
+	 * every wider phone class now fits all 8 keys at once.
+	 */
+	const boardFloorPx = $derived(
+		effectiveOctaves === 2
+			? minBoardWidthPx(2)
+			: minBoardWidthPx(1, MIN_ONE_OCTAVE_WHITE_KEY_PX)
+	);
+
 	interface KeyboardRowView {
 		/** This row's own white keys, indexed locally (0-based within the row). */
 		whiteKeys: WhiteKey[];
@@ -732,7 +754,16 @@
 	 * base letter either.
 	 */
 	function pendingClass(letter: string, octave: number, role: IntervalRole | undefined): string {
-		return role && pendingKeys?.some((k) => k.letter === letter && k.octave === octave)
+		// Octave-agnostic on a ONE-octave board (260730-q3f): callers build
+		// `pendingKeys` from the ascending audio voicing, whose upper notes sit in
+		// octave 5, but a one-octave span has no octave-5 key - those notes wrap
+		// back into the visible octave (assignNotesToKeys' D-02 branch). Comparing
+		// the octave there would silently never match, so the arpeggio roll would
+		// show every wrapped note lit from the start instead of dimmed. Two-octave
+		// boards keep the strict letter+octave match, which is what makes a scale's
+		// duplicate tonic un-dim one octave at a time.
+		const matchesOctave = (candidate: number) => effectiveOctaves === 1 || candidate === octave;
+		return role && pendingKeys?.some((k) => k.letter === letter && matchesOctave(k.octave))
 			? 'piano-keyboard__key--pending'
 			: '';
 	}
@@ -819,10 +850,11 @@
 	boardMinWidthPx: number | undefined
 )}
 	<!--
-		The board carries the fingertip floor as a px min-width and the wrapper above
-		scrolls when the container cannot supply it, so a white key is never narrower
-		than MIN_WHITE_KEY_PX at ANY viewport (measured: 43.80px keys on a 43.32px
-		pitch at 375px before this). This is the same scroll-wrap + min-width board
+		The board carries a px min-width floor and the wrapper above scrolls when the
+		container cannot supply it: the 44px fingertip floor at two octaves, the lower
+		40px (WCAG-derived) floor at one, so a one-octave board fits every phone class
+		above 320px instead of overflowing it - see `boardFloorPx`. This is
+		the same scroll-wrap + min-width board
 		shape ScaleKeyboardDrill already used, which is why the scale drill's own
 		keyboard never had the defect. The min-width is on the BOARD, never on the
 		keys: a per-key px floor is the 09-02 defect (see the note in the stylesheet),
@@ -987,7 +1019,7 @@
 			{/each}
 		</div>
 	{:else}
-		{@render board(whiteKeys, blackKeys, whiteKeyWidthPct, blackKeyWidthPct, minBoardWidthPx(effectiveOctaves))}
+		{@render board(whiteKeys, blackKeys, whiteKeyWidthPct, blackKeyWidthPct, boardFloorPx)}
 	{/if}
 </div>
 

@@ -44,16 +44,16 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
-describe('PianoKeyboard two-row stacking (mobile wrap, replaces horizontal scroll)', () => {
+describe('PianoKeyboard one-octave span never wraps to two rows (260730-q3f)', () => {
 	beforeEach(() => {
-		// Narrower than the 1-octave unstacked floor (352px) but >= the
-		// binding STACKED floor for a 1-octave span (row 1's 7 keys, 308px) -
-		// below 308px, shouldStackRows correctly declines to stack at all
-		// (see keyboardLayout.test.ts's own regression coverage for why).
+		// Narrower than the 1-octave unstacked floor (352px) and inside the old
+		// 308-352px band where a one-octave span used to stack. It no longer
+		// does at any width: the only legal split seam leaves a single lone C on
+		// row 2, which reads as a broken second keyboard.
 		stubResizeObserverWidth(320);
 	});
 
-	it('renders two .piano-keyboard__board rows inside a .piano-keyboard__rows wrapper when the measured width is below the floor', async () => {
+	it('renders one board with the full 8 white / 5 black one-octave span, and no rows wrapper', async () => {
 		const { notes } = spellChord('Cm7');
 		const { container } = render(PianoKeyboard, { notes });
 
@@ -62,35 +62,26 @@ describe('PianoKeyboard two-row stacking (mobile wrap, replaces horizontal scrol
 		await Promise.resolve();
 		await Promise.resolve();
 
-		const rowsWrapper = container.querySelector('.piano-keyboard__rows');
-		expect(rowsWrapper).not.toBeNull();
+		expect(container.querySelector('.piano-keyboard__rows')).toBeNull();
 
 		const boards = container.querySelectorAll('.piano-keyboard__board');
-		expect(boards).toHaveLength(2);
+		expect(boards).toHaveLength(1);
+		expect(boards[0].querySelectorAll('.piano-keyboard__key--white')).toHaveLength(8);
+		expect(boards[0].querySelectorAll('.piano-keyboard__key--black')).toHaveLength(5);
 	});
 
-	it('splits into 7 white / 5 black keys (row 1) and 1 white / 0 black keys (row 2) for a stacked one-octave board', async () => {
+	it('carries the one-octave board floor (8 * 40px = 320px), not the 44px-per-key floor', async () => {
 		const { notes } = spellChord('Cm7');
 		const { container } = render(PianoKeyboard, { notes });
 
 		await Promise.resolve();
 		await Promise.resolve();
 
-		const boards = container.querySelectorAll('.piano-keyboard__board');
-		expect(boards).toHaveLength(2);
-
-		const row1Whites = boards[0].querySelectorAll('.piano-keyboard__key--white');
-		const row1Blacks = boards[0].querySelectorAll('.piano-keyboard__key--black');
-		expect(row1Whites).toHaveLength(7);
-		expect(row1Blacks).toHaveLength(5);
-
-		const row2Whites = boards[1].querySelectorAll('.piano-keyboard__key--white');
-		const row2Blacks = boards[1].querySelectorAll('.piano-keyboard__key--black');
-		expect(row2Whites).toHaveLength(1);
-		expect(row2Blacks).toHaveLength(0);
+		const board = container.querySelector('.piano-keyboard__board') as HTMLElement;
+		expect(board.style.minWidth).toBe('320px');
 	});
 
-	it('preserves chord-tone highlight coloring across both rows (Cm7 root/third/fifth/seventh)', async () => {
+	it('preserves chord-tone highlight coloring (Cm7 root/third/fifth/seventh)', async () => {
 		const { notes } = spellChord('Cm7');
 		const { container } = render(PianoKeyboard, { notes });
 
@@ -210,7 +201,7 @@ describe('PianoKeyboard never stacks when stacking would not clear the fingertip
 		expect(container.querySelectorAll('.piano-keyboard__board')).toHaveLength(1);
 	});
 
-	it('at a 308px measured width (exactly the 1-octave row-1 floor), a one-octave span DOES stack, and row 1 clears 44px/key', async () => {
+	it('at a 308px measured width (the old 1-octave stacking trigger), a one-octave span stays a single 8-key row', async () => {
 		stubResizeObserverWidth(308);
 		const { notes } = spellChord('Bm7');
 		const { container } = render(PianoKeyboard, { notes, octaves: 1 });
@@ -218,10 +209,9 @@ describe('PianoKeyboard never stacks when stacking would not clear the fingertip
 		await Promise.resolve();
 		await Promise.resolve();
 
-		expect(container.querySelector('.piano-keyboard__rows')).not.toBeNull();
+		expect(container.querySelector('.piano-keyboard__rows')).toBeNull();
 		const boards = container.querySelectorAll('.piano-keyboard__board');
-		expect(boards).toHaveLength(2);
-		// Row 1 has 7 white keys; at exactly 308px that is exactly 44px/key.
-		expect(boards[0].querySelectorAll('.piano-keyboard__key--white')).toHaveLength(7);
+		expect(boards).toHaveLength(1);
+		expect(boards[0].querySelectorAll('.piano-keyboard__key--white')).toHaveLength(8);
 	});
 });

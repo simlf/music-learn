@@ -83,6 +83,24 @@ const BLACK_KEY_PATTERN: BlackKeyPattern[] = [
  */
 export const MIN_WHITE_KEY_PX = 44;
 
+/**
+ * The floor a ONE-octave board holds instead of `MIN_WHITE_KEY_PX`
+ * (260730-q3f). Derived, not picked: PianoKeyboard renders a black key at 60%
+ * of a white key's width, and WCAG 2.1 SC 2.5.5's absolute minimum target size
+ * is 24px, so a white key may shrink to 24 / 0.6 = 40px before the black keys
+ * become illegal.
+ *
+ * Why a one-octave board is allowed the lower floor at all: it no longer wraps
+ * to two rows (`shouldStackRows` returns false for it - the split would leave a
+ * lone C on row 2), so the only ways to honour a 44px floor inside a narrower
+ * container are to scroll the board sideways (hiding the top C) or to let it
+ * inflate an ancestor grid track and push the whole card off-screen. Both were
+ * live, reported bugs. Fitting the container instead keeps every key visible on
+ * every phone class this app targets: 40.5px keys at a 360px viewport, 44.25px
+ * at 390px.
+ */
+export const MIN_ONE_OCTAVE_WHITE_KEY_PX = 40;
+
 /** White keys in an `octaves`-wide C-to-C span: 7 per octave plus the trailing C. */
 export function whiteKeyCountForOctaves(octaves: 1 | 2): number {
 	return octaves * 7 + 1;
@@ -228,12 +246,23 @@ function stackedRowFloorPx(octaves: 1 | 2, minWhiteKeyPx = MIN_WHITE_KEY_PX): nu
  * single-row + horizontal-scroll fallback is the honest answer for that
  * (sub-308px on any real device this app targets) width - matching
  * PianoKeyboard's own "kept as a last resort" comment on its scroll wrapper.
+ *
+ * A ONE-octave span never stacks at all (user decision, 260730-q3f, overriding
+ * the earlier "always wrap rather than scroll" decision for this case only):
+ * splitting 8 white keys at the only black-key-free seam (white index 7, see
+ * `firstRowWhiteCount`) puts SEVEN keys on row 1 and a single lone C on row 2,
+ * which reads as a broken second keyboard rather than a wrapped one. The
+ * one-octave span instead fits its container (PianoKeyboard omits the board's
+ * px floor for it), so all 8 keys stay visible in one row at ~38-44px each.
+ * Two octaves still stack: 15 keys cannot fit a phone at any usable key size,
+ * and its split (7 + 8) yields two genuine mini-keyboards.
  */
 export function shouldStackRows(
 	octaves: 1 | 2,
 	availableWidthPx: number,
 	minWhiteKeyPx = MIN_WHITE_KEY_PX
 ): boolean {
+	if (octaves === 1) return false;
 	if (fitsWithoutScrolling(octaves, availableWidthPx, minWhiteKeyPx)) return false;
 	return availableWidthPx >= stackedRowFloorPx(octaves, minWhiteKeyPx);
 }

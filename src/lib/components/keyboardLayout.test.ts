@@ -114,28 +114,18 @@ describe('the fingertip floor for both spans', () => {
  * The corrected rule requires whichever row is wider to independently clear
  * the floor at the given width; below that, stacking cannot help and the
  * single-row + horizontal-scroll fallback remains the honest answer.
+ *
+ * Narrowed again in 260730-q3f: a ONE-octave span never stacks at any width.
+ * Its only legal seam (white index 7) leaves a single lone C on row 2, which
+ * the user rejected on sight; a one-octave board now fits its container
+ * instead (PianoKeyboard omits the px floor for it), so all 8 keys stay
+ * visible in one row.
  */
 describe('shouldStackRows', () => {
-	it('never stacks a one-octave board below its own binding row-1 floor (7 keys, 308px)', () => {
-		expect(shouldStackRows(1, 43)).toBe(false);
-		expect(shouldStackRows(1, 44)).toBe(false);
-	});
-
-	it('never stacks a one-octave board when row 1 (7 keys, 308px) could not itself clear the floor', () => {
-		// 304px (the real container width measured live at a 320px viewport,
-		// #260729-ert follow-up) is below row 1's 308px floor - must NOT stack.
-		expect(shouldStackRows(1, 304)).toBe(false);
-		expect(shouldStackRows(1, 307)).toBe(false);
-	});
-
-	it('stacks a one-octave board once row 1 (the binding 308px floor) clears, up to the point it no longer needs to stack', () => {
-		expect(shouldStackRows(1, 308)).toBe(true);
-		expect(shouldStackRows(1, 351)).toBe(true);
-	});
-
-	it('never stacks once the one-octave span already fits unstacked (>= 352px)', () => {
-		expect(shouldStackRows(1, 352)).toBe(false);
-		expect(shouldStackRows(1, 500)).toBe(false);
+	it('never stacks a one-octave board, at any width (its row 2 would hold a single lone C)', () => {
+		for (const width of [0, 43, 44, 304, 307, 308, 340, 351, 352, 500, 660, 1200]) {
+			expect(shouldStackRows(1, width), `one octave at ${width}px`).toBe(false);
+		}
 	});
 
 	it('never stacks a two-octave board below its own binding row-2 floor (8 keys, 352px)', () => {

@@ -591,21 +591,35 @@
 	 * app.css's `@media (max-width: 639.98px)` convention, inverted as the
 	 * min-width equivalent).
 	 */
+	/*
+	 * `minmax(0, 1fr)`, never a bare `1fr`: a grid track sized `1fr` still takes
+	 * its item's MIN-CONTENT width as a floor, and a `.vcard`'s min-content
+	 * width includes the `PianoKeyboard` board's own `min-width` px floor. On a
+	 * 390px viewport that measured 680px cards holding 660px (two-octave!)
+	 * boards, with the page scrolling sideways to 688px - and it was
+	 * self-fulfilling: the board's pre-measurement default span is two octaves,
+	 * whose 660px floor inflated the card, so the component's ResizeObserver
+	 * then measured 660px and concluded two octaves fit. `minmax(0, ...)` plus
+	 * `.vcard { min-width: 0 }` lets the track collapse to the real available
+	 * width, which is what PianoKeyboard must measure to size itself honestly.
+	 */
 	.vcards {
 		display: grid;
-		grid-template-columns: 1fr;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--spacing-md);
 	}
 
 	@media (min-width: 640px) {
 		.vcards {
-			grid-template-columns: repeat(2, 1fr);
+			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
 	}
 
 	.vcard {
 		border: 2px solid var(--color-ink);
 		padding: var(--spacing-sm);
+		/* See `.vcards`: without this the card imposes its content's intrinsic width on the grid track. */
+		min-width: 0;
 	}
 
 	/*

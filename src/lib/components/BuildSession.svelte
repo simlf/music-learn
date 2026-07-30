@@ -1333,10 +1333,19 @@
 				{/each}
 			</div>
 
+			<!--
+				No `octaves={2}` here, unlike the tapping keyboard above (260730-q3f):
+				the reveal is display-only, so it does not need the ascending octave to
+				be physically tappable and can self-measure its span - one octave (one
+				single row) on a phone, two on a wide screen. Pinning two octaves made
+				this board wrap into two stacked mini-keyboards on a phone, which the
+				user rejected: a finished chord reading across two keyboards is harder
+				to recognize than the same chord wrapped into one octave (the same
+				presentation the Lookup page uses).
+			-->
 			<div class="mt-4">
 				<PianoKeyboard
 					notes={construction.earnedNotes}
-					octaves={2}
 					pulseToken={revealPulseToken}
 					pendingKeys={pendingKeys}
 				/>

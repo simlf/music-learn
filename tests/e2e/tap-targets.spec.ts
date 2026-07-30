@@ -37,6 +37,18 @@ const FINGERTIP_PX = 44;
 const WCAG_MINIMUM_PX = 24;
 
 /**
+ * The floor a ONE-octave board holds instead of `FINGERTIP_PX` (260730-q3f,
+ * `keyboardLayout.MIN_ONE_OCTAVE_WHITE_KEY_PX`): 40px, the width below which a
+ * black key (60% of a white key) would breach WCAG 2.1 SC 2.5.5's 24px
+ * minimum. Such a board no longer wraps to two rows, so it fits its container
+ * down to this floor rather than imposing 352px on it - that min-width is what
+ * pushed the keyboard, and inside a grid track its whole card, off the right
+ * edge of the screen. A white key is also 160px TALL, so the tappable area
+ * stays far larger than a 40px square.
+ */
+const ONE_OCTAVE_FIT_FLOOR_PX = 40;
+
+/**
  * Stamps a chord on the Lookup hub, which reveals a PianoKeyboard
  * deterministically, then WAITS FOR THE REVEAL ANIMATION TO SETTLE.
  *
@@ -113,11 +125,19 @@ test.describe('bottom tab bar', () => {
  * where the one-octave span genuinely runs out of room, so it is the case that
  * pins the board's minimum width and its horizontal scroll.
  */
-for (const [label, viewport] of [
-	['phone narrow', PHONE_NARROW],
-	['phone portrait', PHONE],
-	['phone landscape', PHONE_LANDSCAPE],
-	['desktop', DESKTOP]
+/*
+ * `floorPx` is per-viewport since 260730-q3f: the Lookup keyboard self-measures
+ * a ONE-octave span at every phone width, and a one-octave board now fits its
+ * container rather than imposing a 352px min-width on it. At 375px and up the
+ * container already supplies 44px keys, so the fingertip floor still holds
+ * there; only the 320px-class container (~304px, 38px keys) falls back to
+ * `ONE_OCTAVE_FIT_FLOOR_PX`.
+ */
+for (const [label, viewport, floorPx] of [
+	['phone narrow', PHONE_NARROW, ONE_OCTAVE_FIT_FLOOR_PX],
+	['phone portrait', PHONE, FINGERTIP_PX],
+	['phone landscape', PHONE_LANDSCAPE, FINGERTIP_PX],
+	['desktop', DESKTOP, FINGERTIP_PX]
 ] as const) {
 	test.describe(`piano keyboard, ${label}`, () => {
 		test.use({ viewport });
@@ -151,7 +171,7 @@ for (const [label, viewport] of [
 
 			const whites = await boxesOf(page, '.piano-keyboard__key--white');
 			for (const [index, box] of whites.entries()) {
-				expect(box.width, `white key ${index} width`).toBeGreaterThanOrEqual(FINGERTIP_PX);
+				expect(box.width, `white key ${index} width`).toBeGreaterThanOrEqual(floorPx);
 				expect(box.height, `white key ${index} height`).toBeGreaterThanOrEqual(FINGERTIP_PX);
 			}
 		});
@@ -166,7 +186,7 @@ for (const [label, viewport] of [
 			for (let index = 1; index < whites.length; index += 1) {
 				const pitch = whites[index].left - whites[index - 1].left;
 				expect(pitch, `pitch between white keys ${index - 1} and ${index}`).toBeGreaterThanOrEqual(
-					FINGERTIP_PX
+					floorPx
 				);
 			}
 		});
@@ -327,4 +347,68 @@ for (const [label, viewport, expectStacked] of [
  * row now wraps into two stacked mini-keyboards instead - each row
  * independently clears the 44px floor at the SAME widths this always
  * measured, with no horizontal scroll needed on either row.
+ *
+ * Narrowed once more in 260730-q3f: two-row wrapping now applies to the
+ * TWO-octave span only. A one-octave board fits its container in a single row
+ * (its split would have left a lone C on row 2), at the `floorPx` recorded per
+ * viewport above.
  */
+
+/**
+ * The voicing card's "meet" stage, at phone widths (260730-q3f regression).
+ *
+ * This is the surface the user reported as clipped, and it is worth its own
+ * test because it failed in a way no keyboard-only test could catch: `.vcards`
+ * used a bare `1fr` grid track, whose item takes its MIN-CONTENT width as a
+ * floor, and a `PianoKeyboard`'s min-content width included the board's own
+ * `min-width` px floor. The pre-measurement default span is two octaves, so
+ * that floor was 660px: measured live at a 390px viewport, the cards rendered
+ * 680px wide holding 660px boards, and the PAGE scrolled sideways to 688px.
+ * The keyboard then measured 660px and concluded two octaves fit, so every
+ * keyboard-internal assertion looked perfectly healthy while the card hung off
+ * the screen.
+ */
+for (const [label, viewport, keyboardFitsContainer] of [
+	// 320px is the documented degraded class: its ~284px card interior is below
+	// the one-octave board's own 320px floor, so the keyboard still scrolls
+	// INSIDE itself there. The page and the cards must fit at every width.
+	['phone narrow', PHONE_NARROW, false],
+	['phone portrait', PHONE, true],
+	['phone 390', { width: 390, height: 844 }, true]
+] as const) {
+	test.describe(`voicing meet stage, ${label}`, () => {
+		test.use({ viewport });
+
+		test('fits the viewport: no sideways page scroll, no card wider than the page, one row per keyboard', async ({
+			page
+		}) => {
+			await openPracticeFamily(page, 'voicing');
+			await page.getByTestId('step-meet').click();
+			await expect(page.getByTestId('stage-meet')).toBeVisible();
+
+			const measured = await page.evaluate(() => ({
+				scrollWidth: document.documentElement.scrollWidth,
+				clientWidth: document.documentElement.clientWidth,
+				cardWidths: [...document.querySelectorAll('.vcard')].map(
+					(card) => card.getBoundingClientRect().width
+				),
+				stackedKeyboards: document.querySelectorAll('.piano-keyboard__rows').length,
+				keyboardOverflow: [...document.querySelectorAll('.piano-keyboard')].map(
+					(keyboard) => keyboard.scrollWidth - keyboard.clientWidth
+				)
+			}));
+
+			expect(measured.scrollWidth).toBeLessThanOrEqual(measured.clientWidth);
+			expect(measured.cardWidths).toHaveLength(2);
+			for (const width of measured.cardWidths) {
+				expect(width).toBeLessThanOrEqual(measured.clientWidth);
+			}
+			expect(measured.stackedKeyboards).toBe(0);
+			if (keyboardFitsContainer) {
+				for (const overflow of measured.keyboardOverflow) {
+					expect(overflow).toBeLessThanOrEqual(0);
+				}
+			}
+		});
+	});
+}
