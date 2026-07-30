@@ -4,6 +4,7 @@ import BuildSession from './BuildSession.svelte';
 import { setLocale } from '$lib/i18n/locale.svelte';
 import { Rating } from '$lib/srs/scheduler';
 import * as deckModule from '$lib/srs/deck';
+import type { DetectFrame } from '$lib/audio/chromaDetector';
 
 /**
  * Component test for BuildSession (Phase 12, Task 1): the picker (kind
@@ -31,14 +32,60 @@ const studyModeEnabledMock = vi.fn();
 // key-touch note through PianoKeyboard's own choke point (G1 UAT fix) - so
 // this mock must be defined too, or that real (unmocked) import would throw.
 const playNoteMock = vi.fn();
+const isAppAudioActiveMock = vi.fn();
 vi.mock('$lib/audio/audio', () => ({
 	playChord: (...args: unknown[]) => playChordMock(...args),
 	playArpeggio: (...args: unknown[]) => playArpeggioMock(...args),
 	playNote: (...args: unknown[]) => playNoteMock(...args),
 	ensureAudioReady: (...args: unknown[]) => ensureAudioReadyMock(...args),
 	soundEnabled: (...args: unknown[]) => soundEnabledMock(...args),
-	studyModeEnabled: (...args: unknown[]) => studyModeEnabledMock(...args)
+	studyModeEnabled: (...args: unknown[]) => studyModeEnabledMock(...args),
+	isAppAudioActive: (...args: unknown[]) => isAppAudioActiveMock(...args)
 }));
+
+/**
+ * Mic mode (Spike 025 Phase 2): `$lib/audio/micInput` is mocked exactly like
+ * MicCheckPanel.test.ts mocks it, so these tests never touch a real
+ * getUserMedia/AudioContext - only the lifecycle, the growing per-step
+ * target, and the fifth fallback are under test. `chromaDetector.ts` is
+ * NOT mocked (it is pure DSP with no browser dependency), so the real
+ * ChromaStabilityTracker/buildChromaTargetFromNotes logic runs.
+ */
+let micAvailable = true;
+let micReason: string | null = null;
+let micStopCalls = 0;
+let micStartCalls = 0;
+let lastMicOnFrame: ((frame: DetectFrame) => void) | null = null;
+let nextMicStartResult: { ok: true; stop: () => void } | { ok: false; reason: string } = {
+	ok: true,
+	stop: () => (micStopCalls += 1)
+};
+
+vi.mock('$lib/audio/micInput', () => ({
+	isMicAvailable: () => micAvailable,
+	micUnavailableReason: () => micReason,
+	startMicSession: (onFrame: (frame: DetectFrame) => void) => {
+		micStartCalls += 1;
+		lastMicOnFrame = onFrame;
+		return Promise.resolve(nextMicStartResult);
+	}
+}));
+
+/** A synthetic detector frame whose chroma is 1.0 at exactly the given pitch classes (0-11) and 0 elsewhere - loud enough to clear every DEFAULT_DETECTOR_PARAMS threshold. */
+function micFrame(chromas: number[]): DetectFrame {
+	const chroma = new Float32Array(12);
+	for (const pc of chromas) chroma[pc] = 1;
+	return { chroma, notes: chromas.map((pc) => ({ midi: 48 + pc, strength: 1 })), peak: 0.5 };
+}
+
+/** Feeds N frames (default the DEFAULT_DETECTOR_PARAMS stability count of 3) matching `chromas` through the currently-active mic session, waiting for each frame's state update to flush. */
+async function feedMicFrames(chromas: number[], count = 3): Promise<void> {
+	for (let i = 0; i < count; i++) {
+		lastMicOnFrame!(micFrame(chromas));
+		// eslint-disable-next-line no-await-in-loop
+		await Promise.resolve();
+	}
+}
 
 beforeEach(() => {
 	getCardMock.mockReset();
@@ -54,6 +101,14 @@ beforeEach(() => {
 	soundEnabledMock.mockReturnValue(true);
 	studyModeEnabledMock.mockReset();
 	studyModeEnabledMock.mockReturnValue(false);
+	isAppAudioActiveMock.mockReset();
+	isAppAudioActiveMock.mockReturnValue(false);
+	micAvailable = true;
+	micReason = null;
+	micStopCalls = 0;
+	micStartCalls = 0;
+	lastMicOnFrame = null;
+	nextMicStartResult = { ok: true, stop: () => (micStopCalls += 1) };
 });
 
 afterEach(() => {
@@ -1397,5 +1452,267 @@ describe('BuildSession French rendering + chord-symbol immunity (I18N-02)', () =
 		expect(screen.getByTestId('build-why-line')).toHaveTextContent(
 			"C'est le degré 2 de G majeur."
 		);
+	});
+});
+
+/**
+ * Mic mode (Spike 025 Phase 2, 12-06-ish): the microphone as an ALTERNATIVE
+ * to tapping the on-screen keyboard, chords only. Covers the opt-in
+ * lifecycle (never auto-starts, calm unavailable/denied fallback, explicit
+ * Stop, unmount, and reset-on-new-session teardown), a mic-confirmed step
+ * advancing the construction exactly like a matching tap (same formula-strip
+ * growth, same eventual FSRS rating), the app-audio gate, and - the single
+ * most important behavior here - that the one unverifiable step (a PERFECT
+ * fifth) is NEVER auto-confirmed by the mic, however long a full chord
+ * (fifth included) is held, and can only be crossed by an explicit tap.
+ */
+describe('BuildSession mic mode (Spike 025 Phase 2)', () => {
+	async function startCm7() {
+		render(BuildSession);
+		await fireEvent.click(screen.getByRole('button', { name: 'C' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'minor 7th' }));
+	}
+
+	async function startCdim7() {
+		render(BuildSession);
+		await fireEvent.click(screen.getByRole('button', { name: 'C' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'diminished 7th' }));
+	}
+
+	async function goMicrophone() {
+		await fireEvent.click(screen.getByRole('button', { name: 'Microphone' }));
+	}
+
+	async function clickMicStart() {
+		await fireEvent.click(screen.getByTestId('build-mic-start'));
+	}
+
+	it('never offers the input toggle for scale constructions', async () => {
+		render(BuildSession);
+		await fireEvent.click(screen.getByRole('button', { name: 'Scales' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'G major' }));
+
+		expect(screen.queryByTestId('build-input-toggle')).not.toBeInTheDocument();
+	});
+
+	it('defaults to Keyboard, showing no mic panel and never calling startMicSession merely by building', async () => {
+		await startCm7();
+
+		expect(screen.getByRole('button', { name: 'Keyboard' })).toHaveAttribute('aria-pressed', 'true');
+		expect(screen.getByRole('button', { name: 'Microphone' })).toHaveAttribute('aria-pressed', 'false');
+		expect(screen.queryByTestId('build-mic-panel')).not.toBeInTheDocument();
+		expect(micStartCalls).toBe(0);
+	});
+
+	it('switching to Microphone shows a Start control without requesting the microphone yet', async () => {
+		await startCm7();
+		await goMicrophone();
+
+		expect(screen.getByTestId('build-mic-panel')).toBeInTheDocument();
+		expect(screen.getByTestId('build-mic-start')).toBeInTheDocument();
+		expect(micStartCalls).toBe(0);
+	});
+
+	it('clicking Start requests the microphone and shows Stop while listening', async () => {
+		await startCm7();
+		await goMicrophone();
+		await clickMicStart();
+
+		expect(micStartCalls).toBe(1);
+		expect(screen.getByTestId('build-mic-stop')).toBeInTheDocument();
+		expect(screen.queryByTestId('build-mic-start')).not.toBeInTheDocument();
+	});
+
+	it('permission denied shows a calm message and no Stop control', async () => {
+		nextMicStartResult = { ok: false, reason: 'permission-denied' };
+		await startCm7();
+		await goMicrophone();
+		await clickMicStart();
+
+		expect(screen.getByTestId('build-mic-status').textContent).toMatch(/denied/i);
+		expect(screen.queryByTestId('build-mic-stop')).not.toBeInTheDocument();
+	});
+
+	it('a step confirmed by mic evidence fills the formula strip immediately, exactly like a matching tap', async () => {
+		await startCdim7();
+		await goMicrophone();
+		await clickMicStart();
+
+		// Cdim7's root (C, pc 0) is pre-placed; the first expected step is the
+		// third (E♭, pc 3) - a non-perfect-fifth chord, so mic mode can confirm
+		// every step, including the fifth (G♭ is a DIMINISHED fifth, not masked).
+		await feedMicFrames([0, 3]);
+
+		await waitFor(() =>
+			expect(within(screen.getByTestId('formula-strip')).getByText('E♭')).toBeInTheDocument()
+		);
+		// The step prompt itself paces with the same 650ms as a tap.
+		expect(screen.getByTestId('build-register')).toHaveTextContent('STEP 1 OF 3');
+
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		expect(screen.getByTestId('build-register')).toHaveTextContent('STEP 2 OF 3');
+	});
+
+	it(
+		'a construction completed ENTIRELY through the microphone (Cdim7, no perfect fifth) writes an Easy rating, identical to a flawless all-taps run',
+		async () => {
+			await startCdim7();
+			await goMicrophone();
+			await clickMicStart();
+
+			await feedMicFrames([0, 3]); // + third E♭
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			await feedMicFrames([0, 3, 6]); // + fifth G♭ (diminished, mic-verifiable)
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			await feedMicFrames([0, 3, 6, 9]); // + seventh (B♭♭, pc 9)
+			await new Promise((resolve) => setTimeout(resolve, 700));
+
+			await waitFor(() => expect(screen.getByTestId('build-complete')).toBeInTheDocument());
+			expect(recordGradeMock).toHaveBeenCalledWith(
+				expect.objectContaining({ factId: 'chord-formula:Cdim7' }),
+				Rating.Easy,
+				expect.any(Date)
+			);
+		},
+		15000
+	);
+
+	it('never confirms while the app might be sounding its own audio (isAppAudioActive gate)', async () => {
+		await startCdim7();
+		await goMicrophone();
+		await clickMicStart();
+		isAppAudioActiveMock.mockReturnValue(true);
+
+		await feedMicFrames([0, 3], 6);
+		await waitFor(() => expect(screen.getByTestId('build-mic-status').textContent).toMatch(/pause/i));
+		expect(screen.getByTestId('build-register')).toHaveTextContent('STEP 1 OF 3');
+
+		isAppAudioActiveMock.mockReturnValue(false);
+		await feedMicFrames([0, 3]);
+		await waitFor(() =>
+			expect(within(screen.getByTestId('formula-strip')).getByText('E♭')).toBeInTheDocument()
+		);
+	});
+
+	describe('the unverifiable perfect fifth (Cm7)', () => {
+		async function reachTheFifthStep() {
+			await startCm7();
+			await goMicrophone();
+			await clickMicStart();
+			await feedMicFrames([0, 3]); // root + third (E♭): mic-verifiable
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			// Now on STEP 2 OF 3, the fifth (G, a PERFECT fifth above C).
+		}
+
+		it('says plainly that the microphone cannot confirm it, instead of showing a live status', async () => {
+			await reachTheFifthStep();
+
+			expect(screen.getByTestId('build-register')).toHaveTextContent('STEP 2 OF 3');
+			expect(screen.getByTestId('build-mic-unverifiable').textContent).toMatch(/fifth/i);
+			expect(screen.queryByTestId('build-mic-status')).not.toBeInTheDocument();
+		});
+
+		it(
+			'never auto-advances past the fifth, even when the FULL target chord (fifth included) is held for many frames',
+			async () => {
+				await reachTheFifthStep();
+
+				// The full Cm7 chroma set, held far longer than the 3-frame
+				// stability window that confirms every OTHER step - if the growing
+				// target's "ignored" fifth were mistakenly treated as an
+				// automatically-satisfied requirement, or a stale latch from the
+				// PREVIOUS step survived the target change, this would wrongly
+				// skip the fifth.
+				await feedMicFrames([0, 3, 7, 10], 10);
+				await new Promise((resolve) => setTimeout(resolve, 50));
+
+				expect(screen.getByTestId('build-register')).toHaveTextContent('STEP 2 OF 3');
+				expect(screen.queryByTestId('build-complete')).not.toBeInTheDocument();
+			},
+			15000
+		);
+
+		it('is crossed by an explicit tap, after which mic verification resumes for the remaining step', async () => {
+			await reachTheFifthStep();
+
+			await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			expect(screen.getByTestId('build-register')).toHaveTextContent('STEP 3 OF 3');
+
+			// Mic mode resumes: the seventh (B♭, pc 10) on top of the
+			// now-earned root/third/fifth.
+			await feedMicFrames([0, 3, 7, 10]);
+			await waitFor(() => expect(screen.getByTestId('build-complete')).toBeInTheDocument());
+
+			// Zero wrong taps anywhere in this walk (one correct tap for the
+			// fifth, the rest by mic) - still grades Easy, identical to an
+			// all-taps flawless run.
+			expect(recordGradeMock).toHaveBeenCalledWith(
+				expect.objectContaining({ factId: 'chord-formula:Cm7' }),
+				Rating.Easy,
+				expect.any(Date)
+			);
+		});
+	});
+
+	describe('teardown', () => {
+		it('releases the stream on an explicit Stop click', async () => {
+			await startCm7();
+			await goMicrophone();
+			await clickMicStart();
+
+			await fireEvent.click(screen.getByTestId('build-mic-stop'));
+
+			expect(micStopCalls).toBe(1);
+			expect(screen.getByTestId('build-mic-start')).toBeInTheDocument();
+		});
+
+		it('releases the stream on unmount, with no explicit Stop click', async () => {
+			const { unmount } = render(BuildSession);
+			await fireEvent.click(screen.getByRole('button', { name: 'C' }));
+			await fireEvent.click(screen.getByRole('button', { name: 'minor 7th' }));
+			await fireEvent.click(screen.getByRole('button', { name: 'Microphone' }));
+			await fireEvent.click(screen.getByTestId('build-mic-start'));
+			expect(micStopCalls).toBe(0);
+
+			unmount();
+
+			expect(micStopCalls).toBe(1);
+		});
+
+		it('switching back to Keyboard mid-session stops the running mic session', async () => {
+			await startCm7();
+			await goMicrophone();
+			await clickMicStart();
+
+			await fireEvent.click(screen.getByRole('button', { name: 'Keyboard' }));
+
+			expect(micStopCalls).toBe(1);
+			expect(screen.queryByTestId('build-mic-panel')).not.toBeInTheDocument();
+		});
+
+		it('a new session ("Build Another") stops any running mic session and resets input mode back to Keyboard', async () => {
+			await startCm7();
+			await goMicrophone();
+			await clickMicStart();
+
+			// Tap through the whole chord (mic mode toggled on, but taps still
+			// work - mic is never the only input path) to reach the completion
+			// screen, which itself already stops the mic (settleCorrectOutcome).
+			await fireEvent.click(screen.getAllByRole('button', { name: 'D♯ key' })[0]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			await fireEvent.click(screen.getAllByRole('button', { name: 'A♯ key' })[0]);
+			await new Promise((resolve) => setTimeout(resolve, 700));
+			await waitFor(() => expect(screen.getByTestId('build-complete')).toBeInTheDocument());
+
+			await fireEvent.click(screen.getByRole('button', { name: 'Build Another' }));
+			await fireEvent.click(screen.getByRole('button', { name: 'C' }));
+			await fireEvent.click(screen.getByRole('button', { name: 'minor 7th' }));
+
+			expect(screen.getByRole('button', { name: 'Keyboard' })).toHaveAttribute('aria-pressed', 'true');
+			expect(screen.queryByTestId('build-mic-panel')).not.toBeInTheDocument();
+		});
 	});
 });

@@ -1,5 +1,5 @@
 import { chromaOf } from '$lib/theory/interval';
-import type { ChordResult } from '$lib/theory/types';
+import type { ChordResult, SpelledNote } from '$lib/theory/types';
 
 /**
  * Pure chroma-detection DSP for the "check it on your piano" mic verifier
@@ -316,31 +316,62 @@ export interface ChromaTarget {
 }
 
 /**
- * Builds a verification target from a looked-up chord. Excludes the PERFECT
- * fifth (root + 7 semitones) from grading entirely (neither required nor
- * flagged as extra) because it cannot be verified present or absent (see
- * module doc). A diminished/augmented fifth is left in `required` like any
- * other chord tone. An unspellable chord (any note without a resolvable
- * chroma) yields an empty `required` set, which `frameStatus` below always
- * treats as ungradeable - mirroring `matchChord.ts`'s own empty-target
- * guard (D-01/D-02).
+ * True when `letter` sits a PERFECT fifth (exactly 7 semitones) above
+ * `rootLetter`. This is the one physical limit the module doc describes: a
+ * perfect fifth above a root is that root's own 3rd partial, so a voicing
+ * that omits it still shows a fifth in the chromagram - its absence cannot
+ * be told from its presence. A diminished or augmented fifth is NOT masked
+ * this way (different chroma than the root's 3rd partial), so this only
+ * ever returns true for a genuinely perfect fifth, never "any fifth-role
+ * note". Shared by `buildChromaTargetFromNotes` (below) and BuildSession's
+ * mic mode, which both need the identical rule rather than two copies that
+ * could drift.
  */
-export function buildChromaTarget(chord: ChordResult): ChromaTarget {
-	const rootChroma = chromaOf(chord.root);
+export function isPerfectFifthAboveRoot(rootLetter: string, letter: string): boolean {
+	const rootChroma = chromaOf(rootLetter);
+	const chroma = chromaOf(letter);
+	if (rootChroma === undefined || chroma === undefined) return false;
+	return (chroma - rootChroma + 12) % 12 === 7;
+}
+
+/**
+ * Builds a verification target from an explicit root letter and note list.
+ * Excludes any note whose role is 'fifth' AND is a perfect fifth above the
+ * root from grading entirely (neither required nor flagged as extra),
+ * per `isPerfectFifthAboveRoot`. A diminished/augmented fifth is left in
+ * `required` like any other chord tone. A note without a resolvable chroma
+ * is dropped rather than crashing; an all-dropped note list yields an empty
+ * `required` set, which `frameStatus` below always treats as ungradeable -
+ * mirroring `matchChord.ts`'s own empty-target guard (D-01/D-02).
+ *
+ * Takes a bare root letter + notes rather than a `ChordResult` so it also
+ * serves BuildSession's mic mode (12-06/Phase 2), which grades a GROWING
+ * subset of a construction's own earnedNotes plus the next expected step,
+ * not a whole looked-up chord.
+ */
+export function buildChromaTargetFromNotes(rootLetter: string, notes: SpelledNote[]): ChromaTarget {
 	const required = new Set<number>();
 	const ignored = new Set<number>();
-	for (const note of chord.notes) {
+	for (const note of notes) {
 		const chroma = chromaOf(note.letter);
 		if (chroma === undefined) continue;
-		const isPerfectFifth =
-			note.role === 'fifth' && rootChroma !== undefined && (chroma - rootChroma + 12) % 12 === 7;
-		if (isPerfectFifth) {
+		if (note.role === 'fifth' && isPerfectFifthAboveRoot(rootLetter, note.letter)) {
 			ignored.add(chroma);
 			continue;
 		}
 		required.add(chroma);
 	}
 	return { required, ignored };
+}
+
+/**
+ * Builds a verification target from a looked-up chord (the Lookup page's
+ * MicCheckPanel). Thin wrapper over `buildChromaTargetFromNotes` using the
+ * chord's own root and full note list - see that function for the fifth
+ * exclusion rule and the ungradeable-empty-set guard.
+ */
+export function buildChromaTarget(chord: ChordResult): ChromaTarget {
+	return buildChromaTargetFromNotes(chord.root, chord.notes);
 }
 
 export interface DetectorParams {

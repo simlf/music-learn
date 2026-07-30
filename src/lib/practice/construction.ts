@@ -166,6 +166,30 @@ export function expectedStep(state: ConstructionState): ConstructionStep | undef
 }
 
 /**
+ * Shared "advance one step" transition for a CONFIRMED-correct target,
+ * factored out so both a matching keyboard tap (`gradeConstructionTap`
+ * below) and a mic-confirmed step (`gradeConstructionMicStep` below) produce
+ * an IDENTICAL resulting state - same position/earnedNotes/done shape, same
+ * untouched `wrongTapCount` - through one code path rather than two that
+ * could quietly drift apart (BuildSession mic mode, Spike 025 Phase 2: "a
+ * mic-accepted step must produce the same FSRS outcome as a tap-accepted
+ * step").
+ */
+function advanceOnCorrect(state: ConstructionState, target: ConstructionStep): ConstructionState {
+	const position = state.position + 1;
+	const earnedNotes: SpelledNote[] = [
+		...state.earnedNotes,
+		{ letter: target.letter, solfege: target.solfege, role: target.role }
+	];
+	return {
+		...state,
+		position,
+		earnedNotes,
+		done: position >= state.steps.length
+	};
+}
+
+/**
  * Grades one tap by MIDI/chroma only, never letter-string equality. An
  * already-done state (or a defensive undefined expectedStep) is inert:
  * returns the SAME state reference echoed back with a fixed
@@ -197,18 +221,7 @@ export function gradeConstructionTap(
 	}
 
 	if (tappedMidi === target.midi) {
-		const position = state.position + 1;
-		const earnedNotes: SpelledNote[] = [
-			...state.earnedNotes,
-			{ letter: target.letter, solfege: target.solfege, role: target.role }
-		];
-		const advancedState: ConstructionState = {
-			...state,
-			position,
-			earnedNotes,
-			done: position >= state.steps.length
-		};
-		return { outcome: 'correct', state: advancedState };
+		return { outcome: 'correct', state: advanceOnCorrect(state, target) };
 	}
 
 	const tappedChroma = Note.chroma(toAsciiAccidentals(letter));
@@ -229,6 +242,47 @@ export function gradeConstructionTap(
 		semitones,
 		direction
 	};
+}
+
+/**
+ * Confirms the CURRENT expected step from microphone evidence rather than a
+ * keyboard tap (BuildSession mic mode, Spike 025 Phase 2). The caller (a
+ * `ChromaStabilityTracker` fed the step's own growing chroma target - see
+ * `chromaDetector.ts`'s `buildChromaTargetFromNotes`) has already decided
+ * the target is confirmed by the time this is called; this function only
+ * performs the SAME state transition a matching tap would, via the shared
+ * `advanceOnCorrect` - never a second, potentially-drifting implementation
+ * of "what does earning a step mean".
+ *
+ * Deliberately does NOT touch `wrongTapCount`. A continuously-listening
+ * detector has no discrete "attempt" boundary the way a keyboard tap does:
+ * it cannot honestly tell "hasn't played it yet" apart from "played it
+ * wrong", only "not yet confirmed". Inventing a synthetic wrong-attempt
+ * signal from a weak or still-forming chord would risk penalizing a
+ * correct player for background noise or for building the voicing up one
+ * note at a time - a worse corruption of what an FSRS grade means than
+ * simply not being able to detect struggle through this input path. Stated
+ * plainly rather than hidden: a step, or a whole construction, completed
+ * ENTIRELY through the microphone can only ever grade as Good or Easy
+ * (`ratingForWrongTaps(0, steps)` in BuildSession.svelte) - identical to a
+ * flawless all-taps run, never worse, never silently different.
+ *
+ * Total, mirroring `gradeConstructionTap`'s own defensive shape: an
+ * already-done state, or a missing `expectedStep` (should be unreachable -
+ * callers only invoke this when a step is live), echoes back an inert,
+ * non-advancing result instead of throwing.
+ */
+export function gradeConstructionMicStep(state: ConstructionState): ConstructionTapResult {
+	if (state.done) {
+		return { outcome: 'wrong-pitch-class', state, semitones: 0, direction: 'high' };
+	}
+
+	const target = expectedStep(state);
+	if (!target) {
+		return { outcome: 'wrong-pitch-class', state, semitones: 0, direction: 'high' };
+	}
+
+	return { outcome: 'correct', state: advanceOnCorrect(state, target) };
 }
 
 /**

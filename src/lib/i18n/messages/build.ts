@@ -100,7 +100,33 @@ export const build = {
 		'build.confirm.3': 'Spot on, mon ami.',
 		'build.wrong.0': 'Not quite.',
 		'build.wrong.1': 'Close, but no cigar.',
-		'build.wrong.2': 'Not this time.'
+		'build.wrong.2': 'Not this time.',
+
+		'build.aria.inputGroup': 'Build input',
+		'build.input.keyboard': 'Keyboard',
+		'build.input.microphone': 'Microphone',
+
+		'build.mic.start': 'Start listening',
+		'build.mic.requesting': 'Asking for microphone access...',
+		'build.mic.stop': 'Stop listening',
+		'build.mic.statusWaiting': 'Listening. Play the next note.',
+		'build.mic.statusMissing': 'Not yet. Missing {NOTES}.',
+		'build.mic.statusExtra': 'Not yet. Extra {NOTE}.',
+		'build.mic.statusHolding': 'Almost. Hold it: {RUN} of {STABILITY}.',
+		'build.mic.statusConfirmed': 'Heard it.',
+		'build.mic.statusMuted': 'Paused while the app plays its own sound.',
+		'build.mic.hearingPrefix': 'Hearing:',
+		'build.mic.hearingNone': 'nothing yet',
+		'build.mic.unverifiableFifth':
+			"The microphone cannot confirm a fifth: it is the root's own overtone. Play it, then tap it on the keyboard to continue.",
+		'build.mic.unavailableUnsupported':
+			'Microphone input needs a browser with microphone support, such as Chrome or Firefox.',
+		'build.mic.unavailableInsecure':
+			'Microphone input needs a secure connection: https, or http://localhost during development.',
+		'build.mic.unavailablePermissionDenied':
+			"Microphone access was denied. Allow it in the browser's site settings to use this.",
+		'build.mic.unavailableNoDevice': 'No microphone was found on this device.',
+		'build.mic.unavailableUnknown': 'The microphone could not be started. Try again in a moment.'
 	},
 	fr: {
 		'build.kind.chords': 'Accords',
@@ -189,6 +215,32 @@ export const build = {
 		'build.confirm.3': 'Exactement, mon ami.',
 		'build.wrong.0': 'Pas tout à fait.',
 		'build.wrong.1': 'Presque, mais pas cette fois.',
-		'build.wrong.2': 'Pas cette fois-ci.'
+		'build.wrong.2': 'Pas cette fois-ci.',
+
+		'build.aria.inputGroup': 'Mode de saisie',
+		'build.input.keyboard': 'Clavier',
+		'build.input.microphone': 'Microphone',
+
+		'build.mic.start': 'Commencer à écouter',
+		'build.mic.requesting': "Demande d'accès au microphone...",
+		'build.mic.stop': "Arrêter l'écoute",
+		'build.mic.statusWaiting': 'En écoute. Jouez la note suivante.',
+		'build.mic.statusMissing': 'Pas encore. Il manque {NOTES}.',
+		'build.mic.statusExtra': 'Pas encore. En trop : {NOTE}.',
+		'build.mic.statusHolding': 'Presque. Tenez : {RUN} sur {STABILITY}.',
+		'build.mic.statusConfirmed': 'Entendu.',
+		'build.mic.statusMuted': "En pause pendant que l'application joue son propre son.",
+		'build.mic.hearingPrefix': 'Entendu :',
+		'build.mic.hearingNone': "rien pour l'instant",
+		'build.mic.unverifiableFifth':
+			"Le microphone ne peut pas confirmer une quinte : c'est l'harmonique de la fondamentale elle-même. Jouez-la, puis touchez-la sur le clavier pour continuer.",
+		'build.mic.unavailableUnsupported':
+			'La saisie au microphone nécessite un navigateur compatible, comme Chrome ou Firefox.',
+		'build.mic.unavailableInsecure':
+			'La saisie au microphone nécessite une connexion sécurisée : https, ou http://localhost en développement.',
+		'build.mic.unavailablePermissionDenied':
+			"L'accès au microphone a été refusé. Autorisez-le dans les réglages du site de votre navigateur pour l'utiliser.",
+		'build.mic.unavailableNoDevice': 'Aucun microphone trouvé sur cet appareil.',
+		'build.mic.unavailableUnknown': "Le microphone n'a pas pu démarrer. Réessayez dans un instant."
 	}
 } satisfies LocaleDict;

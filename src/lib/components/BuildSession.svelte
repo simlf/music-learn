@@ -7,10 +7,15 @@
 		createChordConstruction,
 		createScaleConstruction,
 		expectedStep,
+		gradeConstructionMicStep,
 		gradeConstructionTap,
 		isNotableSpelling
 	} from '$lib/practice/construction';
-	import type { ConstructionState, ConstructionStep } from '$lib/practice/construction';
+	import type {
+		ConstructionState,
+		ConstructionStep,
+		ConstructionTapResult
+	} from '$lib/practice/construction';
 	import {
 		intervalFromRoot,
 		phraseStep,
@@ -21,7 +26,32 @@
 	import { getCard, recordGrade, type CardRecord } from '$lib/srs/deck';
 	import { newCard, Rating } from '$lib/srs/scheduler';
 	import { scaleFormulaFactId } from '$lib/srs/facts';
-	import { ensureAudioReady, playArpeggio, playChord, soundEnabled, studyModeEnabled } from '$lib/audio/audio';
+	import {
+		ensureAudioReady,
+		isAppAudioActive,
+		playArpeggio,
+		playChord,
+		soundEnabled,
+		studyModeEnabled
+	} from '$lib/audio/audio';
+	import {
+		isMicAvailable,
+		micUnavailableReason,
+		startMicSession,
+		type MicSession,
+		type MicUnavailableReason
+	} from '$lib/audio/micInput';
+	import {
+		buildChromaTargetFromNotes,
+		ChromaStabilityTracker,
+		CHROMA_NAMES,
+		DEFAULT_DETECTOR_PARAMS,
+		isPerfectFifthAboveRoot,
+		type ChromaTarget,
+		type DetectFrame,
+		type PickedNote,
+		type StabilityState
+	} from '$lib/audio/chromaDetector';
 	import { currentLocale, t, type MessageKey } from '$lib/i18n/locale.svelte';
 	import { toAscendingPitches } from '$lib/audio/voicing';
 	import Button from './Button.svelte';
@@ -44,6 +74,35 @@
 	 * step's prompt appears, matching D-07. Wrong taps never diverge the two
 	 * (no position/earnedNotes change), so promptState updates immediately
 	 * for those.
+	 *
+	 * ---- Mic mode (Spike 025 Phase 2) ----
+	 * An opt-in ALTERNATIVE to tapping the on-screen keyboard, chords only
+	 * (the spike found no sequence grader for the scale drill - "unknown,
+	 * needs its own work" - so `inputMode` never offers itself for
+	 * kind === 'scales'). Never the default and never persisted: every fresh
+	 * target (resetSessionUiState, called from both start*Construction and
+	 * resetPicker) puts `inputMode` back to 'keyboard', so a new opt-in is
+	 * required per construction.
+	 *
+	 * Each step's mic target is the GROWING chroma set of earnedNotes-so-far
+	 * plus the next expected note (buildChromaTargetFromNotes), fed through
+	 * the SAME ChromaStabilityTracker/gating machinery as the Lookup page's
+	 * MicCheckPanel (isAppAudioActive() resets the tracker rather than
+	 * merely skipping a frame - see chromaDetector.ts). A confirmed step
+	 * calls gradeConstructionMicStep, which shares its state transition with
+	 * a correct tap (construction.ts's advanceOnCorrect) - so a mic-accepted
+	 * step is graded, paced (the same 650ms settleCorrectOutcome timer) and
+	 * FSRS-recorded through the EXACT same code as a tapped one, never a
+	 * parallel path that could quietly drift.
+	 *
+	 * The one case mic mode can never confirm: a PERFECT fifth is the root's
+	 * own 3rd partial (physically indistinguishable present from absent, see
+	 * chromaDetector.ts's module doc). Whenever the live expected step IS
+	 * that unverifiable fifth, this component simply does not evaluate a mic
+	 * target for it at all (see micTargetFor) and says so on screen
+	 * (build.mic.unverifiableFifth) - the user taps that one note on the
+	 * keyboard (still always rendered; mic is never the ONLY input path) and
+	 * mic verification resumes for whatever comes after it.
 	 */
 
 	/**
@@ -134,6 +193,21 @@
 	/** Stagger between each arpeggio note's sound/lighting, per the UI-SPEC's Arpeggio Roll Contract. */
 	const ARPEGGIO_STAGGER_MS = 260;
 
+	// ---- Mic mode (Spike 025 Phase 2) - chords only, see the module doc above. ----
+	type InputMode = 'keyboard' | 'microphone';
+	type MicPhase = 'idle' | 'requesting' | 'listening' | 'unavailable';
+	let inputMode = $state<InputMode>('keyboard');
+	let micPhase = $state<MicPhase>(isMicAvailable() ? 'idle' : 'unavailable');
+	let micUnavailReason = $state<MicUnavailableReason | null>(micUnavailableReason());
+	let micVerdict = $state<StabilityState | null>(null);
+	let micHeardNotes = $state<PickedNote[]>([]);
+	let micSession: MicSession | null = null;
+	const micTracker = new ChromaStabilityTracker();
+	/** Bumped on every start/stop (including destroy), so a start resolving after a stop never attaches - mirrors MicCheckPanel's own `intent` guard. */
+	let micIntent = 0;
+	/** The construction `position` the tracker was last evaluated against; a mismatch (step advanced by mic OR by a tap-fallback, e.g. the unverifiable fifth) forces a tracker reset before the next frame grades the new target, so a stale latch from the PREVIOUS target can never auto-confirm the new one (see onMicFrame). */
+	let lastMicPosition = -1;
+
 	/**
 	 * Right-answer confirmation variants (D-08): rotated with a
 	 * no-immediate-repeat picker, mirroring drills/+page.svelte's own
@@ -187,6 +261,9 @@
 	 * on every fresh target pick (startChordConstruction/startScaleConstruction)
 	 * and on kind switch/"Build Another" (via resetPicker) - the count-up hint
 	 * resets to hidden exactly when a brand-new target is picked, never mid-target.
+	 * Also stops any active mic session and puts inputMode back to the
+	 * 'keyboard' default: mic mode is opt-in PER SESSION (per construction),
+	 * never carried over into the next one.
 	 */
 	function resetSessionUiState() {
 		feedback = undefined;
@@ -203,6 +280,8 @@
 		feedbackTimer = undefined;
 		clearRollTimers();
 		pendingKeys = [];
+		stopMic();
+		inputMode = 'keyboard';
 	}
 
 	function resetPicker() {
@@ -275,6 +354,20 @@
 	);
 	/** The root/tonic currently in play, for the enharmonic teaching line's intervalFromRoot lookup. */
 	const currentRootLabel = $derived(kind === 'chords' ? (pickedRoot ?? '') : (pickedTonic ?? ''));
+	/**
+	 * True exactly when the currently-displayed step is the one thing mic
+	 * mode can never confirm: a PERFECT fifth above the root (its own 3rd
+	 * partial - see chromaDetector.ts). Read off `promptStep`/`promptState`
+	 * (the PACED, currently-narrated step), matching what's actually on
+	 * screen rather than a `construction` that may have already silently
+	 * advanced during the 650ms confirmation pace. Always false for scales
+	 * (mic mode never offers itself there).
+	 */
+	const micStepUnverifiable = $derived(
+		kind === 'chords' && promptStep?.role === 'fifth' && promptState
+			? isPerfectFifthAboveRoot(promptState.earnedNotes[0]?.letter ?? '', promptStep.letter)
+			: false
+	);
 
 	/** The 7 natural letter names, for the enharmonic teaching line's chroma-match fallback. */
 	const NATURAL_LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
@@ -615,6 +708,67 @@
 		revealPulseToken += 1;
 	}
 
+	/**
+	 * Shared tail for a CONFIRMED-correct outcome, from EITHER input path: a
+	 * matching keyboard tap (handleConstructTap) or a mic-confirmed step
+	 * (confirmMicStep, mic mode - Spike 025 Phase 2). Sets the correct-variant
+	 * feedback (with the notable-spelling enharmonic line when it applies),
+	 * fires the WR-03 immediate FSRS write the instant the session actually
+	 * completes, and reschedules the D-07 650ms pacing timer that clears
+	 * feedback, advances promptState, and - only when this step finished the
+	 * whole construction - flips to the 'complete' screen and stops any
+	 * running mic session. This is the ONLY place a correct outcome becomes
+	 * visible feedback/FSRS/pacing, so a mic-accepted step and a tapped
+	 * one are graded and recorded through the EXACT same code, never two
+	 * implementations that could quietly diverge.
+	 */
+	function settleCorrectOutcome(
+		result: ConstructionTapResult,
+		targetStep: ConstructionStep | undefined
+	): void {
+		construction = result.state;
+		const [text, index] = pickVariant(CORRECT_VARIANTS, confirmationIndex);
+		confirmationIndex = index;
+		const notable = targetStep ? isNotableSpelling(targetStep.letter) : false;
+		feedback = {
+			kind: 'correct',
+			headline: text,
+			...(notable && targetStep
+				? {
+						notable: true,
+						commonName: commonNameFor(targetStep.letter, currentRootLabel),
+						actualName: targetStep.letter,
+						intervalWord: intervalWordFor(targetStep)
+					}
+				: {})
+		};
+		// WR-03: fire the FSRS write the instant the session actually
+		// completes, independent of the 650ms pacing timer below - a
+		// navigation away within that window must not drop the grade.
+		// completionRating (260722-0ex, BACKLOG-6) is set synchronously here,
+		// the same fire-once point, so the Next tap can forward the real
+		// rating even if the async FSRS write below is slow or fails.
+		if (result.state.done) {
+			completionRating = ratingForWrongTaps(result.state.wrongTapCount, result.state.steps.length);
+			void recordConstructionOutcome();
+		}
+
+		// The FSRS write itself already fired synchronously above (WR-03) - this
+		// timer only owns the cosmetic transition to the `complete` screen.
+		const willComplete = result.state.done;
+		const nextPromptState = result.state;
+		clearTimeout(feedbackTimer);
+		feedbackTimer = setTimeout(() => {
+			feedback = undefined;
+			promptState = nextPromptState;
+			if (willComplete) {
+				sessionState = 'complete';
+				triggerReveal();
+				stopMic();
+			}
+		}, 650);
+	}
+
 	function handleConstructTap(letter: string, octave: number) {
 		if (!construction || feedback) return;
 		lastTappedLetter = letter;
@@ -624,36 +778,14 @@
 		const result = gradeConstructionTap(construction, letter, octave);
 
 		if (result.outcome === 'correct') {
-			construction = result.state;
-			const [text, index] = pickVariant(CORRECT_VARIANTS, confirmationIndex);
-			confirmationIndex = index;
-			const notable = targetStep ? isNotableSpelling(targetStep.letter) : false;
-			feedback = {
-				kind: 'correct',
-				headline: text,
-				...(notable && targetStep
-					? {
-							notable: true,
-							commonName: commonNameFor(targetStep.letter, currentRootLabel),
-							actualName: targetStep.letter,
-							intervalWord: intervalWordFor(targetStep)
-						}
-					: {})
-			};
-			// WR-03: fire the FSRS write the instant the session actually
-			// completes, independent of the 650ms pacing timer below - a
-			// navigation away within that window must not drop the grade.
-			// completionRating (260722-0ex, BACKLOG-6) is set synchronously here,
-			// the same fire-once point, so the Next tap can forward the real
-			// rating even if the async FSRS write below is slow or fails.
-			if (result.state.done) {
-				completionRating = ratingForWrongTaps(result.state.wrongTapCount, result.state.steps.length);
-				void recordConstructionOutcome();
-			}
-		} else if (result.outcome === 'wrong-pitch-class') {
-			flashKey = { letter, octave };
-			construction = result.state;
-			promptState = result.state;
+			settleCorrectOutcome(result, targetStep);
+			return;
+		}
+
+		flashKey = { letter, octave };
+		construction = result.state;
+		promptState = result.state;
+		if (result.outcome === 'wrong-pitch-class') {
 			const [text, index] = pickVariant(WRONG_VARIANTS, wrongIndex);
 			wrongIndex = index;
 			feedback = {
@@ -663,9 +795,6 @@
 				direction: result.direction
 			};
 		} else {
-			flashKey = { letter, octave };
-			construction = result.state;
-			promptState = result.state;
 			feedback = {
 				kind: 'wrong-octave',
 				headline: t('build.feedback.wrongOctave'),
@@ -678,26 +807,178 @@
 			flashKey = null;
 		}, 320);
 
-		const advancesPrompt = result.outcome === 'correct';
-		// The FSRS write itself already fired synchronously above (WR-03) - this
-		// timer only owns the cosmetic transition to the `complete` screen.
-		const willComplete = advancesPrompt && result.state.done;
-		const nextPromptState = result.state;
 		clearTimeout(feedbackTimer);
 		feedbackTimer = setTimeout(() => {
 			feedback = undefined;
-			if (advancesPrompt) promptState = nextPromptState;
-			if (willComplete) {
-				sessionState = 'complete';
-				triggerReveal();
-			}
 		}, 650);
+	}
+
+	/**
+	 * The mic verification target for the construction's CURRENT expected
+	 * step: earnedNotes-so-far plus that step's own note, via the same
+	 * buildChromaTargetFromNotes the Lookup page's MicCheckPanel uses.
+	 * Returns undefined for two distinct reasons the caller (onMicFrame)
+	 * treats identically (no mic evaluation runs): the construction is
+	 * already done, or - the important one - the live expected step IS the
+	 * unverifiable perfect fifth, in which case this deliberately refuses to
+	 * produce a target at all rather than one whose `required` set happens
+	 * not to have grown (since the fifth is always `ignored`, never
+	 * `required`) - a growing-but-unchanged required set would otherwise let
+	 * the tracker latch "confirmed" on frames left over from the PREVIOUS
+	 * step, silently skipping the fifth. See the module doc's mic-mode note.
+	 */
+	function micTargetFor(state: ConstructionState): ChromaTarget | undefined {
+		const step = expectedStep(state);
+		if (!step) return undefined;
+		const rootLetter = state.earnedNotes[0]?.letter ?? '';
+		if (step.role === 'fifth' && isPerfectFifthAboveRoot(rootLetter, step.letter)) return undefined;
+		return buildChromaTargetFromNotes(rootLetter, [...state.earnedNotes, step]);
+	}
+
+	/** Confirms the live expected step from mic evidence (see micTargetFor/onMicFrame), sharing settleCorrectOutcome with the tap path. Guarded exactly like handleConstructTap so a mic confirmation racing a tap (or a second stale confirmation) never double-fires. */
+	function confirmMicStep(): void {
+		if (!construction || feedback) return;
+		const targetStep = expectedStep(construction);
+		if (!targetStep) return;
+		settleCorrectOutcome(gradeConstructionMicStep(construction), targetStep);
+	}
+
+	/**
+	 * Per-frame mic callback. Resets the tracker whenever `construction`'s
+	 * `position` differs from the last frame it was evaluated against - this
+	 * single check covers a mic-confirmed advance, a tap-fallback advance
+	 * (the unverifiable fifth), AND the very first frame of a session
+	 * (lastMicPosition starts at -1) - so a stale latch or stale smoothing
+	 * history from a DIFFERENT target can never carry forward into the new
+	 * one (chromaDetector.ts's ChromaStabilityTracker latches "confirmed" for
+	 * up to 1.6s independent of whether the CURRENT frame still matches,
+	 * which is exactly right for a single fixed target and exactly wrong
+	 * across a target change).
+	 */
+	function onMicFrame(frame: DetectFrame): void {
+		micHeardNotes = frame.notes;
+		if (!construction) {
+			micVerdict = null;
+			return;
+		}
+		if (construction.position !== lastMicPosition) {
+			micTracker.reset();
+			lastMicPosition = construction.position;
+		}
+		const target = micTargetFor(construction);
+		if (!target) {
+			micVerdict = null;
+			return;
+		}
+		micVerdict = micTracker.push(frame, target, performance.now(), isAppAudioActive());
+		if (micVerdict.status === 'confirmed') {
+			confirmMicStep();
+		}
+	}
+
+	/** Resets every piece of mic UI/tracking state (not the session itself - see stopMic). */
+	function resetMicTracking(): void {
+		micTracker.reset();
+		lastMicPosition = -1;
+		micVerdict = null;
+		micHeardNotes = [];
+	}
+
+	/** Requests the microphone (only ever reachable via a user click on the Start button below) and starts listening. Mirrors MicCheckPanel's own start()/intent-guard shape. */
+	async function startMic(): Promise<void> {
+		if (micPhase === 'listening' || micPhase === 'requesting') return;
+		const mine = ++micIntent;
+		micPhase = 'requesting';
+		resetMicTracking();
+		const result = await startMicSession(onMicFrame);
+		if (mine !== micIntent) {
+			// Stopped, or a new construction/kind switch reset things, while the
+			// permission prompt was pending.
+			if (result.ok) result.stop();
+			return;
+		}
+		if (!result.ok) {
+			micUnavailReason = result.reason;
+			micPhase = 'unavailable';
+			return;
+		}
+		micSession = result;
+		micPhase = 'listening';
+	}
+
+	/** Releases the stream/AudioContext (idempotent, safe with no session running) - called on explicit Stop, on every fresh target/kind switch (resetSessionUiState), on completion, and on unmount. */
+	function stopMic(): void {
+		micIntent += 1;
+		micSession?.stop();
+		micSession = null;
+		if (micPhase !== 'unavailable') micPhase = 'idle';
+		resetMicTracking();
+	}
+
+	/** The "Keyboard"/"Microphone" input toggle. Switching AWAY from microphone stops any running session; switching TO it does not request the mic yet (that only happens on the explicit Start button, matching MicCheckPanel's own user-gesture discipline). */
+	function setInputMode(mode: InputMode): void {
+		if (mode === inputMode) return;
+		if (inputMode === 'microphone') stopMic();
+		inputMode = mode;
+	}
+
+	function micUnavailableCopyKey(reason: MicUnavailableReason | null): MessageKey {
+		switch (reason) {
+			case 'insecure-context':
+				return 'build.mic.unavailableInsecure';
+			case 'permission-denied':
+				return 'build.mic.unavailablePermissionDenied';
+			case 'no-device':
+				return 'build.mic.unavailableNoDevice';
+			case 'unknown':
+				return 'build.mic.unavailableUnknown';
+			case 'unsupported':
+			default:
+				return 'build.mic.unavailableUnsupported';
+		}
+	}
+
+	function micNoteName(note: PickedNote): string {
+		const pc = ((note.midi % 12) + 12) % 12;
+		const octave = Math.floor(note.midi / 12) - 1;
+		return `${CHROMA_NAMES[pc]}${octave}`;
+	}
+
+	function micHeardLine(): string {
+		return micHeardNotes.length ? micHeardNotes.map(micNoteName).join(' ') : t('build.mic.hearingNone');
+	}
+
+	function micStatusText(): string {
+		if (!micVerdict) return t('build.mic.statusWaiting');
+		switch (micVerdict.status) {
+			case 'muted':
+				return t('build.mic.statusMuted');
+			case 'confirmed':
+				return t('build.mic.statusConfirmed');
+			case 'holding':
+				return t('build.mic.statusHolding')
+					.replaceAll('{RUN}', String(micVerdict.run))
+					.replaceAll('{STABILITY}', String(DEFAULT_DETECTOR_PARAMS.stability));
+			case 'quiet':
+				return t('build.mic.statusWaiting');
+			case 'listening':
+			default:
+				if (micVerdict.missing.length > 0) {
+					const names = micVerdict.missing.map((c) => CHROMA_NAMES[c]).join(', ');
+					return t('build.mic.statusMissing').replaceAll('{NOTES}', names);
+				}
+				if (micVerdict.maxOtherPc >= 0 && micVerdict.maxOther > 0) {
+					return t('build.mic.statusExtra').replaceAll('{NOTE}', CHROMA_NAMES[micVerdict.maxOtherPc]);
+				}
+				return t('build.mic.statusWaiting');
+		}
 	}
 
 	onDestroy(() => {
 		clearTimeout(flashTimer);
 		clearTimeout(feedbackTimer);
 		clearRollTimers();
+		stopMic();
 	});
 
 	// Embedding seam (13-05): runs once at component init, after every function
@@ -831,6 +1112,95 @@
 				<div class="flex items-start gap-4" data-testid="build-target">
 					<ChordGlyph root={chordRootGlyph} quality={pickedQuality ?? ''} />
 				</div>
+
+				<!--
+					Mic mode (Spike 025 Phase 2): an opt-in ALTERNATIVE to tapping the
+					keyboard below (which always stays rendered and tappable - mic is
+					never the only input path). Chords only; see the module doc.
+				-->
+				<div
+					class="mt-4 flex gap-2"
+					data-testid="build-input-toggle"
+					role="group"
+					aria-label={t('build.aria.inputGroup')}
+				>
+					<Button
+						type="button"
+						variant={inputMode === 'keyboard' ? 'primary' : 'ghost'}
+						aria-pressed={inputMode === 'keyboard'}
+						onclick={() => setInputMode('keyboard')}
+					>
+						{t('build.input.keyboard')}
+					</Button>
+					<Button
+						type="button"
+						variant={inputMode === 'microphone' ? 'primary' : 'ghost'}
+						aria-pressed={inputMode === 'microphone'}
+						onclick={() => setInputMode('microphone')}
+					>
+						{t('build.input.microphone')}
+					</Button>
+				</div>
+
+				{#if inputMode === 'microphone'}
+					<div class="border-ink border-2 mt-3 p-3" data-testid="build-mic-panel">
+						{#if micPhase === 'unavailable'}
+							<p class="text-body text-muted" data-testid="build-mic-status">
+								{t(micUnavailableCopyKey(micUnavailReason))}
+							</p>
+						{:else}
+							<div>
+								{#if micPhase === 'idle'}
+									<Button
+										type="button"
+										variant="primary"
+										data-testid="build-mic-start"
+										onclick={startMic}
+									>
+										{t('build.mic.start')}
+									</Button>
+								{:else if micPhase === 'requesting'}
+									<Button type="button" variant="primary" disabled data-testid="build-mic-start">
+										{t('build.mic.requesting')}
+									</Button>
+								{:else}
+									<Button
+										type="button"
+										variant="ghost"
+										data-testid="build-mic-stop"
+										onclick={stopMic}
+									>
+										{t('build.mic.stop')}
+									</Button>
+								{/if}
+							</div>
+
+							{#if micPhase === 'listening'}
+								{#if micStepUnverifiable}
+									<p
+										class="text-body mt-2"
+										aria-live="polite"
+										data-testid="build-mic-unverifiable"
+									>
+										{t('build.mic.unverifiableFifth')}
+									</p>
+								{:else}
+									<p
+										class="text-body font-mono mt-2"
+										aria-live="polite"
+										data-testid="build-mic-status"
+									>
+										{micStatusText()}
+									</p>
+									<p class="text-label text-muted font-mono mt-1" data-testid="build-mic-heard">
+										{t('build.mic.hearingPrefix')}
+										{micHeardLine()}
+									</p>
+								{/if}
+							{/if}
+						{/if}
+					</div>
+				{/if}
 			{:else}
 				<p class="text-heading font-bold" data-testid="build-target">
 					{pickedTonic} {t('build.word.major')}

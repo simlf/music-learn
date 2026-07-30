@@ -4,6 +4,7 @@ import {
 	createChordConstruction,
 	createScaleConstruction,
 	expectedStep,
+	gradeConstructionMicStep,
 	gradeConstructionTap,
 	isNotableSpelling,
 	CONSTRUCTION_BASE_OCTAVE,
@@ -221,6 +222,53 @@ describe('gradeConstructionTap: wrong-pitch-class and wrong-octave grading', () 
 		expect(hit.state.wrongTapCount).toBe(2);
 		expect(hit.state.position).toBe(1);
 		expect(hit.state.earnedNotes.length).toBe(2);
+	});
+});
+
+describe('gradeConstructionMicStep: BuildSession mic mode (Spike 025 Phase 2)', () => {
+	it('advances the step and grows earnedNotes exactly like a matching tap - same resulting state, same untouched wrongTapCount', () => {
+		const initial = createChordConstruction('Cm7');
+		const step = expectedStep(initial);
+		if (!step) throw new Error('expected a live step');
+
+		const tapResult = gradeConstructionTap(initial, step.letter, CONSTRUCTION_BASE_OCTAVE);
+		const micResult = gradeConstructionMicStep(initial);
+
+		expect(micResult.outcome).toBe('correct');
+		expect(micResult.state).toEqual(tapResult.state);
+	});
+
+	it('never touches wrongTapCount, even across a whole construction confirmed entirely by mic', () => {
+		let state = createChordConstruction('Cm7');
+		while (!state.done) {
+			const result = gradeConstructionMicStep(state);
+			expect(result.outcome).toBe('correct');
+			state = result.state;
+		}
+
+		expect(state.wrongTapCount).toBe(0);
+		expect(state.earnedNotes.map((note) => note.letter)).toEqual(['C', 'E♭', 'G', 'B♭']);
+		expect(state.done).toBe(true);
+	});
+
+	it('is total: an already-done state is inert and echoes the same state back, mirroring gradeConstructionTap', () => {
+		const done = walkAllCorrect(createChordConstruction('Cm7'));
+
+		const result = gradeConstructionMicStep(done);
+
+		expect(result.outcome).toBe('wrong-pitch-class');
+		expect(result.semitones).toBe(0);
+		expect(result.direction).toBe('high');
+		expect(result.state).toBe(done);
+	});
+
+	it('unrecognized chord symbols (already-done empty state) are inert too', () => {
+		const bad = createChordConstruction('Xyz123');
+
+		const result = gradeConstructionMicStep(bad);
+
+		expect(result.outcome).toBe('wrong-pitch-class');
+		expect(result.state).toBe(bad);
 	});
 });
 

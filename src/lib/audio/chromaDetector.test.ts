@@ -13,6 +13,8 @@ import {
 	chromaFromNotes,
 	analyzeBuffer,
 	buildChromaTarget,
+	buildChromaTargetFromNotes,
+	isPerfectFifthAboveRoot,
 	frameStatus,
 	ChromaStabilityTracker,
 	type ChromaTarget,
@@ -228,6 +230,64 @@ describe('buildChromaTarget: the perfect fifth is excluded, nothing else is', ()
 		const target = buildChromaTarget(chord);
 		expect(target.required).toEqual(new Set([0, 4, 8]));
 		expect(target.ignored.size).toBe(0);
+	});
+});
+
+describe('isPerfectFifthAboveRoot', () => {
+	it('is true for a plain perfect fifth (C -> G)', () => {
+		expect(isPerfectFifthAboveRoot('C', 'G')).toBe(true);
+	});
+
+	it('is true across an enharmonic root spelling (F♯ -> C♯, still 7 semitones)', () => {
+		expect(isPerfectFifthAboveRoot('F♯', 'C♯')).toBe(true);
+	});
+
+	it('is false for a diminished fifth (C -> G♭)', () => {
+		expect(isPerfectFifthAboveRoot('C', 'G♭')).toBe(false);
+	});
+
+	it('is false for an augmented fifth (C -> G♯)', () => {
+		expect(isPerfectFifthAboveRoot('C', 'G♯')).toBe(false);
+	});
+
+	it('is false for any other interval (C -> E, a third)', () => {
+		expect(isPerfectFifthAboveRoot('C', 'E')).toBe(false);
+	});
+
+	it('is total: an unresolvable letter never throws, and returns false', () => {
+		expect(isPerfectFifthAboveRoot('C', 'not-a-note')).toBe(false);
+		expect(isPerfectFifthAboveRoot('not-a-note', 'G')).toBe(false);
+	});
+});
+
+describe('buildChromaTargetFromNotes: the shared builder behind buildChromaTarget', () => {
+	it('produces the exact same target as buildChromaTarget for the same chord (Cm7), proving the refactor is behavior-preserving', () => {
+		const chord = spellChord('Cm7');
+		expect(chord.recognized).toBe(true);
+		expect(buildChromaTargetFromNotes(chord.root, chord.notes)).toEqual(buildChromaTarget(chord));
+	});
+
+	it("grades a GROWING subset (BuildSession mic mode): root + third only, the fifth not yet in the note list at all", () => {
+		const chord = spellChord('Cm7');
+		const rootPlusThird = chord.notes.filter((n) => n.role === 'root' || n.role === 'third');
+		const target = buildChromaTargetFromNotes(chord.root, rootPlusThird);
+		expect(target.required).toEqual(new Set([0, 3])); // C, E♭ only
+		expect(target.ignored.size).toBe(0); // the fifth isn't in this note list at all yet
+	});
+
+	it('still excludes a perfect fifth from a growing subset that DOES include it', () => {
+		const chord = spellChord('Cm7');
+		const target = buildChromaTargetFromNotes(chord.root, chord.notes.slice(0, 3)); // root, third, fifth
+		expect(target.required).toEqual(new Set([0, 3]));
+		expect(target.ignored).toEqual(new Set([7]));
+	});
+
+	it('drops a note with no resolvable chroma instead of throwing', () => {
+		const target = buildChromaTargetFromNotes('C', [
+			{ letter: 'C', solfege: 'Do', role: 'root' },
+			{ letter: 'not-a-note', solfege: '', role: 'third' }
+		]);
+		expect(target.required).toEqual(new Set([0]));
 	});
 });
 
