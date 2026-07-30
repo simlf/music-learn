@@ -379,3 +379,82 @@ describe('guide tones and voice leading (unit 11)', () => {
 		expect(guideTonesSection().textContent).not.toMatch(/—|–/);
 	});
 });
+
+/**
+ * Unit 4 (interval naming, guided-path.md): generalizes the thirds lesson's
+ * number+quality mechanism to every interval, then reveals an inline
+ * spell-the-interval drill (never a card, never wired into /practice: owner
+ * decision, default no FSRS carding for this drill). Sits right after the
+ * major-scale lesson (unit 2) and before the symbol lesson, mirroring
+ * scale-lesson's own "sits right after its prerequisite" precedent.
+ */
+describe('interval naming (unit 4)', () => {
+	function intervalNamingSection() {
+		return screen.getByTestId('section-interval-naming');
+	}
+
+	it('sits right after the major-scale lesson and before the symbol lesson', () => {
+		render(TheoryLessons);
+		const sections = Array.from(
+			document.querySelectorAll<HTMLElement>('[data-testid^="section-"]')
+		).map((element) => element.dataset.testid);
+
+		expect(sections.indexOf('section-interval-naming')).toBe(sections.indexOf('section-scale') + 1);
+		expect(sections.indexOf('section-interval-naming')).toBeLessThan(
+			sections.indexOf('section-symbol')
+		);
+	});
+
+	it('renders the interval-naming lesson\'s own first step, not the thirds lesson', () => {
+		render(TheoryLessons);
+		expect(within(intervalNamingSection()).getByText('The bottom note, again')).toBeInTheDocument();
+	});
+
+	it('shows no "Prove it" block and no handoff card before the lesson is finished', () => {
+		render(TheoryLessons);
+		const section = intervalNamingSection();
+		expect(within(section).queryByTestId('interval-naming-prove-it')).not.toBeInTheDocument();
+		expect(within(section).queryByTestId('lesson-handoff')).not.toBeInTheDocument();
+	});
+
+	it('finishing the four steps reveals the inline spell-the-interval drill, never a /practice handoff', async () => {
+		render(TheoryLessons);
+		const section = intervalNamingSection();
+
+		await fireEvent.click(within(section).getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(within(section).getByRole('button', { name: 'D key' }));
+		await fireEvent.click(within(section).getByRole('button', { name: 'D♯ key' }));
+		await fireEvent.click(within(section).getByRole('button', { name: 'Continue' }));
+
+		expect(within(section).getByTestId('interval-naming-prove-it')).toBeInTheDocument();
+		expect(within(section).getByTestId('spell-interval-drill')).toBeInTheDocument();
+		expect(within(section).queryByTestId('lesson-handoff')).not.toBeInTheDocument();
+		expect(within(section).queryByRole('link', { name: /try this in a drill/i })).not.toBeInTheDocument();
+	});
+
+	it('renders the whole unit in French, with the shared French heading and the unit-specific French subtitle', async () => {
+		setLocale('fr');
+		render(TheoryLessons);
+		const section = intervalNamingSection();
+
+		expect(within(section).getByText('La note du bas, encore')).toBeInTheDocument();
+		expect(
+			within(section).getByText(
+				"La même règle qu'avant, pour chaque intervalle : le chiffre compte les lettres, la qualité compte les demi-tons."
+			)
+		).toBeInTheDocument();
+
+		await fireEvent.click(within(section).getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(within(section).getByRole('button', { name: 'D key' }));
+		await fireEvent.click(within(section).getByRole('button', { name: 'D♯ key' }));
+		await fireEvent.click(within(section).getByRole('button', { name: 'Continuer' }));
+
+		expect(within(section).getByText('Épelle-en quelques-uns')).toBeInTheDocument();
+		setLocale('en');
+	});
+
+	it('renders no em or en dashes in the new section copy', () => {
+		render(TheoryLessons);
+		expect(intervalNamingSection().textContent).not.toMatch(/—|–/);
+	});
+});

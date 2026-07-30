@@ -91,6 +91,31 @@ describe('/learn: hub structure and section presence', () => {
 		expect(within(scaleSection).queryByTestId('build-session')).not.toBeInTheDocument();
 	});
 
+	/**
+	 * Unit 4 (interval naming): generalizes the number+quality mechanism
+	 * beyond thirds, right after the major-scale lesson it builds on
+	 * (guided-path.md unit order: half steps, major scale, scale degrees,
+	 * then interval naming) and before the symbol lesson.
+	 */
+	it('renders the interval-naming lesson between the major-scale lesson and the symbol lesson', () => {
+		renderPage();
+		const sections = Array.from(
+			document.querySelectorAll<HTMLElement>('[data-testid^="section-"]')
+		).map((element) => element.dataset.testid);
+
+		expect(sections.indexOf('section-interval-naming')).toBeGreaterThan(
+			sections.indexOf('section-scale')
+		);
+		expect(sections.indexOf('section-interval-naming')).toBeLessThan(
+			sections.indexOf('section-symbol')
+		);
+
+		const intervalNamingSection = screen.getByTestId('section-interval-naming');
+		expect(
+			within(intervalNamingSection).getByText('The bottom note, again')
+		).toBeInTheDocument();
+	});
+
 	it('renders the Scale Explore section with the tonic picker and no mode toggle (exploreOnly)', () => {
 		renderPage();
 		const exploreSection = screen.getByTestId('learn-explore');

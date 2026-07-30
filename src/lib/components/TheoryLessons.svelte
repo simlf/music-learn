@@ -9,7 +9,9 @@
 	import Button from '$lib/components/Button.svelte';
 	import InteractiveLesson from '$lib/components/InteractiveLesson.svelte';
 	import BuildSession from '$lib/components/BuildSession.svelte';
+	import SpellIntervalDrill from '$lib/components/SpellIntervalDrill.svelte';
 	import { GUIDE_TONE_BARS, shellPitches, type GuideToneBar } from '$lib/lessons/guideTones';
+	import { INTERVAL_NAMING_LESSON } from '$lib/lessons/intervalNamingLesson';
 	import { t, type MessageKey } from '$lib/i18n/locale.svelte';
 
 	/**
@@ -80,6 +82,16 @@
 	const SCALE_LESSON_TONICS = ['C', 'G', 'F'] as const;
 
 	let scaleLessonTonic = $state<string | undefined>();
+
+	/**
+	 * Unit 4 (interval naming): flips once `INTERVAL_NAMING_LESSON` finishes
+	 * its steps, revealing the inline "Prove it" spelling drill below. Mirrors
+	 * the thirds lesson's own completion signal, but the proof lives on
+	 * /learn instead of handing off to /practice (owner decision: this drill
+	 * does not enter the FSRS deck), so it is driven by `onComplete` rather
+	 * than the handoff card (`showHandoff={false}` below).
+	 */
+	let intervalNamingDone = $state(false);
 
 	/**
 	 * Returns to the tonic row so the reader can build a different (or the
@@ -232,6 +244,33 @@
 				noCard
 			/>
 		{/key}
+	{/if}
+</section>
+
+<section
+	class="border-ink bg-paper-bright flex flex-col gap-4 border-2 px-4 py-6"
+	data-testid="section-interval-naming"
+>
+	<InteractiveLesson
+		steps={INTERVAL_NAMING_LESSON}
+		previewRole="second"
+		subtitleKey="theory.intervalNaming.subtitle"
+		showHandoff={false}
+		onComplete={() => (intervalNamingDone = true)}
+	/>
+	{#if intervalNamingDone}
+		<div class="border-ink mt-2 border-t-2 pt-6" data-testid="interval-naming-prove-it">
+			<p class="text-label font-mono uppercase" style="letter-spacing: 0.08em;">
+				{t('theory.lesson.handoff.tag')}
+			</p>
+			<h3 class="text-heading mt-2 font-serif font-bold">
+				{t('theory.intervalNaming.prove.heading')}
+			</h3>
+			<p class="text-body mt-2">{t('theory.intervalNaming.prove.body')}</p>
+			<div class="mt-4">
+				<SpellIntervalDrill />
+			</div>
+		</div>
 	{/if}
 </section>
 

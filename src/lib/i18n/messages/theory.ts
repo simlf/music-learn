@@ -35,6 +35,19 @@ export const theory = {
 			'The beginner course on /drills will show you chords like these and ask for the notes. The third you just measured is what decides a triad: four half steps up from the root gives a major triad, three gives a minor one.',
 		'theory.lesson.handoff.cta': 'Try this in a drill →',
 
+		// Unit 4 (interval naming, guided-path.md): extends the thirds lesson's
+		// own do-then-check InteractiveLesson shell (generalized to accept a
+		// `steps` prop) rather than restating it. Only the subtitle and the
+		// inline "prove it" block need their own copy; the heading and the four
+		// step cards' own copy live in intervalNamingLesson.ts, matching the
+		// thirds lesson's precedent of keeping step content out of the message
+		// catalog entirely.
+		'theory.intervalNaming.subtitle':
+			'The same rule as before, for every interval: the number counts letters, the quality counts half steps.',
+		'theory.intervalNaming.prove.heading': 'Spell a few',
+		'theory.intervalNaming.prove.body':
+			'Pick the letter first, then the accidental. The right key with the wrong letter still misses: that mismatch is exactly what this lesson is about.',
+
 		'theory.scale.label': 'The major scale',
 		'theory.scale.heading': 'One ruler, every key',
 		'theory.scale.body':
@@ -128,6 +141,12 @@ export const theory = {
 		'theory.lesson.handoff.body':
 			"Le parcours débutant sur /drills te montrera des accords comme ceux-ci et te demandera les notes. La tierce que tu viens de mesurer est ce qui décide d'une triade : quatre demi-tons au-dessus de la fondamentale donnent une triade majeure, trois en donnent une mineure.",
 		'theory.lesson.handoff.cta': 'Essayer dans un exercice →',
+
+		'theory.intervalNaming.subtitle':
+			'La même règle qu\'avant, pour chaque intervalle : le chiffre compte les lettres, la qualité compte les demi-tons.',
+		'theory.intervalNaming.prove.heading': 'Épelle-en quelques-uns',
+		'theory.intervalNaming.prove.body':
+			"Choisis d'abord la lettre, puis l'altération. La bonne touche avec la mauvaise lettre reste fausse : c'est exactement le piège de cette leçon.",
 
 		'theory.scale.label': 'La gamme majeure',
 		'theory.scale.heading': 'Une règle, tous les tons',

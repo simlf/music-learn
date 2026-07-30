@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import InteractiveLesson from './InteractiveLesson.svelte';
 import { LESSON_SEEDS_KEY } from '$lib/practice/drillSeeds';
 import { setLocale } from '$lib/i18n/locale.svelte';
+import { INTERVAL_NAMING_LESSON } from '$lib/lessons/intervalNamingLesson';
 
 /**
  * Component test for InteractiveLesson (Phase 19, Task 2): the guided
@@ -268,5 +269,101 @@ describe('InteractiveLesson French locale (I18N-02)', () => {
 
 		expect(frSymbol).toBe(enSymbol);
 		expect(frSymbol).toBe('C · Cm');
+	});
+});
+
+/**
+ * Generalized-props coverage (unit 4, interval naming): `steps`, `seeds`,
+ * `previewRole`, `subtitleKey`, `showHandoff` and `onComplete` are additive
+ * over the original zero-prop thirds lesson. Every default above reproduces
+ * the shipped thirds lesson byte-identically (the whole file above this
+ * point renders `<InteractiveLesson />` with no props and passes unedited,
+ * which IS that proof). This block exercises the props themselves using the
+ * real second lesson (`INTERVAL_NAMING_LESSON`), not a synthetic fixture, so
+ * a regression in either the lesson content or the generalized shell would
+ * fail here.
+ */
+describe('InteractiveLesson generalized props (unit 4)', () => {
+	async function completeIntervalNamingSteps() {
+		render(InteractiveLesson, {
+			props: { steps: INTERVAL_NAMING_LESSON, previewRole: 'second', showHandoff: false }
+		});
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'D key' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'D♯ key' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+	}
+
+	it('renders a second lesson\'s own steps in place of the thirds lesson when `steps` is passed', () => {
+		render(InteractiveLesson, { props: { steps: INTERVAL_NAMING_LESSON } });
+
+		expect(screen.getByText('The bottom note, again')).toBeInTheDocument();
+		expect(screen.queryByText('The bottom note')).not.toBeInTheDocument();
+	});
+
+	it('an augmented-second tap replaces the major-second tap under the shared "second" role (generalized replace-on-role)', async () => {
+		render(InteractiveLesson, {
+			props: { steps: INTERVAL_NAMING_LESSON, previewRole: 'second' }
+		});
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'D key' }));
+
+		expect(document.querySelector('.piano-keyboard__key--second')?.textContent).toContain('D');
+
+		await fireEvent.click(screen.getByRole('button', { name: 'D♯ key' }));
+
+		const secondKeys = document.querySelectorAll('.piano-keyboard__key--second');
+		expect(secondKeys).toHaveLength(1);
+		expect(secondKeys[0].textContent).toContain('D♯');
+	});
+
+	it('with `previewRole="second"`, "Hear it" on the augmented-second step plays the root plus D♯, not the thirds-lesson default', async () => {
+		render(InteractiveLesson, {
+			props: { steps: INTERVAL_NAMING_LESSON, previewRole: 'second' }
+		});
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'D key' }));
+		playChordMock.mockClear();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Hear it' }));
+
+		expect(playChordMock).toHaveBeenCalledWith(['C', 'D♯']);
+	});
+
+	it('with `showHandoff={false}`, finishing every step never renders the handoff card and never writes lesson seeds', async () => {
+		await completeIntervalNamingSteps();
+
+		expect(screen.queryByTestId('lesson-handoff')).not.toBeInTheDocument();
+		expect(localStorage.getItem(LESSON_SEEDS_KEY)).toBeNull();
+	});
+
+	it('`onComplete` fires exactly once, the instant the last step completes, even with `showHandoff={false}`', async () => {
+		const onComplete = vi.fn();
+		render(InteractiveLesson, {
+			props: {
+				steps: INTERVAL_NAMING_LESSON,
+				previewRole: 'second',
+				showHandoff: false,
+				onComplete: (...args: unknown[]) => onComplete(...args)
+			}
+		});
+		expect(onComplete).not.toHaveBeenCalled();
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'D key' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'D♯ key' }));
+		expect(onComplete).not.toHaveBeenCalled();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+		expect(onComplete).toHaveBeenCalledTimes(1);
+	});
+
+	it('`subtitleKey` overrides the subtitle line without touching the shared heading', () => {
+		render(InteractiveLesson, {
+			props: { steps: INTERVAL_NAMING_LESSON, subtitleKey: 'theory.intervalNaming.subtitle' }
+		});
+
+		expect(screen.getByText("Play it, don't just read it")).toBeInTheDocument();
+		expect(screen.queryByText('Four small steps.', { exact: false })).not.toBeInTheDocument();
 	});
 });

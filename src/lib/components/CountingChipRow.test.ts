@@ -53,18 +53,18 @@ describe('CountingChipRow: gap chips (Cm7 = m3 - M3 - m3)', () => {
 });
 
 describe('CountingChipRow: legend', () => {
-	it('shows both gap-to-semitone mappings by default (en)', () => {
+	it('shows both gap-to-half-step mappings by default (en)', () => {
 		render(CountingChipRow, { props: { chord: cm7 } });
 
 		const legend = screen.getByTestId('chip-legend');
 		expect(legend.textContent).toContain('+m3');
 		expect(legend.textContent).toContain('3');
-		expect(legend.textContent).toContain('semitones');
+		expect(legend.textContent).toContain('half steps');
 		expect(legend.textContent).toContain('+M3');
 		expect(legend.textContent).toContain('4');
 	});
 
-	it('translates the semitones word to demi-tons under fr, immune tokens unchanged', () => {
+	it('translates the half steps word to demi-tons under fr, immune tokens unchanged', () => {
 		setLocale('fr');
 		render(CountingChipRow, { props: { chord: cm7 } });
 

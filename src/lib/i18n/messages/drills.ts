@@ -53,11 +53,13 @@ export const drills = {
 		'drills.feedback.pickedVsCorrect': 'You picked {picked}. It was {correct}.',
 
 		// Interval confusion contrast on a miss (T13). An interval confusion IS a
-		// semitone-count confusion, and this surface never showed a count at all.
-		// Stated as counts rather than a sentence so it needs no singular/plural
-		// agreement in either language ("m2 is 1 semitones" is the trap). {A}/{B}
-		// are interval shorthand (immune); {N}/{M} are their semitone counts.
-		'drills.feedback.semitoneContrast': 'Semitones: {A} = {N}, {B} = {M}.',
+		// half-step-count confusion, and this surface never showed a count at
+		// all. Stated as counts rather than a sentence so it needs no
+		// singular/plural agreement in either language ("m2 is 1 half steps" is
+		// the trap). {A}/{B} are interval shorthand (immune); {N}/{M} are their
+		// half-step counts. The unit word is always "half steps", never "keys"
+		// or "semitones" (standing project rule, set by the thirds lesson).
+		'drills.feedback.semitoneContrast': 'Half steps: {A} = {N}, {B} = {M}.',
 
 		// The interval drill's own escalating hint ladder (T13). Framing labels
 		// ("Need a hint?", the tier prefix) are reused from the recall domain
@@ -66,13 +68,13 @@ export const drills = {
 		'drills.hint.interval.tier.name': 'the name',
 		'drills.hint.interval.tier.count': 'the count',
 		'drills.hint.interval.tier.song': 'a tune you know',
-		'drills.hint.interval.reveal.count': 'Show the semitone count',
+		'drills.hint.interval.reveal.count': 'Show the half-step count',
 		'drills.hint.interval.reveal.song': 'Name a tune you know',
 		// {SHORT} is interval shorthand (immune); {LONG} is its long name, which
 		// already follows the reader's locale.
 		'drills.hint.interval.nameBody': '{SHORT} is a {LONG}.',
-		'drills.hint.interval.countBodyUp': 'Semitones up from {ROOT}: {N}.',
-		'drills.hint.interval.countBodyBetween': 'Semitones between the two notes: {N}.',
+		'drills.hint.interval.countBodyUp': 'Half steps up from {ROOT}: {N}.',
+		'drills.hint.interval.countBodyBetween': 'Half steps between the two notes: {N}.',
 		'drills.hint.interval.closing': "That's everything about this one.",
 
 		// Screen-reader label for the per-quality stacked-thirds teaching line
@@ -94,16 +96,34 @@ export const drills = {
 		'drills.scaffold.caption': 'This chord is',
 
 		// CountingChipRow legend (SHAPE-01, Phase 32): the +m3/+M3/3/4 shorthand
-		// stays immune (never routed through t()); only the "semitones" word
-		// itself is translated.
-		'drills.chip.semitones': 'semitones',
+		// stays immune (never routed through t()); only the unit word itself is
+		// translated. Was "semitones" (surviving pre-unit-word-rule wording,
+		// fixed here to match the project's standing "half steps" vocabulary).
+		'drills.chip.semitones': 'half steps',
 		'drills.chip.legendAria': 'Gap legend',
 
 		// CountingChipRow neutral non-third gap legend row (WR-02, Phase 32
 		// Plan 02 gap closure): explains the neutral gap-chip state that
 		// renders for non-tertian drill-pool qualities (sus/6/9/13), whose
 		// gaps are not m3/M3. The +P4/+M2-style shorthand stays immune.
-		'drills.chip.otherGap': 'other gaps show their own interval'
+		'drills.chip.otherGap': 'other gaps show their own interval',
+
+		// Unit 4's spell-the-interval drill (SpellIntervalDrill.svelte). Answers
+		// a letter + accidental rather than a tapped key or a name, so the
+		// grading can validate the letter separately from the pitch (never a
+		// whole-answer string comparison). {PICKED}/{EXPECTED} are letters and
+		// {GIVEN_SHORT}/{CORRECT_SHORT} are interval shorthand: all four immune.
+		'drills.spell.promptPrefix': 'Spell the',
+		'drills.spell.promptInfix': 'above',
+		'drills.spell.letterLabel': 'Letter',
+		'drills.spell.accidentalLabel': 'Accidental',
+		'drills.spell.accidentalNatural': 'Natural',
+		'drills.spell.check': 'Check',
+		'drills.spell.letterTrap':
+			'You wrote {PICKED}, which spells {GIVEN_SHORT}. This one needs the letter {EXPECTED}, for {CORRECT_SHORT}.',
+		'drills.spell.halfStepContrast': 'Half steps: {A} = {N}, {B} = {M}.',
+		'drills.spell.roundComplete':
+			'All six spelled. Come back here whenever a chart throws an odd spelling at you.'
 	},
 	fr: {
 		'drills.score.right': 'BONNES',
@@ -152,6 +172,18 @@ export const drills = {
 		'drills.chip.semitones': 'demi-tons',
 		'drills.chip.legendAria': 'Légende des écarts',
 
-		'drills.chip.otherGap': 'les autres écarts affichent leur propre intervalle'
+		'drills.chip.otherGap': 'les autres écarts affichent leur propre intervalle',
+
+		'drills.spell.promptPrefix': 'Écris la',
+		'drills.spell.promptInfix': 'au-dessus de',
+		'drills.spell.letterLabel': 'Lettre',
+		'drills.spell.accidentalLabel': 'Altération',
+		'drills.spell.accidentalNatural': 'Bécarre',
+		'drills.spell.check': 'Vérifier',
+		'drills.spell.letterTrap':
+			'Tu as écrit {PICKED}, ça épelle {GIVEN_SHORT}. Il fallait la lettre {EXPECTED}, pour {CORRECT_SHORT}.',
+		'drills.spell.halfStepContrast': 'Demi-tons : {A} = {N}, {B} = {M}.',
+		'drills.spell.roundComplete':
+			"Les six sont épelés. Reviens ici dès qu'une grille t'envoie une orthographe bizarre."
 	}
 } satisfies LocaleDict;

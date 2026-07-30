@@ -6,29 +6,71 @@
 		gradeLessonTap,
 		semitonesFromC
 	} from '$lib/lessons/thirdsLesson';
+	import type { LessonStep } from '$lib/lessons/thirdsLesson';
 	import { setLessonSeeds } from '$lib/practice/drillSeeds';
 	import { letterToSolfege } from '$lib/theory/solfege';
-	import type { SpelledNote } from '$lib/theory/types';
+	import type { IntervalRole, SpelledNote } from '$lib/theory/types';
 	import { ensureAudioReady, playChord, playNote } from '$lib/audio/audio';
 	import { toPitch } from '$lib/audio/voicing';
-	import { t, currentLocale } from '$lib/i18n/locale.svelte';
+	import { t, currentLocale, type MessageKey } from '$lib/i18n/locale.svelte';
 	import Button from './Button.svelte';
 	import PianoKeyboard from './PianoKeyboard.svelte';
 
 	/**
-	 * The guided do-then-check thirds lesson (LEARN-01/02/03): a vertical
-	 * stack of step cards (locked/active/done), an inline one-octave
-	 * constructable keyboard on the active step only, chroma-graded taps via
-	 * `gradeLessonTap` (never letter-string comparison), gentle count-hint
-	 * retries on a wrong tap, per-step audio, and an inverted handoff card
-	 * seeding the drills page once all four steps are done. Architecturally
-	 * BuildSession minus the chord picker and its 650ms pacing timer: a
-	 * correct tap advances `activeIndex` immediately, no props, no persisted
+	 * The guided do-then-check lesson shell (LEARN-01/02/03, generalized for
+	 * unit 4): a vertical stack of step cards (locked/active/done), an inline
+	 * one-octave constructable keyboard on the active step only, chroma-graded
+	 * taps via `gradeLessonTap` (never letter-string comparison), gentle
+	 * count-hint retries on a wrong tap, per-step audio, and an inverted
+	 * handoff card seeding the drills page once every step is done.
+	 * Architecturally BuildSession minus the chord picker and its 650ms pacing
+	 * timer: a correct tap advances `activeIndex` immediately, no persisted
 	 * state (resets on reload, per the deferred cross-session persistence
 	 * decision).
+	 *
+	 * `steps`/`seeds`/`previewRole`/`subtitleKey`/`showHandoff`/`onComplete`
+	 * are additive props over the original zero-prop thirds lesson (interval
+	 * naming unit, guided-path.md unit 4): every default reproduces the
+	 * shipped thirds lesson byte-identically, so `<InteractiveLesson />` with
+	 * no props renders and behaves exactly as before
+	 * (interactiveLesson.test.ts's full existing suite is the proof). The root
+	 * itself stays hardcoded to C: both lessons that exist so far anchor there,
+	 * so parameterizing it would be speculative generality with no second
+	 * caller.
 	 */
+	interface Props {
+		/** Which lesson's steps to render. Defaults to the shipped thirds lesson. */
+		steps?: LessonStep[];
+		/** Chord symbols handed to /practice once the handoff card shows. Ignored when `showHandoff` is false. */
+		seeds?: string[];
+		/**
+		 * Which `IntervalRole` "Hear it" previews: either the ACTIVE step's own
+		 * target (when its role matches and it hasn't been tapped yet) or the
+		 * most recently earned note of that role otherwise. Defaults to 'third',
+		 * the thirds lesson's only non-root role.
+		 */
+		previewRole?: IntervalRole;
+		/** Overrides the lesson's own subtitle line (the heading stays shared/generic: "Play it, don't just read it" fits any step lesson). */
+		subtitleKey?: MessageKey;
+		/**
+		 * Whether to render the completion handoff card (a /practice link) and
+		 * write `seeds` to the lesson-seeds channel. Defaults to true, matching
+		 * every lesson shipped so far. A lesson whose proof lives inline on
+		 * /learn instead (unit 4's spelling drill) sets this false.
+		 */
+		showHandoff?: boolean;
+		/** Fired once, the instant the last step completes, regardless of `showHandoff`, so a host section can reveal its own follow-up content. */
+		onComplete?: () => void;
+	}
 
-	const steps = THIRDS_LESSON;
+	let {
+		steps = THIRDS_LESSON,
+		seeds = THIRDS_LESSON_DRILL_SEEDS,
+		previewRole = 'third',
+		subtitleKey = 'theory.lesson.subtitle',
+		showHandoff = true,
+		onComplete
+	}: Props = $props();
 
 	let activeIndex = $state(0);
 	let earnedNotes = $state<SpelledNote[]>([]);
@@ -88,28 +130,29 @@
 	}
 
 	/**
-	 * The third-role letter to sound for the active step's "Hear it" control.
-	 * A step whose OWN role is 'third' (steps 2 and 4) previews its own
-	 * target letter, whether or not it has been tapped yet - the only way
-	 * "Hear it" can ever sound anything for those steps, since a correct tap
-	 * advances `activeIndex` immediately (no BuildSession-style pacing
-	 * window where the step is simultaneously active and its note already
-	 * earned). Every other step (the root-only step 1, and the hear-then-
-	 * continue step 3) falls back to whatever third is already in
-	 * `earnedNotes` (none yet for step 1, the major third for step 3).
+	 * The `previewRole` letter to sound for the active step's "Hear it"
+	 * control (generalized from the thirds-lesson-only "third letter": see
+	 * the prop's own doc comment). A step whose OWN role matches `previewRole`
+	 * previews its own target letter, whether or not it has been tapped yet -
+	 * the only way "Hear it" can ever sound anything for those steps, since a
+	 * correct tap advances `activeIndex` immediately (no BuildSession-style
+	 * pacing window where the step is simultaneously active and its note
+	 * already earned). Every other step (a root-only step, or a hear-then-
+	 * continue step) falls back to whatever `previewRole` note is already in
+	 * `earnedNotes`.
 	 */
-	function currentThirdLetter(): string | null {
+	function currentPreviewLetter(): string | null {
 		const step = steps[activeIndex];
-		if (step?.role === 'third' && step.letter !== null) return step.letter;
-		return earnedNotes.find((note) => note.role === 'third')?.letter ?? null;
+		if (step?.role === previewRole && step.letter !== null) return step.letter;
+		return earnedNotes.find((note) => note.role === previewRole)?.letter ?? null;
 	}
 
-	/** "Hear it": plays the root alone (step 1) or the root+third pair, then bumps the pulse - outside any soundEnabled() check, so the lit key(s) still pulse with sound off (LEARN-02). */
+	/** "Hear it": plays the root alone (a root-only step) or the root+preview pair, then bumps the pulse - outside any soundEnabled() check, so the lit key(s) still pulse with sound off (LEARN-02). */
 	function hearCurrent(): void {
 		void ensureAudioReady();
-		const thirdLetter = currentThirdLetter();
-		if (thirdLetter !== null) {
-			playChord(['C', thirdLetter]);
+		const previewLetter = currentPreviewLetter();
+		if (previewLetter !== null) {
+			playChord(['C', previewLetter]);
 		} else {
 			playNote(toPitch('C', 4));
 		}
@@ -133,13 +176,15 @@
 					solfege: letterToSolfege(step.letter),
 					role: step.role
 				};
-				// The minor-third step REPLACES (not appends) the prior third
-				// entry: only one note ever claims the 'third' role at once, per
-				// the UI-SPEC's contrast-not-a-chord rule.
-				earnedNotes =
-					step.role === 'third'
-						? [...earnedNotes.filter((note) => note.role !== 'third'), earned]
-						: [...earnedNotes, earned];
+				// A step whose role already has an earned note REPLACES it rather
+				// than appending: only one note ever claims a given role at once,
+				// per the UI-SPEC's contrast-not-a-chord rule. Generalized from the
+				// thirds lesson's hardcoded "third replaces third" special case
+				// (behavior-identical there: 'root' only ever appears once, so the
+				// filter is a no-op for it); unit 4 reuses this so its augmented
+				// second (D♯) replaces its major second (D) under the shared
+				// 'second' role.
+				earnedNotes = [...earnedNotes.filter((note) => note.role !== step.role), earned];
 			}
 			wrongFlash = null;
 			clearTimeout(flashTimer);
@@ -172,11 +217,16 @@
 	 * `click` event, so a write gated on `onclick` would silently skip on
 	 * those paths (WR-02). The write is cheap and idempotent (same constant
 	 * array every time), so writing it here - and re-running harmlessly on
-	 * every `activeIndex` change after that point - is safe.
+	 * every `activeIndex` change after that point - is safe. Gated on
+	 * `showHandoff`: a lesson whose proof lives inline on /learn instead
+	 * (unit 4) never writes to the /practice handoff channel at all.
+	 * `onComplete` fires unconditionally, so a host section can react to
+	 * completion either way.
 	 */
 	$effect(() => {
 		if (activeIndex >= steps.length) {
-			setLessonSeeds(THIRDS_LESSON_DRILL_SEEDS);
+			if (showHandoff) setLessonSeeds(seeds);
+			onComplete?.();
 		}
 	});
 
@@ -198,7 +248,7 @@
 	<div>
 		<h2 class="text-heading font-serif font-bold">{t('theory.lesson.heading')}</h2>
 		<p class="text-body mt-2">
-			{t('theory.lesson.subtitle')}
+			{t(subtitleKey)}
 		</p>
 	</div>
 
@@ -280,7 +330,7 @@
 		{/each}
 	</div>
 
-	{#if activeIndex >= steps.length}
+	{#if showHandoff && activeIndex >= steps.length}
 		<div class="bg-ink text-paper-bright px-4 py-6" data-testid="lesson-handoff">
 			<p class="text-label font-mono uppercase" style="color: var(--color-mustard);">
 				{t('theory.lesson.handoff.tag')}
@@ -289,7 +339,7 @@
 			<p class="text-body mt-2" style="color: var(--color-paper); opacity: 0.85;">
 				{t('theory.lesson.handoff.body')}
 			</p>
-			<p class="text-heading mt-4 font-serif">C · Cm</p>
+			<p class="text-heading mt-4 font-serif">{seeds.join(' · ')}</p>
 			<div class="handoff-cta mt-4">
 				<Button href="/practice">{t('theory.lesson.handoff.cta')}</Button>
 			</div>

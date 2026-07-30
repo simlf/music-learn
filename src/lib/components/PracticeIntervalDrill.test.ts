@@ -237,7 +237,7 @@ describe('PracticeIntervalDrill: opt-in escalating hint ladder', () => {
 			expect(screen.queryByTestId('interval-drill-feedback')).not.toBeInTheDocument();
 		});
 
-		it('escalates one rung per tap: the name, then the semitone count', async () => {
+		it('escalates one rung per tap: the name, then the half-step count', async () => {
 			render(PracticeIntervalDrill, { props: { short: 'm3', onComplete: vi.fn() } });
 
 			await fireEvent.click(within(screen.getByTestId('interval-hint-cta')).getByRole('button'));
@@ -251,7 +251,7 @@ describe('PracticeIntervalDrill: opt-in escalating hint ladder', () => {
 			expect(layers).toHaveLength(2);
 			expect(layers[1]).toHaveAttribute('data-layer', 'count');
 			// The count rung is the piece this surface never showed anywhere.
-			expect(layers[1]).toHaveTextContent('Semitones up from B♭: 3.');
+			expect(layers[1]).toHaveTextContent('Half steps up from B♭: 3.');
 		});
 
 		it('never changes grading: a hinted correct tap still grades correct exactly once', async () => {
@@ -307,21 +307,21 @@ describe('PracticeIntervalDrill: opt-in escalating hint ladder', () => {
 			const layers = screen.getAllByTestId('interval-hint-layer');
 			// The choice chips already carried every long name, so 'name' is dropped.
 			expect(layers[0]).toHaveAttribute('data-layer', 'count');
-			expect(layers[0]).toHaveTextContent('Semitones between the two notes: 3.');
+			expect(layers[0]).toHaveTextContent('Half steps between the two notes: 3.');
 		});
 	});
 });
 
 describe('PracticeIntervalDrill: confusion contrast on the wrong path', () => {
-	it('contrasts the two semitone counts on a wrong construction tap', async () => {
+	it('contrasts the two half-step counts on a wrong construction tap', async () => {
 		vi.spyOn(Math, 'random').mockReturnValue(0.9);
 		render(PracticeIntervalDrill, { props: { short: 'm3', onComplete: vi.fn() } });
 
-		// Bb + M2 = C, one semitone short of the m3 target.
+		// Bb + M2 = C, one half step short of the m3 target.
 		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
 
 		expect(screen.getByTestId('interval-semitone-contrast')).toHaveTextContent(
-			'Semitones: M2 = 2, m3 = 3.'
+			'Half steps: M2 = 2, m3 = 3.'
 		);
 	});
 
