@@ -83,6 +83,98 @@ describe('PianoKeyboard', () => {
 		expect(document.querySelectorAll('.piano-keyboard__ivbadge')).toHaveLength(0);
 	});
 
+	it('showIntervalTicks: one labelled gap per consecutive pair, with semitone ticks (sketch 2b)', () => {
+		const { notes } = spellChord('Cm7');
+
+		render(PianoKeyboard, { notes, showIntervalTicks: true });
+
+		// C E♭ G B♭ → three gaps: m3, M3, m3.
+		const labels = [...document.querySelectorAll('.piano-keyboard__gap-label')].map((el) =>
+			el.textContent?.trim()
+		);
+		expect(labels).toEqual(['m3 · 3', 'M3 · 4', 'm3 · 3']);
+
+		// Ticks mark every intervening semitone: (3-1) + (4-1) + (3-1) = 7.
+		expect(document.querySelectorAll('.piano-keyboard__gap-tick')).toHaveLength(7);
+
+		// Every gap here IS a third, so all three lines carry a quality color.
+		expect(
+			document.querySelectorAll('.piano-keyboard__gap--minor.piano-keyboard__gap-line')
+		).toHaveLength(2);
+		expect(
+			document.querySelectorAll('.piano-keyboard__gap--major.piano-keyboard__gap-line')
+		).toHaveLength(1);
+		expect(document.querySelectorAll('.piano-keyboard__gap--other')).toHaveLength(0);
+	});
+
+	it('showIntervalTicks: a black-key endpoint draws to the black key own center, not a white key', () => {
+		const { notes } = spellChord('Cm7');
+
+		render(PianoKeyboard, { notes, showIntervalTicks: true });
+
+		// Two octaves = 15 white keys = 6.667% each. C's center is half a white
+		// key in (3.333%); E♭ is the black key after white index 1, whose center
+		// is exactly (1 + 1) * 6.667% = 13.333% - a white-key assumption would
+		// have put it at 10% (D's center) or 16.667% (E's).
+		const line = document.querySelector('.piano-keyboard__gap-line') as HTMLElement;
+		expect(parseFloat(line.style.left)).toBeCloseTo(3.333, 2);
+		expect(parseFloat(line.style.width)).toBeCloseTo(10, 2);
+	});
+
+	it('showIntervalTicks: a non-third gap goes dashed/neutral, never an M-or-m quality color', () => {
+		// C7sus4 = C F G B♭: a P4, a M2 (one white key apart), and a m3 ending
+		// on a black key - the handoff's own stress-test chord.
+		const { notes } = spellChord('C7sus4');
+
+		render(PianoKeyboard, { notes, showIntervalTicks: true });
+
+		const labels = [...document.querySelectorAll('.piano-keyboard__gap-label')];
+		const byText = (text: string) => labels.find((el) => el.textContent?.trim() === text);
+
+		expect(byText('P4 · 5')).toHaveClass('piano-keyboard__gap--other');
+		expect(byText('M2 · 2')).toHaveClass('piano-keyboard__gap--other');
+		expect(byText('m3 · 3')).toHaveClass('piano-keyboard__gap--minor');
+
+		// The narrow M2 (one white key apart, ~44px at the 660px board floor)
+		// drops its label a size; the wide P4 does not.
+		expect(byText('M2 · 2')).toHaveClass('piano-keyboard__gap-label--narrow');
+		expect(byText('P4 · 5')).not.toHaveClass('piano-keyboard__gap-label--narrow');
+	});
+
+	it('showIntervalTicks: the whole rail is pointer-events-free so it never eats a key tap', () => {
+		const { notes } = spellChord('Cm7');
+
+		const { container } = render(PianoKeyboard, {
+			notes,
+			showIntervalTicks: true,
+			inspectable: true
+		});
+
+		const rail = container.querySelector('.piano-keyboard__rail');
+		expect(rail).not.toBeNull();
+		expect(rail).toHaveAttribute('aria-hidden', 'true');
+		// The rail sits ABOVE the board in the DOM, as a sibling of it.
+		expect(rail?.nextElementSibling).toHaveClass('piano-keyboard__board');
+	});
+
+	it('showIntervalTicks: fewer than two highlighted notes draws no rail', () => {
+		const { notes } = spellChord('Cm7');
+
+		render(PianoKeyboard, {
+			notes: notes.slice(0, 1),
+			showIntervalTicks: true
+		});
+
+		expect(document.querySelector('.piano-keyboard__rail')).toBeNull();
+	});
+
+	it('non-regression: omitting showIntervalTicks renders no tick rail', () => {
+		const { notes } = spellChord('Cm7');
+		render(PianoKeyboard, { notes });
+		expect(document.querySelector('.piano-keyboard__rail')).toBeNull();
+		expect(document.querySelectorAll('.piano-keyboard__gap-line')).toHaveLength(0);
+	});
+
 	it('renders a display-only keyboard with no click or keydown handlers', () => {
 		const { notes } = spellChord('Cm7');
 		const { container } = render(PianoKeyboard, { notes });

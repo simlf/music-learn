@@ -6,6 +6,7 @@ import {
 	aliasLine,
 	displaySymbol,
 	formulaSentence,
+	gapsBetween,
 	stackedThirdsFor,
 	thirdSpellingSentence
 } from './chordPresentation';
@@ -500,6 +501,35 @@ describe('formulaSentence: FR locale (Phase 17 copy translated)', () => {
 		for (const symbol of ['Cdim', 'Cm7b5', 'Cmaj7', 'Cm', 'C', 'C7']) {
 			expect(formulaSentence(spellChord(symbol))).not.toMatch(/—|–/);
 		}
+	});
+});
+
+describe('gapsBetween', () => {
+	it('is the single derivation stackedThirdsFor itself uses (keyboard tick rail shares it)', () => {
+		for (const symbol of ['Cm7', 'Cmaj7', 'C7sus4', 'C13', 'Cdim7']) {
+			const chord = spellChord(symbol);
+			expect(gapsBetween(chord.notes)).toEqual(stackedThirdsFor(chord).gaps);
+		}
+	});
+
+	it('carries the connective-free shorthand and the half-step count each gap spans', () => {
+		const gaps = gapsBetween(spellChord('Cm7').notes);
+		expect(gaps.map((g) => g.short)).toEqual(['m3', 'M3', 'm3']);
+		expect(gaps.map((g) => g.semitones)).toEqual([3, 4, 3]);
+		// The "+"-prefixed label the stacked-thirds row shows is unchanged.
+		expect(gaps.map((g) => g.label)).toEqual(['+m3', '+M3', '+m3']);
+	});
+
+	it('flags non-third gaps for C7sus4 (P4, M2) while the m3 stays a third', () => {
+		const gaps = gapsBetween(spellChord('C7sus4').notes);
+		expect(gaps.map((g) => g.short)).toEqual(['P4', 'M2', 'm3']);
+		expect(gaps.map((g) => g.isThird)).toEqual([false, false, true]);
+		expect(gaps.map((g) => g.semitones)).toEqual([5, 2, 3]);
+	});
+
+	it('yields no gaps for a one-note or empty list, never throws', () => {
+		expect(gapsBetween([])).toEqual([]);
+		expect(gapsBetween(spellChord('Cm7').notes.slice(0, 1))).toEqual([]);
 	});
 });
 

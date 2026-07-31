@@ -479,6 +479,7 @@ Recent decisions affecting current work:
 | 260720-v9u | Move "From my songs" filter to Songs page as single global preference | 2026-07-20 | eec9db4 | [260720-v9u-move-the-from-my-songs-review-pool-filte](./quick/260720-v9u-move-the-from-my-songs-review-pool-filte/) |
 | 260729-ert | Mobile voicing card: wrap keyboard to two rows on phone, stop header clipping | 2026-07-29 | 5c11bf4 | [260729-ert-fix-mobile-broken-voicing-card-wrap-pian](./quick/260729-ert-fix-mobile-broken-voicing-card-wrap-pian/) |
 | 260730-q3f | Phone keyboards: stop the voicing cards overflowing the viewport, one-octave boards fit their container in a single row (narrows 260729-ert's two-row wrap to the 2-octave span) | 2026-07-30 | df6ea3d | [260730-q3f-phone-keyboard-overflow-and-double-row](./quick/260730-q3f-phone-keyboard-overflow-and-double-row/) |
+| 260731-031 | Keyboard-native interval display: `showIntervalTicks` semitone tick rail above the piano board (design handoff sketch 2b), opted in on lookup | 2026-07-31 | d6abc37 | [260731-031-keyboard-interval-tick-rail](./quick/260731-031-keyboard-interval-tick-rail/) |
 
 ## Deferred Items
 

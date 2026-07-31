@@ -23,6 +23,7 @@
 	import { intervalFromRoot, toAsciiAccidentals, transposeFrom } from '$lib/theory/interval';
 	import { letterToSolfege } from '$lib/theory/solfege';
 	import type { IntervalRole, SpelledNote } from '$lib/theory/types';
+	import { gapsBetween } from '$lib/lookup/chordPresentation';
 	import {
 		assignNotesToKeys,
 		blackKeysForOctaves,
@@ -198,6 +199,19 @@
 		 * today.
 		 */
 		bassHint?: { letter: string; octave: number } | null;
+		/**
+		 * Semitone tick rail above the board (design handoff "keyboard-native
+		 * interval display", sketch 1d refined as 2b): for each consecutive pair
+		 * of highlighted `notes`, a line spanning the two keys' x-centers, a
+		 * `M3 · 4`-style label above its midpoint, and one tick per
+		 * intervening semitone. Answers "how far apart are these two notes"
+		 * where the notes actually are, complementing `showIntervalBadges`'
+		 * root-relative corner badges (which answer "what degree is this note").
+		 * Suppressed on a stacked (two-row phone) board, where a single
+		 * absolutely-positioned line cannot span the row break. Additive and
+		 * gated; omitting it leaves the render byte-identical.
+		 */
+		showIntervalTicks?: boolean;
 	}
 
 	let {
@@ -217,7 +231,8 @@
 		pulseToken,
 		pendingKeys,
 		ghostKeys,
-		bassHint
+		bassHint,
+		showIntervalTicks = false
 	}: Props = $props();
 
 	/** Interval-from-root short label for a highlighted note (sketch 003). "R" for the root. */
@@ -553,6 +568,110 @@
 			? minBoardWidthPx(2)
 			: minBoardWidthPx(1, MIN_ONE_OCTAVE_WHITE_KEY_PX)
 	);
+
+	/**
+	 * One drawn entry of the tick rail (`showIntervalTicks`): the gap between
+	 * two adjacent chord tones, already resolved to board-percentage geometry.
+	 * Percentages (not px) because the board's own key `left`/`width` are
+	 * percentages, so the rail stays aligned with the keys at every container
+	 * width, including the scrolling min-width case.
+	 */
+	interface TickGap {
+		/** Interval shorthand without the connective "+", e.g. "M3". */
+		short: string;
+		/** Half steps spanned; the rail draws `semitones - 1` intervening ticks. */
+		semitones: number;
+		/** Third gaps carry the M/m quality color; everything else goes dashed/hollow. */
+		isThird: boolean;
+		/** 'major' | 'minor' for a third, 'other' for every non-third gap. */
+		quality: 'major' | 'minor' | 'other';
+		fromPct: number;
+		spanPct: number;
+		midPct: number;
+		ticksPct: number[];
+		/** Span under ~60px: the label drops to 9px so neighboring labels do not collide. */
+		narrow: boolean;
+	}
+
+	/**
+	 * A highlighted note's x-center on the board, as a percentage of board
+	 * width, or undefined when the note was never assigned a key.
+	 *
+	 * Reads the SAME `noteAssignment` map the keys themselves render from, so a
+	 * flat-spelled or exotic-enharmonic note (assignNotesToKeys' chroma
+	 * fallback) and a D-02-wrapped note both resolve to the key they actually
+	 * rendered on - a second letter-to-key lookup here would silently disagree
+	 * with the board for exactly those cases.
+	 *
+	 * White and black keys both resolve, per the handoff's black-key-endpoint
+	 * requirement (a m3 landing on B♭ must draw to the black key's center). The
+	 * black-key form collapses cleanly: its `leftPct` is
+	 * `(afterWhiteIndex + 1) * whiteW - blackW / 2`, so its center is exactly
+	 * `(afterWhiteIndex + 1) * whiteW`.
+	 */
+	function centerPctFor(note: SpelledNote): number | undefined {
+		const candidate = noteAssignment.get(note);
+		if (!candidate) return undefined;
+		if (candidate.kind === 'white') {
+			return candidate.keyIndex * whiteKeyWidthPct + whiteKeyWidthPct / 2;
+		}
+		const pattern = blackKeyPatterns[candidate.keyIndex];
+		if (!pattern) return undefined;
+		return (pattern.afterWhiteIndex + 1) * whiteKeyWidthPct;
+	}
+
+	/** Below this span (in CSS px) the label shrinks - see TickGap.narrow. */
+	const NARROW_GAP_PX = 60;
+
+	/**
+	 * The tick rail's gaps (`showIntervalTicks`). Gap NAMING comes from
+	 * `gapsBetween`, the same derivation `stackedThirdsFor` uses for the
+	 * stacked-thirds row, so the keyboard and that row can never disagree about
+	 * which gaps are thirds; only the GEOMETRY is computed here.
+	 *
+	 * Suppressed wholesale when the board is stacked (a single absolutely-
+	 * positioned line cannot cross a row break that does not exist in the DOM)
+	 * and when there are fewer than two notes (nothing to span). Individual
+	 * gaps are also dropped when either endpoint is unplaced or when the second
+	 * endpoint does not sit to the RIGHT of the first - which happens on a
+	 * one-octave board once a note wraps back into the span (D-02), where a
+	 * drawn line would run backwards and name a distance the board is not
+	 * actually showing.
+	 */
+	const intervalGaps: TickGap[] = $derived.by(() => {
+		if (!showIntervalTicks || stacked || notes.length < 2) return [];
+
+		// The rail and the board share a width: the measured container, floored
+		// at the board's own min-width (which is what the wrapper scrolls to
+		// reach). Only used for the narrow-label px threshold - all positioning
+		// is percentage-based.
+		const boardWidthPx = Math.max(measuredWidth ?? 0, boardFloorPx);
+
+		const drawn: TickGap[] = [];
+		gapsBetween(notes).forEach((gap, index) => {
+			const fromPct = centerPctFor(notes[index]);
+			const toPct = centerPctFor(notes[index + 1]);
+			if (fromPct === undefined || toPct === undefined || toPct <= fromPct) return;
+
+			const spanPct = toPct - fromPct;
+			const steps = gap.semitones;
+			drawn.push({
+				short: gap.short,
+				semitones: steps,
+				isThird: gap.isThird,
+				quality: gap.isThird ? (gap.short.startsWith('M') ? 'major' : 'minor') : 'other',
+				fromPct,
+				spanPct,
+				midPct: fromPct + spanPct / 2,
+				ticksPct:
+					steps > 1
+						? Array.from({ length: steps - 1 }, (_, k) => fromPct + ((k + 1) * spanPct) / steps)
+						: [],
+				narrow: (spanPct / 100) * boardWidthPx < NARROW_GAP_PX
+			});
+		});
+		return drawn;
+	});
 
 	interface KeyboardRowView {
 		/** This row's own white keys, indexed locally (0-based within the row). */
@@ -1019,6 +1138,40 @@
 			{/each}
 		</div>
 	{:else}
+		<!--
+			Tick rail (`showIntervalTicks`), a sibling ABOVE the board rather than a
+			child of it: it carries the same `min-width` floor, so the two layers
+			stay column-aligned at every width - including when the wrapper scrolls
+			them together - without the rail's own absolutely-positioned children
+			having to live inside the key layer's stacking context. Rendered only on
+			the unstacked branch (see `intervalGaps`); `aria-hidden` because every
+			interval it draws is already announced by the keys' own labels and the
+			stacked-thirds row, and the whole rail is pointer-events: none so it can
+			never intercept a key tap in interactive/construct/inspect mode.
+		-->
+		{#if intervalGaps.length > 0}
+			<div class="piano-keyboard__rail" style="min-width: {boardFloorPx}px;" aria-hidden="true">
+				{#each intervalGaps as gap, index (index)}
+					<span
+						class="piano-keyboard__gap-line piano-keyboard__gap--{gap.quality}"
+						style="left: {gap.fromPct}%; width: {gap.spanPct}%;"
+					></span>
+					{#each gap.ticksPct as tickPct, tickIndex (tickIndex)}
+						<span
+							class="piano-keyboard__gap-tick piano-keyboard__gap--{gap.quality}"
+							style="left: {tickPct}%;"
+						></span>
+					{/each}
+					<span
+						class="piano-keyboard__gap-label piano-keyboard__gap--{gap.quality}"
+						class:piano-keyboard__gap-label--narrow={gap.narrow}
+						style="left: {gap.midPct}%;"
+					>
+						{gap.short} · {gap.semitones}
+					</span>
+				{/each}
+			</div>
+		{/if}
 		{@render board(whiteKeys, blackKeys, whiteKeyWidthPct, blackKeyWidthPct, boardFloorPx)}
 	{/if}
 </div>
@@ -1072,6 +1225,121 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--spacing-sm);
+	}
+
+	/*
+	 * Semitone tick rail (`showIntervalTicks`, design handoff sketch 2b): a thin
+	 * strip directly above the board carrying one line + label + tick set per
+	 * consecutive pair of chord tones. Height comes from the --spacing-* scale
+	 * (xl = 32px), not an arbitrary pixel value: the label occupies the top
+	 * ~12px, the line sits at --spacing-lg (24px), and the ticks straddle it.
+	 *
+	 * `pointer-events: none` on the rail itself (inherited by every child) is
+	 * load-bearing, not defensive: the rail overlaps nothing today, but it sits
+	 * inside the same scroll wrapper as an interactive/constructable/inspectable
+	 * board, and a stray tap target here would swallow a key press.
+	 */
+	.piano-keyboard__rail {
+		position: relative;
+		width: 100%;
+		height: var(--spacing-xl);
+		pointer-events: none;
+	}
+
+	.piano-keyboard__gap-line {
+		position: absolute;
+		top: var(--spacing-lg);
+		height: 2px;
+	}
+
+	/*
+	 * Ticks are SQUARES, not the mockup's circles: `* { border-radius: 0
+	 * !important }` (app.css) is this design system's one absolute rule, no
+	 * element in src/ has ever exempted itself from it, and the handoff's own
+	 * fallback for exactly this collision is to "reconsider circular ticks
+	 * against the sharp-corner rule." A sharp tick also reads as a printed
+	 * register mark, which is the palette's whole conceit.
+	 *
+	 * 8px (a --spacing-sm-sized mark) rather than the mockup's 10px, so the
+	 * single tick of a one-semitone gap still clears its neighbors' ticks at
+	 * phone key widths.
+	 */
+	.piano-keyboard__gap-tick {
+		position: absolute;
+		top: calc(var(--spacing-lg) - 3px);
+		width: 8px;
+		height: 8px;
+		box-sizing: border-box;
+		transform: translateX(-50%);
+	}
+
+	.piano-keyboard__gap-label {
+		position: absolute;
+		top: 0;
+		transform: translateX(-50%);
+		font-family: var(--font-mono);
+		font-size: 11px;
+		font-weight: 700;
+		line-height: 1;
+		letter-spacing: 0.02em;
+		white-space: nowrap;
+	}
+
+	/*
+	 * Narrow-gap collision handling: two tones one white key apart span less
+	 * than ~60px, where an 11px label is wider than its own gap and runs into
+	 * the neighboring gap's label.
+	 */
+	.piano-keyboard__gap-label--narrow {
+		font-size: 9px;
+	}
+
+	/*
+	 * Third gaps - the chord's real stacked-thirds skeleton - are the only ones
+	 * that carry a quality color: solid line, filled ticks, colored label.
+	 */
+	.piano-keyboard__gap-line.piano-keyboard__gap--major,
+	.piano-keyboard__gap-tick.piano-keyboard__gap--major {
+		background-color: var(--color-gap-major);
+	}
+
+	.piano-keyboard__gap-label.piano-keyboard__gap--major {
+		color: var(--color-gap-major);
+	}
+
+	.piano-keyboard__gap-line.piano-keyboard__gap--minor,
+	.piano-keyboard__gap-tick.piano-keyboard__gap--minor {
+		background-color: var(--color-gap-minor);
+	}
+
+	.piano-keyboard__gap-label.piano-keyboard__gap--minor {
+		color: var(--color-gap-minor);
+	}
+
+	/*
+	 * Non-third gaps (a sus4's P4, a 6th chord's M2, C13's P5 over a missing
+	 * 11th) are explicitly NOT thirds and must never borrow the M/m colors -
+	 * the same distinction IntervalView's `.interval-view__gap--other` and
+	 * CountingChipRow's dashed neutral chip already draw. Dashed line (a
+	 * background cannot be dashed, so this is a bottom border on a zero-height
+	 * box), hollow ticks, un-filled italic label in muted ink.
+	 *
+	 * The label still spells out "P4"/"M2" in text, exactly as a third's does:
+	 * the color is additive information, never the only carrier of it.
+	 */
+	.piano-keyboard__gap-line.piano-keyboard__gap--other {
+		height: 0;
+		border-bottom: 2px dashed var(--color-faint);
+	}
+
+	.piano-keyboard__gap-tick.piano-keyboard__gap--other {
+		background-color: var(--color-paper-bright);
+		border: 2px solid var(--color-faint);
+	}
+
+	.piano-keyboard__gap-label.piano-keyboard__gap--other {
+		color: var(--color-muted);
+		font-style: italic;
 	}
 
 	/*

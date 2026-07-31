@@ -371,6 +371,7 @@
 					inspectable
 					onInspect={handleInspect}
 					showIntervalBadges
+					showIntervalTicks
 				/>
 			</div>
 

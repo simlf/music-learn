@@ -118,6 +118,13 @@ export function formulaFor(chord: ChordResult): FormulaEntry[] {
 export interface StackedGap {
 	/** Neutral connective marker between adjacent tones, e.g. "+m3". */
 	label: string;
+	/**
+	 * The same interval WITHOUT the connective "+", e.g. "m3" — what a surface
+	 * that is not a between-tones row (the keyboard tick rail) shows.
+	 */
+	short: string;
+	/** Half steps spanned by this gap, e.g. 4 for a major third. */
+	semitones: number;
 	/** French long name for tooltip/aria ("tierce mineure"). */
 	longFr: string;
 	/**
@@ -206,15 +213,37 @@ function rotateNotesToRole(notes: ChordResult['notes'], startRole: IntervalRole)
 export function stackedThirdsFor(chord: ChordResult, startRole?: IntervalRole): StackedThirds {
 	const notes = startRole ? rotateNotesToRole(chord.notes, startRole) : chord.notes;
 	const tones = formulaFor({ ...chord, notes });
-	const gaps: StackedGap[] = notes.slice(0, -1).map((note, i) => {
+	const gaps = gapsBetween(notes);
+	return { tones, gaps, tertian: gaps.every((gap) => gap.isThird) };
+}
+
+/**
+ * The gap half of `stackedThirdsFor`, over a bare note list: the interval
+ * between each consecutive pair, in the order given.
+ *
+ * Extracted so the keyboard's tick rail (design handoff "keyboard-native
+ * interval display", sketch 2b) reads the SAME derivation the stacked-thirds
+ * row does, rather than adding a second answer to "which notes are adjacent
+ * and what sits between them." PianoKeyboard only ever holds a
+ * `SpelledNote[]`, never a whole `ChordResult`, which is why the note-list
+ * shape is the extracted one; `stackedThirdsFor` keeps owning the tone half
+ * (that genuinely needs the chord, for root-relative labels).
+ *
+ * Ordering is the caller's: pass the notes already in the order they should be
+ * walked (root-position ascending, or a `rotateNotesToRole` rotation). Total —
+ * an empty or single-note list yields no gaps, never throws.
+ */
+export function gapsBetween(notes: SpelledNote[]): StackedGap[] {
+	return notes.slice(0, -1).map((note, i) => {
 		const info = intervalBetween(note.letter, notes[i + 1].letter);
 		return {
 			label: '+' + info.short,
+			short: info.short,
+			semitones: info.semitones,
 			longFr: info.longFr,
 			isThird: info.short === 'm3' || info.short === 'M3'
 		};
 	});
-	return { tones, gaps, tertian: gaps.every((gap) => gap.isThird) };
 }
 
 /**

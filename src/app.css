@@ -36,6 +36,18 @@
 	--color-fourth: #7d5a72;
 	--color-sixth: #6b7135;
 
+	/* Gap-quality colors for the keyboard interval tick rail (design handoff
+	   "keyboard-native interval display", sketch 2b). These name the QUALITY of
+	   the gap between two adjacent chord tones (major third vs minor third),
+	   which is a different question from the interval-role fills above (what
+	   degree a note plays from the root) — hence separate tokens rather than
+	   reusing --color-second / --color-fourth, whose hues they deliberately
+	   share so the board still reads as one palette. A non-third gap uses
+	   neither of these: it goes dashed/hollow in --color-faint + --color-muted,
+	   because "not a third" must never be colored as if it were one. */
+	--color-gap-major: #5b7a8c;
+	--color-gap-minor: #7d5a72;
+
 	/* Wrong-answer feedback grays (Sketch 001 Variant A) — additive, NOT part
 	   of the fixed interval-color language above; only fills the user's
 	   wrong extra notes at reveal time. */
