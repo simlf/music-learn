@@ -238,6 +238,13 @@ describe('PracticeChordDrill: counting-chip row (E2, SHAPE-01)', () => {
 		// that testid never existed on this component. The real fingerprint
 		// of the removed line is the middot-joined run itself; its absence
 		// plus counting-chip-row's presence is genuine regression protection.
+		//
+		// The blanket middot sweep is scoped to the feedback region
+		// (chord-drill-feedback), not the whole container, because the
+		// interval tick rail (wired in quick task 260803-u3g) legitimately
+		// renders its own middot-joined gap labels ("m3 · 3") above the
+		// keyboard once answered - a container-wide sweep would now fail on
+		// the rail rather than on the grey mono line it is meant to guard.
 		const { container } = render(PracticeChordDrill, {
 			props: { symbol: 'Cm7', onComplete: vi.fn() }
 		});
@@ -245,7 +252,7 @@ describe('PracticeChordDrill: counting-chip row (E2, SHAPE-01)', () => {
 		await fireEvent.click(choiceButton('Cm7'));
 
 		expect(container.textContent).not.toContain('m3 · M3 · m3');
-		expect(container.textContent ?? '').not.toMatch(/·/);
+		expect(screen.getByTestId('chord-drill-feedback').textContent ?? '').not.toMatch(/·/);
 		expect(screen.getByTestId('counting-chip-row')).toBeInTheDocument();
 	});
 });
@@ -415,6 +422,65 @@ describe('PracticeChordDrill: hear-name (chord played, name it)', () => {
 			.find((button) => button.textContent?.trim() !== 'Cm7');
 		await fireEvent.click(wrong!);
 		expect(screen.getByTestId('chord-drill-picked-vs-correct')).toHaveTextContent('Cm7');
+	});
+});
+
+/**
+ * Quick task 260803-u3g: PianoKeyboard's showIntervalTicks prop (commit
+ * 471d32a, PR #66) was shipped and wired into Lookup, but never into this
+ * component - the app's busiest drill surface. These tests pin the rail's
+ * gate (never before the answer, in any of the three modes) and its
+ * presence/content once the answer is in.
+ */
+describe('PracticeChordDrill: interval tick rail (showIntervalTicks)', () => {
+	it('formula: no rail before answering, though the keyboard is already showing the notes', () => {
+		render(PracticeChordDrill, { props: { symbol: 'Cm7', onComplete: vi.fn() } });
+
+		expect(document.querySelector('.piano-keyboard')).toBeInTheDocument();
+		expect(document.querySelector('.piano-keyboard__rail')).not.toBeInTheDocument();
+	});
+
+	it('formula: rail appears after answering, with the Cm7 gap labels', async () => {
+		render(PracticeChordDrill, { props: { symbol: 'Cm7', onComplete: vi.fn() } });
+
+		await fireEvent.click(choiceButton('Cm7'));
+
+		expect(document.querySelector('.piano-keyboard__rail')).toBeInTheDocument();
+		const labels = [...document.querySelectorAll('.piano-keyboard__gap-label')].map((el) =>
+			el.textContent?.trim()
+		);
+		expect(labels).toEqual(['m3 · 3', 'M3 · 4', 'm3 · 3']);
+	});
+
+	it('see-play: no rail before Check', () => {
+		render(PracticeChordDrill, { props: { symbol: 'Cm7', mode: 'see-play', onComplete: vi.fn() } });
+
+		expect(document.querySelector('.piano-keyboard__rail')).not.toBeInTheDocument();
+	});
+
+	it('see-play: rail appears on the reveal keyboard after Check', async () => {
+		render(PracticeChordDrill, { props: { symbol: 'Cm7', mode: 'see-play', onComplete: vi.fn() } });
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'C key' })[0]);
+		await fireEvent.click(screen.getAllByRole('button', { name: 'G key' })[0]);
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(document.querySelector('.piano-keyboard__rail')).toBeInTheDocument();
+	});
+
+	it('hear-name: no keyboard at all before answering, so no rail either', () => {
+		render(PracticeChordDrill, { props: { symbol: 'Cm7', mode: 'hear-name', onComplete: vi.fn() } });
+
+		expect(document.querySelector('.piano-keyboard')).not.toBeInTheDocument();
+		expect(document.querySelector('.piano-keyboard__rail')).not.toBeInTheDocument();
+	});
+
+	it('hear-name: rail appears once the post-answer keyboard mounts', async () => {
+		render(PracticeChordDrill, { props: { symbol: 'Cm7', mode: 'hear-name', onComplete: vi.fn() } });
+
+		await fireEvent.click(choiceButton('Cm7'));
+
+		expect(document.querySelector('.piano-keyboard__rail')).toBeInTheDocument();
 	});
 });
 

@@ -263,7 +263,12 @@
 		<p class="text-body">{t('drills.prompt.nameChord')}</p>
 
 		<div class="mt-4">
-			<PianoKeyboard notes={target.notes} inspectable showIntervalBadges={answered} />
+			<PianoKeyboard
+				notes={target.notes}
+				inspectable
+				showIntervalBadges={answered}
+				showIntervalTicks={answered}
+			/>
 		</div>
 	{:else if mode === 'see-play'}
 		<div class="flex items-start gap-4" data-testid="chord-drill-play-prompt">
@@ -281,6 +286,7 @@
 				{wrongLetters}
 				inspectable={answered}
 				showIntervalBadges={answered}
+				showIntervalTicks={answered}
 			/>
 		</div>
 
@@ -307,7 +313,7 @@
 
 		{#if answered}
 			<div class="mt-4">
-				<PianoKeyboard notes={target.notes} inspectable showIntervalBadges />
+				<PianoKeyboard notes={target.notes} inspectable showIntervalBadges showIntervalTicks />
 			</div>
 		{/if}
 	{/if}
