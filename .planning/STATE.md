@@ -5,15 +5,15 @@ milestone_name: Beginner On-Ramp & Inversions
 current_phase: 37
 current_phase_name: no-regression-gate
 status: milestone_shipped
-stopped_at: "v2.3 shipped and merged to main as PR #28 (commit 1925637) on 2026-07-28. Awaiting next milestone. Two on-device visual UAT batches (phases 34, 35) still open."
-last_updated: "2026-07-28T00:00:00Z"
+stopped_at: Completed quick-260730-x0l-PLAN.md (fixed-height build-it prompt zone + one-octave phone keyboard)
+last_updated: "2026-08-03T19:20:16.359Z"
 last_activity: 2026-07-28
-last_activity_desc: v2.3 merged to main via PR #28; planning history for phases 32-37 reconciled onto main
+last_activity_desc: v2.3 merged; planning history reconciled onto main
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 15
-  completed_plans: 15
+  total_phases: 12
+  completed_phases: 12
+  total_plans: 41
+  completed_plans: 41
   percent: 100
 ---
 
@@ -206,6 +206,7 @@ Autonomous away-run (2026-07-27): human_needed on-device VISUAL UAT items record
 | Phase 36 P02 | 7min | 2 tasks | 2 files |
 | Phase 37 P01 | 8min | 2 tasks | 2 files |
 | Phase 37 P02 | 15min | 2 tasks | 1 files |
+| Phase quick-260730-x0l P01 | 120min | 3 tasks | 6 files |
 
 ## Deferred Items
 
@@ -451,6 +452,7 @@ Recent decisions affecting current work:
 - [Phase 36-02]: Seeded items excluded from the lowMastery computation - they lead the queue post-composition regardless of the signal
 - [Phase ?]: REG-01 coverage matrix is a dedicated file mirroring v2.2 Phase 31; capstone is a new pure-composer test file (practiceQueueCapstone.test.ts) rather than extending the host-level REG test.
 - [Phase ?]: REG-01 flipped only after all three gate commands (build, test, check) were independently confirmed green in this session (T-37-02-01 mitigation).
+- [Phase ?]: [quick-260730-x0l]: Build-it tapping keyboard now self-sizes to one octave on phones and gradeConstructionTap octave-folds unreachable targets to the board ceiling, REVERSING 260730-q3f's LOCKED two-octave-pinned decision (user-approved: fold the target, keep one octave)
 
 ### Pending Todos
 
@@ -491,8 +493,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-27T03:16:54.376Z
-Stopped at: Completed 37-02-PLAN.md
+Last session: 2026-08-03T19:20:11.191Z
+Stopped at: Completed quick-260730-x0l-PLAN.md (fixed-height build-it prompt zone + one-octave phone keyboard)
 Resume file: 
 None
 

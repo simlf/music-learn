@@ -1,5 +1,15 @@
 import { expect, test, type Page } from '@playwright/test';
-import { DESKTOP, openPracticeFamily, PHONE, PHONE_LANDSCAPE, PHONE_NARROW } from './helpers';
+import {
+	DESKTOP,
+	exhaustIntroBudget,
+	openPracticeFamily,
+	pinRandom,
+	PHONE,
+	PHONE_LANDSCAPE,
+	PHONE_NARROW,
+	RNG_IDENTITY,
+	seedDeck
+} from './helpers';
 
 /**
  * Tap-target size checks for the two surfaces a finger actually lands on: the
@@ -236,31 +246,37 @@ for (const [label, viewport, floorPx] of [
  * fingertip floor, `PianoKeyboard` now stacks into two independently-correct
  * mini-keyboards instead of growing past its container and scrolling.
  *
- * Uses `/practice`'s "Build it" drill (`openPracticeFamily(page, 'build-it')`
- * -> `BuildSession.svelte` -> `PianoKeyboard octaves={2}`) rather than the
- * Lookup page's `revealKeyboard` helper: Lookup's keyboard has NO explicit
- * `octaves` prop and self-measures a 1-OCTAVE span at these viewports (its
- * own 352px unstacked floor is either already met - 375px viewport's ~359px
- * container - or, at 320px's ~304px container, is genuinely too narrow even
- * to benefit from stacking, since row 1 there is 7 keys/308px). The
- * `octaves={2}` case is the one that actually reproduces the live-browser
- * defect this suite exists to catch (every real construction/voicing drill
- * pins `octaves={2}`), and its floors differ from the 1-octave case:
+ * Re-pointed to `/practice`'s Inversion drill (260730-x0l): the build-it
+ * tapping keyboard no longer pins `octaves={2}` (it now self-measures, same
+ * as the Lookup page's keyboard, and folds unreachable construction targets
+ * down to whatever it renders - see `construction.ts`'s `foldToBoard` and
+ * `BuildSession.svelte`'s `boardWidth` effect), so it no longer reproduces
+ * this defect at all. `openPracticeFamily(page, 'inversion')` ->
+ * `InversionDrill.svelte` -> `PianoKeyboard octaves={2}` (inside its own
+ * `.keyboard-wrap` card) is now the surface that still pins the span, so it
+ * is the one that still exercises row-stacking. The remaining `octaves={2}`
+ * pins in the app are `InversionDrill.svelte` and `ProgressionDrill.svelte`'s
+ * drill stage (`stage === 'drill' ? 2 : 1`) - NOT "every real
+ * construction/voicing drill", which was true before this task and is no
+ * longer true after it.
+ *
+ * The Inversion drill's `.keyboard-wrap` measured, live, to the SAME
+ * container widths build-it's wrapper measured before this task (verified via
+ * a throwaway diagnostic Playwright test against this exact page/viewport
+ * matrix, matching 260729-ert-SUMMARY.md's own measurement method), so the
+ * floors and expectations below are unchanged from the original build-it
+ * measurement:
  *
  *   viewport         measured container   2-oct unstacked floor   stacks?
- *   320px (narrow)   ~304px               660px (no)               NO -
+ *   320px (narrow)   304px                660px (no)               NO -
  *     304px is also below the STACKED row-2 floor (352px, 8 keys), so
  *     stacking would not help either - genuinely too narrow for this
  *     app's phone-first target range; stays single-row (falls back to
  *     the pre-existing scroll wrapper for the remaining gap).
- *   375px (portrait) ~359px               660px (no)               YES -
+ *   375px (portrait) 359px                660px (no)               YES -
  *     359px clears the stacked floor (352px).
- *   812x375 (landscape) ~748px            660px (yes, already fits)  NO
- *   1280px (desktop)    ~1216px           660px (yes)                NO
- *
- * (Verified live via a throwaway diagnostic Playwright test against this
- * exact page/viewport matrix before writing these expectations - see
- * 260729-ert-SUMMARY.md's Issues Encountered section.)
+ *   812x375 (landscape) 748px             660px (yes, already fits)  NO
+ *   1280px (desktop)    1216px            660px (yes)                NO
  */
 for (const [label, viewport, expectStacked] of [
 	['phone narrow', PHONE_NARROW, false],
@@ -274,8 +290,8 @@ for (const [label, viewport, expectStacked] of [
 		test(`renders ${expectStacked ? 'two stacked rows' : 'a single unstacked row'}, and (when stacked) the keyboard element itself never needs to scroll`, async ({
 			page
 		}) => {
-			await openPracticeFamily(page, 'build-it');
-			await expect(page.getByTestId('build-session')).toBeVisible();
+			await openPracticeFamily(page, 'inversion');
+			await expect(page.getByTestId('inversion-drill')).toBeVisible();
 			await page.locator('.piano-keyboard').first().waitFor();
 
 			const rowsWrapper = page.locator('.piano-keyboard__rows');
@@ -294,6 +310,264 @@ for (const [label, viewport, expectStacked] of [
 				}));
 				expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth);
 			}
+		});
+	});
+}
+
+/**
+ * One-octave, single-row build-it tapping keyboard (260730-x0l): the user
+ * rejected the two-row build-it keyboard twice (PR #65 / 260729-ert fixed
+ * only the REVEAL keyboard and explicitly left the TAPPING keyboard pinned at
+ * two octaves; the user then rejected the resulting two-row board again). The
+ * fix folds unreachable construction targets down to whatever the board
+ * physically renders (`construction.ts`'s `foldToBoard`, fed by
+ * `BuildSession.svelte`'s own `boardWidth` measurement) rather than growing
+ * the board past the phone, so a one-octave board is always both rendered
+ * AND fully completable.
+ *
+ * "8 white keys, 5 black keys, zero `.piano-keyboard__rows` wrappers" is
+ * exactly the one-octave, unstacked signature the user asked for: 8-and-5 is
+ * the one-octave key count (see the "octave count matches the available
+ * width" test above), and zero row-wrappers is the unstacked signature (see
+ * the row-stacking block above) - the two together prove the board is both
+ * the right size AND never wraps into two mini-keyboards.
+ */
+for (const [label, viewport] of [
+	['320', PHONE_NARROW],
+	['360', { width: 360, height: 800 }],
+	['390', { width: 390, height: 844 }]
+] as const) {
+	test.describe(`build-it tapping keyboard, one unstacked octave, ${label}px`, () => {
+		test.use({ viewport });
+
+		test('renders exactly 8 white keys, 5 black keys, and zero row wrappers, with no sideways page scroll', async ({
+			page
+		}) => {
+			await openPracticeFamily(page, 'build-it');
+			await expect(page.getByTestId('build-session')).toBeVisible();
+			await page.locator('.piano-keyboard').first().waitFor();
+
+			const measured = await page.evaluate(() => ({
+				whites: document.querySelectorAll('.piano-keyboard__key--white').length,
+				blacks: document.querySelectorAll('.piano-keyboard__key--black').length,
+				rows: document.querySelectorAll('.piano-keyboard__rows').length,
+				scrollWidth: document.documentElement.scrollWidth,
+				clientWidth: document.documentElement.clientWidth
+			}));
+
+			expect(measured.whites).toBe(8);
+			expect(measured.blacks).toBe(5);
+			expect(measured.rows).toBe(0);
+			expect(measured.scrollWidth).toBeLessThanOrEqual(measured.clientWidth);
+		});
+
+		// The completability proof lives at 360px only (one representative
+		// width is enough - the grading fix is width-independent once the
+		// board is one octave, and this test is deliberately the slow/heavy
+		// one of the three). Seeds the SAME 6-triad deck shape
+		// `openPracticeFamily`'s own 'build-it' recipe uses (so build-it wins
+		// the first queue slot by strict-max, exactly like every other
+		// build-it e2e test in this suite - see build-mic.spec.ts's own
+		// doc comment), but with the roots reordered so the A MAJOR triad
+		// (chord-formula:A) is FIRST in FIFO arrival order rather than C.
+		// A major is exactly the case investigation_findings identified as
+		// unreachable without folding: its third (C♯5, MIDI 73) and fifth
+		// (E5, MIDI 76) both sit above a one-octave board's 72 ceiling. This
+		// is the assertion that would have caught the uncompletable-A-triad
+		// failure mode.
+		if (label === '360') {
+			test('a full A-major-triad construction, whose third and fifth sit above the one-octave ceiling, is still completable by tapping', async ({
+				page
+			}) => {
+				await pinRandom(page, RNG_IDENTITY);
+				await exhaustIntroBudget(page);
+				await page.goto('/');
+				await seedDeck(
+					page,
+					['A', 'C', 'D', 'E', 'F', 'G'].map((root) => ({
+						factId: `chord-formula:${root}`,
+						mode: 'formula-build' as const
+					}))
+				);
+
+				await page.goto('/practice');
+				await page.getByTestId('practice-pre-start').waitFor();
+				await page.getByRole('button', { name: 'Start practice' }).click();
+
+				await expect(page.getByTestId('build-session')).toBeVisible();
+				await page.locator('.piano-keyboard').first().waitFor();
+				// A major triad: 2 steps past the pre-placed root (third, fifth).
+				await expect(page.getByTestId('build-register')).toContainText('STEP 1 OF 2');
+
+				// Third: C♯5 (MIDI 73) folds to the board's own C♯4 (MIDI 61) - the
+				// one-octave board has only one C♯ key, at octave 4.
+				await page.getByRole('button', { name: 'C♯ key' }).click();
+				await page.waitForTimeout(700);
+
+				// Fifth: E5 (MIDI 76) folds to the board's own E4 (MIDI 64).
+				await page.getByRole('button', { name: 'E key' }).click();
+				await page.waitForTimeout(700);
+
+				await expect(page.getByTestId('build-complete')).toBeVisible();
+			});
+		}
+	});
+}
+
+/**
+ * Reserved-height prompt zone (260730-x0l, X0L-D1): the keyboard's top edge
+ * must not move as the count-up hint appears, or as wrong/correct feedback
+ * appears and clears, within the SAME construction step. Sampled at the
+ * three phone widths the user reported the jump on.
+ *
+ * `openPracticeFamily(page, 'build-it')` deterministically lands on the A
+ * MAJOR triad as the first practice question (same deck/rng this file's own
+ * completability test above uses), so the first expected step (the third,
+ * C♯ - folded to the board's own C♯4 by 260730-x0l's grading fix) is known
+ * up front without depending on the step line, which never names the
+ * destination letter (BUILD-03).
+ *
+ * Sampling is FRAME-BASED inside `page.evaluate` calls, not round-tripped per
+ * state through Playwright: the feedback is transient by design (cleared by
+ * a ~650ms timer), and a per-step Playwright round trip (network hop + event
+ * loop turnaround) can lose the race against that timer, sampling a state
+ * that already changed. A handful of `requestAnimationFrame` samples taken
+ * from INSIDE the page is comfortably inside the 650ms window and measures
+ * the real layout on every frame, not just whichever frame Node happened to
+ * observe.
+ *
+ * Two `evaluate` calls, not one: the wrong-tap feedback (sampled in the
+ * first) clears on its own 650ms timer, and the correct tap must be fired
+ * AFTER that window elapses (a real, out-of-`evaluate` `waitForTimeout`) so
+ * it starts from a clean, feedback-free state - exactly the pacing a real
+ * user's next tap would have.
+ */
+for (const [label, viewport] of [
+	['320', PHONE_NARROW],
+	['360', { width: 360, height: 800 }],
+	['390', { width: 390, height: 844 }]
+] as const) {
+	test.describe(`build-it prompt-zone stable height, ${label}px`, () => {
+		test.use({ viewport });
+
+		test('the keyboard top edge is identical across the initial, hint-revealed, wrong-feedback, and correct-feedback states', async ({
+			page
+		}, testInfo) => {
+			await openPracticeFamily(page, 'build-it');
+			await expect(page.getByTestId('build-session')).toBeVisible();
+			await page.locator('.piano-keyboard').first().waitFor();
+
+			const stepLineBefore = await page.getByTestId('build-step-line').textContent();
+
+			// Initial state, the count-up hint reveal (2 frames), and a
+			// deliberately wrong white-key tap (D - a different pitch class
+			// from the A-major triad's third, C♯), sampled across several
+			// frames while its feedback is up.
+			const firstPass = await page.evaluate(async () => {
+				const rafSample = () =>
+					new Promise<number>((resolve) => {
+						requestAnimationFrame(() => {
+							const kb = document.querySelector('.piano-keyboard');
+							resolve(kb ? kb.getBoundingClientRect().top : NaN);
+						});
+					});
+
+				const kb = document.querySelector('.piano-keyboard');
+				const initial = kb ? kb.getBoundingClientRect().top : NaN;
+
+				const toggle = document.querySelector(
+					'[data-testid="count-up-toggle"]'
+				) as HTMLElement | null;
+				toggle?.click();
+				await rafSample();
+				const hintRevealed = await rafSample();
+
+				const wrongKey = [...document.querySelectorAll('[role="button"]')].find(
+					(el) => el.getAttribute('aria-label') === 'D key'
+				) as HTMLElement | undefined;
+				wrongKey?.click();
+
+				const wrongSamples: number[] = [];
+				for (let i = 0; i < 6; i += 1) {
+					wrongSamples.push(await rafSample());
+				}
+
+				return { initial, hintRevealed, wrongSamples };
+			});
+
+			// Real wall-clock wait, OUTSIDE the evaluate: the wrong tap's
+			// feedback timer clears at 650ms.
+			await page.waitForTimeout(700);
+
+			// The correct tap (C♯, the folded third) on the SAME step, sampled
+			// across several frames while ITS feedback is up.
+			const secondPass = await page.evaluate(async () => {
+				const rafSample = () =>
+					new Promise<number>((resolve) => {
+						requestAnimationFrame(() => {
+							const kb = document.querySelector('.piano-keyboard');
+							resolve(kb ? kb.getBoundingClientRect().top : NaN);
+						});
+					});
+
+				const correctKey = [...document.querySelectorAll('[role="button"]')].find(
+					(el) => el.getAttribute('aria-label') === 'C♯ key'
+				) as HTMLElement | undefined;
+				correctKey?.click();
+
+				const correctSamples: number[] = [];
+				for (let i = 0; i < 6; i += 1) {
+					correctSamples.push(await rafSample());
+				}
+
+				return { correctSamples };
+			});
+
+			const allTops = [
+				firstPass.initial,
+				firstPass.hintRevealed,
+				...firstPass.wrongSamples,
+				...secondPass.correctSamples
+			];
+			const min = Math.min(...allTops);
+			const max = Math.max(...allTops);
+
+			for (const [index, top] of allTops.entries()) {
+				expect(Math.abs(top - allTops[0]), `sample ${index} at ${label}px`).toBeLessThanOrEqual(
+					0.5
+				);
+			}
+
+			testInfo.annotations.push({
+				type: 'measured',
+				description: `${label}px: keyboard top min ${min.toFixed(2)}px, max ${max.toFixed(2)}px across initial/hint/wrong-feedback/correct-feedback states`
+			});
+
+			// Cross-step delta (scope note): the step/why lines change text
+			// between steps and, at the narrowest phone class, could in
+			// principle re-wrap and move the keyboard across a step boundary -
+			// a second axis this task's fix does not touch. Measured live
+			// (rather than guessed at): the correct tap above just advanced
+			// the construction to its second step, so both step lines and the
+			// keyboard's settled position are read again here, one full
+			// pacing window (700ms) after the correct tap.
+			await page.waitForTimeout(700);
+			const stepLineAfter = await page.getByTestId('build-step-line').textContent();
+			const topAfterStepChange = await page
+				.locator('.piano-keyboard')
+				.first()
+				.evaluate((el) => el.getBoundingClientRect().top);
+			const crossStepDelta = topAfterStepChange - allTops[0];
+
+			testInfo.annotations.push({
+				type: 'measured',
+				description:
+					`${label}px cross-step delta: ${crossStepDelta.toFixed(2)}px ` +
+					`("${stepLineBefore}" -> "${stepLineAfter}") - the scope note's ` +
+					'second axis (step/why text re-wrap across a step boundary), ' +
+					'measured rather than guessed at'
+			});
+			expect(Math.abs(crossStepDelta), `cross-step delta at ${label}px`).toBeLessThanOrEqual(0.5);
 		});
 	});
 }

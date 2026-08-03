@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Note } from 'tonal';
 import {
+	boardTopMidiForOctaves,
 	createChordConstruction,
 	createScaleConstruction,
 	expectedStep,
@@ -222,6 +223,154 @@ describe('gradeConstructionTap: wrong-pitch-class and wrong-octave grading', () 
 		expect(hit.state.wrongTapCount).toBe(2);
 		expect(hit.state.position).toBe(1);
 		expect(hit.state.earnedNotes.length).toBe(2);
+	});
+});
+
+describe('gradeConstructionTap: octave-folding to a board ceiling (boardTopMidi option)', () => {
+	it('boardTopMidiForOctaves resolves the top C of a 1- or 2-octave board', () => {
+		expect(boardTopMidiForOctaves(1)).toBe(72);
+		expect(boardTopMidiForOctaves(2)).toBe(84);
+	});
+
+	it('omitting options leaves every result identical to the pre-existing (no-fold) behavior', () => {
+		const initial = createChordConstruction('Cm7');
+		const step = expectedStep(initial);
+		if (!step) throw new Error('expected a step');
+
+		const withoutOptions = gradeConstructionTap(initial, 'F', octaveForTap(step.letter, step.midi));
+		const explicitlyUndefined = gradeConstructionTap(
+			initial,
+			'F',
+			octaveForTap(step.letter, step.midi),
+			undefined
+		);
+
+		expect(withoutOptions).toEqual(explicitlyUndefined);
+		expect(withoutOptions.outcome).toBe('wrong-pitch-class');
+		expect(withoutOptions.semitones).toBe(2);
+		expect(withoutOptions.direction).toBe('high');
+	});
+
+	it('a correct exact tap and a correct FOLDED tap both advance the state identically (A major triad third, C♯5 folded to C♯4 on a 1-octave board)', () => {
+		const initial = createChordConstruction('A');
+		const step = expectedStep(initial);
+		if (!step) throw new Error('expected a step');
+		expect(step.letter).toBe('C♯');
+		expect(step.midi).toBe(73);
+
+		const boardTopMidi = boardTopMidiForOctaves(1);
+		expect(boardTopMidi).toBe(72);
+
+		const exactTap = gradeConstructionTap(
+			initial,
+			step.letter,
+			octaveForTap(step.letter, step.midi),
+			{ boardTopMidi }
+		);
+		const foldedTap = gradeConstructionTap(initial, step.letter, 4, { boardTopMidi });
+
+		expect(exactTap.outcome).toBe('correct');
+		expect(foldedTap.outcome).toBe('correct');
+		// A folded-correct tap produces the SAME state transition as an exact
+		// tap: the target's own letter/solfege/role is appended to earnedNotes
+		// either way.
+		expect(foldedTap.state).toEqual(exactTap.state);
+	});
+
+	it('a wrong-pitch-class tap against a folded target reports the distance to the FOLDED midi, not the unreachable exact one', () => {
+		const initial = createChordConstruction('A');
+		const step = expectedStep(initial);
+		if (!step) throw new Error('expected a step');
+		expect(step.letter).toBe('C♯');
+
+		const boardTopMidi = boardTopMidiForOctaves(1);
+		// D4 (62) against the folded C♯4 target (61): 1 half step, high - never
+		// the 11-semitone distance a naive exact-midi (73) comparison would report.
+		const result = gradeConstructionTap(initial, 'D', 4, { boardTopMidi });
+
+		expect(result.outcome).toBe('wrong-pitch-class');
+		expect(result.semitones).toBe(1);
+		expect(result.direction).toBe('high');
+	});
+
+	it('a same-chroma tap against a folded target still grades wrong-octave one more octave off: folding narrows the target, it never removes the octave check', () => {
+		const initial = createChordConstruction('A');
+		const step = expectedStep(initial);
+		if (!step) throw new Error('expected a step');
+		const boardTopMidi = boardTopMidiForOctaves(1);
+
+		// C♯3 (49): same chroma as the folded C♯4 target (61), still a
+		// different octave, so this is wrong-octave, never correct.
+		const result = gradeConstructionTap(initial, step.letter, 3, { boardTopMidi });
+
+		expect(result.outcome).toBe('wrong-octave');
+		expect(result.direction).toBe('low');
+	});
+
+	it("Cm7's third (E♭4, already inside a 1-octave board) is unaffected by folding: an exact tap is still correct, and there is no second E♭ key to fold to", () => {
+		const initial = createChordConstruction('Cm7');
+		const step = expectedStep(initial);
+		if (!step) throw new Error('expected a step');
+		expect(step.letter).toBe('E♭');
+		expect(step.midi).toBe(63);
+
+		const boardTopMidi = boardTopMidiForOctaves(1);
+		const result = gradeConstructionTap(
+			initial,
+			step.letter,
+			octaveForTap(step.letter, step.midi),
+			{ boardTopMidi }
+		);
+
+		expect(result.outcome).toBe('correct');
+	});
+
+	it('the C major scale\'s closing octave-up tonic (C5, exactly ON a 1-octave board) still grades wrong-octave for a low-octave tap: folding must not fire for an already-reachable target', () => {
+		let scaleState = createScaleConstruction('C');
+		// Walk the first six degrees (every step before the closing octave tonic).
+		for (let i = 0; i < 6; i += 1) {
+			const liveStep = expectedStep(scaleState);
+			if (!liveStep) throw new Error('expected a step');
+			const walkResult = gradeConstructionTap(
+				scaleState,
+				liveStep.letter,
+				octaveForTap(liveStep.letter, liveStep.midi)
+			);
+			expect(walkResult.outcome).toBe('correct');
+			scaleState = walkResult.state;
+		}
+
+		const closingStep = expectedStep(scaleState);
+		if (!closingStep) throw new Error('expected the closing step');
+		expect(closingStep.letter).toBe('C');
+		expect(closingStep.midi).toBe(72);
+
+		const boardTopMidi = boardTopMidiForOctaves(1);
+		expect(boardTopMidi).toBe(72);
+
+		const result = gradeConstructionTap(scaleState, 'C', 4, { boardTopMidi });
+
+		expect(result.outcome).toBe('wrong-octave');
+		expect(result.direction).toBe('low');
+	});
+
+	it("a target more than one octave above the ceiling folds by whole octaves until it is at or below it (two-octave-overshoot guard, never produced by this app's own catalog)", () => {
+		const initial = createChordConstruction('Cm7');
+		const step = expectedStep(initial);
+		if (!step) throw new Error('expected a step');
+		expect(step.letter).toBe('E♭');
+		expect(step.midi).toBe(63);
+
+		// An artificially low ceiling forces a TWO-octave fold: 63 -> 51 -> 39.
+		const boardTopMidi = 40;
+		const foldedTap = gradeConstructionTap(
+			initial,
+			step.letter,
+			octaveForTap(step.letter, 39),
+			{ boardTopMidi }
+		);
+
+		expect(foldedTap.outcome).toBe('correct');
 	});
 });
 

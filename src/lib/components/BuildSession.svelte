@@ -4,6 +4,7 @@
 	import { ROOTS, QUALITY_SUFFIXES } from '$lib/theory/randomChord';
 	import { MAJOR_SCALE_ROOTS } from '$lib/theory/scale';
 	import {
+		boardTopMidiForOctaves,
 		createChordConstruction,
 		createScaleConstruction,
 		expectedStep,
@@ -22,7 +23,7 @@
 		toAsciiAccidentals,
 		transposeFrom
 	} from '$lib/theory/interval';
-	import { blackKeysForOctaves } from './keyboardLayout';
+	import { blackKeysForOctaves, octavesForWidth } from './keyboardLayout';
 	import { getCard, recordGrade, type CardRecord } from '$lib/srs/deck';
 	import { newCard, Rating } from '$lib/srs/scheduler';
 	import { scaleFormulaFactId } from '$lib/srs/facts';
@@ -186,6 +187,14 @@
 	let confirmationIndex = $state(-1);
 	let wrongIndex = $state(-1);
 	let containerEl: HTMLDivElement | undefined = $state();
+	/**
+	 * The tapping keyboard's own measured container width (260730-x0l), read
+	 * off the SAME `containerEl` that `scrollRootIntoView` already uses.
+	 * Undefined until measured (or forever, in an environment with no
+	 * `ResizeObserver`, e.g. jsdom) - see the `$effect` below for exactly why
+	 * that fallback matters.
+	 */
+	let boardWidth: number | undefined = $state();
 	let flashTimer: ReturnType<typeof setTimeout> | undefined;
 	let feedbackTimer: ReturnType<typeof setTimeout> | undefined;
 	/** One timer per earned note (pending -> lit) plus one final block-strike timer, for the study-mode arpeggio roll (HEAR-02). Always cleared before rescheduling and on reset/destroy, mirroring flashTimer/feedbackTimer's own discipline. */
@@ -305,6 +314,46 @@
 		const el = containerEl?.querySelector('.piano-keyboard__key--root') as HTMLElement | null;
 		el?.scrollIntoView?.({ inline: 'start', block: 'nearest' });
 	}
+
+	/**
+	 * Measures `containerEl`'s own width so BOTH the tapping keyboard's span
+	 * and the grader's ceiling are derived from the SAME number (260730-x0l) -
+	 * the board the user sees and the board the grader assumes can never
+	 * disagree. Copies `PianoKeyboard.svelte`'s own measuring effect verbatim
+	 * in structure (see that file's matching comment): the synchronous seed
+	 * from `containerEl.clientWidth` is load-bearing because the span gates
+	 * the very markup whose width is being observed, so relying on the
+	 * asynchronous `ResizeObserver` callback alone would leave `boardWidth`
+	 * undefined through the render that decides the span. The
+	 * `typeof ResizeObserver === 'undefined'` guard is equally load-bearing:
+	 * with no `ResizeObserver` (jsdom), `boardWidth` must stay undefined so
+	 * `boardOctaves` below falls back to two - keeping every pre-existing
+	 * `buildSession.test.ts` wrong-octave assertion (which clicks the
+	 * octave-5 duplicate key) passing untouched.
+	 */
+	$effect(() => {
+		if (!containerEl) return;
+
+		const seed = containerEl.clientWidth;
+		if (seed > 0) boardWidth = seed;
+
+		if (typeof ResizeObserver === 'undefined') return;
+
+		const observer = new ResizeObserver((entries) => {
+			const entry = entries[0];
+			if (entry) {
+				boardWidth = entry.contentRect.width;
+			}
+		});
+		observer.observe(containerEl);
+
+		return () => observer.disconnect();
+	});
+
+	/** Two octaves when unmeasured (no ResizeObserver, e.g. jsdom); otherwise the width-derived span (260730-x0l), matching PianoKeyboard's own self-measurement rule exactly. */
+	const boardOctaves: 1 | 2 = $derived(boardWidth === undefined ? 2 : octavesForWidth(boardWidth));
+	/** The MIDI ceiling `gradeConstructionTap` folds unreachable targets down to, matching `boardOctaves` (260730-x0l) - the same measurement handed to both the rendered board and the grader. */
+	const boardTopMidi = $derived(boardTopMidiForOctaves(boardOctaves));
 
 	function startChordConstruction() {
 		if (pickedRoot === undefined || pickedQuality === undefined) return;
@@ -472,6 +521,53 @@
 		}
 		return `${t('build.why.scalesPrefix')} ${step.degree} ${t('build.why.scalesInfix')} ${pickedTonic} ${t('build.word.major')}.`;
 	}
+
+	/** The longest string in `variants` (ties keep the first). Used to pick the WIDEST plausible headline for a ghost sizer (260730-x0l), since a ghost has to reserve for the tallest real variant without knowing which one will actually show. */
+	function longestOf(variants: string[]): string {
+		return variants.reduce((longest, candidate) =>
+			candidate.length > longest.length ? candidate : longest
+		);
+	}
+
+	/**
+	 * Reserved-height ghost sizers (260730-x0l, prompt-zone stable-height fix):
+	 * two synthetic `Feedback` objects, built from the CURRENT prompt step,
+	 * that reserve the tallest plausible feedback variant so the keyboard
+	 * below never shifts when real feedback appears/disappears. Rendered
+	 * `visibility: hidden` + `aria-hidden` + `inert` (never announced, never
+	 * focusable, never visible) via the SAME `feedbackBody` snippet the live
+	 * feedback uses, so the reservation can never silently drift from the
+	 * thing it reserves for.
+	 *
+	 * Two ghosts, not one guessed-tallest, because the notable-correct
+	 * sentence and the three-paragraph wrong-pitch-class stack are BOTH
+	 * plausible maxima and which one is taller flips with locale and
+	 * viewport - overlaying both (in a nested single-cell grid, see the
+	 * template) takes the max without anyone having to guess right.
+	 */
+	const ghostNotableFeedback = $derived<Feedback | undefined>(
+		promptStep
+			? {
+					kind: 'correct',
+					headline: CORRECT_VARIANTS[0] ?? '',
+					notable: true,
+					commonName: commonNameFor(promptStep.letter, currentRootLabel),
+					actualName: promptStep.letter,
+					intervalWord: intervalWordFor(promptStep)
+				}
+			: undefined
+	);
+	/** The wrong-pitch-class ghost: the longest WRONG_VARIANTS headline plus 11 half-steps (the widest semitone count the real diagnostic ever prints, since two pitch classes are never more than 11 half-steps apart within an octave). */
+	const ghostWrongPitchClassFeedback = $derived<Feedback | undefined>(
+		promptStep
+			? {
+					kind: 'wrong-pitch-class',
+					headline: longestOf(WRONG_VARIANTS),
+					semitones: 11,
+					direction: 'high'
+				}
+			: undefined
+	);
 
 	/** Interval-chip label for an earned note at `index`: 'R' for the pre-placed root, else the step it was earned on. */
 	function chipLabelFor(index: number): string {
@@ -775,7 +871,7 @@
 		// Captured BEFORE grading: the step that's about to be earned, so its
 		// own letter/interval are still available after `construction` advances.
 		const targetStep = expectedStep(construction);
-		const result = gradeConstructionTap(construction, letter, octave);
+		const result = gradeConstructionTap(construction, letter, octave, { boardTopMidi });
 
 		if (result.outcome === 'correct') {
 			settleCorrectOutcome(result, targetStep);
@@ -1013,8 +1109,9 @@
 <!--
 	The constructable input keyboard: always rendered inline, both standalone
 	(`/build`) and embedded (Recall's Mode C). `containerEl`'s `bind:this`
-	lives here rather than at the call site so `scrollRootIntoView` still
-	resolves the real DOM node.
+	lives here rather than at the call site so `scrollRootIntoView` (and this
+	component's own width-measuring `$effect`, 260730-x0l) still resolve the
+	real DOM node.
 
 	No local scroll pane and no min-width board wrapper: both used to pre-inflate
 	this container to 15 * 44 = 660px, which is what PianoKeyboard's own
@@ -1023,6 +1120,30 @@
 	its two-row stacking never engaged and the board scrolled sideways instead.
 	Letting the wrapper take its natural width hands PianoKeyboard the true
 	available width; it owns the fingertip floor and the stack-vs-single decision.
+
+	The span is now MEASURED here (`boardOctaves`) rather than pinned at two
+	(260730-x0l): a pinned two-octave span cannot hold the fingertip floor on a
+	phone and wraps into two stacked rows, which the user rejected twice (PR #65 /
+	260729-ert fixed only the REVEAL keyboard below and explicitly left this
+	tapping keyboard pinned; the user then rejected the two-row result again).
+	The SAME measurement is handed to `gradeConstructionTap` as `boardTopMidi`, so
+	the board the user sees and the board the grader assumes can never diverge -
+	one measurement, two consumers. This narrows quick task 260730-q3f's LOCKED
+	decision ("tapping keyboard keeps octaves pinned at two, grade by exact MIDI")
+	to its opposite: physical reachability is now preserved by folding the target
+	down to the board (construction.ts's `foldToBoard`), not by growing the board
+	past the phone.
+
+	One accepted imprecision: this component measures the WRAPPER
+	(`containerEl`), while `PianoKeyboard` measures its OWN inner container, so in
+	a narrow band around the 660px two-octave threshold the two can disagree by
+	the inner element's padding and the board may still stack. Every phone width
+	this task is about is far below that band.
+
+	Sound is unaffected by folding in the sense that matters (grading) - but the
+	tapped key sounds at the octave actually tapped, so a folded chord sounds
+	compressed into one octave on a one-octave board. That is the honest
+	consequence of a one-octave board, stated here rather than left as a surprise.
 -->
 {#snippet buildKeyboard()}
 	{#if construction}
@@ -1030,11 +1151,51 @@
 			<PianoKeyboard
 				notes={construction.earnedNotes}
 				constructable
-				octaves={2}
+				octaves={boardOctaves}
 				onConstructTap={handleConstructTap}
 				flashWrongKey={flashKey}
 			/>
 		</div>
+	{/if}
+{/snippet}
+
+<!--
+	Shared feedback markup (260730-x0l): the exact body that used to live
+	inline inside `data-testid="build-feedback"`, moved wholesale into a
+	snippet so the LIVE feedback and its two invisible ghost sizers (see the
+	`.prompt-reserve` container below) render byte-identical markup - the
+	reservation can never silently drift from the thing it reserves for.
+
+	`ghost` drops every `data-testid` (bound to `undefined`, which Svelte
+	omits the attribute entirely for): a ghost replica must never introduce a
+	second element a test's `getByTestId` could ambiguously match.
+-->
+{#snippet feedbackBody(fb: Feedback, ghost: boolean)}
+	<p class="text-body font-bold">{fb.headline}</p>
+	{#if fb.kind === 'correct' && fb.notable}
+		<p class="text-body mt-2" data-testid={ghost ? undefined : 'build-enharmonic-line'}>
+			{t('build.enharmonic.a')} {fb.commonName}, {t('build.enharmonic.b')}
+			{targetSymbol} {t('build.enharmonic.c')} {fb.actualName}
+			{kind === 'chords'
+				? t('build.enharmonic.dChords')
+				: t('build.enharmonic.dScales')} {t('build.enharmonic.e')} {fb.intervalWord}.
+		</p>
+	{:else if fb.kind === 'wrong-pitch-class'}
+		<p class="text-body mt-2" data-testid={ghost ? undefined : 'build-diagnostic'}>
+			{fb.semitones}
+			{fb.semitones === 1 ? t('build.unit.halfStep') : t('build.unit.halfSteps')}
+			{t('build.diagnostic.too')} {t(`build.direction.${fb.direction}` as MessageKey)}.
+		</p>
+		{#if promptStep}
+			<p class="text-body mt-2" data-testid={ghost ? undefined : 'build-restatement'}>
+				{restatementLineFor(promptStep)}
+			</p>
+		{/if}
+	{:else if fb.kind === 'wrong-octave'}
+		<p class="text-body mt-2" data-testid={ghost ? undefined : 'build-restatement'}>
+			{t('build.restatement.stackingPrefix')} {lastTappedLetter}
+			{fb.direction === 'high' ? t('build.restatement.down') : t('build.restatement.up')}.
+		</p>
 	{/if}
 {/snippet}
 
@@ -1228,63 +1389,98 @@
 				{#if promptStep}
 					<p class="text-body mt-2" data-testid="build-step-line">{stepLineFor(promptStep)}</p>
 					<p class="text-body mt-2" data-testid="build-why-line">{whyLineFor(promptStep)}</p>
-
-					{#if kind === 'chords' && !feedback}
-						{#if !countUpRevealed}
-							<div class="mt-2">
-								<Button
-									type="button"
-									variant="ghost"
-									data-testid="count-up-toggle"
-									onclick={() => (countUpRevealed = true)}
-								>
-									{t('build.button.showCountUp')}
-								</Button>
-							</div>
-						{:else if countUpStep}
-							<p class="text-body mt-2" data-testid="build-count-up-hint">
-								{countUpStep.interval.semitones}
-								{countUpStep.interval.semitones === 1
-									? t('build.unit.halfStep')
-									: t('build.unit.halfSteps')}
-								{t('build.step.chordsInfix')} {lastLetter}. {t('build.countUp.suffix')}
-							</p>
-						{/if}
-					{/if}
 				{/if}
 
-				{#if feedback}
-					<div class="mt-4" data-testid="build-feedback">
-						<p class="text-body font-bold">{feedback.headline}</p>
-						{#if feedback.kind === 'correct' && feedback.notable}
-							<p class="text-body mt-2" data-testid="build-enharmonic-line">
-								{t('build.enharmonic.a')} {feedback.commonName}, {t('build.enharmonic.b')}
-								{targetSymbol} {t('build.enharmonic.c')} {feedback.actualName}
-								{kind === 'chords'
-									? t('build.enharmonic.dChords')
-									: t('build.enharmonic.dScales')} {t('build.enharmonic.e')} {feedback.intervalWord}.
-							</p>
-						{:else if feedback.kind === 'wrong-pitch-class'}
-							<p class="text-body mt-2" data-testid="build-diagnostic">
-								{feedback.semitones}
-								{feedback.semitones === 1 ? t('build.unit.halfStep') : t('build.unit.halfSteps')}
-								{t('build.diagnostic.too')} {t(
-									`build.direction.${feedback.direction}` as MessageKey
-								)}.
-							</p>
-							{#if promptStep}
-								<p class="text-body mt-2" data-testid="build-restatement">
-									{restatementLineFor(promptStep)}
-								</p>
-							{/if}
-						{:else if feedback.kind === 'wrong-octave'}
-							<p class="text-body mt-2" data-testid="build-restatement">
-								{t('build.restatement.stackingPrefix')} {lastTappedLetter}
-								{feedback.direction === 'high'
-									? t('build.restatement.down')
-									: t('build.restatement.up')}.
-							</p>
+				<!--
+					Reserved-height prompt zone (260730-x0l): the hint slot and the
+					feedback block used to stack vertically and each appear/disappear
+					on every tap, so this block's height changed and everything below
+					it - including the keyboard - moved. `display: grid` with every
+					child at `grid-area: 1 / 1` makes the container's height the
+					MAXIMUM of its children instead of their SUM, so the hint slot,
+					the live feedback, and the two invisible ghost sizers below all
+					overlay one another and the tallest one alone sets the height.
+
+					`promptStep` gates the whole reservation (matches the step/why
+					lines above): nothing to reserve for once there is no live step.
+				-->
+				{#if promptStep}
+					<div class="prompt-reserve">
+						<!--
+							Hint slot: HIDDEN, not unmounted, while feedback is showing
+							(previously guarded by `kind === 'chords' && !feedback`, which
+							removed it from the DOM entirely and was the reflow source).
+							`visibility: hidden` already drops the subtree from the
+							accessibility tree AND the tab order, so the single
+							`aria-live="polite"` region above never announces it and its
+							button can never be focused; `inert` is the belt to that
+							braces, making the intent explicit to a reader who might
+							otherwise "helpfully" swap this for `display: none` or bring
+							back the removed guard - display:none would collapse the cell
+							back out of the grid's max-height calculation, defeating the
+							whole reservation.
+						-->
+						{#if kind === 'chords'}
+							<div
+								class="prompt-reserve__cell"
+								style:visibility={feedback ? 'hidden' : 'visible'}
+								inert={feedback !== undefined}
+							>
+								{#if !countUpRevealed}
+									<div class="mt-2">
+										<Button
+											type="button"
+											variant="ghost"
+											data-testid="count-up-toggle"
+											onclick={() => (countUpRevealed = true)}
+										>
+											{t('build.button.showCountUp')}
+										</Button>
+									</div>
+								{:else if countUpStep}
+									<p class="text-body mt-2" data-testid="build-count-up-hint">
+										{countUpStep.interval.semitones}
+										{countUpStep.interval.semitones === 1
+											? t('build.unit.halfStep')
+											: t('build.unit.halfSteps')}
+										{t('build.step.chordsInfix')} {lastLetter}. {t('build.countUp.suffix')}
+									</p>
+								{/if}
+							</div>
 						{/if}
+
+						{#if feedback}
+							<div class="prompt-reserve__cell mt-4" data-testid="build-feedback">
+								{@render feedbackBody(feedback, false)}
+							</div>
+						{/if}
+
+						<!--
+							Ghost sizers: reserve the tallest plausible feedback variant so
+							the reservation holds even when no real feedback is showing.
+							Never announced (aria-hidden), never focusable (inert), never
+							visible (visibility: hidden) - a screen-reader user and a
+							sighted user both see/hear only the live feedback above. Two
+							ghosts, overlaid in their OWN nested single-cell grid (see
+							`ghostNotableFeedback`'s doc comment for why two, not one).
+						-->
+						<div
+							class="prompt-reserve__cell prompt-reserve__ghosts mt-4"
+							aria-hidden="true"
+							inert
+							style:visibility="hidden"
+						>
+							{#if ghostNotableFeedback}
+								<div class="prompt-reserve__cell">
+									{@render feedbackBody(ghostNotableFeedback, true)}
+								</div>
+							{/if}
+							{#if ghostWrongPitchClassFeedback}
+								<div class="prompt-reserve__cell">
+									{@render feedbackBody(ghostWrongPitchClassFeedback, true)}
+								</div>
+							{/if}
+						</div>
 					</div>
 				{/if}
 			</div>
@@ -1334,13 +1530,16 @@
 			</div>
 
 			<!--
-				No `octaves={2}` here, unlike the tapping keyboard above (260730-q3f):
-				the reveal is display-only, so it does not need the ascending octave to
-				be physically tappable and can self-measure its span - one octave (one
-				single row) on a phone, two on a wide screen. Pinning two octaves made
-				this board wrap into two stacked mini-keyboards on a phone, which the
-				user rejected: a finished chord reading across two keyboards is harder
-				to recognize than the same chord wrapped into one octave (the same
+				No `octaves` prop here, same as the tapping keyboard above
+				(260730-x0l): both boards now self-size via their own measurement -
+				this one through PianoKeyboard's own internal ResizeObserver, the
+				tapping one above through BuildSession's own `boardWidth` effect,
+				because that measurement also has to feed `gradeConstructionTap`'s
+				`boardTopMidi` (this reveal board is display-only, so it needs no
+				MIDI ceiling of its own). Pinning two octaves here made this board
+				wrap into two stacked mini-keyboards on a phone, which the user
+				rejected: a finished chord reading across two keyboards is harder to
+				recognize than the same chord wrapped into one octave (the same
 				presentation the Lookup page uses).
 			-->
 			<div class="mt-4">
@@ -1377,6 +1576,32 @@
 </div>
 
 <style>
+	/*
+	 * Reserved-height prompt zone (260730-x0l): every direct child sits in the
+	 * SAME implicit grid cell (`grid-area: 1 / 1`), so this container's height
+	 * is the MAXIMUM of its children rather than their SUM - the hint slot,
+	 * the live feedback, and the ghost sizers all overlay one another instead
+	 * of stacking, and the tallest one alone sets the height everything below
+	 * (the keyboard) lays out against.
+	 */
+	.prompt-reserve {
+		display: grid;
+	}
+
+	.prompt-reserve__cell {
+		grid-area: 1 / 1;
+	}
+
+	/*
+	 * The ghost sizers' own container: a NESTED single-cell grid (so its two
+	 * children overlay each other, taking their MAX rather than their SUM)
+	 * that is itself one cell (`grid-area: 1 / 1`, via `.prompt-reserve__cell`
+	 * on this same element) of the outer `.prompt-reserve` grid.
+	 */
+	.prompt-reserve__ghosts {
+		display: grid;
+	}
+
 	.formula-chip--placeholder {
 		display: inline-flex;
 		align-items: center;

@@ -70,6 +70,38 @@ export interface ConstructionTapResult {
 /** Matches toAscendingPitches' own starting octave and every other keyboard surface's BASE_OCTAVE. */
 export const CONSTRUCTION_BASE_OCTAVE = 4;
 
+/**
+ * The highest MIDI note number a board spanning `octaves` C-to-C octaves (
+ * starting at `CONSTRUCTION_BASE_OCTAVE`) can physically show:
+ * `boardTopMidiForOctaves(1)` is the octave-5 C (72), `boardTopMidiForOctaves(2)`
+ * is the octave-6 C (84) - matching `PianoKeyboard`'s own
+ * `octaveForWhiteIndex` (`BASE_OCTAVE + floor(index / 7)`) exactly, since a
+ * C-to-C span's top key is always the next octave's C. Exported so the
+ * octave-count-to-MIDI mapping lives in this pure module rather than being
+ * re-derived in `BuildSession.svelte`. Total: a `Note.midi` resolution
+ * failure (should be unreachable for a literal "C{n}" pitch string) falls
+ * back to the same formula computed directly, so this can never poison
+ * grading with `NaN`.
+ */
+export function boardTopMidiForOctaves(octaves: 1 | 2): number {
+	const octave = CONSTRUCTION_BASE_OCTAVE + octaves;
+	return Note.midi(`C${octave}`) ?? (octave + 1) * 12;
+}
+
+/**
+ * Folds `midi` down by whole octaves until it sits at or below
+ * `boardTopMidi`. A no-op when `midi` is already at or below the ceiling
+ * (covers both "the target is already on the board" and "no board-top was
+ * supplied" via the caller's own guard). Guards an arithmetic overshoot of
+ * more than one octave too, even though nothing in this app's own catalog
+ * produces one (the highest chord/scale target is B major's B5 at MIDI 83,
+ * one octave above the one-octave board's 72 ceiling).
+ */
+function foldToBoard(midi: number, boardTopMidi: number): number {
+	if (midi <= boardTopMidi) return midi;
+	return midi - 12 * Math.ceil((midi - boardTopMidi) / 12);
+}
+
 /** An inert, already-done, empty state: the total-function fallback for unrecognized input. */
 function emptyState(kind: ConstructionKind, label: string): ConstructionState {
 	return { kind, label, steps: [], position: 0, earnedNotes: [], wrongTapCount: 0, done: true };
@@ -200,11 +232,35 @@ function advanceOnCorrect(state: ConstructionState, target: ConstructionStep): C
  * 'wrong-octave' (same chroma, wrong MIDI) and 'wrong-pitch-class' (different
  * chroma) both leave position/earnedNotes unchanged and increment
  * wrongTapCount by exactly one.
+ *
+ * The optional fourth argument, `options.boardTopMidi`, is the highest MIDI
+ * the rendered board can physically show (see `boardTopMidiForOctaves`).
+ * WHY THIS EXISTS: a one-octave board tops out at MIDI 72 (C5), but an
+ * A-rooted major triad needs MIDI 73 (C♯5) and 76 (E5) - so without folding,
+ * every construction step whose target sits above the board's top key would
+ * be uncompletable (every tap of the right pitch class would grade
+ * 'wrong-octave' forever, never 'correct'), not merely hard. When
+ * `boardTopMidi` is supplied, the target is folded down by whole octaves
+ * (`foldToBoard`) until it is at or below that ceiling, and BOTH the exact
+ * target MIDI and the folded MIDI grade 'correct' (via the SAME
+ * `advanceOnCorrect`, so earnedNotes still records the target's own
+ * spelling/role, identical to an exact-MIDI tap). The 'wrong-octave'
+ * diagnostic still fires whenever the target is already reachable on the
+ * board (folding is a no-op there) or for the board's own duplicated C, so
+ * the "you're stacking upward" lesson survives everywhere it is physically
+ * meaningful and is only dropped where the board cannot show the target at
+ * all. 'wrong-pitch-class' semitones/direction are measured against the
+ * FOLDED target, so the diagnostic reads e.g. "7 half steps too low" rather
+ * than a distance to a target the board never rendered. Omitting `options`
+ * (every existing caller and every existing test) leaves `reachableMidi`
+ * equal to `target.midi`, so every branch below is byte-identical to before
+ * this parameter existed.
  */
 export function gradeConstructionTap(
 	state: ConstructionState,
 	letter: string,
-	octave: number
+	octave: number,
+	options?: { boardTopMidi?: number }
 ): ConstructionTapResult {
 	if (state.done) {
 		return { outcome: 'wrong-pitch-class', state, semitones: 0, direction: 'high' };
@@ -220,7 +276,12 @@ export function gradeConstructionTap(
 		return { outcome: 'wrong-pitch-class', state, semitones: 0, direction: 'high' };
 	}
 
-	if (tappedMidi === target.midi) {
+	const reachableMidi =
+		options?.boardTopMidi !== undefined
+			? foldToBoard(target.midi, options.boardTopMidi)
+			: target.midi;
+
+	if (tappedMidi === target.midi || tappedMidi === reachableMidi) {
 		return { outcome: 'correct', state: advanceOnCorrect(state, target) };
 	}
 
@@ -230,12 +291,12 @@ export function gradeConstructionTap(
 		return {
 			outcome: 'wrong-octave',
 			state: { ...state, wrongTapCount: state.wrongTapCount + 1 },
-			direction: tappedMidi > target.midi ? 'high' : 'low'
+			direction: tappedMidi > reachableMidi ? 'high' : 'low'
 		};
 	}
 
-	const semitones = Math.abs(tappedMidi - target.midi);
-	const direction = tappedMidi > target.midi ? 'high' : 'low';
+	const semitones = Math.abs(tappedMidi - reachableMidi);
+	const direction = tappedMidi > reachableMidi ? 'high' : 'low';
 	return {
 		outcome: 'wrong-pitch-class',
 		state: { ...state, wrongTapCount: state.wrongTapCount + 1 },

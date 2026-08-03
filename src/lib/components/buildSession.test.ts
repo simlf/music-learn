@@ -485,6 +485,70 @@ describe('BuildSession count-up hint (BUILD-03, 12-05 Task 1)', () => {
 });
 
 /**
+ * Component test for BuildSession (260730-x0l): the reserved-height prompt
+ * zone. The count-up hint wrapper stays in the DOM (present-but-hidden, never
+ * unmounted) while feedback is showing, and the ghost sizers that reserve the
+ * tallest feedback variant are never announced or focusable.
+ */
+describe('BuildSession prompt-zone stable height (260730-x0l)', () => {
+	async function startCm7() {
+		render(BuildSession);
+		await fireEvent.click(screen.getByRole('button', { name: 'C' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'minor 7th' }));
+	}
+
+	it('the count-up hint wrapper survives in the DOM while feedback is showing, marked inert and not visible - never announced by the single aria-live region, never focusable', async () => {
+		await startCm7();
+
+		expect(screen.getByTestId('count-up-toggle')).toBeVisible();
+		expect(
+			screen.getByRole('button', { name: 'Show the count-up hint' })
+		).toBeInTheDocument();
+
+		await fireEvent.click(screen.getAllByRole('button', { name: 'D key' })[0]);
+
+		// Present-but-hidden (never unmounted): getByTestId finds it regardless
+		// of visibility, but it is no longer visible, no longer reachable via
+		// an accessible-role query (matching the OLD unmounted behavior from
+		// the user/screen-reader's point of view), and its wrapper's `inert`
+		// IDL property is set (jsdom does not reflect a property-bound
+		// `inert` back onto the attribute list, so the property itself - not
+		// `toHaveAttribute` - is the reliable check here).
+		const toggle = screen.getByTestId('count-up-toggle');
+		expect(toggle).not.toBeVisible();
+		expect(
+			screen.queryByRole('button', { name: 'Show the count-up hint' })
+		).not.toBeInTheDocument();
+		const hintWrapper = toggle.closest('.prompt-reserve__cell') as HTMLElement | null;
+		expect(hintWrapper).not.toBeNull();
+		expect(hintWrapper?.inert).toBe(true);
+
+		await new Promise((resolve) => setTimeout(resolve, 700));
+
+		// Feedback cleared: the hint slot is visible (and focusable) again.
+		expect(screen.getByTestId('count-up-toggle')).toBeVisible();
+		expect(document.querySelector('.prompt-reserve__cell') as HTMLElement | null).not.toBeNull();
+		expect((toggle.closest('.prompt-reserve__cell') as HTMLElement).inert).toBe(false);
+	});
+
+	it('the ghost sizers are marked aria-hidden and inert, so they are never announced or focusable regardless of feedback state', async () => {
+		await startCm7();
+
+		const ghosts = document.querySelector('.prompt-reserve__ghosts');
+		expect(ghosts).not.toBeNull();
+		expect(ghosts).toHaveAttribute('aria-hidden', 'true');
+		expect(ghosts).toHaveAttribute('inert');
+	});
+
+	it('the ghost sizers render no data-testid anywhere, so they can never make an existing testid query ambiguous', async () => {
+		await startCm7();
+
+		const ghosts = document.querySelector('.prompt-reserve__ghosts');
+		expect(ghosts?.querySelector('[data-testid]')).toBeNull();
+	});
+});
+
+/**
  * Component test for BuildSession (Phase 12, Task 2 of 12-05): the full
  * completion summary (heading, rule statement, finalized formula strip and
  * keyboard, both CTAs), driven end to end through the public component API

@@ -39,12 +39,22 @@ test('opens the major-scale build lesson from /learn, states the exact ruler pat
 	await expect(build.getByTestId('build-register')).toHaveText('STEP 1 OF 7');
 	await expect(build.getByTestId('build-step-line')).toHaveText('Take a whole step up from G.');
 
-	// Step through G major: A, B, C, D, E, F♯, G (the octave), each on the
-	// second occurrence once the board carries a duplicate pitch class. A
-	// correct tap sets `feedback`, which BuildSession does not clear (and
-	// therefore ignores every further tap) until its own 650ms pacing timer
-	// fires - so each step needs a real wait, not just Playwright's default
-	// actionability wait, or the next click silently no-ops.
+	// Step through G major: A, B, C, D, E, F♯, G (the octave). This lesson
+	// embeds BuildSession at the PHONE viewport, where the tapping keyboard
+	// now self-measures a ONE-octave span (260730-x0l) instead of pinning
+	// two, so most of these degrees only have ONE physical key: the target
+	// above the board's ceiling (see `construction.ts`'s `foldToBoard`) folds
+	// down onto that same single key rather than requiring a second,
+	// higher-register instance. 'C key' is the one exception that STILL has
+	// two instances even on a one-octave board (the board's own trailing C,
+	// one octave above the root C) - and G major's C degree (C5) sits exactly
+	// AT the one-octave ceiling, so it is the one degree that still needs the
+	// SECOND (higher) instance, not a folded tap of the first. The closing
+	// octave-up G tap folds onto the SAME physical key the root G already
+	// used. A correct tap sets `feedback`, which BuildSession does not clear
+	// (and therefore ignores every further tap) until its own 650ms pacing
+	// timer fires - so each step needs a real wait, not just Playwright's
+	// default actionability wait, or the next click silently no-ops.
 	async function tapAndPace(name: string, index = 0) {
 		await build.getByRole('button', { name }).nth(index).click();
 		await page.waitForTimeout(700);
@@ -52,10 +62,10 @@ test('opens the major-scale build lesson from /learn, states the exact ruler pat
 	await tapAndPace('A key');
 	await tapAndPace('B key');
 	await tapAndPace('C key', 1);
-	await tapAndPace('D key', 1);
-	await tapAndPace('E key', 1);
-	await tapAndPace('F♯ key', 1);
-	await tapAndPace('G key', 1);
+	await tapAndPace('D key');
+	await tapAndPace('E key');
+	await tapAndPace('F♯ key');
+	await tapAndPace('G key');
 
 	await expect(build.getByTestId('build-complete-rule')).toHaveText(
 		'G major: whole, whole, half, whole, whole, whole, half.'
