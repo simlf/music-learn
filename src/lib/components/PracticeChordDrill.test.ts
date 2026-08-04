@@ -191,21 +191,20 @@ describe('PracticeChordDrill: picked-vs-correct on a miss (E1)', () => {
 	});
 });
 
-describe('PracticeChordDrill: counting-chip row (E2, SHAPE-01)', () => {
-	it('shows the m7 counting-chip row (m3/M3/m3 gap-class order) after a correct answer', async () => {
+describe('PracticeChordDrill: reveal keyboard carries the chord shape (quick-260804-1uq)', () => {
+	it('after a correct answer, no counting-chip row exists and the reveal keyboard carries the m7 gaps', async () => {
 		render(PracticeChordDrill, { props: { symbol: 'Cm7', onComplete: vi.fn() } });
 
 		await fireEvent.click(choiceButton('Cm7'));
 
-		const row = screen.getByTestId('counting-chip-row');
-		const gapChips = row.querySelectorAll('.gap-chip');
-		expect(gapChips.length).toBe(3);
-		expect(gapChips[0].classList.contains('m3')).toBe(true);
-		expect(gapChips[1].classList.contains('M3')).toBe(true);
-		expect(gapChips[2].classList.contains('m3')).toBe(true);
+		expect(screen.queryByTestId('counting-chip-row')).not.toBeInTheDocument();
+		const labels = [...document.querySelectorAll('.piano-keyboard__gap-label')].map((el) =>
+			el.textContent?.trim()
+		);
+		expect(labels).toEqual(['m3 · 3', 'M3 · 4', 'm3 · 3']);
 	});
 
-	it('shows the m7 counting-chip row after a wrong answer too', async () => {
+	it('after a wrong answer, no counting-chip row exists and the reveal keyboard carries the m7 gaps too', async () => {
 		render(PracticeChordDrill, { props: { symbol: 'Cm7', onComplete: vi.fn() } });
 
 		const choiceGrid = screen.getByTestId('choice-grid');
@@ -216,28 +215,21 @@ describe('PracticeChordDrill: counting-chip row (E2, SHAPE-01)', () => {
 
 		await fireEvent.click(wrong!);
 
-		const row = screen.getByTestId('counting-chip-row');
-		const gapChips = row.querySelectorAll('.gap-chip');
-		expect(gapChips.length).toBe(3);
-		expect(gapChips[0].classList.contains('m3')).toBe(true);
-		expect(gapChips[1].classList.contains('M3')).toBe(true);
-		expect(gapChips[2].classList.contains('m3')).toBe(true);
-	});
-
-	it('does not leak the counting-chip row before the user answers', () => {
-		render(PracticeChordDrill, { props: { symbol: 'Cm7', onComplete: vi.fn() } });
-
 		expect(screen.queryByTestId('counting-chip-row')).not.toBeInTheDocument();
+		const labels = [...document.querySelectorAll('.piano-keyboard__gap-label')].map((el) =>
+			el.textContent?.trim()
+		);
+		expect(labels).toEqual(['m3 · 3', 'M3 · 4', 'm3 · 3']);
 	});
 
-	it('removes the old grey mono shape line, replaced by the counting-chip row (Success Criterion 4, IN-04)', async () => {
+	it('removes the old grey mono shape line, now that the reveal keyboard carries the shape (Success Criterion 4, IN-04)', async () => {
 		// The old grey mono line (removed in commit 769afa7) rendered
 		// "{targetQuality}: {stackedThirdsPattern}" where the gap labels were
-		// joined by " · " (U+00B7 middot), e.g. Cm7 -> "m7: m3 · M3 · m3".
-		// Asserting queryByTestId('chord-drill-shape') is absent is vacuous -
-		// that testid never existed on this component. The real fingerprint
-		// of the removed line is the middot-joined run itself; its absence
-		// plus counting-chip-row's presence is genuine regression protection.
+		// joined by " · " (U+00B7 middot), e.g. Cm7 -> "m7: m3 · M3 · m3". The
+		// counting-chip row that superseded it has itself been removed
+		// (quick-260804-1uq): the reveal keyboard's tick rail now carries the
+		// same gap information, so the middot-bearing gap labels live above
+		// the board rather than inside the feedback stamp.
 		//
 		// The blanket middot sweep is scoped to the feedback region
 		// (chord-drill-feedback), not the whole container, because the
@@ -253,7 +245,7 @@ describe('PracticeChordDrill: counting-chip row (E2, SHAPE-01)', () => {
 
 		expect(container.textContent).not.toContain('m3 · M3 · m3');
 		expect(screen.getByTestId('chord-drill-feedback').textContent ?? '').not.toMatch(/·/);
-		expect(screen.getByTestId('counting-chip-row')).toBeInTheDocument();
+		expect(screen.queryByTestId('counting-chip-row')).not.toBeInTheDocument();
 	});
 });
 

@@ -9,7 +9,6 @@
 	import { buildProvenanceIndex, songsForSymbol } from '$lib/practice/songProvenance';
 	import PianoKeyboard from './PianoKeyboard.svelte';
 	import ChordGlyph from './ChordGlyph.svelte';
-	import CountingChipRow from './CountingChipRow.svelte';
 	import HintLadder from './HintLadder.svelte';
 	import RevealInsight from './RevealInsight.svelte';
 	import SongMark from './SongMark.svelte';
@@ -91,11 +90,18 @@
 	 * identification miss renders an explicit "you picked X, it was Y" line
 	 * beside the correct-symbol ChordGlyph.
 	 *
-	 * E2/SHAPE-01: after EITHER outcome, a CountingChipRow renders the answer
-	 * chord's stacked-thirds gap pattern as role-tinted tone chips + fill/outline
-	 * gap chips, so a beginner reads the invariant SHAPE per quality (m7 =
-	 * small-big-small) at a glance. Visually subordinate to the correct/incorrect
-	 * affirmation above it, never competing with it.
+	 * E2/SHAPE-01 (superseded, quick-260804-1uq): a CountingChipRow used to
+	 * render the answer chord's stacked-thirds gap pattern as role-tinted tone
+	 * chips + fill/outline gap chips after either outcome, so a beginner could
+	 * read the invariant SHAPE per quality (m7 = small-big-small) at a glance.
+	 * That row is now redundant: the reveal keyboard above already carries note
+	 * letters engraved on the keys, role via the root-relative corner badges,
+	 * and every adjacent-tone gap via the tick rail plus its arrival-key badge
+	 * fallback (quick-260804-1uq) - the same three things the chip row showed,
+	 * with real tap targets instead of a display-only row whose only
+	 * interaction was an unreachable hover title. CountingChipRow itself is
+	 * unchanged and remains the single source for this hint in ProgressionDrill
+	 * and InversionDrill, whose keyboards have no tick rail.
 	 */
 
 	/** The three chord question shapes, named by the FSRS mode each one renders. */
@@ -404,10 +410,6 @@
 				-->
 				<RevealInsight correctSymbol={symbol} givenSymbol={identifying ? picked : undefined} />
 			{/if}
-
-			<div class="mt-2">
-				<CountingChipRow chord={target} ariaLabel={t('drills.aria.chordShape')} />
-			</div>
 		</div>
 	{/if}
 

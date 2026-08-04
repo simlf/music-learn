@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-21)
 Phase: 37 (no-regression-gate) — COMPLETE (PASSED 8/8)
 Milestone: v2.3 Beginner On-Ramp & Inversions — all 6 phases (32-37) complete; green gate PASSED
 Status: SHIPPED. PR #28 merged to main on 2026-07-28 (merge commit 1925637). The code landed via a squashed code-only branch, so the phases 32-37 planning history was reconciled onto main separately. On-device visual UAT for phases 34 and 35 remains open.
-Last activity: 2026-08-03 — Completed quick task 260803-u3g: interval tick rail wired into the practice drill keyboards
+Last activity: 2026-08-04 — Completed quick task 260804-1uq: arrival-key badge for gaps the tick rail cannot draw, practice chip row retired
 
 ## Deferred Verification
 
@@ -483,6 +483,7 @@ Recent decisions affecting current work:
 | 260730-q3f | Phone keyboards: stop the voicing cards overflowing the viewport, one-octave boards fit their container in a single row (narrows 260729-ert's two-row wrap to the 2-octave span) | 2026-07-30 | df6ea3d | [260730-q3f-phone-keyboard-overflow-and-double-row](./quick/260730-q3f-phone-keyboard-overflow-and-double-row/) |
 | 260731-031 | Keyboard-native interval display: `showIntervalTicks` semitone tick rail above the piano board (design handoff sketch 2b), opted in on lookup | 2026-07-31 | d6abc37 | [260731-031-keyboard-interval-tick-rail](./quick/260731-031-keyboard-interval-tick-rail/) |
 | 260803-u3g | Wire `showIntervalTicks` into PracticeChordDrill's three keyboards, post-answer only (completes the handoff's "Practice/Lookup" reach) | 2026-08-03 | 13aa09a | [260803-u3g-wire-showintervalticks-into-practicechor](./quick/260803-u3g-wire-showintervalticks-into-practicechor/) |
+| 260804-1uq | Arrival-key `+m3` badge for every gap the tick rail cannot draw (wrapped one-octave endpoint, stacked two-row board); CountingChipRow dropped from the practice reveal as now-redundant | 2026-08-04 | ebb6fe4 | [260804-1uq-wrapped-gap-interval-badge-fallback-on-t](./quick/260804-1uq-wrapped-gap-interval-badge-fallback-on-t/) |
 
 ## Deferred Items
 

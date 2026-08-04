@@ -77,12 +77,6 @@ export const drills = {
 		'drills.hint.interval.countBodyBetween': 'Half steps between the two notes: {N}.',
 		'drills.hint.interval.closing': "That's everything about this one.",
 
-		// Screen-reader label for the per-quality stacked-thirds teaching line
-		// (E2); the visible line itself ("m7: m3 · M3 · m3") is built entirely
-		// from immune quality/interval shorthand and stays identical in both
-		// locales.
-		'drills.aria.chordShape': 'Chord shape',
-
 		'drills.button.next': 'Next',
 
 		// End-of-round card.
@@ -156,8 +150,6 @@ export const drills = {
 		'drills.hint.interval.countBodyUp': 'Demi-tons au-dessus de {ROOT} : {N}.',
 		'drills.hint.interval.countBodyBetween': 'Demi-tons entre les deux notes : {N}.',
 		'drills.hint.interval.closing': "C'est tout ce qu'il y a à savoir dessus.",
-
-		'drills.aria.chordShape': "Forme de l'accord",
 
 		'drills.button.next': 'Suivant',
 

@@ -207,9 +207,12 @@
 		 * intervening semitone. Answers "how far apart are these two notes"
 		 * where the notes actually are, complementing `showIntervalBadges`'
 		 * root-relative corner badges (which answer "what degree is this note").
-		 * Suppressed on a stacked (two-row phone) board, where a single
-		 * absolutely-positioned line cannot span the row break. Additive and
-		 * gated; omitting it leaves the render byte-identical.
+		 * On a stacked (two-row phone) board, or wherever a gap's geometry
+		 * cannot be drawn honestly (a wrapped/backwards gap on a one-octave
+		 * board), the rail is suppressed for that gap and a small `+m3`-style
+		 * badge renders on the gap's arrival key instead (quick-260804-1uq),
+		 * so no gap is ever silently dropped. Additive and gated; omitting it
+		 * leaves the render byte-identical.
 		 */
 		showIntervalTicks?: boolean;
 	}
@@ -239,6 +242,17 @@
 	function intervalBadgeFor(note: SpelledNote | undefined): string {
 		if (!showIntervalBadges || !note || rootLetter === undefined) return '';
 		return intervalFromRoot(rootLetter, note.letter).short;
+	}
+
+	/**
+	 * Arrival-key gap badge text (`showIntervalTicks`, quick-260804-1uq): the
+	 * `+m3`/`+M3`/`+P4`-style label for a gap the rail could not draw, keyed
+	 * by the SAME `SpelledNote` object `noteAssignment` uses - never by key
+	 * index, since a stacked row's `BlackKey` carries only a row-relative
+	 * `position` and no absolute black-key index.
+	 */
+	function gapBadgeFor(note: SpelledNote | undefined): string | undefined {
+		return note ? gapBadges.get(note) : undefined;
 	}
 
 	/**
@@ -624,22 +638,46 @@
 	const NARROW_GAP_PX = 60;
 
 	/**
-	 * The tick rail's gaps (`showIntervalTicks`). Gap NAMING comes from
-	 * `gapsBetween`, the same derivation `stackedThirdsFor` uses for the
-	 * stacked-thirds row, so the keyboard and that row can never disagree about
-	 * which gaps are thirds; only the GEOMETRY is computed here.
+	 * The tick rail's gaps, PLUS the arrival-key badges for the gaps the rail
+	 * cannot draw (`showIntervalTicks`, quick-260804-1uq). Gap NAMING comes
+	 * from `gapsBetween`, the same derivation `stackedThirdsFor` uses for the
+	 * stacked-thirds row, so the keyboard and that row can never disagree
+	 * about which gaps are thirds; only the GEOMETRY (and the drawn-vs-
+	 * badged choice) is computed here.
 	 *
-	 * Suppressed wholesale when the board is stacked (a single absolutely-
-	 * positioned line cannot cross a row break that does not exist in the DOM)
-	 * and when there are fewer than two notes (nothing to span). Individual
-	 * gaps are also dropped when either endpoint is unplaced or when the second
-	 * endpoint does not sit to the RIGHT of the first - which happens on a
-	 * one-octave board once a note wraps back into the span (D-02), where a
-	 * drawn line would run backwards and name a distance the board is not
-	 * actually showing.
+	 * One walk produces both outputs so "never doubled" is structural, not a
+	 * duplicated condition: every gap becomes EITHER a drawn rail entry OR a
+	 * badge entry, never both, and a gap whose endpoint was never assigned a
+	 * key becomes neither (there is no key to badge).
+	 *
+	 * - Bails to `{ gaps: [], badges: empty }` when `!showIntervalTicks` or
+	 *   fewer than two notes. `stacked` is deliberately NOT part of this
+	 *   bail - a stacked board is exactly where every gap needs a badge,
+	 *   since a single absolutely-positioned line cannot cross a row break
+	 *   that does not exist in the DOM.
+	 * - On a STACKED board every gap becomes a badge (the rail stays empty
+	 *   by construction, so the existing `intervalGaps.length > 0` rail gate
+	 *   is unaffected).
+	 * - On an UNSTACKED board, a gap draws on the rail when both endpoints
+	 *   are placed and the second sits to the RIGHT of the first; otherwise
+	 *   (an unplaced endpoint aside) it becomes a badge instead of being
+	 *   silently dropped - this is the same backwards-line guard as before,
+	 *   with the drop replaced by a badge. A drawn line would run backwards
+	 *   and name a distance the board is not actually showing, which is
+	 *   exactly the case a one-octave board hits once a note wraps back into
+	 *   the span (D-02).
+	 *
+	 * Badges are keyed by the `SpelledNote` OBJECT (never by key index/kind):
+	 * the `board` snippet renders stacked rows from `BlackKey` objects whose
+	 * `position` is row-relative and carries no absolute black-key index, so
+	 * an index key would silently miss every stacked black key. The note
+	 * object is the same identity `noteAssignment` uses. If two undrawn gaps
+	 * somehow arrived at the same physical key, the later `Map.set` wins
+	 * (deterministic, and unreachable for a chord with distinct pitch
+	 * classes).
 	 */
-	const intervalGaps: TickGap[] = $derived.by(() => {
-		if (!showIntervalTicks || stacked || notes.length < 2) return [];
+	const railLayout: { gaps: TickGap[]; badges: Map<SpelledNote, string> } = $derived.by(() => {
+		if (!showIntervalTicks || notes.length < 2) return { gaps: [], badges: new Map() };
 
 		// The rail and the board share a width: the measured container, floored
 		// at the board's own min-width (which is what the wrapper scrolls to
@@ -648,10 +686,23 @@
 		const boardWidthPx = Math.max(measuredWidth ?? 0, boardFloorPx);
 
 		const drawn: TickGap[] = [];
+		const badges = new Map<SpelledNote, string>();
 		gapsBetween(notes).forEach((gap, index) => {
-			const fromPct = centerPctFor(notes[index]);
-			const toPct = centerPctFor(notes[index + 1]);
-			if (fromPct === undefined || toPct === undefined || toPct <= fromPct) return;
+			const from = notes[index];
+			const to = notes[index + 1];
+			if (!noteAssignment.get(from) || !noteAssignment.get(to)) return;
+
+			if (stacked) {
+				badges.set(to, gap.label);
+				return;
+			}
+
+			const fromPct = centerPctFor(from);
+			const toPct = centerPctFor(to);
+			if (fromPct === undefined || toPct === undefined || toPct <= fromPct) {
+				badges.set(to, gap.label);
+				return;
+			}
 
 			const spanPct = toPct - fromPct;
 			const steps = gap.semitones;
@@ -670,8 +721,11 @@
 				narrow: (spanPct / 100) * boardWidthPx < NARROW_GAP_PX
 			});
 		});
-		return drawn;
+		return { gaps: drawn, badges };
 	});
+
+	const intervalGaps: TickGap[] = $derived(railLayout.gaps);
+	const gapBadges: Map<SpelledNote, string> = $derived(railLayout.badges);
 
 	interface KeyboardRowView {
 		/** This row's own white keys, indexed locally (0-based within the row). */
@@ -1036,8 +1090,12 @@
 				: undefined}
 		>
 			{#if key.note}
+				{@const gapBadge = gapBadgeFor(key.note)}
 				{#if showIntervalBadges}
 					<span class="piano-keyboard__ivbadge">{intervalBadgeFor(key.note)}</span>
+				{/if}
+				{#if gapBadge}
+					<span class="piano-keyboard__gapbadge" aria-hidden="true">{gapBadge}</span>
 				{/if}
 				<NoteLabel letter={key.note.letter} solfege={key.note.solfege} highlighted />
 			{:else if wrongLetters?.has(key.letter)}
@@ -1103,10 +1161,16 @@
 				: undefined}
 		>
 			{#if key.note}
+				{@const gapBadge = gapBadgeFor(key.note)}
 				{#if showIntervalBadges}
 					<span class="piano-keyboard__ivbadge piano-keyboard__ivbadge--black">
 						{intervalBadgeFor(key.note)}
 					</span>
+				{/if}
+				{#if gapBadge}
+					<span class="piano-keyboard__gapbadge piano-keyboard__gapbadge--black" aria-hidden="true"
+						>{gapBadge}</span
+					>
 				{/if}
 				<NoteLabel letter={key.note.letter} solfege={key.note.solfege} highlighted />
 			{:else if wrongLetters?.has(key.sharpLetter)}
@@ -1463,6 +1527,48 @@
 	.piano-keyboard__ivbadge--black {
 		background: var(--color-paper-bright);
 		color: var(--color-ink);
+	}
+
+	/*
+	 * Arrival-key gap badge (`showIntervalTicks`, quick-260804-1uq): the
+	 * fallback carrier for a gap the tick rail could not honestly draw (a
+	 * wrapped/backwards gap on a one-octave board, or ANY gap on a stacked
+	 * board). Placement is load-bearing and non-obvious: on a WHITE key the
+	 * badge sits just below `60%` - where the black keys end - because a
+	 * white key's child cannot paint above a sibling black key (the parent's
+	 * `z-index: 1` vs the black key's `z-index: 2` creates the stacking
+	 * context), so any off-centre badge inside the top 96px could be
+	 * swallowed; below that band it also clears the `NoteLabel` at the key's
+	 * foot. On a BLACK key there is no such band (the key IS only 60% tall),
+	 * so it drops to `--spacing-lg`, one row under that key's own
+	 * `--ivbadge` and above its `NoteLabel`. Both are horizontally centred,
+	 * deliberately NOT the corner the bass "B" badge already owns
+	 * (`top: 2px; left: 2px`) and vertically clear of the root-relative
+	 * `--ivbadge` row, so all three can coexist on one key. Unlike
+	 * `--ivbadge`, no black-key colour inversion is needed - paper-bright
+	 * fill with an ink border reads on both key kinds. No radius (the global
+	 * zero-radius rule owns that), no quality colour - the rail's M/m
+	 * colouring is a rail affordance; the badge stays neutral ink.
+	 */
+	.piano-keyboard__gapbadge {
+		position: absolute;
+		top: calc(60% + var(--spacing-xs));
+		left: 50%;
+		transform: translateX(-50%);
+		font-family: var(--font-mono);
+		font-weight: 700;
+		font-size: 9px;
+		line-height: 1;
+		letter-spacing: 0.02em;
+		padding: 1px 3px;
+		background: var(--color-paper-bright);
+		border: 1px solid var(--color-ink);
+		color: var(--color-ink);
+		white-space: nowrap;
+		pointer-events: none;
+	}
+	.piano-keyboard__gapbadge--black {
+		top: var(--spacing-lg);
 	}
 
 	/*

@@ -1,4 +1,5 @@
 import { render, screen, fireEvent, within } from '@testing-library/svelte';
+import { tick } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import PianoKeyboard from './PianoKeyboard.svelte';
 import IntervalChip from './IntervalChip.svelte';
@@ -173,6 +174,75 @@ describe('PianoKeyboard', () => {
 		render(PianoKeyboard, { notes });
 		expect(document.querySelector('.piano-keyboard__rail')).toBeNull();
 		expect(document.querySelectorAll('.piano-keyboard__gap-line')).toHaveLength(0);
+	});
+
+	it('showIntervalTicks: a wrapped gap the rail cannot draw becomes a +label badge on its arrival key', () => {
+		// Gm = G, B♭, D on a one-octave board: D wraps back to the LEFT of the
+		// root, so the rail draws G→B♭ (m3) but cannot honestly draw B♭→D (a
+		// major third, +M3) - that gap must land on the D key as a badge.
+		const { notes } = spellChord('Gm');
+
+		render(PianoKeyboard, { notes, showIntervalTicks: true, octaves: 1 });
+
+		const labels = [...document.querySelectorAll('.piano-keyboard__gap-label')].map((el) =>
+			el.textContent?.trim()
+		);
+		expect(labels).toEqual(['m3 · 3']);
+
+		const badges = document.querySelectorAll('.piano-keyboard__gapbadge');
+		expect(badges).toHaveLength(1);
+		expect(badges[0].textContent?.trim()).toBe('+M3');
+		expect(badges[0]).toHaveAttribute('aria-hidden', 'true');
+
+		const arrivalKey = badges[0].closest('.piano-keyboard__key');
+		expect(arrivalKey).not.toBeNull();
+		expect(within(arrivalKey as HTMLElement).getByText('D')).toBeInTheDocument();
+	});
+
+	it('showIntervalTicks: a stacked board draws no rail and badges every gap', async () => {
+		Object.defineProperty(HTMLDivElement.prototype, 'clientWidth', {
+			configurable: true,
+			value: 400
+		});
+
+		try {
+			const { notes } = spellChord('Cm7');
+			const { container } = render(PianoKeyboard, { notes, showIntervalTicks: true, octaves: 2 });
+			await tick();
+			await tick();
+
+			expect(container.querySelector('.piano-keyboard__rows')).not.toBeNull();
+			expect(container.querySelector('.piano-keyboard__rail')).toBeNull();
+
+			const badges = [...document.querySelectorAll('.piano-keyboard__gapbadge')].map((el) =>
+				el.textContent?.trim()
+			);
+			expect(badges.sort()).toEqual(['+M3', '+m3', '+m3'].sort());
+		} finally {
+			Object.defineProperty(HTMLDivElement.prototype, 'clientWidth', {
+				configurable: true,
+				value: 0
+			});
+		}
+	});
+
+	it('showIntervalTicks: a gap the rail draws never also gets a badge', () => {
+		const { notes } = spellChord('Cm7');
+
+		render(PianoKeyboard, { notes, showIntervalTicks: true });
+
+		const labels = [...document.querySelectorAll('.piano-keyboard__gap-label')].map((el) =>
+			el.textContent?.trim()
+		);
+		expect(labels).toEqual(['m3 · 3', 'M3 · 4', 'm3 · 3']);
+		expect(document.querySelectorAll('.piano-keyboard__gapbadge')).toHaveLength(0);
+	});
+
+	it('non-regression: omitting showIntervalTicks renders no gap badges', () => {
+		const { notes } = spellChord('Gm');
+		render(PianoKeyboard, { notes, octaves: 1 });
+		expect(document.querySelectorAll('.piano-keyboard__gapbadge')).toHaveLength(0);
+		expect(document.querySelectorAll('.piano-keyboard__rail')).toHaveLength(0);
 	});
 
 	it('renders a display-only keyboard with no click or keydown handlers', () => {
