@@ -233,6 +233,25 @@ describe('progress', () => {
 			expect(warnSpy).toHaveBeenCalledTimes(1);
 		});
 
+		it('survives an aborted (timed-out) drain: the queue is preserved, not lost', async () => {
+			const seeded = [
+				{ item: 'Cm7', kind: 'chord', correct: true, clientDate: '2026-01-01' },
+				{ item: 'm3', kind: 'interval', correct: true, clientDate: '2026-01-01' }
+			];
+			localStorage.setItem(QUEUE_KEY, JSON.stringify(seeded));
+
+			// A hung request rejects the way a real fetch does when its
+			// AbortSignal.timeout fires: drainQueue treats this like any other
+			// transient failure (stop, persist the remainder).
+			const fetchMock = vi.fn().mockRejectedValue(new DOMException('signal timed out', 'TimeoutError'));
+			vi.stubGlobal('fetch', fetchMock);
+
+			await flushQueue();
+
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+			expect(readQueueFromStorage()).toEqual(seeded);
+		});
+
 		it('still stops and retains everything from the first transient failure on', async () => {
 			const seeded = [
 				{ item: 'Cm7', kind: 'chord', correct: true, clientDate: '2026-01-01' },

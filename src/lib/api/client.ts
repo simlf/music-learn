@@ -49,10 +49,17 @@ export interface ApiFetchOptions {
 	body?: unknown;
 }
 
+const FETCH_TIMEOUT_MS = 8000;
+
 /**
  * Fetches `${API_BASE}${path}` with a JSON Content-Type and, when a token is
  * stored, a Bearer Authorization header. Returns the raw Response; callers
  * decide what `.ok`/status means for them.
+ *
+ * Aborts after FETCH_TIMEOUT_MS via AbortSignal.timeout (feature-detected and
+ * omitted when unavailable, e.g. jsdom) so a hung request can't wedge
+ * progress.ts's serialized drainChain for minutes; the abort surfaces as a
+ * rejected fetch, which drainQueue already treats as a transient failure.
  */
 export async function apiFetch(path: string, opts: ApiFetchOptions = {}): Promise<Response> {
 	const token = getApiToken();
@@ -64,6 +71,9 @@ export async function apiFetch(path: string, opts: ApiFetchOptions = {}): Promis
 	return fetch(`${API_BASE}${path}`, {
 		method: opts.method ?? 'GET',
 		headers,
-		body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined
+		body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+		...(typeof AbortSignal.timeout === 'function'
+			? { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) }
+			: {})
 	});
 }

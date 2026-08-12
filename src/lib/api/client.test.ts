@@ -59,5 +59,55 @@ describe('client', () => {
 			const [, init] = fetchMock.mock.calls[0];
 			expect(init.headers.Authorization).toBeUndefined();
 		});
+
+		it('rejects at the 8s timeout when the request hangs, so it can never wedge the drain chain', async () => {
+			vi.useFakeTimers();
+			// Fake timers don't drive the native AbortSignal.timeout internals, so
+			// swap it for a setTimeout-backed equivalent that they DO drive - this
+			// still exercises the real apiFetch -> AbortSignal.timeout(8000) wiring.
+			vi.spyOn(AbortSignal, 'timeout').mockImplementation((ms: number) => {
+				const controller = new AbortController();
+				setTimeout(() => controller.abort(), ms);
+				return controller.signal;
+			});
+			const fetchMock = vi.fn(
+				(_url: string, init: RequestInit) =>
+					new Promise((_resolve, reject) => {
+						init.signal?.addEventListener('abort', () => reject(new Error('aborted')));
+					})
+			);
+			vi.stubGlobal('fetch', fetchMock);
+
+			const promise = apiFetch('/answers', { method: 'POST', body: {} });
+			let rejected = false;
+			promise.catch(() => {
+				rejected = true;
+			});
+
+			await vi.advanceTimersByTimeAsync(7999);
+			expect(rejected).toBe(false);
+
+			await vi.advanceTimersByTimeAsync(1);
+			await Promise.resolve();
+			expect(rejected).toBe(true);
+
+			vi.useRealTimers();
+		});
+
+		it('omits the signal option when AbortSignal.timeout is unavailable (jsdom safety)', async () => {
+			const original = AbortSignal.timeout;
+			// @ts-expect-error simulating an environment without AbortSignal.timeout
+			delete AbortSignal.timeout;
+
+			const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+			vi.stubGlobal('fetch', fetchMock);
+
+			await apiFetch('/answers');
+
+			const [, init] = fetchMock.mock.calls[0];
+			expect(init.signal).toBeUndefined();
+
+			AbortSignal.timeout = original;
+		});
 	});
 });
