@@ -128,6 +128,66 @@ test.describe('bottom tab bar', () => {
 });
 
 /*
+ * WR-10. The masthead MIDI chip renders at EVERY viewport width (unlike the
+ * locale toggle, which is wrapped in a desktop-only container), so on a
+ * Web-MIDI-capable phone it is a real finger target. Its stylesheet only
+ * guarantees the vertical half: `min-height: 44px` pins the height, while the
+ * width is content-driven and capped at `max-width: 18ch` with an ellipsis. The
+ * narrow phone is the case worth pinning, because that is where the masthead is
+ * tightest and where its width clamp has to hold.
+ */
+test.describe('masthead MIDI chip', () => {
+	test.use({ viewport: PHONE_NARROW, permissions: ['midi'] });
+
+	test('is at least 44x44 on a narrow phone', async ({ page }) => {
+		await page.goto('/');
+
+		const chip = page.getByTestId('midi-status');
+		await expect(chip).toHaveAttribute('data-midi-state', 'idle');
+
+		const box = await chip.boundingBox();
+		expect(box, 'the chip has a layout box').not.toBeNull();
+		expect(box!.width, 'MIDI chip width').toBeGreaterThanOrEqual(FINGERTIP_PX);
+		expect(box!.height, 'MIDI chip height').toBeGreaterThanOrEqual(FINGERTIP_PX);
+	});
+
+	test('stays at least 44x44 after a connect attempt resolves', async ({ page }) => {
+		await page.goto('/');
+
+		const chip = page.getByTestId('midi-status');
+		await chip.click();
+		await expect
+			.poll(() => chip.getAttribute('data-midi-state'), { timeout: 5_000 })
+			.toMatch(/^(no-device|connected|denied|error)$/);
+
+		const kind = await chip.getAttribute('data-midi-state');
+		const box = await chip.boundingBox();
+		expect(box, 'the chip has a layout box').not.toBeNull();
+		expect(box!.width, `MIDI chip width (${kind})`).toBeGreaterThanOrEqual(FINGERTIP_PX);
+		expect(box!.height, `MIDI chip height (${kind})`).toBeGreaterThanOrEqual(FINGERTIP_PX);
+	});
+
+	/*
+	 * The chip's width clamp exists so a rogue or verbose USB descriptor cannot
+	 * shove the masthead around, so the masthead must not gain horizontal scroll
+	 * at the narrowest supported width.
+	 */
+	test('does not give the masthead horizontal overflow', async ({ page }) => {
+		await page.goto('/');
+		await expect(page.getByTestId('midi-status')).toBeVisible();
+
+		const overflow = await page.evaluate(() => {
+			const masthead = document.querySelector('[data-testid="masthead"]');
+			if (!masthead) return null;
+			return { scrollWidth: masthead.scrollWidth, clientWidth: masthead.clientWidth };
+		});
+
+		expect(overflow).not.toBeNull();
+		expect(overflow!.scrollWidth).toBeLessThanOrEqual(overflow!.clientWidth);
+	});
+});
+
+/*
  * The keyboard is checked at four widths because octave count is width-derived:
  * one octave on a portrait phone, two once the available width clears 15 * 44px.
  * The two-octave case is the one the manual backlog kept asking about, and

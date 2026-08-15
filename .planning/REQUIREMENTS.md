@@ -6,10 +6,10 @@
 
 ### MIDI — Web MIDI play-to-answer
 
-- [ ] **MIDI-01**: The user can connect the USB digital piano and see its connection state in the app: device detected, device disconnected, or browser unsupported (Safari/iOS). Uses `webmidi`'s device events, no polling.
+- [ ] **MIDI-01**: The user can connect the USB digital piano and see its connection state in the app: device detected, device disconnected, or browser unsupported (Safari/iOS). Uses `webmidi`'s device events, no polling. Hardware-observable behavior (device detected/disconnected with the physical instrument) is deferred human verification, see 38-UAT.md.
 - [ ] **MIDI-02**: The user can answer play-type drills (build-it, inversions, voicings, scale, see-play) by playing on the MIDI piano, graded by the exact same chroma (+ required bass where applicable) logic as on-screen taps. MIDI note-on feeds the existing grading seam; no parallel grading path.
 - [ ] **MIDI-03**: The user can play a full chord (held simultaneous notes) and the app grades it as one attempt, without a separate confirm tap. Held-notes set tracking handles note-on/note-off and sustain.
-- [ ] **MIDI-04**: On browsers without Web MIDI, the app works unchanged with the on-screen keyboard and shows no MIDI chrome. Progressive enhancement: feature-detect, never degrade the non-MIDI path.
+- [ ] **MIDI-04**: On browsers without Web MIDI, the app works unchanged with the on-screen keyboard and shows no MIDI chrome. Progressive enhancement: feature-detect, never degrade the non-MIDI path. The no-Web-MIDI path itself is automated-proven (38-04 Task 1), but this REQ is left unchecked with MIDI-01 pending the same Task 2 hardware sign-off since both share the Phase 38 traceability row and the phase's hardware behavior is not yet proven end to end, see 38-UAT.md.
 
 ### PLAY — Song play-through
 

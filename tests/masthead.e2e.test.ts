@@ -61,6 +61,38 @@ describe('masthead responsive nav (30-01, HUB-01)', () => {
 	});
 });
 
+/**
+ * MIDI-04's negative half. THE POSITIVE CONTROL THAT MAKES THIS MEAN ANYTHING
+ * LIVES IN `tests/mastheadMidiDetection.test.ts` (WR-09) - read the two
+ * together or neither proves what it claims.
+ *
+ * On its own this assertion is nearly vacuous: `midi.svelte.ts`'s initial state
+ * is ALREADY `{ kind: 'unsupported' }`, so it would still hold if `initMidi()`
+ * were deleted, if `midiUnsupportedReason()` always returned null, or if the
+ * whole feature-detect branch were inverted. It proves the DEFAULT, not the
+ * detection. The companion file asserts the chip DOES appear when
+ * `requestMIDIAccess` exists, which can only happen if the detect-and-init path
+ * actually runs.
+ *
+ * Why a separate file rather than a second case here: `initMidi()` is
+ * once-per-module-load by design, so the two cases need two virgin module
+ * graphs. `vi.resetModules()` + re-import cannot deliver that in-file, because
+ * the re-imported layout binds to a SECOND `svelte` instance and mounting it
+ * with this file's `render` throws `effect_orphan`. Vitest already isolates
+ * per file, so one file per case is the mechanism that works.
+ */
+describe('MidiStatus renders no MIDI chrome on a Web-MIDI-unsupported browser (MIDI-04)', () => {
+	it('renders no midi-status element in the masthead in jsdom (no navigator.requestMIDIAccess, a faithful stand-in for Safari/iOS)', () => {
+		const emptyChildren = createRawSnippet(() => ({
+			render: () => '<div></div>'
+		}));
+
+		render(RootLayout, { params: {}, data: {}, children: emptyChildren });
+
+		expect(screen.queryByTestId('midi-status')).not.toBeInTheDocument();
+	});
+});
+
 describe('EN|FR toggle live-flips the nav (I18N-01/02)', () => {
 	afterEach(() => {
 		cleanup();

@@ -2,15 +2,19 @@
 gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Real Piano & Real Songs
-status: planning
-last_updated: "2026-08-03T21:45:00.000Z"
-last_activity: 2026-08-03
+current_phase: 38
+current_phase_name: midi-connection-progressive-enhancement
+status: verifying
+stopped_at: "Completed 38-04-PLAN.md (Task 2 deferred: hardware UAT, see 38-UAT.md)"
+last_updated: "2026-08-04T21:04:37.391Z"
+last_activity: 2026-08-04
+last_activity_desc: Phase 38 execution started
 progress:
-  total_phases: 6
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_phases: 18
+  completed_phases: 13
+  total_plans: 45
+  completed_plans: 45
+  percent: 72
 ---
 
 # Project State
@@ -20,14 +24,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-21)
 
 **Core value:** See a jazz chord symbol and know instantly what to play with the left hand.
-**Current focus:** v2.4 Real Piano & Real Songs — roadmap created (6 phases, 38-43). Awaiting first-phase planning.
+**Current focus:** Phase 38 — midi-connection-progressive-enhancement
 
 ## Current Position
 
-Phase: Not started (roadmap created, awaiting Phase 38 planning)
-Plan: —
-Status: Roadmap approved, ready to plan Phase 38
-Last activity: 2026-08-03 — v2.4 roadmap created (6 phases, 38-43)
+Phase: 38 (midi-connection-progressive-enhancement) — EXECUTING
+Plan: 4 of 4
+Status: Phase complete — ready for verification
+Total Plans in Phase: 4
+Last activity: 2026-08-04 — Phase 38 execution started
 
 ## Deferred Verification
 
@@ -37,6 +42,7 @@ Autonomous away-run (2026-07-27): human_needed on-device VISUAL UAT items record
 |-------|-------|--------|
 | 34 | verification_deferred_human (3 visual items: 1-octave keyboard + caption, hint-ladder rungs/chip/ghost visuals, mature-card widen) | /gsd-verify-work 34 (see 34-UAT.md) |
 | 35 | verification_deferred_human (2 visual items: bass ink-ring + "B" badge legibility, 2-octave keyboard tap targets on phone) | /gsd-verify-work 35 (see 35-UAT.md) |
+| 38 | verification_deferred_human (5 hardware-in-the-loop items: connect with instrument attached + device-name string, unplug mid-session, re-plug mid-session, on-screen keyboard untouched + iOS no-chip check, multi-port port selection per CR-01; physical USB piano not available at plan close) | /gsd-verify-work 38 (see 38-UAT.md) |
 
 ## Performance Metrics
 
@@ -202,7 +208,10 @@ Autonomous away-run (2026-07-27): human_needed on-device VISUAL UAT items record
 | Phase 36 P02 | 7min | 2 tasks | 2 files |
 | Phase 37 P01 | 8min | 2 tasks | 2 files |
 | Phase 37 P02 | 15min | 2 tasks | 1 files |
-| Phase quick-260730-x0l P01 | 120min | 3 tasks | 6 files |
+| Phase 38 P01 | 15min | 2 tasks | 4 files |
+| Phase 38 P02 | 12min | 2 tasks | 2 files |
+| Phase 38 P03 | 15min | 2 tasks | 5 files |
+| Phase 38 P04 | 20min | 2 tasks | 4 files |
 
 ## Deferred Items
 
@@ -449,7 +458,15 @@ Recent decisions affecting current work:
 - [Phase 36-02]: Seeded items excluded from the lowMastery computation - they lead the queue post-composition regardless of the signal
 - [Phase ?]: REG-01 coverage matrix is a dedicated file mirroring v2.2 Phase 31; capstone is a new pure-composer test file (practiceQueueCapstone.test.ts) rather than extending the host-level REG test.
 - [Phase ?]: REG-01 flipped only after all three gate commands (build, test, check) were independently confirmed green in this session (T-37-02-01 mitigation).
-- [Phase ?]: [quick-260730-x0l]: Build-it tapping keyboard now self-sizes to one octave on phones and gradeConstructionTap octave-folds unreachable targets to the board ceiling, REVERSING 260730-q3f's LOCKED two-octave-pinned decision (user-approved: fold the target, keep one octave)
+- [Phase 38]: midiUnsupportedReason() mirrors micUnavailableReason()'s two-rung guard ladder (no-window, then feature-check) — Web MIDI needs no secure-context/constructor check beyond that
+- [Phase 38]: enableMidi() always passes { sysex: false } explicitly and returns only the app's flat MidiInputInfo DTO — Mitigates T-38-01 (elevation-of-privilege) and T-38-04 (raw port objects escaping the boundary)
+- [Phase 38]: watchPorts() tracks its own registered handler pair at module scope, removing the previous pair before every new registration — Mitigates T-38-03: no hot-plug handler accumulation across repeated calls
+- [Phase 38]: [Phase 38-02]: nextMidiState()'s unsupported-terminal guard returns the identical current-state reference (toBe, not toEqual), making MIDI-04 a mechanical guarantee in the state machine rather than a view-layer convention
+- [Phase 38]: [Phase 38-02]: watchPorts() is subscribed exactly once per app session via a module-scope watching boolean, so a disconnect-then-reconnect needs no second connectMidi() call and no page reload
+- [Phase 38]: [Phase 38-02]: connectMidi()'s intent counter (MicCheckPanel.svelte's guard applied verbatim) discards a stale enableMidi() result so a slow permission-dialog resolution after a second call never overwrites newer state
+- [Phase ?]: [Phase 38-03] MidiStatus's click handler re-checks isEnabling itself (not just the disabled attribute), since jsdom's fireEvent.click still invokes a disabled button's onclick, unlike a real browser
+- [Phase ?]: [Phase 38-03] The self-hide test asserts container.querySelectorAll('*').length === 0 rather than innerHTML equality, since Svelte 5's {#if} always leaves an anchor comment node in the DOM
+- [Phase ?]: [Phase 38 P04]: MIDI-01 and MIDI-04 left unchecked in REQUIREMENTS.md despite prior plans' auto-check, since the hardware-observable half of both is deferred human UAT (38-UAT.md), not proven
 
 ### Pending Todos
 
@@ -492,8 +509,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-03T19:20:11.191Z
-Stopped at: Completed quick-260730-x0l-PLAN.md (fixed-height build-it prompt zone + one-octave phone keyboard)
+Last session: 2026-08-04T21:04:37.382Z
+Stopped at: Completed 38-04-PLAN.md (Task 2 deferred: hardware UAT, see 38-UAT.md)
 Resume file: 
 None
 

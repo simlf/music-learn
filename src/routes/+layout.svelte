@@ -8,9 +8,11 @@
 	import { getApiToken } from '$lib/api/client';
 	import StreakBadge from '$lib/components/StreakBadge.svelte';
 	import LocaleToggle from '$lib/components/LocaleToggle.svelte';
+	import MidiStatus from '$lib/components/MidiStatus.svelte';
 	import UpdatePrompt from '$lib/components/UpdatePrompt.svelte';
 	import { initLocale, t, type MessageKey } from '$lib/i18n/locale.svelte';
 	import { registerUpdateWatcher } from '$lib/pwa/swUpdate.svelte';
+	import { initMidi } from '$lib/midi/midi.svelte';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
@@ -155,6 +157,10 @@
 		}
 		initLocale();
 		registerUpdateWatcher();
+		// Feature-detect only: never move a connect call here. `initMidi()`
+		// only sets idle/unsupported; the permission prompt is reachable only
+		// from MidiStatus's own click handler (MIDI-01/MIDI-04).
+		initMidi();
 		void primeDueCount();
 
 		// Returning from the background is the one moment both numbers can be
@@ -191,6 +197,7 @@
 	<div class="flex flex-wrap items-center gap-2">
 		<span class="text-heading font-bold uppercase tracking-tight whitespace-nowrap">{t('brand')}</span>
 		<StreakBadge variant="compact" count={streakCount} />
+		<MidiStatus />
 		<div class="hidden sm:block">
 			<LocaleToggle />
 		</div>

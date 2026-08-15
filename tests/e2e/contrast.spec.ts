@@ -104,3 +104,61 @@ test('the streak chip has not regressed further', async ({ page }) => {
 		`streak chip: ${sample.foreground} on ${sample.background}`
 	).toBeGreaterThanOrEqual(3.0);
 });
+
+/**
+ * WR-10. The masthead MIDI chip is a SECOND `--color-muted`-on-paper masthead
+ * chip at `text-label` size, sitting on the exact surface where that pairing
+ * already shipped below WCAG AA once and survived five rounds of manual visual
+ * UAT (see the streak-chip note above). It measures fine today; this is the
+ * regression guard the streak chip, the due badge and the active nav tab all
+ * have and this one did not.
+ *
+ * Both states are measured because they are different ELEMENTS, and one cannot
+ * speak for the other: the interactive states render a <button> with a
+ * `2px solid var(--color-ink)` border and `--spacing-xs` padding, while
+ * `connected` renders an unbordered, unpadded <span>. The post-click state is
+ * whatever headless Chromium's MIDI stack actually resolves to (no instrument
+ * is attached here), which is deliberately not pinned to one value: this file
+ * measures colours, and pinning an environment detail is how a contrast test
+ * turns into a flake.
+ *
+ * NOT COVERED, and it cannot be from here: `connected` needs a real instrument,
+ * so the <span> variant's colours are only measured if the environment happens
+ * to reach that state. Both variants carry the same `.midi-status` colour rules,
+ * so the risk this leaves is a `--color-muted` change, which the assertions
+ * below would still catch.
+ */
+test.describe('the masthead MIDI chip meets WCAG AA', () => {
+	test.use({ permissions: ['midi'] });
+
+	test('in its idle state, before any connect attempt', async ({ page }) => {
+		await page.goto('/');
+
+		const chip = page.getByTestId('midi-status');
+		await expect(chip).toHaveAttribute('data-midi-state', 'idle');
+
+		const sample = await measureContrast(chip);
+		expect(
+			sample.ratio,
+			`MIDI chip (idle): ${sample.foreground} on ${sample.background} at ${sample.fontSizePx}px/${sample.fontWeight}`
+		).toBeGreaterThanOrEqual(sample.threshold);
+	});
+
+	test('in whatever terminal state a real connect attempt reaches', async ({ page }) => {
+		await page.goto('/');
+
+		const chip = page.getByTestId('midi-status');
+		await expect(chip).toHaveAttribute('data-midi-state', 'idle');
+		await chip.click();
+		await expect
+			.poll(() => chip.getAttribute('data-midi-state'), { timeout: 5_000 })
+			.toMatch(/^(no-device|connected|denied|error)$/);
+
+		const kind = await chip.getAttribute('data-midi-state');
+		const sample = await measureContrast(chip);
+		expect(
+			sample.ratio,
+			`MIDI chip (${kind}): ${sample.foreground} on ${sample.background} at ${sample.fontSizePx}px/${sample.fontWeight}`
+		).toBeGreaterThanOrEqual(sample.threshold);
+	});
+});

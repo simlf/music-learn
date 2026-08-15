@@ -110,7 +110,25 @@ Full phase details for everything shipped through v2.1: [milestones/v2.1-ROADMAP
   2. Hot-plugging the piano mid-session (connect or disconnect) updates the connection state without a page reload.
   3. On a browser without Web MIDI (Safari/iOS), the app shows no MIDI chrome and every existing on-screen-keyboard flow works exactly as before — feature-detected, the non-MIDI path never degraded.
 
-**Plans**: TBD
+**Plans**: 4/4 plans complete
+
+Plans:
+**Wave 1**
+
+- [x] 38-01-PLAN.md — Install `webmidi` 3.1.16 (exact pin) and build `$lib/midi/webmidi.ts`: feature detection, guard-first `enableMidi` requesting note-level access only, pure error mapping, non-accumulating port-event subscription, `activeInput` Phase 39 seam
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 38-02-PLAN.md — `$lib/midi/midi.svelte.ts` reactive connection state: 8-variant union, pure `nextMidiState`/`stateFromEnable` reducers, feature-detect-only `initMidi`, gesture-gated `connectMidi` with intent + single-subscription guards
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 38-03-PLAN.md — `MidiStatus.svelte` masthead chip (self-hides on unsupported, carries the connect gesture) plus its EN/FR `midi.status.*` copy, mounted in `+layout.svelte` beside `StreakBadge` with `initMidi()` on app start
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [x] 38-04-PLAN.md — `tests/e2e/midi.spec.ts` in real Chromium (connect always terminates, Web-MIDI-removed shows no chrome while the lookup flow still works, navigate-away is clean) plus the blocking hardware-in-the-loop UAT checkpoint
+
 **UI hint**: yes
 **Notes**: Introduces the one new library for the milestone (`webmidi` 3.1.16), wrapping the raw Web MIDI API's device hot-plug and note events. Foundational — sequenced first so Phase 39 (play-to-answer) rides an already-connected device and note stream, splitting the input layer into "plumbing then grading." HARDWARE-IN-THE-LOOP: on-device UAT with the physical USB piano is required (plug/unplug, hot-plug mid-session) and is verifiable only with the real hardware present. Locked constraint: the on-screen keyboard stays first-class; MIDI is progressive-enhancement chrome layered on top, never a replacement. Design consideration: where the connection indicator lives and how it reads in the Print Shop identity.
 
