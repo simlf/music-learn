@@ -24,6 +24,7 @@ import { setLocale } from '$lib/i18n/locale.svelte';
 // (ARCHITECTURE-CONTRACTS.md consumer rule).
 vi.mock('$lib/audio/audio', () => ({
 	playNote: vi.fn(),
+	playChord: vi.fn(),
 	ensureAudioReady: vi.fn()
 }));
 

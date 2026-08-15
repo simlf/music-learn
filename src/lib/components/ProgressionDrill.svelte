@@ -13,6 +13,7 @@
 	import { spellChord } from '$lib/theory/chord';
 	import type { SpelledNote } from '$lib/theory/types';
 	import { toAsciiAccidentals } from '$lib/theory/interval';
+	import { ensureAudioReady, playChord } from '$lib/audio/audio';
 	import { buildProvenanceIndex, songsForSymbol } from '$lib/practice/songProvenance';
 	import { getAllCards, type CardRecord } from '$lib/srs/deck';
 	import { voicingStageForChord, type VoicingStage } from '$lib/practice/shellVoicing';
@@ -322,7 +323,7 @@
 		selected = next;
 	}
 
-	/** Step 2: Check. Correct chroma match (matchChord) earns the bar; wrong retries gently, never gates. */
+	/** Step 2: Check. Correct chroma match (matchChord) earns the bar and plays it back (mirrors ShellVoicingDrill's check()); wrong retries gently, never gates. */
 	function checkPlay(): void {
 		if (!currentBar) return;
 		const target = spellChord(currentBar.symbol);
@@ -344,6 +345,8 @@
 		earned = nextEarned;
 		pulseToken += 1;
 		functionReveal = currentBar.functionLabel;
+		void ensureAudioReady();
+		playChord(target.notes.map((note) => note.letter));
 
 		if (cursor < progression.bars.length - 1) {
 			cursor += 1;

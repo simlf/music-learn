@@ -26,9 +26,12 @@ import type { CardRecord } from '$lib/srs/deck';
  * read would otherwise fail in every test.
  */
 
+const playChordMock = vi.fn();
+const ensureAudioReadyMock = vi.fn();
 vi.mock('$lib/audio/audio', () => ({
 	playNote: vi.fn(),
-	ensureAudioReady: vi.fn()
+	playChord: (...args: unknown[]) => playChordMock(...args),
+	ensureAudioReady: () => ensureAudioReadyMock()
 }));
 
 const getAllCardsMock = vi.fn();
@@ -98,6 +101,8 @@ beforeEach(() => {
 	localStorage.clear();
 	getAllCardsMock.mockReset();
 	getAllCardsMock.mockResolvedValue([]);
+	playChordMock.mockReset();
+	ensureAudioReadyMock.mockClear();
 	vi.spyOn(Math, 'random').mockReturnValue(0);
 });
 
@@ -181,6 +186,28 @@ describe('ProgressionDrill: derive-then-play two-step earning', () => {
 		expect(symbolBlock.querySelector('[data-testid="song-mark"]')).toHaveTextContent(
 			'Autumn Leaves (my chart)'
 		);
+	});
+});
+
+describe('ProgressionDrill: a correct play sounds the earned chord (mirrors ShellVoicingDrill UAT V4)', () => {
+	it('plays the bar as a chord once it is correctly played', async () => {
+		render(ProgressionDrill);
+
+		await nameBar('Dm7');
+		await playBar(['D', 'F', 'A', 'C']);
+
+		expect(ensureAudioReadyMock).toHaveBeenCalled();
+		expect(playChordMock).toHaveBeenCalledWith(['D', 'F', 'A', 'C']);
+	});
+
+	it('does not play anything on a wrong play', async () => {
+		render(ProgressionDrill);
+
+		await nameBar('Dm7');
+		clickKey('C');
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(playChordMock).not.toHaveBeenCalled();
 	});
 });
 
