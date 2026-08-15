@@ -1,20 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.3
-milestone_name: Beginner On-Ramp & Inversions
-current_phase: 37
-current_phase_name: no-regression-gate
-status: milestone_shipped
-stopped_at: Completed quick-260730-x0l-PLAN.md (fixed-height build-it prompt zone + one-octave phone keyboard)
-last_updated: "2026-08-03T19:20:16.359Z"
-last_activity: 2026-07-28
-last_activity_desc: v2.3 merged; planning history reconciled onto main
+milestone: v2.4
+milestone_name: Real Piano & Real Songs
+status: planning
+last_updated: "2026-08-03T21:45:00.000Z"
+last_activity: 2026-08-03
 progress:
-  total_phases: 12
-  completed_phases: 12
-  total_plans: 41
-  completed_plans: 41
-  percent: 100
+  total_phases: 6
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -24,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-21)
 
 **Core value:** See a jazz chord symbol and know instantly what to play with the left hand.
-**Current focus:** v2.3 shipped. Awaiting next milestone.
+**Current focus:** v2.4 Real Piano & Real Songs — roadmap created (6 phases, 38-43). Awaiting first-phase planning.
 
 ## Current Position
 
-Phase: 37 (no-regression-gate) — COMPLETE (PASSED 8/8)
-Milestone: v2.3 Beginner On-Ramp & Inversions — all 6 phases (32-37) complete; green gate PASSED
-Status: SHIPPED. PR #28 merged to main on 2026-07-28 (merge commit 1925637). The code landed via a squashed code-only branch, so the phases 32-37 planning history was reconciled onto main separately. On-device visual UAT for phases 34 and 35 remains open.
-Last activity: 2026-08-04 — Completed quick task 260804-1uq: arrival-key badge for gaps the tick rail cannot draw, practice chip row retired
+Phase: Not started (roadmap created, awaiting Phase 38 planning)
+Plan: —
+Status: Roadmap approved, ready to plan Phase 38
+Last activity: 2026-08-03 — v2.4 roadmap created (6 phases, 38-43)
 
 ## Deferred Verification
 
@@ -227,6 +223,7 @@ Also carried (non-artifact): phase 21 /drills hover recede-reveal eyeball; phase
 
 ### Roadmap Evolution
 
+- v2.4 roadmap created (2026-08-03): 6 phases (38-43) for Real Piano & Real Songs, continuing numbering from v2.3's Phase 37. Three largely independent surfaces plus a green gate. MIDI splits into Phase 38 Connection & Progressive Enhancement (webmidi device events + feature-detect so Safari/iOS shows no MIDI chrome; the one new library) and Phase 39 Play-to-Answer (note-on feeds the existing matchChord chroma seam, held-notes chord detection graded as one attempt) — the historic Phase 4 carry-over finally lands. PLAY is a single Phase 40 Song Play-Through (per-song FIFO play-through riding the existing one-shot seed channel + practice engine, no dedupe for origin 'song', exotic-symbol normalize-or-skip). SYNC splits into Phase 41 Deck Sync Round-Trip (the only backend-touching feature: Fastify/SQLite deck table + push/pull, docker-compose deploy on the Oracle server) and Phase 42 Offline-First Reconciliation & Conflict Resolution (highest-risk: local-first reconcile on reconnect + latest-review-wins per card, no lost reviews, no FSRS corruption). Phase 43 No-Regression Gate closes it green (REG-02), matching v2.2's Phase 31 and v2.3's Phase 37. 11 requirements (MIDI-01..04, PLAY-01..03, SYNC-01..03, REG-02) mapped 1:1, full coverage. One new library (webmidi); SYNC is the only feature adding a SQLite schema. Locked constraints preserved: grade by chroma/MIDI never letter strings, ear-naming multiple-choice never gates, local-first persistence, no em dashes in app copy, keyboards inline never docked, on-screen keyboard stays first-class. Ordering rationale: marquee MIDI first (also lets a Phase 40 play-through be answered on the real piano), lowest-risk PLAY next, highest-risk backend SYNC last before the gate.
 - v2.3 roadmap created (2026-07-26): 6 phases (32-37) for Beginner On-Ramp & Inversions, continuing numbering from v2.2's Phase 31. Phase 32 Shape Legibility ships the shared counting-chip grammar (role-tinted tone chips + fill/outline gap chips) on the name-it feedback surface (foundational, sequenced first like v2.2's IntervalView); Phase 33 Voicing Lean Flow (independent ShellVoicingDrill refactor — kill the 3-way toggle, add/drop nudges); Phase 34 Progression Scaffold & Beginner Keyboard (escalating hint ladder reusing the chip grammar + 1-octave beginner keyboard); Phase 35 Inversions (NEW drill family, highest-risk, reuses PianoKeyboard + composePracticeQueue + FSRS, grades by chroma + required bass); Phase 36 Cold-Session Queue Ordering (composePracticeQueue — the same file Phase 35 extends, sequenced after it and depending on it to avoid a composer race); Phase 37 No-Regression Gate (final green gate, matching v2.2's Phase 31). 9 requirements mapped 1:1, full coverage. Existing stack only — no new library, no data-schema migration.
 - v2.2 roadmap created (2026-07-24): 6 phases (26-31) for Hub Consolidation + Interval Theory, continuing numbering from v2.1's Phase 25. Phase 26 Shared IntervalView (foundational); Phase 27 Practice hub — one smart interleaved session (highest-risk, generators-as-modules constraint); Phase 28 Learn hub (theory + Scales Explore + interval reference); Phase 29 Progress hub (stats/streak/review-map/songs); Phase 30 four-hub nav cutover + 8 redirect shims + showcase deletion; Phase 31 no-regression gate + test remap. 16 requirements mapped 1:1, full coverage. UI + routing restructure only — no data-schema migration, no new theory data source.
 - Phase 21 added: Drills Polish — prevent duplicate song selection; make practice-pool container discrete (desktop hover reveal) + persist enabled state; replay played chord as a full chord for memorization.
@@ -502,4 +499,5 @@ None
 
 ## Operator Next Steps
 
-- Plan the first v2.3 phase with /gsd-plan-phase 32
+- Plan the first v2.4 phase with /gsd-plan-phase 38
+- Hardware-in-the-loop: Phases 38-39 (MIDI) need on-device UAT with the physical USB piano — flag this when scheduling verification

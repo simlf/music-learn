@@ -10,31 +10,29 @@ Chord symbol fluency: see a jazz chord symbol like `Cm7` or `F♯ø7` in sheet m
 
 ## Current State
 
-**v2.1 Playability & Comprehension shipped 2026-07-21** (12 phases: keyboard everywhere, audio reveals, hint ladder, song provenance, interactive theory, full French, drills polish, PWA, phone-first UX, mobile fixes, contextual learning). Live at the Oracle-server deployment; 1450 tests green, svelte-check clean.
+**v2.3 Beginner On-Ramp & Inversions shipped 2026-07-28** (6 phases: counting-chip grammar, voicing lean flow, progression hint ladder + beginner keyboard, inversion drill family, cold-session queue ordering, no-regression gate). Since then a large quick-task batch landed on main (#47-#66): tiers 5/6 unlocked (14 chord qualities), interval naming unit, guide tones unit, mic input for build-it, slash-chord lookup, scale degrees in the curriculum, SRS engine consolidation. Live at the Oracle-server deployment; 1600+ tests green, svelte-check clean.
 
-**Deferred at close (see STATE.md Deferred Items):** on-device UAT for phases 09/23, PWA install/haptics verify, From-my-songs filter placement todo, phase 21/25 visual eyeballs.
+**Deferred at close (see STATE.md Deferred Items):** on-device visual UAT batches for phases 27 (hubs), 34 and 35 (partial); redirect-shim cleanup follow-up.
 
-**Previous milestones:** v1.0 Chord Fluency Core (shipped 2026-07-13), v2.0 Learning Upgrade (shipped 2026-07-15). History: `.planning/milestones/` and MILESTONES.md.
+**Previous milestones:** v1.0 (2026-07-13), v2.0 (2026-07-15), v2.1 (2026-07-21), v2.2 (2026-07-25), v2.3 (2026-07-28). History: `.planning/milestones/` and MILESTONES.md.
 
-## Current Milestone: v2.2 Hub Consolidation + Interval Theory
+## Current Milestone: v2.4 Real Piano & Real Songs
 
-**Goal:** Collapse 10 flat routes into 4 clear hubs and add a shared interval view so any chord shows both its stacked-thirds and its formula, with no regression in drills, SRS, stats, or song filtering.
+**Goal:** Close the loop to real playing: drill the chords of your own songs, in sheet order, answered on the real digital piano over Web MIDI, with FSRS progress synced across devices.
 
 **Target features:**
-- 4-hub navigation (Lookup / Practice / Learn / Progress) replacing 10 flat links, on desktop nav and phone tab bar; showcase route deleted; old routes become thin redirect shims for one release.
-- Shared IntervalView component (stacked-thirds default + formula toggle), embedded in both Lookup and Learn, computed from existing tonal chord data.
-- Practice hub: one smart SRS session hosting all five drill generators (name-it, build-it, voicings, intervals, progressions) in a single interleaved queue, no mode-picker, song filter still steers, single-type-due quality gate.
-- Learn hub: theory lessons merged with Scales Explore content + interval reference.
-- Progress hub: progress + recall + songs merged into one surface.
+- Web MIDI play-to-answer (the historic Phase 4 carry-over): answer chord/inversion/voicing drills by playing on the USB digital piano. Progressive enhancement (Chrome-family only); the on-screen keyboard stays a first-class path. Grading already chroma-based, so MIDI note-on feeds the same `matchChord` seam.
+- Song play-through: a per-song action that drills the song's `chordSymbols` in sheet order (repeated ii-V-Is kept, no dedupe), riding the existing seed channel and practice session engine.
+- FSRS deck sync across devices: the Dexie deck (cards + review state) syncs through the existing Fastify/SQLite backend so phone and laptop stop diverging. Local-first stays: the deck works offline, sync reconciles.
 
-**Source:** approved design at `docs/superpowers/specs/2026-07-24-hub-consolidation-design.md`. UI + routing restructure only — no data-schema migration, no new theory data source.
+**Deferred from this scope:** tempo fluency (latency-aware grading / metronome drill) stays top of backlog.
 
 ## Next Milestone Goals
 
-Candidates for after v2.2:
-- Phase 4 carry-over: MIDI play-to-answer (needs hardware-in-the-loop)
-- `.planning/v2.1-IMPROVEMENT-BACKLOG.md` items (e.g. sketch 018 tempo-fluency metronome drill I-03)
-- Deferred on-device verification batch
+Candidates for after v2.4:
+- Tempo fluency (sketch 018 / I-03): latency-aware grading or metronome drill, `questionClock.ts` groundwork exists
+- Minor keys: minor scales + minor ii-V-i progression templates (gives `ø7` its home context)
+- Deferred on-device verification batch; redirect-shim cleanup; ESLint + CI lint
 
 **Locked constraints (still binding for all future phases):** grade notes by chroma/MIDI never letter strings; ear-naming is multiple-choice and never gates progress; local-first persistence; no em dashes in copy; keyboards render inline, never in a fixed dock. See `.claude/skills/spike-findings-music-learn/` and `.claude/skills/sketch-findings-music-learn/`.
 
@@ -57,7 +55,9 @@ Candidates for after v2.2:
 
 ### Active
 
-- [ ] Drill answers via connected MIDI digital piano (Web MIDI) — Phase 4, deferred until hardware-in-the-loop testing is possible
+- [ ] Drill answers via connected MIDI digital piano (Web MIDI) — v2.4 (finally lands the historic Phase 4 carry-over)
+- [ ] Drill a song's chords in sheet order via a per-song play-through action — v2.4
+- [ ] FSRS deck (cards + review state) syncs across devices through the existing backend — v2.4
 
 ### Out of Scope
 
@@ -119,4 +119,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-24 — v2.2 Hub Consolidation + Interval Theory milestone started*
+*Last updated: 2026-08-03 — v2.4 Real Piano & Real Songs milestone started*

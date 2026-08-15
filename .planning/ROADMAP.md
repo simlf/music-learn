@@ -6,6 +6,8 @@ Music Learn takes a returning classical pianist from "I freeze when I see `F♯�
 
 Milestone **v2.3 Beginner On-Ramp & Inversions** (shipped 2026-07-28, Phases 32-37) makes the drills legible and unblockable for a theory-beginner and adds inversion practice — all within the existing stack, no schema change. A shared counting-chip grammar (role-tinted tone chips + fill/outline gap chips) lands first on the name-it feedback surface, then is reused by a new escalating progression hint ladder and a brand-new inversion drill family; a leaner add/drop voicing flow replaces the 3-way toggle; and the hybrid-queue composer stops leading cold, low-mastery sessions with scaffold-heavy items. No new library, no data-schema migration.
 
+Milestone **v2.4 Real Piano & Real Songs** (in progress, Phases 38-43) closes the loop to real playing: drill the chords of your own songs, in sheet order, answered on the real USB digital piano over Web MIDI, with the FSRS deck synced across devices. It splits into three largely independent surfaces plus a green gate: a Web MIDI input layer (connection + progressive enhancement, then play-to-answer feeding the existing chroma grading seam), a per-song play-through that rides the existing one-shot seed channel and practice engine, and the first backend-touching feature since v1.0 — FSRS deck sync (round-trip, then offline-first reconciliation with latest-review-wins conflict resolution). One new library (`webmidi`); SYNC is the only feature adding a SQLite schema, deployed via docker compose on the Oracle server.
+
 Full phase details for everything shipped through v2.1: [milestones/v2.1-ROADMAP.md](milestones/v2.1-ROADMAP.md).
 
 ## Milestones
@@ -15,10 +17,21 @@ Full phase details for everything shipped through v2.1: [milestones/v2.1-ROADMAP
 - ✅ **v2.1 Playability & Comprehension** — Phases 14-25 (shipped 2026-07-21)
 - ✅ **v2.2 Hub Consolidation + Interval Theory** — Phases 26-31 (shipped 2026-07-25)
 - ✅ **v2.3 Beginner On-Ramp & Inversions** — Phases 32-37 (shipped 2026-07-28, PR #28)
+- 🚧 **v2.4 Real Piano & Real Songs** — Phases 38-43 (in progress)
 
 ## Phases
 
-### ✅ v2.3 Beginner On-Ramp & Inversions (Phases 32-37) — SHIPPED 2026-07-28
+### v2.4 Real Piano & Real Songs (Phases 38-43) — IN PROGRESS
+
+- [ ] **Phase 38: MIDI Connection & Progressive Enhancement** - Plug in the USB digital piano and see its live connection state; browsers without Web MIDI are unchanged with no MIDI chrome.
+- [ ] **Phase 39: MIDI Play-to-Answer** - Answer play-type drills by playing on the MIDI piano, held chords graded as one attempt, through the same chroma grading as on-screen taps.
+- [ ] **Phase 40: Song Play-Through** - Start a per-song play-through that drills the song's chords in sheet order, repeats intact, never crashing on an exotic symbol.
+- [ ] **Phase 41: Deck Sync Round-Trip** - The FSRS deck uploads to the existing backend and a second device pulls the same deck, so phone and laptop stop diverging.
+- [ ] **Phase 42: Offline-First Reconciliation & Conflict Resolution** - Practicing offline still works fully; reconnect reconciles without losing reviews, and two-device conflicts resolve latest-review-wins per card.
+- [ ] **Phase 43: No-Regression Gate** - The milestone ships green: existing grading, FSRS, telemetry, and song-filter intact, the on-screen keyboard stays first-class, every new surface tested.
+
+<details>
+<summary>✅ v2.3 Beginner On-Ramp & Inversions (Phases 32-37) — SHIPPED 2026-07-28</summary>
 
 - [x] **Phase 32: Shape Legibility — Counting-Chip Grammar** - Name-it feedback shows the chord's third pattern as role-tinted tone chips with fill/outline gap chips, replacing the illegible grey mono line. (completed 2026-07-26)
 - [x] **Phase 33: Voicing Lean Flow** - The voicing drill drops the 3-way toggle: start on the shell, reach full/rootless via contextual add/drop nudges. (completed 2026-07-26)
@@ -26,6 +39,8 @@ Full phase details for everything shipped through v2.1: [milestones/v2.1-ROADMAP
 - [x] **Phase 35: Inversions — New Drill Family** - Drill a chord in a named inversion with the correct bass and a fading hint ladder, joined into the Practice queue as its own FSRS family. (completed 2026-07-27; code verified 12/12 + 1597 tests green; synthetic family for REG-01 safety; 1 blocker + 1 warning found and fixed in review; on-device visual UAT deferred, see 35-UAT.md)
 - [x] **Phase 36: Cold-Session Queue Ordering** - A cold, low-mastery session never leads with a scaffold-heavy progression or inversion item. (completed 2026-07-27; verification PASSED 8/8, no human items; 1611 tests green, svelte-check clean)
 - [x] **Phase 37: No-Regression Gate** - The milestone ships green: existing grading, FSRS, tiers, telemetry, song-filter, and ear-naming rules intact; every new surface covered by tests. (completed 2026-07-27; green gate PASSED: build 0 errors, 1620 tests 0 failures, svelte-check 0 errors; REG-01 delivered, all 9 v2.3 REQ-IDs traceable)
+
+</details>
 
 <details>
 <summary>✅ v2.2 Hub Consolidation + Interval Theory (Phases 26-31) — SHIPPED 2026-07-25</summary>
@@ -83,6 +98,94 @@ Full phase details for everything shipped through v2.1: [milestones/v2.1-ROADMAP
 </details>
 
 ## Phase Details
+
+### Phase 38: MIDI Connection & Progressive Enhancement
+
+**Goal**: On a Web-MIDI-capable browser, the user can connect the USB digital piano and see its live connection state; on any other browser the app is unchanged with no MIDI chrome.
+**Depends on**: Nothing (first phase of the milestone)
+**Requirements**: MIDI-01, MIDI-04
+**Success Criteria** (what must be TRUE):
+
+  1. On a Chrome-family browser, plugging in the USB digital piano shows a live "connected" state that names the detected device, and unplugging shows "disconnected" — driven by `webmidi`'s device events, no polling.
+  2. Hot-plugging the piano mid-session (connect or disconnect) updates the connection state without a page reload.
+  3. On a browser without Web MIDI (Safari/iOS), the app shows no MIDI chrome and every existing on-screen-keyboard flow works exactly as before — feature-detected, the non-MIDI path never degraded.
+
+**Plans**: TBD
+**UI hint**: yes
+**Notes**: Introduces the one new library for the milestone (`webmidi` 3.1.16), wrapping the raw Web MIDI API's device hot-plug and note events. Foundational — sequenced first so Phase 39 (play-to-answer) rides an already-connected device and note stream, splitting the input layer into "plumbing then grading." HARDWARE-IN-THE-LOOP: on-device UAT with the physical USB piano is required (plug/unplug, hot-plug mid-session) and is verifiable only with the real hardware present. Locked constraint: the on-screen keyboard stays first-class; MIDI is progressive-enhancement chrome layered on top, never a replacement. Design consideration: where the connection indicator lives and how it reads in the Print Shop identity.
+
+### Phase 39: MIDI Play-to-Answer
+
+**Goal**: The user can answer play-type drills by playing on the connected MIDI piano — including full held chords graded as one attempt — through the exact same chroma (+ required bass) grading as on-screen taps.
+**Depends on**: Phase 38 (needs the connected device and its note-on/note-off stream)
+**Requirements**: MIDI-02, MIDI-03
+**Success Criteria** (what must be TRUE):
+
+  1. On a connected MIDI piano, the user can answer play-type drills (build-it, inversions, voicings, scale, see-play) by playing the notes, graded by the exact same chroma (+ required bass where applicable) logic as on-screen taps — no parallel grading path.
+  2. The user can play a full chord as held simultaneous notes and the app grades it as one attempt, with no separate confirm tap — a held-notes set tracks note-on/note-off and sustain.
+  3. Playing on the MIDI piano and tapping the on-screen keyboard produce identical grading results for the same answer.
+  4. The on-screen keyboard stays fully usable on the same drills at the same time — MIDI input is additive, never a replacement.
+
+**Plans**: TBD
+**Notes**: MIDI note-on feeds the existing `matchChord` grading seam (chroma, never letter strings) — no second grader. Held-notes chord detection resolves the played chord from the set of simultaneously-held notes, handling note-on/note-off and the sustain pedal. HARDWARE-IN-THE-LOOP: on-device UAT with the physical USB piano is required (single notes, held chords, sustain) and is verifiable only with the real hardware present. Highest-value carry-over — this finally lands the historic Phase 4 the user has waited on across five milestones. No net-new visual drill surface: input routes into the existing drill components and their PianoKeyboard, grading/drills/telemetry unchanged, so no UI-SPEC.
+
+### Phase 40: Song Play-Through
+
+**Goal**: The user can start a play-through of one of their songs from song management and drill its chords in sheet order — repeats intact, exact length, never crashing on an exotic symbol.
+**Depends on**: Nothing hard (independent surface; rides the existing one-shot seed channel and practice session engine). Sequenced after Phase 39 so a play-through can be answered on the real piano.
+**Requirements**: PLAY-01, PLAY-02, PLAY-03
+**Success Criteria** (what must be TRUE):
+
+  1. From song management (the Progress hub Songs tab), the user can start a play-through of one of their songs, drilling its `chordSymbols` in sheet order (FIFO) through the existing one-shot seed channel into the practice session engine.
+  2. Repeated chords stay in the sequence (no dedupe — real tunes repeat their ii-V-Is) and the session length equals the song's drillable chord count, with no pool/FSRS questions diluting the run.
+  3. A non-drillable symbol is normalized to the catalog when possible (via `songProvenance`) or skipped with a visible skipped-count; a play-through never crashes on an exotic symbol.
+
+**Plans**: TBD
+**UI hint**: yes
+**Notes**: Lowest-risk surface — no new library, no backend, no schema. Rides the existing drill-seed one-shot channel (the same seam Lookup Drill-it and Progress danger-cards already use) and the practice session engine; the only new pieces are a per-song play-through action in song management and a play-through run that streams the song's ordered chords instead of an FSRS-scheduled mix. Skip dedupe for origin 'song' (the milestone's explicit exception to the usual dedupe rule). Locked constraint: grade by chroma/MIDI, never letter strings — the play-through inherits the existing grading unchanged. Design consideration: the per-song start affordance and any sheet-order session context.
+
+### Phase 41: Deck Sync Round-Trip
+
+**Goal**: The FSRS deck (cards + review state) uploads to the existing Fastify/SQLite backend and a second device pulls the same deck, so phone and laptop stop diverging.
+**Depends on**: Nothing hard (independent surface; the only backend-touching feature this milestone)
+**Requirements**: SYNC-01
+**Success Criteria** (what must be TRUE):
+
+  1. After practicing on one device, the user's FSRS deck (cards + review state) uploads to the existing Fastify/SQLite backend.
+  2. On a second device, the user pulls the same deck and sees the same cards and review state — phone and laptop no longer diverge.
+  3. The backend deck-sync endpoint ships behind the existing shared-secret bearer-token auth and deploys via docker compose on the Oracle server, alongside the existing progress API.
+
+**Plans**: TBD
+**Notes**: The only feature this milestone that touches the backend and adds a SQLite schema (a deck table beside the existing progress store). The deck lives in Dexie locally; this phase adds the push/pull round-trip so a second device can pull the same deck. Deploys via plain docker compose on the user's Oracle server — no Oracle-specific tooling. Independent surface (no dependency on MIDI or PLAY); Phase 42 then hardens it against offline divergence and two-device conflicts. Locked constraint: local-first persistence — the deck must keep working with no backend reachable; this phase only adds the round-trip, it never makes the deck depend on the network. No net-new visual drill surface — no UI-SPEC.
+
+### Phase 42: Offline-First Reconciliation & Conflict Resolution
+
+**Goal**: The deck stays fully usable offline and reconciles on reconnect without losing any review; the same card reviewed on two devices resolves deterministically without corrupting FSRS state.
+**Depends on**: Phase 41 (extends the sync round-trip with offline reconciliation and per-card conflict resolution)
+**Requirements**: SYNC-02, SYNC-03
+**Success Criteria** (what must be TRUE):
+
+  1. The user can practice fully offline (local-first stays the law) and, on reconnect, local changes reconcile with the backend without losing any review.
+  2. When the same card is reviewed on two devices, reconciliation resolves it deterministically by latest-review-wins per card (by review timestamp), never corrupting FSRS scheduling state.
+  3. A reconnect after offline practice never overwrites a newer review with an older one in either direction — no lost updates on phone or laptop.
+
+**Plans**: TBD
+**Notes**: HIGHEST-RISK phase of the milestone — the reconciliation/conflict-resolution logic is where reviews could silently be lost or FSRS scheduling state corrupted. Conflict rule: latest-review-wins per card, keyed on review timestamp; the loser's review is discarded without mutating the winner's scheduling fields. Reconcile-on-load/save is sufficient (no real-time live push — explicitly out of scope). Locked constraint: local-first persistence — offline practice is never blocked and never lost. No net-new visual drill surface — no UI-SPEC; this is data-integrity logic with test coverage as its primary proof.
+
+### Phase 43: No-Regression Gate
+
+**Goal**: The milestone ships green — existing grading, FSRS scheduling, tiers, telemetry, song-filter, and ear-naming rules intact; the on-screen keyboard path stays first-class; every new surface covered by tests.
+**Depends on**: Phases 38-42 (the full milestone must be in place)
+**Requirements**: REG-02
+**Success Criteria** (what must be TRUE):
+
+  1. Existing drill grading (chroma/MIDI, never letter strings), FSRS scheduling, tiers, telemetry, and song-filter behavior work exactly as before, and the multiple-choice-never-gates ear-naming rule still holds.
+  2. The on-screen keyboard path stays first-class everywhere — the non-MIDI browser path is byte-for-byte unchanged and no flow becomes MIDI-only.
+  3. Every new surface (MIDI input, song play-through, deck sync) is covered by tests.
+  4. The full test suite and `svelte-check` both pass with zero errors.
+
+**Plans**: TBD
+**Notes**: Matches the established milestone pattern (v2.2's Phase 31 and v2.3's Phase 37 were dedicated final No-Regression gates). REG-02 is a binding constraint throughout Phases 38-42 (each feature phase preserves behavior and covers its own new surface as it goes); this phase is the milestone-wide green gate that consolidates coverage and confirms no behavior regression — especially that MIDI as progressive enhancement never degraded the on-screen keyboard path. No net-new visual surface — no UI-SPEC.
 
 ### Phase 32: Shape Legibility — Counting-Chip Grammar
 
@@ -370,7 +473,8 @@ Plans:
 
 ## Carry-overs beyond this milestone
 
-- Phase 4: MIDI Play-to-Answer (deferred, needs hardware-in-the-loop)
+- Tempo fluency (latency-aware grading / metronome drill, sketch 018 / I-03) — deferred at v2.4 definition, top of backlog (`questionClock.ts` groundwork exists)
+- Minor keys: minor scales + minor ii-V-i templates (gives ø7 its home context) — next-milestone candidate
 - Delete the old-route redirect shims once the v2.2 release has settled (follow-up cleanup)
 - Deferred on-device checks and todos: see STATE.md `## Deferred Items` and milestones/v2.1-MILESTONE-AUDIT.md tech_debt
 - Backlog candidates: `.planning/v2.1-IMPROVEMENT-BACKLOG.md` (e.g. sketch 018 tempo-fluency I-03)
@@ -383,4 +487,5 @@ Plans:
 | v2.0 Learning Upgrade | 10-13 | 20 | Complete | 2026-07-15 |
 | v2.1 Playability & Comprehension | 14-25 | 45 | Complete | 2026-07-21 |
 | v2.2 Hub Consolidation + Interval Theory | 26-31 | 26 | Complete | 2026-07-25 |
-| v2.3 Beginner On-Ramp & Inversions | 32-37 | TBD | In progress | — |
+| v2.3 Beginner On-Ramp & Inversions | 32-37 | 15 | Complete | 2026-07-28 |
+| v2.4 Real Piano & Real Songs | 38-43 | TBD | In progress | — |
