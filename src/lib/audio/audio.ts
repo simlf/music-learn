@@ -1,5 +1,5 @@
 import type * as ToneNS from 'tone';
-import { toAsciiPitchClass, toAscendingPitches } from './voicing';
+import { toAsciiPitchClass, toAscendingPitches, toCompPitches, toMelodyPitch } from './voicing';
 import { SALAMANDER_BASE_URL, SALAMANDER_URLS } from './samples';
 import { BEATS_PER_BAR, nextBarIndex, secondsPerBeat } from './loopTiming';
 
@@ -29,6 +29,10 @@ import { BEATS_PER_BAR, nextBarIndex, secondsPerBeat } from './loopTiming';
  *   timer-driven loop drifts audibly within a few bars. At most one loop runs
  *   at a time, and turning sound off kills it. This engine schedules pitches
  *   and nothing else: it knows no chords, no progressions, and no theory.
+ * - Chord-with-note demo (playNotesOverChord / stopChordDemo): a held chord
+ *   with one note sounding over it, optionally twice in a row for an A/B. Same
+ *   instrument as everything else; what it adds is cancellation, since a demo
+ *   outlasts the click that started it.
  */
 
 export type InstrumentKind = 'sampled' | 'synth';
@@ -139,6 +143,7 @@ export function setSoundEnabled(value: boolean): void {
 		// Storage disabled or full: keep the in-memory toggle working.
 	}
 	if (!value) {
+		stopChordDemo();
 		stopCompLoop();
 		releaseAll();
 		audioBusyUntilMs = 0;
@@ -263,6 +268,22 @@ function activeInstrument(): Instrument | null {
  * must never break the drill loop.
  */
 async function withInstrument(action: (instrument: Instrument) => void): Promise<void> {
+	const instrument = await readyInstrument();
+	if (!instrument) return;
+	try {
+		action(instrument);
+	} catch {
+		// Stay silent; never throw into UI code.
+	}
+}
+
+/**
+ * Awaits the whole ready path (context unlock, Tone chunk, samples) and hands
+ * back the instrument to attack on, or null when the engine could not come up.
+ * Callers that must SEQUENCE attacks await this once up front, so a slow first
+ * load delays the sequence instead of collapsing its steps into one tick.
+ */
+async function readyInstrument(): Promise<Instrument | null> {
 	try {
 		await ensureAudioReady();
 		// Wait for the sampled piano before choosing an instrument, so the
@@ -270,10 +291,9 @@ async function withInstrument(action: (instrument: Instrument) => void): Promise
 		// fails (samplerReady resolves via onerror) or is somehow absent, we
 		// fall through to the synth so the app is never silent.
 		if (samplerReady) await samplerReady;
-		const instrument = activeInstrument();
-		if (instrument) action(instrument);
+		return activeInstrument();
 	} catch {
-		// Stay silent; never throw into UI code.
+		return null;
 	}
 }
 
@@ -389,6 +409,174 @@ export function playArpeggio(
 			});
 		}, startDelayMs + index * opts.staggerMs);
 	});
+}
+
+/**
+ * ---- Chord-with-note demo ----
+ *
+ * "Hold the chord in the left hand, sound one note over it": the playback the
+ * improvisation guide needs so an avoid note's rub and a color note's flavour
+ * are heard rather than read. One step is one listen; two steps back to back
+ * are the A/B comparison (the chord tone, then the half step above it).
+ *
+ * It is the same instrument, the same sample load and the same no-throw
+ * contract as every other call here, not a second sound path. What it adds is
+ * cancellation: a demo lasts seconds, so a second click must cut the first one
+ * rather than stack a second chord on top of it.
+ */
+
+/** Seconds one demo step is held for. Long enough to hear a rub settle in. */
+const DEMO_HOLD_SEC = 1.7;
+/** Seconds of silence between two demo steps, so the pair reads as two events. */
+const DEMO_GAP_SEC = 0.35;
+/** The note being judged sits above comp velocity: it is the subject, the chord is the ground. */
+const DEMO_MELODY_VELOCITY = 0.8;
+
+export interface ChordDemoOptions {
+	/** Seconds each step is held. Defaults to DEMO_HOLD_SEC. */
+	holdSec?: number;
+	/** Seconds of silence between steps. Defaults to DEMO_GAP_SEC. */
+	gapSec?: number;
+}
+
+/** Generation counter: every start and every stop invalidates pending steps. */
+let demoToken = 0;
+const demoTimers: ReturnType<typeof setTimeout>[] = [];
+/** Resolvers of the waits above, so a cut never leaves a step promise hanging. */
+let demoWakeups: (() => void)[] = [];
+/** Pitches a demo step attacked and that may still be ringing, for the cut. */
+let demoRinging: string[] = [];
+/** True from the click until the last step has rung out or been cut. */
+let demoRunning = false;
+
+/**
+ * Waits between demo steps. The wait is registered so `stopChordDemo` can both
+ * cancel the timer and resolve the promise: the sequence then wakes, sees a
+ * stale token and returns, rather than leaving its chain pending forever.
+ */
+function demoWait(ms: number): Promise<void> {
+	return new Promise<void>((resolve) => {
+		const timer = setTimeout(() => {
+			const timerIndex = demoTimers.indexOf(timer);
+			if (timerIndex !== -1) demoTimers.splice(timerIndex, 1);
+			const wakeIndex = demoWakeups.indexOf(resolve);
+			if (wakeIndex !== -1) demoWakeups.splice(wakeIndex, 1);
+			resolve();
+		}, ms);
+		demoTimers.push(timer);
+		demoWakeups.push(resolve);
+	});
+}
+
+/**
+ * Cuts any running chord demo: drops its pending steps and releases whatever
+ * it left ringing. Idempotent, safe before Tone has ever loaded, and safe to
+ * call from a component teardown path.
+ */
+export function stopChordDemo(): void {
+	demoToken += 1;
+	demoRunning = false;
+	for (const timer of demoTimers) clearTimeout(timer);
+	demoTimers.length = 0;
+	const wakeups = demoWakeups;
+	demoWakeups = [];
+	for (const wake of wakeups) wake();
+	const ringing = demoRinging;
+	demoRinging = [];
+	if (ringing.length === 0) return;
+	if (toneModule) {
+		try {
+			for (const pitch of ringing) releasePitch(pitch);
+		} catch {
+			// Never throw into UI code.
+		}
+	}
+	markAudioBusyFor(SAMPLER_RELEASE_SEC * 1000);
+}
+
+/**
+ * Plays the chord as a left-hand shell (root low, guide tones above, via
+ * `toCompPitches`) once per entry in `melodies`, each entry sounding as a
+ * single note voiced ABOVE that shell. An empty `melodies` plays the shell
+ * alone, which is what the keyboard-tap path wants: there the tapped key
+ * already sounds itself, so passing it here would play it twice.
+ *
+ * Letters are display glyphs ("B♭"), like `playChord`. Each call cancels the
+ * previous demo first, so rapid clicking swaps the sound instead of piling
+ * chords on top of each other.
+ */
+export function playNotesOverChord(
+	root: string,
+	chordNotes: string[],
+	melodies: string[],
+	opts: ChordDemoOptions = {}
+): void {
+	if (!soundEnabled()) return;
+	if (chordNotes.length === 0) return;
+
+	stopChordDemo();
+	const token = demoToken;
+
+	const holdSec = opts.holdSec ?? DEMO_HOLD_SEC;
+	const gapSec = opts.gapSec ?? DEMO_GAP_SEC;
+	const stepMs = (holdSec + gapSec) * 1000;
+
+	// The root is voiced separately as the bass, so it must not also appear in
+	// the upper shell; only the first occurrence is dropped, so a chord that
+	// genuinely repeats a pitch class keeps it.
+	const rootIndex = chordNotes.indexOf(root);
+	const upper = rootIndex === -1 ? chordNotes : chordNotes.filter((_, i) => i !== rootIndex);
+	const chordPitches = toCompPitches(root, upper);
+	const steps = melodies.length === 0 ? [null] : melodies;
+
+	demoRunning = true;
+	markAudioBusyFor(steps.length * stepMs + CHORD_AUDIO_GATE_MS);
+
+	void (async () => {
+		// The engine is acquired ONCE, before any step is scheduled: on the first
+		// gesture of a session the Tone chunk and the samples can take longer to
+		// load than the step gap, and per-step awaits would then let every step
+		// resolve in the same tick and attack together, destroying the A/B.
+		const instrument = await readyInstrument();
+		if (token !== demoToken) return;
+		if (!instrument) {
+			demoRunning = false;
+			return;
+		}
+		// The gate window was armed at click time; re-arm it from the moment the
+		// sound actually starts, so a slow load cannot let it expire mid-demo.
+		markAudioBusyFor(steps.length * stepMs + CHORD_AUDIO_GATE_MS);
+
+		for (const [index, melody] of steps.entries()) {
+			if (index > 0) {
+				await demoWait(stepMs);
+				if (token !== demoToken) return;
+			}
+			try {
+				instrument.triggerAttackRelease(chordPitches, holdSec, undefined, COMP_VELOCITY);
+				demoRinging.push(...chordPitches);
+				if (melody !== null) {
+					const melodyPitch = toMelodyPitch(melody, chordPitches);
+					instrument.triggerAttackRelease(melodyPitch, holdSec, undefined, DEMO_MELODY_VELOCITY);
+					demoRinging.push(melodyPitch);
+				}
+			} catch {
+				// Never throw into UI code.
+			}
+		}
+
+		// Once the last step has rung out there is nothing left to cut, so the
+		// demo stops counting as active without anyone having to click again.
+		await demoWait((holdSec + SAMPLER_RELEASE_SEC) * 1000);
+		if (token !== demoToken) return;
+		demoRinging = [];
+		demoRunning = false;
+	})();
+}
+
+/** Whether a chord demo is still to sound, pending, or counts as ringing. */
+export function chordDemoActive(): boolean {
+	return demoRunning || demoTimers.length > 0 || demoRinging.length > 0;
 }
 
 /** Releases every sounding note on every instrument (component teardown). */
@@ -632,6 +820,8 @@ export function audioState(): { instrument: InstrumentKind; samplesLoaded: boole
  * contract; never call from app code.
  */
 export function _resetForTests(): void {
+	stopChordDemo();
+	demoToken = 0;
 	teardownActiveLoop();
 	audioBusyUntilMs = 0;
 	loopToken = 0;

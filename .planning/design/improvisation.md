@@ -1,6 +1,6 @@
 # Design: improvisation
 
-**Status:** design, partially built. The comping loop (shape one) is shipped. Shape three shipped as the chord-scale lookup reference (engine `src/lib/theory/chordScale.ts`, panel `src/lib/components/ImproviseGuide.svelte` on the Lookup result card), honoring the constraints in section 5. Shape two (guide-tone lines) remains a proposal.
+**Status:** design, partially built. The comping loop (shape one) is shipped. Shape three shipped as the chord-scale lookup reference (engine `src/lib/theory/chordScale.ts`, panel `src/lib/components/ImproviseGuide.svelte` on the Lookup result card), honoring the constraints in section 5, then iterated (quick-260816-w4h) so every handle-with-care note names the chord tone it collides with and the panel can play the chord with a chosen note over it. Shape two (guide-tone lines) remains a proposal.
 **Scope:** how a practice companion that cannot be graded coexists with a spaced-repetition trainer, and which two units of improvisation content are worth building next.
 **Companion doc:** `.planning/design/guided-path.md` (the 14-unit curriculum spine). This document is deliberately subordinate to it: where the two touch, the path wins and this doc says how it fits in.
 **Date:** 2026-07-29
@@ -132,7 +132,7 @@ Depends on guided-path Phase 2 (`InteractiveLesson` takes `steps`) and reads bet
 
 ## 5. Shape three: chord-scale mapping and modes (defer, then reframe)
 
-*Built: shipped as specified in 5.2, as `ImproviseGuide.svelte` on the Lookup result card, backed by `src/lib/theory/chordScale.ts`. Reference only: no FactKind, no Dexie version, no drill.*
+*Built: shipped as specified in 5.2, as `ImproviseGuide.svelte` on the Lookup result card, backed by `src/lib/theory/chordScale.ts`. Reference only: no FactKind, no Dexie version, no drill. Iterated in quick-260816-w4h after owner feedback that a greyed note did not say why: the engine now reports which chord tone a careful note rubs and what that tone does in the chord, the panel separates colour from careful and gives the blue note its own row, and `playNotesOverChord` (the one audio engine) holds the chord under a chosen note so the rub is heard rather than read.*
 
 ### 5.1 What the audit found, and what it implies
 

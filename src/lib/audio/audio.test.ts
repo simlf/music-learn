@@ -76,6 +76,9 @@ import {
 	playArpeggio,
 	playChord,
 	playNote,
+	playNotesOverChord,
+	chordDemoActive,
+	stopChordDemo,
 	releaseAll,
 	setSoundEnabled,
 	setStudyModeEnabled,
@@ -483,6 +486,188 @@ describe('releaseAll', () => {
 	it('never throws when nothing was ever loaded', () => {
 		expect(() => releaseAll()).not.toThrow();
 		expect(mockTone.synths).toHaveLength(0);
+	});
+});
+
+describe('playNotesOverChord (the improvisation guide demo)', () => {
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	/** Loads the sampled piano so withInstrument resolves under fake timers. */
+	async function preloadSampler(): Promise<void> {
+		await ensureAudioReady();
+		sampler().options.onload();
+		await flush();
+	}
+
+	it('holds the chord as a left-hand shell with the note voiced above it', async () => {
+		await preloadSampler();
+		playNotesOverChord('C', ['C', 'E', 'G', 'B'], ['F']);
+		await flush();
+
+		const calls = sampler().triggerAttackRelease.mock.calls;
+		expect(calls).toHaveLength(2);
+		// The shell: root in octave 3, guide tones above, quieter than the note.
+		expect(calls[0][0]).toEqual(['C3', 'E4', 'G4', 'B4']);
+		expect(calls[0][3]).toBe(0.62);
+		// The note being judged: above the shell, and louder than it.
+		expect(calls[1][0]).toBe('F5');
+		expect(calls[1][3]).toBe(0.8);
+		// Both held for the same window, so they sound as one thing.
+		expect(calls[0][1]).toBe(calls[1][1]);
+	});
+
+	it('plays the chord alone when no melody is given (the keyboard sounds its own key)', async () => {
+		await preloadSampler();
+		playNotesOverChord('C', ['C', 'E', 'G'], []);
+		await flush();
+
+		const calls = sampler().triggerAttackRelease.mock.calls;
+		expect(calls).toHaveLength(1);
+		expect(calls[0][0]).toEqual(['C3', 'E4', 'G4']);
+	});
+
+	it('sounds two melodies back to back, the second only after the first has held', async () => {
+		await preloadSampler();
+		vi.useFakeTimers();
+		try {
+			playNotesOverChord('C', ['C', 'E', 'G', 'B'], ['E', 'F']);
+			await vi.advanceTimersByTimeAsync(0);
+			expect(sampler().triggerAttackRelease.mock.calls.map((call) => call[0])).toEqual([
+				['C3', 'E4', 'G4', 'B4'],
+				'E5'
+			]);
+
+			await vi.advanceTimersByTimeAsync(2050);
+			expect(sampler().triggerAttackRelease.mock.calls.map((call) => call[0])).toEqual([
+				['C3', 'E4', 'G4', 'B4'],
+				'E5',
+				['C3', 'E4', 'G4', 'B4'],
+				'F5'
+			]);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('keeps the two steps in order when the samples load slower than the step gap', async () => {
+		vi.useFakeTimers();
+		try {
+			// First gesture of a session: nothing is loaded yet.
+			playNotesOverChord('C', ['C', 'E', 'G', 'B'], ['E', 'F']);
+			await vi.advanceTimersByTimeAsync(5000);
+
+			// The load has outlasted the gap between the two steps, and neither
+			// has attacked: the sequence starts from the load, not from the click.
+			expect(mockTone.samplers).toHaveLength(1);
+			expect(sampler().triggerAttackRelease).not.toHaveBeenCalled();
+
+			sampler().options.onload();
+			await vi.advanceTimersByTimeAsync(0);
+			expect(sampler().triggerAttackRelease.mock.calls.map((call) => call[0])).toEqual([
+				['C3', 'E4', 'G4', 'B4'],
+				'E5'
+			]);
+
+			await vi.advanceTimersByTimeAsync(2050);
+			expect(sampler().triggerAttackRelease.mock.calls.map((call) => call[0])).toEqual([
+				['C3', 'E4', 'G4', 'B4'],
+				'E5',
+				['C3', 'E4', 'G4', 'B4'],
+				'F5'
+			]);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('cuts a demo that is still waiting on the samples, and never attacks it late', async () => {
+		vi.useFakeTimers();
+		try {
+			playNotesOverChord('C', ['C', 'E', 'G', 'B'], ['E', 'F']);
+			await vi.advanceTimersByTimeAsync(0);
+			stopChordDemo();
+			expect(chordDemoActive()).toBe(false);
+
+			sampler().options.onload();
+			await vi.advanceTimersByTimeAsync(5000);
+			expect(sampler().triggerAttackRelease).not.toHaveBeenCalled();
+			expect(chordDemoActive()).toBe(false);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('cuts the running demo on a second call: rapid clicks swap the sound, never stack it', async () => {
+		await preloadSampler();
+		vi.useFakeTimers();
+		try {
+			playNotesOverChord('C', ['C', 'E', 'G', 'B'], ['E', 'F']);
+			await vi.advanceTimersByTimeAsync(0);
+			playNotesOverChord('C', ['C', 'E', 'G', 'B'], ['D']);
+			await vi.advanceTimersByTimeAsync(0);
+
+			// The first demo's ringing pitches were released by the second call.
+			expect(sampler().triggerRelease).toHaveBeenCalledWith('E5');
+			expect(sampler().triggerRelease).toHaveBeenCalledWith('C3');
+
+			// And its pending second step never fires.
+			await vi.advanceTimersByTimeAsync(4000);
+			const melodies = sampler()
+				.triggerAttackRelease.mock.calls.map((call) => call[0])
+				.filter((arg) => typeof arg === 'string');
+			expect(melodies).toEqual(['E5', 'D5']);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('stops counting as active once the last step has rung out', async () => {
+		await preloadSampler();
+		vi.useFakeTimers();
+		try {
+			playNotesOverChord('C', ['C', 'E', 'G'], ['D']);
+			await vi.advanceTimersByTimeAsync(0);
+			expect(chordDemoActive()).toBe(true);
+
+			await vi.advanceTimersByTimeAsync(3000);
+			expect(chordDemoActive()).toBe(false);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('stopChordDemo cuts a running demo and is safe before anything ever loaded', async () => {
+		expect(() => stopChordDemo()).not.toThrow();
+
+		await preloadSampler();
+		playNotesOverChord('C', ['C', 'E', 'G'], ['D']);
+		await flush();
+		stopChordDemo();
+
+		expect(sampler().triggerRelease).toHaveBeenCalledWith('D5');
+		expect(chordDemoActive()).toBe(false);
+	});
+
+	it('never attacks when sound is off, and turning sound off cuts a running demo', async () => {
+		await preloadSampler();
+		playNotesOverChord('C', ['C', 'E', 'G'], ['D']);
+		await flush();
+		setSoundEnabled(false);
+		expect(chordDemoActive()).toBe(false);
+
+		sampler().triggerAttackRelease.mockClear();
+		playNotesOverChord('C', ['C', 'E', 'G'], ['D']);
+		await flush();
+		expect(sampler().triggerAttackRelease).not.toHaveBeenCalled();
+	});
+
+	it('refuses an empty chord rather than voicing nothing', async () => {
+		await preloadSampler();
+		playNotesOverChord('C', [], ['D']);
+		await flush();
+		expect(sampler().triggerAttackRelease).not.toHaveBeenCalled();
 	});
 });
 

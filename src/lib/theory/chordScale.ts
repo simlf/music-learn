@@ -53,6 +53,27 @@ export interface ImprovNote {
 	 * BELOW it, i.e. the note it rubs against. Undefined otherwise.
 	 */
 	clashesWith?: string;
+	/**
+	 * For a 'careful' note: that chord tone's interval shorthand from the
+	 * chord root ("M3", "P5", "m7", "R"), i.e. WHICH member of the chord is
+	 * being rubbed. The panel names it, because "F rubs on E" only lands once
+	 * the player knows E is the 3rd that makes the chord major.
+	 */
+	clashesWithLabel?: string;
+	/**
+	 * For a 'careful' note: the degree class of that chord tone, so the copy
+	 * can say what is at stake (the 3rd carries the chord's identity, the root
+	 * is its floor) instead of one sentence reused for every note.
+	 */
+	clashesWithRole?: IntervalRole;
+	/**
+	 * For a 'careful' note whose rub is quality-specific: a context where the
+	 * same note is idiomatic rather than careful, so the panel never reads as
+	 * "never play this". Only set where the engine can honestly name one:
+	 * 'dominant-blues' is the 4/11 against a major 3rd (F over Cmaj7 is the
+	 * classic rub, F over C7 in a blues is expected).
+	 */
+	fineOn?: 'dominant-blues';
 }
 
 /** The scale identities the guide can recommend. */
@@ -98,6 +119,14 @@ export interface ImprovGuide {
 	 * borrows the dominant/blues color. Feeds the blue-note explainer.
 	 */
 	blueNote?: string;
+	/**
+	 * The chord tone a half step away from the blue ♭7, when the symbol holds
+	 * one: the major 7th on Cmaj7 ("B"), the 6th on C6 ("A"). Whichever degree
+	 * it is, the blue note then contradicts a note the left hand is sounding,
+	 * so the explainer says "passing, or with that tone left out" rather than
+	 * the unqualified "it works" that is only true over a plain triad.
+	 */
+	blueNoteRubsWith?: string;
 }
 
 /** tonal scale-type name per ChordScaleId. */
@@ -237,13 +266,36 @@ function scaleOption(
 			label = TENSION_LABEL_BY_CHROMA[relative] ?? '';
 		}
 
+		/*
+		 * A careful note carries WHICH chord tone it rubs, not just that it
+		 * rubs: the interval from the root identifies the victim (the 3rd that
+		 * says major or minor, the root the chord stands on), which is the only
+		 * way the explanation can be specific per note instead of one sentence
+		 * reused everywhere.
+		 */
+		let clash: Partial<ImprovNote> = {};
+		if (kind === 'careful' && below !== undefined) {
+			const victim = intervalFromRoot(root, below);
+			clash = {
+				clashesWith: below,
+				clashesWithLabel: victim.short,
+				clashesWithRole: victim.role,
+				// The 4 against a major 3rd: the classic avoid note, and the one
+				// case where the same pitch is expected elsewhere (blues, sus,
+				// dominant), so the copy can say so rather than sounding absolute.
+				...(relative === 5 && (chroma + 11) % 12 === (rootChroma + 4) % 12
+					? { fineOn: 'dominant-blues' as const }
+					: {})
+			};
+		}
+
 		notes.push({
 			letter,
 			solfege: letterToSolfege(letter),
 			role: roleFromTonic(root, letter),
 			label,
 			kind,
-			...(kind === 'careful' ? { clashesWith: below } : {})
+			...clash
 		});
 	}
 	return { id, tonic: root, notes };
@@ -304,6 +356,22 @@ export function improvGuideFor(chord: ChordResult): ImprovGuide | null {
 		// Over a major-family chord the ♭7 is the note outside the scale that
 		// still works (B♭ over C): the dominant/blues borrowing the explainer
 		// names. transposeFrom owns the enharmonic spelling (C -> B♭, F♯ -> E).
-		...(family === 'major' ? { blueNote: transposeFrom(chord.root, 'm7') } : {})
+		...(family === 'major'
+			? {
+					blueNote: transposeFrom(chord.root, 'm7'),
+					// A half step either side of the ♭7 rubs against it just as
+					// hard: the major 7th above (Cmaj7's B), the 6th below (C6's
+					// A). Derive both from the blue note's chroma so no quality
+					// has to be enumerated, and name the 7th first when a symbol
+					// somehow holds both.
+					...(() => {
+						const blueChroma = (rootChroma + 10) % 12;
+						const rubsWith =
+							chordChromaToLetter.get((blueChroma + 1) % 12) ??
+							chordChromaToLetter.get((blueChroma + 11) % 12);
+						return rubsWith ? { blueNoteRubsWith: rubsWith } : {};
+					})()
+				}
+			: {})
 	};
 }

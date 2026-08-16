@@ -29,6 +29,8 @@ const playChordMock = vi.fn();
 vi.mock('$lib/audio/audio', () => ({
 	playChord: (...args: unknown[]) => playChordMock(...args),
 	playNote: vi.fn(),
+	playNotesOverChord: vi.fn(),
+	stopChordDemo: vi.fn(),
 	ensureAudioReady: async () => {}
 }));
 

@@ -138,6 +138,64 @@ describe('improvGuideFor: careful notes derive from the half-step-above rule', (
 	});
 });
 
+describe('improvGuideFor: a careful note names WHICH chord tone it rubs', () => {
+	it('identifies the victim of F over Cmaj7 as the major 3rd, by letter, shorthand and degree', () => {
+		const f = scaleById(guideFor('Cmaj7'), 'ionian').notes.find((note) => note.letter === 'F')!;
+		expect(f.clashesWith).toBe('E');
+		expect(f.clashesWithLabel).toBe('M3');
+		expect(f.clashesWithRole).toBe('third');
+	});
+
+	it('identifies the aeolian ♭6 victim as the 5th, not the 3rd (F over Am7)', () => {
+		const f = scaleById(guideFor('Am7'), 'aeolian').notes.find((note) => note.letter === 'F')!;
+		expect(f.clashesWithLabel).toBe('P5');
+		expect(f.clashesWithRole).toBe('fifth');
+	});
+
+	it('identifies the locrian ♭9 victim as the root (C over Bm7♭5)', () => {
+		const c = scaleById(guideFor('Bm7♭5'), 'locrian').notes.find((note) => note.letter === 'C')!;
+		expect(c.clashesWithLabel).toBe('R');
+		expect(c.clashesWithRole).toBe('root');
+	});
+
+	it('falls back to the plain interval for a victim with no dedicated line (the ♭9 of C7♭9)', () => {
+		const d = scaleById(guideFor('C7♭9'), 'mixolydian').notes.find(
+			(note) => note.letter === 'D'
+		)!;
+		expect(d.clashesWith).toBe('D♭');
+		expect(d.clashesWithLabel).toBe('m2');
+		expect(d.clashesWithRole).toBe('second');
+	});
+
+	it('marks the 4-against-a-major-3rd as fine elsewhere, and nothing else', () => {
+		const overMaj7 = scaleById(guideFor('Cmaj7'), 'ionian').notes.find(
+			(note) => note.letter === 'F'
+		)!;
+		const overDominant = scaleById(guideFor('C7'), 'mixolydian').notes.find(
+			(note) => note.letter === 'F'
+		)!;
+		expect(overMaj7.fineOn).toBe('dominant-blues');
+		expect(overDominant.fineOn).toBe('dominant-blues');
+
+		// A ♭13 rubbing the 5th, and a ♭9 rubbing the root, have no such context.
+		expect(
+			scaleById(guideFor('Am7'), 'aeolian').notes.find((note) => note.letter === 'F')!.fineOn
+		).toBeUndefined();
+		expect(
+			scaleById(guideFor('Bm7♭5'), 'locrian').notes.find((note) => note.letter === 'C')!.fineOn
+		).toBeUndefined();
+	});
+
+	it('leaves the clash fields off every note that is not careful', () => {
+		for (const note of scaleById(guideFor('Am7'), 'dorian').notes) {
+			expect(note.clashesWith).toBeUndefined();
+			expect(note.clashesWithLabel).toBeUndefined();
+			expect(note.clashesWithRole).toBeUndefined();
+			expect(note.fineOn).toBeUndefined();
+		}
+	});
+});
+
 describe('improvGuideFor: note tagging', () => {
 	it('tags chord tones with the app interval shorthand and colors with tension names (Am7 dorian)', () => {
 		const dorian = scaleById(guideFor('Am7'), 'dorian');
@@ -223,5 +281,15 @@ describe('improvGuideFor: the blue note', () => {
 	it('offers no blue note where the ♭7 is already the chord sound (dominant) or off-family', () => {
 		expect(guideFor('C7').blueNote).toBeUndefined();
 		expect(guideFor('Am7').blueNote).toBeUndefined();
+	});
+
+	it('reports the chord tone a half step from the ♭7, whichever degree it is', () => {
+		// Over Cmaj7 the B♭ contradicts the B the left hand is holding, and over
+		// C6 it contradicts the A just as hard; over a plain C triad there is
+		// nothing for it to contradict.
+		expect(guideFor('Cmaj7').blueNoteRubsWith).toBe('B');
+		expect(guideFor('C6').blueNoteRubsWith).toBe('A');
+		expect(guideFor('C6/9').blueNoteRubsWith).toBe('A');
+		expect(guideFor('C').blueNoteRubsWith).toBeUndefined();
 	});
 });

@@ -22,9 +22,12 @@ function renderPage() {
 const playChordMock = vi.fn();
 const playNoteMock = vi.fn();
 const ensureAudioReadyMock = vi.fn(async () => {});
+const playNotesOverChordMock = vi.fn();
 vi.mock('$lib/audio/audio', () => ({
 	playChord: (...args: unknown[]) => playChordMock(...args),
 	playNote: (...args: unknown[]) => playNoteMock(...args),
+	playNotesOverChord: (...args: unknown[]) => playNotesOverChordMock(...args),
+	stopChordDemo: vi.fn(),
 	ensureAudioReady: () => ensureAudioReadyMock()
 }));
 
@@ -108,6 +111,20 @@ describe('lookup page happy path', () => {
 		// Dorian leads the minor family's scale choices (chordScale.ts).
 		const chips = within(panel).getAllByTestId('improvise-scale-chip');
 		expect(chips[0].textContent).toContain('dorian');
+	});
+
+	it('a listen button on the guide plays the chord with that note over it, through the app engine', async () => {
+		renderPage();
+		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'Cmaj7' } });
+		await fireEvent.click(screen.getByRole('button', { name: /stamp/i }));
+
+		const result = screen.getByTestId('chord-result');
+		await fireEvent.click(within(result).getByTestId('improvise-toggle'));
+		const panel = within(result).getByTestId('improvise-panel');
+
+		// The A/B on the classic avoid note: E first, then the F above it.
+		await fireEvent.click(within(panel).getByTestId('improvise-listen-careful'));
+		expect(playNotesOverChordMock).toHaveBeenCalledWith('C', ['C', 'E', 'G', 'B'], ['E', 'F']);
 	});
 });
 

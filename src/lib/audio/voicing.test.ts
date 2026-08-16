@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { Note } from 'tonal';
-import { toAsciiPitchClass, toAscendingPitches, toCompPitches, toPitch } from './voicing';
+import {
+	toAsciiPitchClass,
+	toAscendingPitches,
+	toCompPitches,
+	toMelodyPitch,
+	toPitch
+} from './voicing';
 
 describe('toAsciiPitchClass', () => {
 	it('converts display glyph accidentals to ASCII', () => {
@@ -104,5 +110,34 @@ describe('toPitch', () => {
 		expect(toPitch('C', 4)).toBe('C4');
 		expect(toPitch('F♯', 5)).toBe('F#5');
 		expect(toPitch('B♭', 3)).toBe('Bb3');
+	});
+});
+
+describe('toMelodyPitch', () => {
+	it('places the note above every pitch of the voicing under it', () => {
+		const chord = toCompPitches('C', ['E', 'G', 'B']);
+		expect(chord).toEqual(['C3', 'E4', 'G4', 'B4']);
+		// F over that shell must clear B4, so it lands on F5: exactly the minor
+		// 9th above the held E4 that makes the avoid note audible.
+		expect(toMelodyPitch('F', chord)).toBe('F5');
+		expect(Note.midi('F5')! - Note.midi('E4')!).toBe(13);
+	});
+
+	it('keeps a chord tone above the voicing too, so an A/B pair stays in one register', () => {
+		const chord = toCompPitches('C', ['E', 'G', 'B']);
+		expect(toMelodyPitch('E', chord)).toBe('E5');
+	});
+
+	it('spells the note it was given, glyphs included, without respelling it', () => {
+		expect(toMelodyPitch('B♭', toCompPitches('C', ['E', 'G']))).toBe('Bb4');
+		expect(toMelodyPitch('F♯', toCompPitches('C', ['E', 'G']))).toBe('F#5');
+	});
+
+	it('falls back to the plain melody octave with nothing underneath', () => {
+		expect(toMelodyPitch('C', [])).toBe('C4');
+	});
+
+	it('ignores unparseable pitches in the voicing rather than throwing (total)', () => {
+		expect(toMelodyPitch('C', ['nonsense'])).toBe('C4');
 	});
 });

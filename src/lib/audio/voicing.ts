@@ -74,6 +74,30 @@ export function toCompPitches(root: string, upper: string[]): string[] {
 	return [bass, ...ascendFrom(upper, COMP_UPPER_OCTAVE, bassMidi)];
 }
 
+/** Octave a melody note starts its search from when it sounds over a voiced chord. */
+const MELODY_OCTAVE = 4;
+
+/**
+ * The pitch a single improvised note takes when it sounds OVER an already
+ * voiced chord: the lowest octave of `letter` whose sounding midi rises above
+ * every pitch in `below`, so it reads as a right-hand melody on top of the
+ * left-hand voicing rather than as one more note buried inside it.
+ *
+ * Register is what makes an avoid note audible as an avoid note: F over a
+ * comped Cmaj7 has to sit above the held E for the ear to hear the minor 9th
+ * the theory names, so this always ascends past the voicing and never lands
+ * inside it. An empty `below` gives the plain MELODY_OCTAVE placement.
+ */
+export function toMelodyPitch(letter: string, below: string[]): string {
+	let floorMidi = -1;
+	for (const pitch of below) {
+		const midi = Note.midi(pitch);
+		if (midi !== null && midi > floorMidi) floorMidi = midi;
+	}
+	const [pitch] = ascendFrom([letter], MELODY_OCTAVE, floorMidi);
+	return pitch ?? `${toAsciiPitchClass(letter)}${MELODY_OCTAVE}`;
+}
+
 /**
  * Joins a key letter (display glyphs allowed) with an octave number into a
  * Tone-ready ASCII pitch, e.g. ("F♯", 5) -> "F#5". The on-screen keyboard

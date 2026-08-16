@@ -1,11 +1,12 @@
 <script lang="ts">
-	import type { ChordResult } from '$lib/theory/types';
+	import type { ChordResult, IntervalRole } from '$lib/theory/types';
 	import {
 		improvGuideFor,
 		type ChordScaleOption,
 		type ChordScaleId,
 		type ImprovNote
 	} from '$lib/theory/chordScale';
+	import { ensureAudioReady, playNotesOverChord, stopChordDemo } from '$lib/audio/audio';
 	import PianoKeyboard, { type InspectPayload } from './PianoKeyboard.svelte';
 	import InspectRegister from './InspectRegister.svelte';
 	import Button from './Button.svelte';
@@ -61,12 +62,18 @@
 		if (chord.symbol !== lastSymbol) {
 			lastSymbol = chord.symbol;
 			inspectPayload = null;
+			// A demo of the previous chord must not keep sounding under a new one.
+			stopChordDemo();
 		}
 	});
+
+	/** Nothing this panel started may outlive it (an A/B demo runs for seconds). */
+	$effect(() => () => stopChordDemo());
 
 	function pickScale(id: ChordScaleId) {
 		selectedId = id;
 		inspectPayload = null;
+		stopChordDemo();
 	}
 
 	/**
@@ -88,9 +95,18 @@
 			);
 	});
 
-	/** The active scale's notes beyond the chord: the rows the guide explains. */
+	/**
+	 * The two explained groups, deliberately kept apart rather than shown as
+	 * one list with a tag: a greyed note read as "forbidden" was the whole
+	 * misunderstanding this panel exists to fix, so "colors to add" and "handle
+	 * with care" get their own heading, their own lede, and their own listen
+	 * affordance.
+	 */
 	const colorNotes = $derived(
-		activeScale ? activeScale.notes.filter((note) => note.kind !== 'chord-tone') : []
+		activeScale ? activeScale.notes.filter((note) => note.kind === 'color') : []
+	);
+	const carefulNotes = $derived(
+		activeScale ? activeScale.notes.filter((note) => note.kind === 'careful') : []
 	);
 
 	/** Per-tension why lines; labels missing here fall back to the generic color line. */
@@ -106,10 +122,67 @@
 	};
 
 	function whyFor(note: ImprovNote): string {
-		if (note.kind === 'careful') {
-			return t('improvise.note.why.careful').replaceAll('{TONE}', note.clashesWith ?? '');
-		}
 		return t(WHY_BY_LABEL[note.label] ?? 'improvise.note.why.color');
+	}
+
+	/**
+	 * A careful note's explanation is written per COLLIDING CHORD TONE, never
+	 * once for all of them: "F rubs" teaches nothing, "F is a half step above
+	 * E, the 3rd that makes this chord major" is the actual answer. The engine
+	 * names the victim (letter, interval shorthand and degree class); this map
+	 * only picks which sentence that degree deserves.
+	 *
+	 * Three degrees cover every case an offered scale can actually produce: no
+	 * recommended scale holds the note a half step above a 7th (that note is
+	 * the root, which is a chord tone) nor above a minor 3rd, so the rest (the
+	 * natural 9 rubbing a chord's own ♭9, say) take the interval-naming
+	 * fallback rather than a sentence that would never be read.
+	 */
+	const CAREFUL_WHY_BY_ROLE: Partial<Record<IntervalRole, MessageKey>> = {
+		root: 'improvise.note.careful.root',
+		third: 'improvise.note.careful.third',
+		fifth: 'improvise.note.careful.fifth'
+	};
+
+	function carefulWhy(note: ImprovNote): string {
+		const key =
+			(note.clashesWithRole && CAREFUL_WHY_BY_ROLE[note.clashesWithRole]) ??
+			'improvise.note.careful.other';
+		return t(key)
+			.replaceAll('{NOTE}', note.letter)
+			.replaceAll('{TONE}', note.clashesWith ?? '')
+			.replaceAll('{LABEL}', note.clashesWithLabel ?? '');
+	}
+
+	/**
+	 * The "same note, other chord" line, only where the engine can honestly
+	 * name a context: the 4 against a major 3rd is the classic rub over a major
+	 * seventh chord and the expected sus/blues sound over the dominant, so the
+	 * wording splits on which of the two this chord is.
+	 */
+	function carefulFineOn(note: ImprovNote): string | null {
+		if (note.fineOn !== 'dominant-blues') return null;
+		const key =
+			guide?.family === 'dominant'
+				? 'improvise.note.careful.fineOnBlues'
+				: 'improvise.note.careful.fineOnDominant';
+		return t(key).replaceAll('{NOTE}', note.letter).replaceAll('{ROOT}', chord.root);
+	}
+
+	/** The chord as plain letters, the shape the audio engine's chord calls take. */
+	const chordLetters = $derived(chord.notes.map((note) => note.letter));
+
+	/**
+	 * Hearing is the other half of the answer: the left hand holds the chord
+	 * while these notes sound over it, through the app's one audio engine. One
+	 * melody letter is a plain listen; two are the A/B (the chord tone first,
+	 * then the half step above it), which is what makes a rub obvious without
+	 * any theory at all. Each call cancels the previous demo, so clicking
+	 * around never stacks chords.
+	 */
+	function hearOverChord(...melodies: string[]) {
+		void ensureAudioReady();
+		playNotesOverChord(chord.root, chordLetters, melodies);
 	}
 
 	/** "A dorian" / "A dorien": tonic verbatim (symbol immunity), mode name localized. */
@@ -130,8 +203,33 @@
 			: t('improvise.concept.blue.generic')
 	);
 
+	/**
+	 * The blue note's own row, in the panel body rather than only in the
+	 * concepts fold: "why does B♭ sound good over C" is a question asked in
+	 * front of the keyboard, and the answer is that the ♭7 is a whole step
+	 * BELOW the root, so unlike an avoid note it has nothing to rub against.
+	 * When the symbol holds a chord tone a half step from it the row says so
+	 * instead: over Cmaj7 the B♭ and the B collide, over C6 the B♭ and the A.
+	 */
+	const blueWhy = $derived(
+		guide?.blueNote
+			? t(guide.blueNoteRubsWith ? 'improvise.blue.whyHeld' : 'improvise.blue.why')
+					.replaceAll('{NOTE}', guide.blueNote)
+					.replaceAll('{ROOT}', chord.root)
+					.replaceAll('{TONE}', guide.blueNoteRubsWith ?? '')
+			: ''
+	);
+
+	/**
+	 * The keyboard already sounds the tapped key itself (PianoKeyboard's
+	 * inspect mode); this adds the chord underneath it, so a tap answers "how
+	 * does this note sit on this chord" rather than "what pitch is this key".
+	 * The melody list stays empty on purpose: passing the tapped letter here
+	 * too would play it twice.
+	 */
 	function handleInspect(payload: InspectPayload) {
 		inspectPayload = payload;
+		playNotesOverChord(chord.root, chordLetters, []);
 	}
 </script>
 
@@ -198,23 +296,96 @@
 						<InspectRegister payload={inspectPayload} idleText={t('improvise.inspect.idle')} />
 						<p class="legend">{t('improvise.keyboard.legend')}</p>
 
-						<ul class="note-list">
-							{#each colorNotes as note (note.letter)}
-								<li
-									class="note-row"
-									class:note-row--careful={note.kind === 'careful'}
-									data-testid="improvise-note-row"
-									data-kind={note.kind}
-								>
-									<span class="note-letter">{note.letter}</span>
-									<span class="note-label">{note.label}</span>
-									<span class="note-tag">
-										{t(note.kind === 'careful' ? 'improvise.tag.careful' : 'improvise.tag.color')}
+						{#if colorNotes.length > 0}
+							<p class="section-heading">{t('improvise.colors.heading')}</p>
+							<p class="why">{t('improvise.colors.lede')}</p>
+							<ul class="note-list">
+								{#each colorNotes as note (note.letter)}
+									<li class="note-row" data-testid="improvise-note-row" data-kind="color">
+										<span class="note-letter">{note.letter}</span>
+										<span class="note-label">{note.label}</span>
+										<span class="note-tag">{t('improvise.tag.color')}</span>
+										<span class="note-why">{whyFor(note)}</span>
+										<span class="note-listen">
+											<Button
+												type="button"
+												variant="ghost"
+												data-testid="improvise-listen-color"
+												aria-label={t('improvise.listen.aria').replaceAll('{NOTE}', note.letter)}
+												onclick={() => hearOverChord(note.letter)}
+											>
+												{t('improvise.listen.color')}
+											</Button>
+										</span>
+									</li>
+								{/each}
+							</ul>
+						{/if}
+
+						{#if carefulNotes.length > 0}
+							<p class="section-heading">{t('improvise.careful.heading')}</p>
+							<p class="why" data-testid="improvise-careful-lede">{t('improvise.careful.lede')}</p>
+							<p class="why">{t('improvise.careful.compareHint')}</p>
+							<ul class="note-list">
+								{#each carefulNotes as note (note.letter)}
+									<li
+										class="note-row note-row--careful"
+										data-testid="improvise-note-row"
+										data-kind="careful"
+									>
+										<span class="note-letter">{note.letter}</span>
+										<span class="note-label">{note.label}</span>
+										<span class="note-tag">{t('improvise.tag.careful')}</span>
+										<span class="note-why" data-testid="improvise-careful-why"
+											>{carefulWhy(note)}</span
+										>
+										<span class="note-why">{t('improvise.note.careful.nuance')}</span>
+										{#if carefulFineOn(note)}
+											<span class="note-why" data-testid="improvise-careful-fine-on"
+												>{carefulFineOn(note)}</span
+											>
+										{/if}
+										<span class="note-listen">
+											<Button
+												type="button"
+												variant="ghost"
+												data-testid="improvise-listen-careful"
+												aria-label={t('improvise.listen.ariaCareful')
+													.replaceAll('{NOTE}', note.letter)
+													.replaceAll('{TONE}', note.clashesWith ?? '')}
+												onclick={() => hearOverChord(note.clashesWith ?? note.letter, note.letter)}
+											>
+												{t('improvise.listen.careful')}
+											</Button>
+										</span>
+									</li>
+								{/each}
+							</ul>
+						{/if}
+
+						{#if guide.blueNote}
+							<p class="section-heading">{t('improvise.blue.heading')}</p>
+							<ul class="note-list">
+								<li class="note-row" data-testid="improvise-blue-row" data-kind="blue">
+									<span class="note-letter">{guide.blueNote}</span>
+									<span class="note-label">♭7</span>
+									<span class="note-tag">{t('improvise.blue.tag')}</span>
+									<span class="note-why">{blueWhy}</span>
+									<span class="note-listen">
+										<Button
+											type="button"
+											variant="ghost"
+											data-testid="improvise-listen-blue"
+											aria-label={t('improvise.listen.aria').replaceAll('{NOTE}', guide.blueNote)}
+											onclick={() => hearOverChord(guide.blueNote ?? '')}
+										>
+											{t('improvise.listen.color')}
+										</Button>
 									</span>
-									<span class="note-why">{whyFor(note)}</span>
 								</li>
-							{/each}
-						</ul>
+							</ul>
+						{/if}
+
 						<p class="legend">{t('improvise.legend')}</p>
 					{/if}
 				{:else}
@@ -396,6 +567,12 @@
 	.note-why {
 		flex: 1 1 100%;
 		color: var(--color-muted);
+	}
+
+	/* Own line under the explanation: the row wraps on a phone either way. */
+	.note-listen {
+		flex: 1 1 100%;
+		margin-top: var(--spacing-xs);
 	}
 
 	.dim-caution {
