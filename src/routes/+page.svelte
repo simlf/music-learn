@@ -20,6 +20,7 @@
 	import Button from '$lib/components/Button.svelte';
 	import RecentChipRow from '$lib/components/RecentChipRow.svelte';
 	import WhyTheseNotes from '$lib/components/WhyTheseNotes.svelte';
+	import ImproviseGuide from '$lib/components/ImproviseGuide.svelte';
 	import MicCheckPanel from '$lib/components/MicCheckPanel.svelte';
 	import { buildProvenanceIndex, songsForSymbol } from '$lib/practice/songProvenance';
 	import { t } from '$lib/i18n/locale.svelte';
@@ -389,6 +390,13 @@
 				counterpartSymbol={whyCounterpartSymbol ?? undefined}
 				onLookupCounterpart={showChordFromSymbol}
 			/>
+
+			<!-- Improvisation guide (design/improvisation.md shape 3): chord-scale
+			     reference attached to Lookup, where the symbol is already being
+			     decoded. Renders nothing when the quality has no honest answer.
+			     Applies to slash chords too: the scale follows the chord, not
+			     the bass. -->
+			<ImproviseGuide chord={result} />
 
 			{#if !result.bass}
 				<MicCheckPanel chord={result} />

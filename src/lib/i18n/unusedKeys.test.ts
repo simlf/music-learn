@@ -18,6 +18,7 @@ import { voicings } from './messages/voicings';
 import { intervalView } from './messages/interval-view';
 import { practice } from './messages/practice';
 import { learn } from './messages/learn';
+import { improvise } from './messages/improvise';
 
 /**
  * Dead-message-key gate.
@@ -98,7 +99,17 @@ const DYNAMIC_PREFIXES: { prefix: string; site: string; note?: string }[] = [
 		 */
 		note: 'tier id 1..6, .name half is live and .blurb half is pending translation wiring'
 	},
-	{ prefix: 'songs.preset.', site: 'SongManager.svelte', note: 'preset id, .note suffix' }
+	{ prefix: 'songs.preset.', site: 'SongManager.svelte', note: 'preset id, .note suffix' },
+	{
+		prefix: 'improvise.scale.name.',
+		site: 'ImproviseGuide.svelte',
+		note: 'ChordScaleId (dorian, mixolydian...)'
+	},
+	{
+		prefix: 'improvise.scale.color.',
+		site: 'ImproviseGuide.svelte',
+		note: 'ChordScaleId, the mood one-liner per scale'
+	}
 ];
 
 /**
@@ -146,7 +157,8 @@ const DOMAINS: Record<string, Record<string, string>> = {
 	voicings: voicings.en,
 	'interval-view': intervalView.en,
 	practice: practice.en,
-	learn: learn.en
+	learn: learn.en,
+	improvise: improvise.en
 };
 
 function walk(dir: string, out: string[] = []): string[] {

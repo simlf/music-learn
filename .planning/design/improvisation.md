@@ -1,6 +1,6 @@
 # Design: improvisation
 
-**Status:** design. One part of it (the comping loop) is built and shipped on this branch; the other two are proposals, not plans.
+**Status:** design, partially built. The comping loop (shape one) is shipped. Shape three shipped as the chord-scale lookup reference (engine `src/lib/theory/chordScale.ts`, panel `src/lib/components/ImproviseGuide.svelte` on the Lookup result card), honoring the constraints in section 5. Shape two (guide-tone lines) remains a proposal.
 **Scope:** how a practice companion that cannot be graded coexists with a spaced-repetition trainer, and which two units of improvisation content are worth building next.
 **Companion doc:** `.planning/design/guided-path.md` (the 14-unit curriculum spine). This document is deliberately subordinate to it: where the two touch, the path wins and this doc says how it fits in.
 **Date:** 2026-07-29
@@ -48,6 +48,8 @@ Commit `6a13ade` (PR #31) fixed two false claims in shipped copy. The one that m
 The replacement copy (`src/lib/i18n/messages/voicings.ts:58-61`, and the fr pair at `:99-102`) is now true: the 3rd says major or minor, the 7th says which seventh, so those two carry the chord. But it is still a **rule**, not a **reason**. It explains why those two notes are sufficient. It does not explain why they sound like *music*, which is the question a returning classical pianist will actually ask when told to play two notes with his left hand. That answer is voice leading, and it is missing from the app entirely. This is the gap unit 11 exists to close, and the previous copy filled it with a claim that was false.
 
 ### 2.3 Modes: genuinely absent, verified
+
+*Superseded: the chord-scale lookup reference (`src/lib/theory/chordScale.ts`) now names modes as labels on answers, per section 5.2. The audit below records the state that motivated the design.*
 
 `grep -rin "dorian|mixolydian|lydian|aeolian|phrygian|locrian" src/ tests/` returns **nothing**. The theory layer knows one scale: `majorScaleNotes(root)` (`src/lib/theory/scale.ts:51`), built from `Scale.get("<root> major")`. `ScaleExplorer.svelte` explores that one scale. The persisted fact kinds are `chord-formula`, `interval-size`, `scale-degree`, `scale-formula` (`src/lib/srs/deck.ts:81`), and the last two never reach `/practice` at all, because `familyForCard` returns null for them (`src/lib/practice/practiceQueue.ts:141-150`).
 
@@ -129,6 +131,8 @@ Depends on guided-path Phase 2 (`InteractiveLesson` takes `steps`) and reads bet
 ---
 
 ## 5. Shape three: chord-scale mapping and modes (defer, then reframe)
+
+*Built: shipped as specified in 5.2, as `ImproviseGuide.svelte` on the Lookup result card, backed by `src/lib/theory/chordScale.ts`. Reference only: no FactKind, no Dexie version, no drill.*
 
 ### 5.1 What the audit found, and what it implies
 

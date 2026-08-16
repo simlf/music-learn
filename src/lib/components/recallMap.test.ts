@@ -30,8 +30,11 @@ vi.mock('$lib/srs/deck', async (importOriginal) => {
 	};
 });
 
-const NOW = new Date('2026-07-15T12:00:00Z');
-const FUTURE = new Date('2026-08-15T12:00:00Z');
+// The component classifies cells against the real clock (RecallMap.svelte's
+// `now = new Date()`), so anchor fixtures to it: absolute dates rot once the
+// calendar passes them.
+const NOW = new Date();
+const FUTURE = new Date(NOW.getTime() + 30 * 24 * 60 * 60 * 1000);
 
 function baseCard(factId: string, factKind: CardRecord['factKind']): CardRecord {
 	return {

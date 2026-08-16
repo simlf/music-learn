@@ -14,6 +14,7 @@ import { voicings } from './voicings';
 import { intervalView } from './interval-view';
 import { practice } from './practice';
 import { learn } from './learn';
+import { improvise } from './improvise';
 
 /**
  * Shared shape for every per-domain (and the merged) locale dictionary:
@@ -49,7 +50,8 @@ export const messages = {
 		...voicings.en,
 		...intervalView.en,
 		...practice.en,
-		...learn.en
+		...learn.en,
+		...improvise.en
 	},
 	fr: {
 		...chrome.fr,
@@ -67,6 +69,7 @@ export const messages = {
 		...voicings.fr,
 		...intervalView.fr,
 		...practice.fr,
-		...learn.fr
+		...learn.fr,
+		...improvise.fr
 	}
 } satisfies LocaleDict;

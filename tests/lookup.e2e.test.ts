@@ -93,6 +93,22 @@ describe('lookup page happy path', () => {
 		expect(within(keyboard).getByText('A')).toBeInTheDocument();
 		expect(within(keyboard).getByText('C')).toBeInTheDocument();
 	});
+
+	it('mounts the improvisation guide on the result card, opening into the chord-scale answer', async () => {
+		renderPage();
+
+		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'Am7' } });
+		await fireEvent.click(screen.getByRole('button', { name: /stamp/i }));
+
+		const result = screen.getByTestId('chord-result');
+		const toggle = within(result).getByTestId('improvise-toggle');
+		await fireEvent.click(toggle);
+
+		const panel = within(result).getByTestId('improvise-panel');
+		// Dorian leads the minor family's scale choices (chordScale.ts).
+		const chips = within(panel).getAllByTestId('improvise-scale-chip');
+		expect(chips[0].textContent).toContain('dorian');
+	});
 });
 
 describe('lookup page input trimming', () => {
