@@ -4,6 +4,24 @@
 **Domain:** Web MIDI device connection lifecycle, browser feature detection, Svelte 5 reactive module state
 **Confidence:** HIGH (webmidi API surface + Chrome permission model, verified against official docs/registry) / MEDIUM (indicator placement, first-call gesture requirement - no prior sketch exists for this surface)
 
+> **Reconciled against shipped code 2026-08-25.** This document was written
+> 2026-08-04, before the phase executed, so its body is in recommendation tense.
+> Phase 38 then shipped in PR #72 (commit `1aa62a1`) and **followed every primary
+> recommendation here**: `$lib/midi/webmidi.ts` (the import boundary),
+> `$lib/midi/midi.svelte.ts` (the reactive state module), and a `MidiStatus.svelte`
+> masthead chip that self-hides on `unsupported`, mounted in `+layout.svelte`
+> beside `StreakBadge` with a feature-detect-only `initMidi()` on app start and the
+> connect gesture carried by the chip's own click handler.
+>
+> The domain research, the Chrome 124+ permission finding, the pitfalls, the
+> anti-patterns, and the security section all still stand and are still worth
+> reading. Only the point-in-time status tables have been corrected below
+> (Assumptions Log, Open Questions, Environment Availability, the requirements
+> test map, and Wave 0 Gaps), so this file no longer describes as "not yet built"
+> things that have since shipped. The as-built validation record is in
+> [38-VALIDATION.md](38-VALIDATION.md); the still-open hardware gap is in
+> [38-UAT.md](38-UAT.md) and [38-VERIFICATION.md](38-VERIFICATION.md).
+
 ## Summary
 
 Phase 38 is a pure client-side, no-backend feature: wrap `navigator.requestMIDIAccess()` via the `webmidi` npm package (already pinned at 3.1.16 in this repo's CLAUDE.md) behind a browser-only reactive state module, following the exact idiom this codebase already uses three times (`locale.svelte.ts`, `swUpdate.svelte.ts`, `dueBadge.svelte.ts`): a plain function-based module with `$state` at module scope, all `navigator`/`window` access inside function bodies (never at module top level), guarded by SvelteKit's `browser` import so `adapter-static`'s prerender never touches it.
@@ -350,17 +368,28 @@ export function midiUnsupportedReason(): 'no-window' | 'unsupported' | null {
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|----------------|
 | A1 | `requestMIDIAccess()`/`WebMidi.enable()` requires a user gesture (transient activation) on first call in a session, similar to `getUserMedia`, and Chrome's general permission-persistence behavior means a previously-granted origin does not need a fresh gesture on reload | Pattern 3 / Common Pitfalls | If wrong (e.g., no gesture requirement at all, or the browser re-prompts on every reload regardless of gesture), the "explicit Connect button" design is still safe (a strictly more conservative UX than needed) but could be simplified later (e.g., safe to auto-`enable()` silently once already granted). Low risk either way - worth a `checkpoint:human-verify` on-device rather than blocking the design. |
-| A2 | The connected device will report a name via `input.name`/`manufacturer` that is at least somewhat legible (even if generic, e.g., "USB MIDI Device") rather than an empty string | Pitfall 4 | If the specific USB piano reports an empty/undefined name, the indicator copy needs a "MIDI device connected" fallback string rather than assuming a name is always present - low risk, cheap fallback to add |
+| A2 | The connected device will report a name via `input.name`/`manufacturer` that is at least somewhat legible (even if generic, e.g., "USB MIDI Device") rather than an empty string | Pitfall 4 | **RESOLVED by the shipped code, not by hardware:** the cheap fallback was built rather than assumed away. `webmidi.ts` normalises a missing name to `''` (`input.name ?? ''`) and the chip renders `MIDI: MIDI DEVICE` for an empty descriptor. Whether the *specific* piano reports a legible name is still unknown and is recorded as Check 1 in [38-UAT.md](38-UAT.md) ("record the exact string it shows"). |
 | A3 | No prior sketch exists for this specific connection-indicator UI (the sketch-findings skill's session index does not list a MIDI-connection sketch among sketches 001-024) | Open Questions / Summary | If a sketch does exist elsewhere and was missed, the planner may re-derive a placement/visual treatment that conflicts with an already-locked design decision; worth a quick grep of `.claude/skills/sketch-findings-music-learn/sources/` titles before finalizing the indicator's visual design |
 
 ## Open Questions
 
-1. **Where does the connection indicator live?**
+> **Both questions below were answered by what shipped in PR #72; neither is open
+> any more.** Q1: the indicator lives in the masthead as `MidiStatus.svelte`,
+> mounted in `+layout.svelte` beside `StreakBadge`, rendering nothing at all on
+> `unsupported` (the recommendation below, taken as written). Q2: the app requires
+> an explicit connect tap every session and never auto-calls `enable()`;
+> `initMidi()` in `+layout.svelte` is feature-detect-only, with a comment in place
+> forbidding a connect call from being moved there. Assumption A2's empty-name risk
+> also materialised as a real fallback: an empty USB descriptor renders as
+> `MIDI: MIDI DEVICE`. The reasoning is kept below because it records *why* the
+> shipped shape is what it is.
+
+1. **Where does the connection indicator live?** *(RESOLVED — masthead, as recommended)*
    - What we know: The masthead already hosts `StreakBadge` (self-hiding at zero) and `LocaleToggle` (desktop-only, hidden on phone via `hidden sm:block`), and the phone bottom-tab-bar has no room for a text indicator (56px icon+label slots, no spare slot). The Print Shop identity's mono status-register convention (`font-mono uppercase`, `letter-spacing: 0.08em`) is used throughout for status/label text.
    - What's unclear: Whether the indicator belongs in the masthead (always-visible, competes for space with StreakBadge/LocaleToggle on a narrow phone viewport) or scoped to only the Practice hub (where MIDI answering will actually matter starting Phase 39) or its own settings-style row.
    - Recommendation: Given MIDI-01 says "see its live connection state" with no specific location constraint, and the masthead's existing `hidden sm:block` pattern already handles narrow-viewport crowding for `LocaleToggle`, place a compact `MidiStatus` component in the masthead next to `StreakBadge`, self-hiding entirely on `unsupported` (satisfying MIDI-04 by the same mechanism `StreakBadge` uses for "streak = 0"). Confirm this placement in `/gsd-discuss-phase` or a UI-SPEC pass rather than deciding it unilaterally here - no sketch exists for this surface yet.
 
-2. **Should `enable()` be attempted automatically once per session if permission was already granted in a prior session?**
+2. **Should `enable()` be attempted automatically once per session if permission was already granted in a prior session?** *(RESOLVED — no; explicit tap every session, as recommended)*
    - What we know: Chrome generally persists origin permission grants across reloads (A1 above); the mic panel in this codebase, by contrast, ALWAYS requires an explicit click even on a returning session.
    - What's unclear: Whether silently auto-enabling on mount (skipping the button) when already-granted is worth building, versus keeping the mic panel's uniform "always requires a click" simplicity.
    - Recommendation: Default to requiring an explicit "Connect" tap every session (mirrors the mic panel precedent exactly, zero new UX pattern to design/test); revisit only if on-device UAT reveals the extra tap is annoying for a piano that's plugged in every session.
@@ -369,16 +398,16 @@ export function midiUnsupportedReason(): 'no-window' | 'unsupported' | null {
 
 | Dependency | Required By | Available | Version | Fallback |
 |------------|--------------|-----------|---------|-----------|
-| `webmidi` npm package | MIDI-01, MIDI-04 | ✗ (not yet installed - `npm ls webmidi` returns nothing in this repo today) | 3.1.16 confirmed on registry | Install as part of this phase's first task; no fallback needed, it's the phase's own deliverable |
+| `webmidi` npm package | MIDI-01, MIDI-04 | ✓ (shipped in PR #72; exact pin in `package.json`) | 3.1.16 | — installed; was this phase's own first deliverable |
 | Web MIDI API (Chrome-family browsers) | MIDI-01 | ✓ (Chromium via Playwright confirms `navigator.requestMIDIAccess` exists) | Chrome 124+ permission model assumed current | Feature-detected; Safari/iOS fall back to "no MIDI chrome" (MIDI-04) by design, not as a degraded path |
-| Physical USB digital piano | On-device UAT (hot-plug, real device naming) | Unknown from this research session - depends on whether the piano is physically present when this phase executes | — | None - roadmap explicitly flags this phase HARDWARE-IN-THE-LOOP; code-level verification can complete without it, but UAT sign-off cannot |
+| Physical USB digital piano | On-device UAT (hot-plug, real device naming) | ✗ STILL UNAVAILABLE - the developer does not own a USB MIDI keyboard yet, so the deferral recorded at plan close remains open | — | None - roadmap explicitly flags this phase HARDWARE-IN-THE-LOOP; code-level verification completed without it, but UAT sign-off cannot. See [38-UAT.md](38-UAT.md) (4 checks pending) and [38-VERIFICATION.md](38-VERIFICATION.md) (`status: human_needed`) |
 | Playwright + Chromium (already installed, `@playwright/test` ^1.62.0) | Deterministic "supported, no device" + permission-grant testing | ✓ | 1.62.0 | — |
 
 **Missing dependencies with no fallback:**
-- Physical USB piano for on-device hot-plug UAT - cannot be substituted by any automated test; the plan must include an explicit human-verify checkpoint for MIDI-01's plug/unplug success criteria.
+- Physical USB piano for on-device hot-plug UAT - cannot be substituted by any automated test. The plan did include the explicit human-verify checkpoint for MIDI-01's plug/unplug success criteria, and that checkpoint is **still open**: no keyboard has been acquired, so Checks 1-4 in [38-UAT.md](38-UAT.md) stay `[pending]`. This is the one thing about Phase 38 that a future session must not assume is done.
 
-**Missing dependencies with fallback:**
-- `webmidi` npm package itself is "missing" only in the sense that it hasn't been installed yet - this phase installs it as its own first task, not a blocker.
+**Resolved since this research was written:**
+- `webmidi` 3.1.16 is installed (exact pin in `package.json`), so the only dependency this phase had to acquire is no longer outstanding.
 
 ## Validation Architecture
 
@@ -395,11 +424,11 @@ export function midiUnsupportedReason(): 'no-window' | 'unsupported' | null {
 
 | Req ID | Behavior | Test Type | Automated Command | File Exists? |
 |--------|----------|-----------|---------------------|---------------|
-| MIDI-01 | Feature detection returns `unsupported` when `navigator.requestMIDIAccess` is absent | unit | `npx vitest run src/lib/midi/webmidi.test.ts` | ❌ Wave 0 |
-| MIDI-01 | State-transition reducer maps `connected`/`disconnected`/`portschanged` webmidi events to the app's `MidiConnectionState`, using a device name | unit | `npx vitest run src/lib/midi/midi.test.ts` | ❌ Wave 0 |
-| MIDI-01 | On real Chromium with MIDI permission granted (no device), state resolves to "supported, no device" without polling/timers | e2e (Playwright) | `npm run test:e2e -- midi.spec.ts` | ❌ Wave 0 |
-| MIDI-01 (hot-plug) | Device connect/disconnect while a session is open updates state with no reload | manual-only (HARDWARE-IN-THE-LOOP) | — (no automated substitute; real USB device required) | N/A |
-| MIDI-04 | `MidiStatus` component renders nothing when state is `unsupported` | component (Vitest + `@testing-library/svelte`) | `npx vitest run src/lib/components/MidiStatus.test.ts` | ❌ Wave 0 |
+| MIDI-01 | Feature detection returns `unsupported` when `navigator.requestMIDIAccess` is absent | unit | `npx vitest run src/lib/midi/webmidi.test.ts` | ✓ shipped (35 tests green) |
+| MIDI-01 | State-transition reducer maps `connected`/`disconnected`/`portschanged` webmidi events to the app's `MidiConnectionState`, using a device name | unit | `npx vitest run src/lib/midi/midi.test.ts` | ✓ shipped (40 tests green) |
+| MIDI-01 | On real Chromium with MIDI permission granted (no device), state resolves to "supported, no device" without polling/timers | e2e (Playwright) | `npm run test:e2e -- midi.spec.ts` | ✓ shipped (4 specs green) |
+| MIDI-01 (hot-plug) | Device connect/disconnect while a session is open updates state with no reload | manual-only (HARDWARE-IN-THE-LOOP) | — (no automated substitute; real USB device required) | N/A — still open, see [38-UAT.md](38-UAT.md) |
+| MIDI-04 | `MidiStatus` component renders nothing when state is `unsupported` | component (Vitest + `@testing-library/svelte`) | `npx vitest run src/lib/components/midiStatus.test.ts` | ✓ shipped (41 tests green) |
 | MIDI-04 | Every existing on-screen-keyboard/drill flow test still passes unmodified (REG) | full suite regression | `npm test` | ✓ (existing suite; no new file, just re-run) |
 
 ### Sampling Rate
@@ -408,11 +437,14 @@ export function midiUnsupportedReason(): 'no-window' | 'unsupported' | null {
 - **Phase gate:** Full Vitest suite + `npm run test:e2e` + `npm run check` (svelte-check) green before `/gsd-verify-work`, plus the mandatory human-verify hardware checkpoint for plug/unplug and hot-plug (cannot be closed by automation - flag as `human_needed` in verification, matching this project's existing precedent for Phases 34/35's deferred on-device UAT items in STATE.md)
 
 ### Wave 0 Gaps
-- [ ] `src/lib/midi/webmidi.ts` + `src/lib/midi/webmidi.test.ts` - feature detection + `webmidi` event-wiring boundary
-- [ ] `src/lib/midi/midi.svelte.ts` + `src/lib/midi/midi.test.ts` - reactive state module (mirrors `swUpdate.svelte.ts`/`swUpdate.test.ts` split of pure logic vs. browser wiring)
-- [ ] `src/lib/components/MidiStatus.svelte` + a component test - masthead indicator, self-hides on `unsupported`
-- [ ] `tests/e2e/midi.spec.ts` - Playwright spec using `context.grantPermissions(['midi'])` to exercise "supported, no device" deterministically in CI
-- [ ] `npm install webmidi@3.1.16` - dependency not yet present in `package.json`
+
+All closed by PR #72. Kept here as the record of what the phase had to build.
+
+- [x] `src/lib/midi/webmidi.ts` + `src/lib/midi/webmidi.test.ts` - feature detection + `webmidi` event-wiring boundary
+- [x] `src/lib/midi/midi.svelte.ts` + `src/lib/midi/midi.test.ts` - reactive state module (mirrors `swUpdate.svelte.ts`/`swUpdate.test.ts` split of pure logic vs. browser wiring)
+- [x] `src/lib/components/MidiStatus.svelte` + `src/lib/components/midiStatus.test.ts` - masthead indicator, self-hides on `unsupported`
+- [x] `tests/e2e/midi.spec.ts` - Playwright spec exercising "supported, no device" deterministically in CI
+- [x] `npm install webmidi@3.1.16` - shipped as an exact pin in `package.json`
 
 ## Security Domain
 
