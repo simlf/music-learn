@@ -10,6 +10,14 @@ import type { LocaleDict } from './index';
  * (symbol immunity); only the surrounding prose is keyed here. Mode names
  * themselves ARE prose (dorian/dorien), so they live in this dictionary.
  *
+ * Phase 38 rewrite: every string here is now a CAPTION on something the
+ * player just heard or tapped, never a paragraph printed in advance. The
+ * substance is PR #75's, kept sentence for sentence where it still earns its
+ * place; what went is the scaffolding that only existed because everything
+ * had to be readable at once (section headings, ledes, per-section
+ * instructions, the "greyed" wording for a treatment that is no longer grey,
+ * and the parentheses that were pointed at but never visible).
+ *
  * No em dashes anywhere in this file's copy (periods/colons/commas only,
  * per the standing copy rule, locked by noEmDashes.test.ts). No drill
  * grammar either: this panel is reference, so no "correct", no "try again".
@@ -17,13 +25,9 @@ import type { LocaleDict } from './index';
 export const improvise = {
 	en: {
 		'improvise.toggle': 'What can I play over this?',
-		'improvise.intro': 'Left hand holds the chord. Right hand picks from these notes.',
+		'improvise.intro': 'Left hand holds the chord. Right hand explores. Play the scale, or tap a key.',
 
-		'improvise.chordTones.heading': 'Chord tones',
-		'improvise.chordTones.why':
-			'The skeleton. Always safe: land on them, start from them, come back to them.',
-
-		'improvise.scales.heading': 'Pick a scale color',
+		'improvise.scales.heading': 'Scale',
 		'improvise.aria.scaleGroup': 'Scale choice',
 
 		'improvise.scale.name.ionian': 'major (ionian)',
@@ -47,18 +51,28 @@ export const improvise = {
 		'improvise.scale.color.locrian':
 			'Dark and unstable, like the chord itself: it wants to resolve.',
 
+		'improvise.walk.play': 'Play the scale over the chord',
+		'improvise.walk.stop': 'Stop',
+		'improvise.walk.playing': 'sounding now',
+		'improvise.walk.hint': 'The chord is held underneath. Each note lights up as it sounds.',
+		'improvise.soundOff': 'Sound is off. Turn it on to hear the scale over the chord.',
+
+		'improvise.legend.chordTone': 'Filled: chord tones',
+		'improvise.legend.color': 'Hatched: the scale',
+		'improvise.legend.careful': 'Vermilion bar: handle with care',
+		'improvise.legend.outside': 'Dashed outline: outside the scale',
+
+		'improvise.caption.idle': 'Tap a key, or play the scale. What it does shows up here.',
+		'improvise.more.toggle': 'More on this one',
+
+		'improvise.tag.chordTone': 'chord tone',
 		'improvise.tag.color': 'color',
 		'improvise.tag.careful': 'handle with care',
+		'improvise.tag.blue': 'blue note',
+		'improvise.tag.outside': 'outside',
 
-		'improvise.colors.heading': 'Colors to add',
-		'improvise.colors.lede':
-			'In the scale, not in the chord. They season the sound on top, and none of them rubs against what the left hand is holding.',
-		'improvise.careful.heading': 'Handle with care, and here is why',
-		'improvise.careful.lede':
-			'Greyed does not mean forbidden. Each of these sits one half step above a note your left hand is holding, so sounded together they make a minor 9th, the harshest interval in tonal music. And because the chord tone is held underneath, the ear hears that clash continuously instead of in passing.',
-		'improvise.careful.compareHint':
-			'The button plays the chord tone first, then the half step above it, so you hear the difference rather than read it.',
-
+		'improvise.note.why.chordTone':
+			'One of the notes your left hand is holding. Always safe: land on it, start from it, come back to it.',
 		'improvise.note.why.9': 'One whole step above the root: adds air, works almost everywhere.',
 		'improvise.note.why.11': 'The 4th an octave up: it sings on minor chords.',
 		'improvise.note.why.sharp11':
@@ -86,23 +100,20 @@ export const improvise = {
 		'improvise.note.careful.fineOnBlues':
 			'In a blues this same {NOTE} is everywhere: it is the sus sound over {ROOT}7, and it wants to fall onto the 3rd. Handle with care means do not park on it, not do not play it.',
 
-		'improvise.blue.heading': 'One note outside the scale that works anyway',
-		'improvise.blue.tag': 'blue note',
 		'improvise.blue.why':
-			'{NOTE} is not in the scale above, and it still sounds right over {ROOT}. It is the ♭7, one whole step below the root, so it never sits a half step above a chord tone: nothing to rub against. It bends the chord toward {ROOT}7, the dominant and blues color.',
+			'{NOTE} is not in the scale, and it still sounds right over {ROOT}. It is the ♭7, one whole step below the root, so it never sits a half step above a chord tone: nothing to rub against. It bends the chord toward {ROOT}7, the dominant and blues color.',
 		'improvise.blue.whyHeld':
-			'{NOTE} is not in the scale above, and this chord holds its own {TONE} a half step away, so those two do rub when they sound together. Played passing, or when the left hand leaves {TONE} out, {NOTE} bends the chord toward {ROOT}7, the blues color.',
+			'{NOTE} is not in the scale, and this chord holds its own {TONE} a half step away, so those two do rub when they sound together. Played passing, or when the left hand leaves {TONE} out, {NOTE} bends the chord toward {ROOT}7, the blues color.',
+
+		'improvise.outside.free':
+			'{NOTE} is outside the scale above and outside the chord. Nothing your left hand holds is a half step from it, so passing through it is fine. Land on it and the ear files it as an accident.',
+		'improvise.outside.clash':
+			'{NOTE} is outside the scale, and it sits one half step above {TONE}, which your left hand is holding. Passing through, fine. Held, it is the same minor 9th rub.',
 
 		'improvise.listen.color': 'Hear it over the chord',
 		'improvise.listen.careful': 'Hear the difference',
 		'improvise.listen.aria': 'Hear {NOTE} over the chord',
 		'improvise.listen.ariaCareful': 'Hear {TONE} then {NOTE} over the chord',
-
-		'improvise.legend':
-			'Nothing here is forbidden. Chord tones are home, colors are seasoning, careful notes want to keep moving.',
-		'improvise.keyboard.legend':
-			'Colored keys: chord tones. Hatched keys: the scale. Marker in parentheses: handle with care.',
-		'improvise.inspect.idle': 'Tap any key: you hear the chord held under it, like the left hand does.',
 
 		'improvise.dim.caution':
 			'This chord is symmetric: the right scale depends on where it resolves. Stick to the chord tones and move by half steps.',
@@ -125,13 +136,10 @@ export const improvise = {
 	},
 	fr: {
 		'improvise.toggle': 'Quoi jouer par-dessus ?',
-		'improvise.intro': "Main gauche : l'accord. Main droite : ces notes.",
+		'improvise.intro':
+			"Main gauche : l'accord. Main droite : elle cherche. Lance la gamme, ou touche une touche.",
 
-		'improvise.chordTones.heading': "Les notes de l'accord",
-		'improvise.chordTones.why':
-			'Le squelette. Toujours sûres : pose-toi dessus, pars de là, reviens-y.',
-
-		'improvise.scales.heading': 'Choisis une couleur de gamme',
+		'improvise.scales.heading': 'Gamme',
 		'improvise.aria.scaleGroup': 'Choix de gamme',
 
 		'improvise.scale.name.ionian': 'majeur (ionien)',
@@ -142,8 +150,7 @@ export const improvise = {
 		'improvise.scale.name.minor-pentatonic': 'pentatonique mineure',
 		'improvise.scale.name.locrian': 'locrien',
 
-		'improvise.scale.color.ionian':
-			'Le son majeur simple : la maison, lumineux, sans surprise.',
+		'improvise.scale.color.ionian': 'Le son majeur simple : la maison, lumineux, sans surprise.',
 		'improvise.scale.color.lydian':
 			'Majeur avec la 4 augmentée : rêveur, flottant, et la note délicate disparaît.',
 		'improvise.scale.color.mixolydian': 'Majeur avec une ♭7 : la couleur dominante et blues.',
@@ -156,18 +163,29 @@ export const improvise = {
 		'improvise.scale.color.locrian':
 			"Sombre et instable, comme l'accord lui-même : il demande à se résoudre.",
 
+		'improvise.walk.play': "Jouer la gamme sur l'accord",
+		'improvise.walk.stop': 'Arrêter',
+		'improvise.walk.playing': 'sonne',
+		'improvise.walk.hint': "L'accord est tenu dessous. Chaque note s'allume quand elle sonne.",
+		'improvise.soundOff': "Le son est coupé. Active-le pour entendre la gamme sur l'accord.",
+
+		'improvise.legend.chordTone': "En couleur : les notes de l'accord",
+		'improvise.legend.color': 'Hachuré : la gamme',
+		'improvise.legend.careful': 'Barre vermillon : à manier avec soin',
+		'improvise.legend.outside': 'Contour pointillé : hors gamme',
+
+		'improvise.caption.idle':
+			"Touche une touche, ou lance la gamme. Ce qu'elle fait s'affiche ici.",
+		'improvise.more.toggle': 'En savoir plus sur celle-ci',
+
+		'improvise.tag.chordTone': "note de l'accord",
 		'improvise.tag.color': 'couleur',
 		'improvise.tag.careful': 'à manier avec soin',
+		'improvise.tag.blue': 'blue note',
+		'improvise.tag.outside': 'hors gamme',
 
-		'improvise.colors.heading': 'Les couleurs à ajouter',
-		'improvise.colors.lede':
-			"Dans la gamme, pas dans l'accord. Elles parfument par-dessus, et aucune ne frotte contre ce que tient la main gauche.",
-		'improvise.careful.heading': 'À manier avec soin, et voici pourquoi',
-		'improvise.careful.lede':
-			"Grisé ne veut pas dire interdit. Chacune de ces notes est un demi-ton au-dessus d'une note que ta main gauche tient : jouées ensemble, elles forment une neuvième mineure, l'intervalle le plus dur en musique tonale. Et comme la note de l'accord est tenue dessous, l'oreille entend ce frottement en continu au lieu de l'entendre au passage.",
-		'improvise.careful.compareHint':
-			"Le bouton joue d'abord la note de l'accord, puis le demi-ton au-dessus : tu entends la différence au lieu de la lire.",
-
+		'improvise.note.why.chordTone':
+			"Une des notes que ta main gauche tient. Toujours sûre : pose-toi dessus, pars de là, reviens-y.",
 		'improvise.note.why.9':
 			'Un ton au-dessus de la fondamentale : ça aère, ça marche presque partout.',
 		'improvise.note.why.11': "La quarte à l'octave : elle chante sur les accords mineurs.",
@@ -198,24 +216,20 @@ export const improvise = {
 		'improvise.note.careful.fineOnBlues':
 			"En blues, ce même {NOTE} est partout : c'est le son sus sur {ROOT}7, et il demande à redescendre sur la tierce. À manier avec soin veut dire ne pas s'y installer, pas ne pas le jouer.",
 
-		'improvise.blue.heading': 'Une note hors gamme qui marche quand même',
-		'improvise.blue.tag': 'blue note',
 		'improvise.blue.why':
-			"{NOTE} n'est pas dans la gamme au-dessus, et pourtant ça sonne juste sur {ROOT}. C'est la ♭7, un ton en dessous de la fondamentale : elle n'est donc jamais un demi-ton au-dessus d'une note de l'accord, il n'y a rien contre quoi frotter. Elle tire l'accord vers {ROOT}7, la couleur dominante et blues.",
+			"{NOTE} n'est pas dans la gamme, et pourtant ça sonne juste sur {ROOT}. C'est la ♭7, un ton en dessous de la fondamentale : elle n'est donc jamais un demi-ton au-dessus d'une note de l'accord, il n'y a rien contre quoi frotter. Elle tire l'accord vers {ROOT}7, la couleur dominante et blues.",
 		'improvise.blue.whyHeld':
-			"{NOTE} n'est pas dans la gamme au-dessus, et cet accord tient son propre {TONE} à un demi-ton : ces deux-là frottent si elles sonnent ensemble. En passant, ou quand la main gauche laisse {TONE} de côté, {NOTE} tire l'accord vers {ROOT}7, la couleur blues.",
+			"{NOTE} n'est pas dans la gamme, et cet accord tient son propre {TONE} à un demi-ton : ces deux-là frottent si elles sonnent ensemble. En passant, ou quand la main gauche laisse {TONE} de côté, {NOTE} tire l'accord vers {ROOT}7, la couleur blues.",
+
+		'improvise.outside.free':
+			"{NOTE} est hors de la gamme au-dessus et hors de l'accord. Aucune note tenue par ta main gauche n'est à un demi-ton : y passer ne pose aucun problème. Pose-toi dessus et l'oreille la classe comme une fausse note.",
+		'improvise.outside.clash':
+			"{NOTE} est hors de la gamme, et elle est un demi-ton au-dessus de {TONE}, que ta main gauche tient. En passant, très bien. Tenue, c'est le même frottement de neuvième mineure.",
 
 		'improvise.listen.color': "Écouter sur l'accord",
 		'improvise.listen.careful': 'Écouter la différence',
 		'improvise.listen.aria': "Écouter {NOTE} sur l'accord",
 		'improvise.listen.ariaCareful': "Écouter {TONE} puis {NOTE} sur l'accord",
-
-		'improvise.legend':
-			"Rien ici n'est interdit. Les notes de l'accord sont la maison, les couleurs assaisonnent, les notes délicates veulent rester en mouvement.",
-		'improvise.keyboard.legend':
-			"Touches en couleur : les notes de l'accord. Touches hachurées : la gamme. Marque entre parenthèses : à manier avec soin.",
-		'improvise.inspect.idle':
-			"Touche une note : tu entends l'accord tenu dessous, comme le ferait la main gauche.",
 
 		'improvise.dim.caution':
 			"Cet accord est symétrique : la bonne gamme dépend de là où il se résout. Reste sur les notes de l'accord et bouge par demi-tons.",
@@ -232,7 +246,7 @@ export const improvise = {
 			"Mal nommées : rien n'est interdit. Une note à éviter se trouve un demi-ton au-dessus d'une note de l'accord, donc pendant que la main gauche tient cette note, les deux sonnent une neuvième mineure, l'intervalle le plus dur en musique tonale, et l'oreille l'entend en continu au lieu de l'entendre au passage. Fa sur Cmaj7 est le classique : fa est un demi-ton au-dessus de mi, et c'est mi qui rend l'accord majeur, donc le fa attaque l'identité de l'accord. Jouée en passant entre mi et sol, cette même note est normale et sonne bien. Délicate quand elle est tenue sur un temps fort, jamais bannie.",
 		'improvise.concept.blue.title': 'Blue notes',
 		'improvise.concept.blue.generic':
-			'Des notes hors de la gamme sonnent juste quand même parce qu\'elles empruntent au blues : la ♭3, la ♭5 et la ♭7, jouées en passant et avec intention.',
+			"Des notes hors de la gamme sonnent juste quand même parce qu'elles empruntent au blues : la ♭3, la ♭5 et la ♭7, jouées en passant et avec intention.",
 		'improvise.concept.blue.specific':
 			"C'est ton {NOTE} sur {ROOT} : pas dans la gamme, et pourtant ça marche. Il tire le son vers {ROOT}7, la couleur dominante et blues. Les blue notes (♭3, ♭5, ♭7) gagnent leur place en bougeant, jamais en s'installant."
 	}

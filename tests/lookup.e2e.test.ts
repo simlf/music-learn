@@ -28,6 +28,7 @@ vi.mock('$lib/audio/audio', () => ({
 	playNote: (...args: unknown[]) => playNoteMock(...args),
 	playNotesOverChord: (...args: unknown[]) => playNotesOverChordMock(...args),
 	stopChordDemo: vi.fn(),
+	soundEnabled: () => true,
 	ensureAudioReady: () => ensureAudioReadyMock()
 }));
 
@@ -113,7 +114,7 @@ describe('lookup page happy path', () => {
 		expect(chips[0].textContent).toContain('dorian');
 	});
 
-	it('a listen button on the guide plays the chord with that note over it, through the app engine', async () => {
+	it('tapping a key on the guide reads it in the caption and offers its listen, through the app engine', async () => {
 		renderPage();
 		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'Cmaj7' } });
 		await fireEvent.click(screen.getByRole('button', { name: /stamp/i }));
@@ -122,8 +123,12 @@ describe('lookup page happy path', () => {
 		await fireEvent.click(within(result).getByTestId('improvise-toggle'));
 		const panel = within(result).getByTestId('improvise-panel');
 
-		// The A/B on the classic avoid note: E first, then the F above it.
-		await fireEvent.click(within(panel).getByTestId('improvise-listen-careful'));
+		// Tapping the classic avoid note reads it into the one caption slot.
+		await fireEvent.click(within(panel).getByRole('button', { name: 'F key' }));
+		expect(within(panel).getByTestId('improvise-caption').dataset.kind).toBe('careful');
+
+		// Its listen is the A/B: the chord tone E first, then the F above it.
+		await fireEvent.click(within(panel).getByTestId('improvise-listen-compare'));
 		expect(playNotesOverChordMock).toHaveBeenCalledWith('C', ['C', 'E', 'G', 'B'], ['E', 'F']);
 	});
 });

@@ -30,18 +30,22 @@ import type { LocaleDict } from './index';
  * and with theory.ts's dominant lesson, which are both built on the tritone
  * being what makes a V7 a V7.
  *
- * French register-slot abbreviation (013 fit rule): the step-indicator
- * chips abbreviate 1 MEET/3 DRILL to 1 VOIR/3 EXO so all three still fit
- * their chip width under fr. The drill-stage nudges (variant A) render in a
- * wrapping row rather than a fixed-width strip, so the full fr nudge labels
- * fit without abbreviation. No em dashes anywhere in this file's copy
- * (periods/colons/commas only).
+ * ONE CONTROL IDIOM (Phase 38): the stage chips and the voicing nudges are
+ * both `Button`s now (the app's own labelled-chip-group idiom, as on the
+ * comping loop), so neither is a fixed-width segment any more and the French
+ * "3 EXO" abbreviation the old segmented bar forced is gone: the chips wrap,
+ * so they read "1 Voir / 2 Retirer / 3 Exercice" in full. The nudge labels
+ * are bare nouns ("la fondamentale", "la basse") because each renders after
+ * its own +/- operator glyph, so the button reads as an operation on the
+ * voicing stated beside it rather than as a menu entry. No em dashes
+ * anywhere in this file's copy (periods/colons/commas only).
  */
 export const voicings = {
 	en: {
-		'voicings.step.meet': '1 MEET',
-		'voicings.step.subtract': '2 SUBTRACT',
-		'voicings.step.drill': '3 DRILL',
+		'voicings.step.label': 'Stage',
+		'voicings.step.meet': '1 Meet',
+		'voicings.step.subtract': '2 Subtract',
+		'voicings.step.drill': '3 Drill',
 		'voicings.aria.stepGroup': 'Voicing stage',
 
 		'voicings.compare.knowLabel': 'WHAT YOU KNOW',
@@ -56,10 +60,12 @@ export const voicings = {
 		'voicings.subtract.teach-flat5':
 			'Drop the root: the symbol already names it. The ♭5 stays. On a ♭5 symbol the fifth is the chord identity, not filler, so the shell keeps the 3rd, the ♭5 and the 7th.',
 
-		'voicings.nudge.addRoot': 'Add the root',
-		'voicings.nudge.removeBass': 'Remove the bass',
+		'voicings.nudge.addRoot': 'the root',
+		'voicings.nudge.removeBass': 'the bass',
+		'voicings.nudge.addRootAria': 'Add the root',
+		'voicings.nudge.removeBassAria': 'Remove the bass',
 		'voicings.aria.nudgeGroup': 'Voicing controls',
-		'voicings.current.label': 'Current voicing:',
+		'voicings.current.label': 'Voicing:',
 		'voicings.voicing.shell': 'Shell',
 		'voicings.voicing.full': 'Full',
 		'voicings.voicing.rootless': 'Rootless',
@@ -79,9 +85,10 @@ export const voicings = {
 			'No shell to drill on this symbol: a shell keeps the third and the seventh, and this one does not spell both.'
 	},
 	fr: {
-		'voicings.step.meet': '1 VOIR',
-		'voicings.step.subtract': '2 RETIRER',
-		'voicings.step.drill': '3 EXO',
+		'voicings.step.label': 'Étape',
+		'voicings.step.meet': '1 Voir',
+		'voicings.step.subtract': '2 Retirer',
+		'voicings.step.drill': '3 Exercice',
 		'voicings.aria.stepGroup': 'Étape du voicing',
 
 		'voicings.compare.knowLabel': 'CE QUE TU SAIS',
@@ -96,8 +103,10 @@ export const voicings = {
 		'voicings.subtract.teach-flat5':
 			"Laisse tomber la fondamentale : le symbole la nomme déjà. Mais la ♭5 reste. Sur un symbole en ♭5, la quinte fait l'identité de l'accord, ce n'est pas du remplissage : le shell garde la tierce, la ♭5 et la septième.",
 
-		'voicings.nudge.addRoot': 'Poser la fondamentale',
-		'voicings.nudge.removeBass': 'Retirer la basse',
+		'voicings.nudge.addRoot': 'la fondamentale',
+		'voicings.nudge.removeBass': 'la basse',
+		'voicings.nudge.addRootAria': 'Ajouter la fondamentale',
+		'voicings.nudge.removeBassAria': 'Retirer la basse',
 		'voicings.aria.nudgeGroup': 'Contrôles du voicing',
 		'voicings.current.label': 'Voicing actuel :',
 		'voicings.voicing.shell': 'Shell',

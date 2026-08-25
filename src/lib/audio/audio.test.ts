@@ -599,6 +599,112 @@ describe('playNotesOverChord (the improvisation guide demo)', () => {
 		}
 	});
 
+	it('holds the chord ONCE under a sustained walk, so the left hand is heard holding it', async () => {
+		await preloadSampler();
+		vi.useFakeTimers();
+		try {
+			playNotesOverChord('C', ['C', 'E', 'G', 'B'], ['C', 'D', 'E'], {
+				holdSec: 0.6,
+				gapSec: 0,
+				sustainChord: true
+			});
+			await vi.advanceTimersByTimeAsync(0);
+			await vi.advanceTimersByTimeAsync(1200);
+
+			const calls = sampler().triggerAttackRelease.mock.calls;
+			const chords = calls.filter((call) => Array.isArray(call[0]));
+			const melodies = calls.filter((call) => typeof call[0] === 'string');
+
+			// One strike for the whole walk, not one per step.
+			expect(chords).toHaveLength(1);
+			expect(chords[0][0]).toEqual(['C3', 'E4', 'G4', 'B4']);
+			// Held across every step: two gaps of 0.6s plus the last step's hold.
+			expect(chords[0][1]).toBeCloseTo(1.8, 5);
+			// And entering under its per-step velocity, so it does not drown the line.
+			expect(chords[0][3]).toBeLessThan(0.62);
+
+			expect(melodies.map((call) => call[0])).toEqual(['C5', 'D5', 'E5']);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('reports each step as it attacks, then null once the walk has rung out', async () => {
+		await preloadSampler();
+		vi.useFakeTimers();
+		try {
+			const steps: (number | null)[] = [];
+			playNotesOverChord('C', ['C', 'E', 'G'], ['C', 'D'], {
+				holdSec: 0.4,
+				gapSec: 0,
+				sustainChord: true,
+				onStep: (index) => steps.push(index)
+			});
+			await vi.advanceTimersByTimeAsync(0);
+			expect(steps).toEqual([0]);
+
+			await vi.advanceTimersByTimeAsync(400);
+			expect(steps).toEqual([0, 1]);
+
+			// The tail: the last step's hold plus the sampler release window.
+			await vi.advanceTimersByTimeAsync(5000);
+			expect(steps).toEqual([0, 1, null]);
+			expect(chordDemoActive()).toBe(false);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('tells a cut walk it is over, exactly once, so a caller can reset its own UI', async () => {
+		await preloadSampler();
+		vi.useFakeTimers();
+		try {
+			const steps: (number | null)[] = [];
+			playNotesOverChord('C', ['C', 'E', 'G'], ['C', 'D', 'E'], {
+				holdSec: 0.4,
+				gapSec: 0,
+				sustainChord: true,
+				onStep: (index) => steps.push(index)
+			});
+			await vi.advanceTimersByTimeAsync(0);
+			stopChordDemo();
+			expect(steps).toEqual([0, null]);
+
+			// Neither a second cut nor the abandoned tail reports again.
+			stopChordDemo();
+			await vi.advanceTimersByTimeAsync(5000);
+			expect(steps).toEqual([0, null]);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('reports the end of a superseded walk before the new one starts reporting', async () => {
+		await preloadSampler();
+		vi.useFakeTimers();
+		try {
+			const first: (number | null)[] = [];
+			const second: (number | null)[] = [];
+			playNotesOverChord('C', ['C', 'E', 'G'], ['C', 'D'], {
+				holdSec: 0.4,
+				gapSec: 0,
+				onStep: (index) => first.push(index)
+			});
+			await vi.advanceTimersByTimeAsync(0);
+			playNotesOverChord('C', ['C', 'E', 'G'], ['G'], {
+				holdSec: 0.4,
+				gapSec: 0,
+				onStep: (index) => second.push(index)
+			});
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(first).toEqual([0, null]);
+			expect(second).toEqual([0]);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('cuts the running demo on a second call: rapid clicks swap the sound, never stack it', async () => {
 		await preloadSampler();
 		vi.useFakeTimers();

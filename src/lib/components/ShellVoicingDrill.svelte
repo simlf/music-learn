@@ -394,38 +394,62 @@
 		</div>
 	</div>
 	{:else}
-	<div class="step-indicator" data-testid="step-indicator" role="group" aria-label={t('voicings.aria.stepGroup')}>
-		<button
-			type="button"
-			class="step"
-			class:step--active={effectiveStage === 'meet'}
-			aria-pressed={effectiveStage === 'meet'}
-			data-testid="step-meet"
-			onclick={() => selectStep('meet')}
+	<!--
+		ONE control idiom (Phase 38). The stage picker used to be a hand-rolled
+		1px segmented bar and the voicing nudges a second row of hand-rolled 1px
+		boxes: two menus of equal visual weight, in a style the rest of the app
+		does not use, which the owner read as "it works, but it does not look
+		like the rest of the project".
+
+		Both are now the app's own labelled-chip-group idiom, the one
+		CompingLoop uses for FORME / TON / TEMPO: a mono uppercase field label
+		over a row of `Button` chips, vermilion when picked. The hierarchy the
+		two rows were missing is now structural rather than stylistic: this row
+		chooses WHICH exercise and sits above the rule, alone; the voicing
+		nudges sit below it, inside the exercise, attached to the readout they
+		change (see `.voicing-line`), so they read as two verbs acting on a
+		state rather than as a second menu.
+	-->
+	<div class="field">
+		<p class="field-label">{t('voicings.step.label')}</p>
+		<div
+			class="chip-row"
+			data-testid="step-indicator"
+			role="group"
+			aria-label={t('voicings.aria.stepGroup')}
 		>
-			{t('voicings.step.meet')}
-		</button>
-		<button
-			type="button"
-			class="step"
-			class:step--active={effectiveStage === 'subtract'}
-			aria-pressed={effectiveStage === 'subtract'}
-			data-testid="step-subtract"
-			onclick={() => selectStep('subtract')}
-		>
-			{t('voicings.step.subtract')}
-		</button>
-		<button
-			type="button"
-			class="step"
-			class:step--active={effectiveStage === 'drill'}
-			aria-pressed={effectiveStage === 'drill'}
-			data-testid="step-drill"
-			onclick={() => selectStep('drill')}
-		>
-			{t('voicings.step.drill')}
-		</button>
+			<Button
+				type="button"
+				variant={effectiveStage === 'meet' ? 'primary' : 'ghost'}
+				aria-pressed={effectiveStage === 'meet'}
+				data-testid="step-meet"
+				onclick={() => selectStep('meet')}
+			>
+				{t('voicings.step.meet')}
+			</Button>
+			<Button
+				type="button"
+				variant={effectiveStage === 'subtract' ? 'primary' : 'ghost'}
+				aria-pressed={effectiveStage === 'subtract'}
+				data-testid="step-subtract"
+				onclick={() => selectStep('subtract')}
+			>
+				{t('voicings.step.subtract')}
+			</Button>
+			<Button
+				type="button"
+				variant={effectiveStage === 'drill' ? 'primary' : 'ghost'}
+				aria-pressed={effectiveStage === 'drill'}
+				data-testid="step-drill"
+				onclick={() => selectStep('drill')}
+			>
+				{t('voicings.step.drill')}
+			</Button>
+		</div>
 	</div>
+	<!-- The one rule that makes the hierarchy visible: choosing the exercise
+	     above it, doing the exercise below it (CompingLoop's own divider). -->
+	<hr class="stage-rule" />
 
 	{#if effectiveStage === 'meet'}
 		<div data-testid="stage-meet">
@@ -474,36 +498,44 @@
 					<p>{flatFifth ? t('voicings.subtract.teach-flat5') : t('voicings.subtract.teach')}</p>
 				</div>
 			{:else}
+				<!--
+					The nudges are two VERBS acting on the readout beside them, not a
+					second menu: one line, the current voicing stated first, its two
+					adjustments after it. Same shape as CompingLoop's tempo row
+					(readout flanked by ghost Buttons), same Button component as the
+					stage chips above, so the screen has one control idiom and one
+					visible hierarchy.
+				-->
 				<div
-					class="voicing-nudges"
+					class="voicing-line"
 					data-testid="voicing-nudges"
 					role="group"
 					aria-label={t('voicings.aria.nudgeGroup')}
 				>
-					<button
+					<span class="layers" data-testid="current-voicing">
+						{t('voicings.current.label')} {t(currentVoicingNameKey)}
+					</span>
+					<Button
 						type="button"
-						class="nudge"
-						class:nudge--on={voicingStyle === 'root'}
+						variant={voicingStyle === 'root' ? 'primary' : 'ghost'}
 						aria-pressed={voicingStyle === 'root'}
+						aria-label={t('voicings.nudge.addRootAria')}
 						onclick={() => setVoicing('root')}
 					>
 						<span class="op" aria-hidden="true">+</span>
 						{t('voicings.nudge.addRoot')}
-					</button>
-					<button
+					</Button>
+					<Button
 						type="button"
-						class="nudge"
-						class:nudge--on={voicingStyle === 'rootless'}
+						variant={voicingStyle === 'rootless' ? 'primary' : 'ghost'}
 						aria-pressed={voicingStyle === 'rootless'}
+						aria-label={t('voicings.nudge.removeBassAria')}
 						onclick={() => setVoicing('rootless')}
 					>
 						<span class="op" aria-hidden="true">&minus;</span>
 						{t('voicings.nudge.removeBass')}
-					</button>
+					</Button>
 				</div>
-				<p class="layers" data-testid="current-voicing">
-					{t('voicings.current.label')} {t(currentVoicingNameKey)}
-				</p>
 			{/if}
 
 			<p class="text-body mt-4">
@@ -548,37 +580,37 @@
 </div>
 
 <style>
-	.step-indicator {
+	/*
+	 * The app's labelled-control-group idiom (CompingLoop's FORME / TON /
+	 * TEMPO), reused verbatim so this screen's controls read like every other
+	 * control in the app instead of like a widget of their own.
+	 */
+	.field {
 		display: flex;
-		border: 1px solid var(--color-ink);
-		margin-bottom: var(--spacing-md);
+		flex-direction: column;
+		gap: var(--spacing-sm);
 	}
 
-	.step {
-		flex: 1;
+	.field-label {
 		font-family: var(--font-mono);
 		font-size: var(--text-label);
-		font-weight: 700;
 		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		text-align: center;
-		padding: var(--spacing-xs) var(--spacing-sm);
-		border: none;
-		border-right: 1px solid var(--color-ink);
-		border-radius: 0;
-		background: var(--color-paper-bright);
-		color: var(--color-ink);
-		min-height: 44px;
-		cursor: pointer;
+		letter-spacing: 0.08em;
+		color: var(--color-muted);
+		margin: 0;
 	}
 
-	.step:last-child {
-		border-right: none;
+	.chip-row {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--spacing-sm);
 	}
 
-	.step--active {
-		background: var(--color-ink);
-		color: var(--color-paper-bright);
+	/* Choosing the exercise above, doing it below. */
+	.stage-rule {
+		border: 0;
+		border-top: 2px solid var(--color-ink);
+		margin: var(--spacing-md) 0 0;
 	}
 
 	/*
@@ -666,43 +698,25 @@
 		padding: var(--spacing-sm) var(--spacing-md);
 	}
 
-	.voicing-nudges {
+	.voicing-line {
 		display: flex;
 		flex-wrap: wrap;
-		gap: var(--spacing-sm);
+		align-items: center;
+		gap: var(--spacing-sm) var(--spacing-md);
 		margin-top: var(--spacing-md);
 	}
 
-	.nudge {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--spacing-xs);
-		font-family: var(--font-mono);
-		font-size: var(--text-label);
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
-		padding: var(--spacing-sm) var(--spacing-md);
-		border: 1px solid var(--color-ink);
-		border-radius: 0;
-		background: var(--color-paper-bright);
-		color: var(--color-ink);
-		min-height: 44px;
-	}
-
-	.nudge--on {
-		background: var(--color-ink);
-		color: var(--color-paper-bright);
-	}
-
 	.op {
+		margin-right: var(--spacing-xs);
 		font-size: 1.1em;
 	}
 
 	.layers {
 		font-family: var(--font-mono);
+		font-size: var(--text-label);
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
 		color: var(--color-muted);
-		margin-top: var(--spacing-sm);
 	}
 
 	.retry {

@@ -31,6 +31,7 @@ vi.mock('$lib/audio/audio', () => ({
 	playNote: vi.fn(),
 	playNotesOverChord: vi.fn(),
 	stopChordDemo: vi.fn(),
+	soundEnabled: () => true,
 	ensureAudioReady: async () => {}
 }));
 

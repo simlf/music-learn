@@ -302,6 +302,104 @@ function scaleOption(
 }
 
 /**
+ * What ANY key on the board is, over this chord and this scale. Extends
+ * `ImprovKind` with the two answers a scale note list cannot give: the blue
+ * note (outside the scale, and the one outside note that has a name), and
+ * plain outside (borrowed, and only ever a passing note).
+ */
+export type ImprovVerdictKind = ImprovKind | 'blue' | 'outside';
+
+/** A tagged read of one letter over the chord, for the tap-a-key-hear-the-verdict path. */
+export interface ImprovVerdict extends Omit<ImprovNote, 'kind'> {
+	kind: ImprovVerdictKind;
+}
+
+/**
+ * The verdict for one letter over `chord`, read against `scale` when the
+ * letter is in it. This is the same single rule the scale tagging uses (a
+ * half step above a held chord tone rubs), extended past the scale so a
+ * player who taps a key the guide never offered still gets an honest,
+ * specific answer instead of silence.
+ *
+ * Order matters and is the pedagogy: a chord tone is a chord tone even if the
+ * scale also lists it, the blue note is named before "outside" because it is
+ * the one outside note this app has a story for, and an outside note that
+ * happens to sit a half step above a chord tone carries the same clash fields
+ * a careful note does, because it clashes for exactly the same reason.
+ *
+ * Total: returns null only for a letter tonal cannot place.
+ */
+export function verdictForLetter(
+	chord: ChordResult,
+	guide: ImprovGuide,
+	scale: ChordScaleOption | null,
+	letter: string
+): ImprovVerdict | null {
+	const chroma = chromaOf(letter);
+	if (chroma === undefined) return null;
+
+	const inScale = scale?.notes.find((note) => chromaOf(note.letter) === chroma);
+	if (inScale) return inScale;
+
+	// Outside the offered scale. Spell it the way the CHORD would (the tapped
+	// key only knows a generic sharp name), then apply the one rule.
+	const chordChromaToLetter = new Map<number, string>();
+	for (const note of chord.notes) {
+		const noteChroma = chromaOf(note.letter);
+		if (noteChroma !== undefined && !chordChromaToLetter.has(noteChroma)) {
+			chordChromaToLetter.set(noteChroma, note.letter);
+		}
+	}
+
+	const chordLetter = chordChromaToLetter.get(chroma);
+	const blueLetter =
+		guide.blueNote !== undefined && chromaOf(guide.blueNote) === chroma ? guide.blueNote : undefined;
+	// The tapped key only offers a generic sharp name, so prefer the spelling
+	// the chord (or the guide's own blue note) already uses for that pitch.
+	const spelled = chordLetter ?? blueLetter ?? letter;
+	const rootChroma = chromaOf(chord.root);
+	const relative = rootChroma === undefined ? 0 : (chroma - rootChroma + 12) % 12;
+
+	const base = {
+		letter: spelled,
+		solfege: letterToSolfege(spelled),
+		role: roleFromTonic(chord.root, spelled),
+		label:
+			chordLetter !== undefined
+				? intervalFromRoot(chord.root, chordLetter).short
+				: (TENSION_LABEL_BY_CHROMA[relative] ?? '')
+	};
+
+	// A chord tone the scale left out (the ♭9 of C7♭9 under mixolydian, say)
+	// is still a chord tone: the left hand is holding it.
+	if (chordLetter !== undefined) return { ...base, kind: 'chord-tone' };
+
+	/**
+	 * Names the chord tone this note rubs, and the direction matters because
+	 * the copy does. An 'outside' note takes only the tone a half step BELOW
+	 * it, because its sentence says "sits one half step above {TONE}" and a
+	 * match in the other direction would make that sentence false. The blue
+	 * note takes either side ("holds its own {TONE} a half step away"), which
+	 * is the case that matters over Cmaj7, where the B♭ rubs the B ABOVE it.
+	 */
+	const rubbing = (bothWays: boolean): Partial<ImprovNote> => {
+		const victimLetter =
+			chordChromaToLetter.get((chroma + 11) % 12) ??
+			(bothWays ? chordChromaToLetter.get((chroma + 1) % 12) : undefined);
+		if (victimLetter === undefined) return {};
+		const victim = intervalFromRoot(chord.root, victimLetter);
+		return {
+			clashesWith: victimLetter,
+			clashesWithLabel: victim.short,
+			clashesWithRole: victim.role
+		};
+	};
+
+	if (blueLetter !== undefined) return { ...base, kind: 'blue', ...rubbing(true) };
+	return { ...base, kind: 'outside', ...rubbing(false) };
+}
+
+/**
  * The improvisation answer for a decoded chord, or null when the guide has
  * no honest beginner answer for the quality (augmented, minor/major
  * seventh, power chords...). Total: never throws on junk input.

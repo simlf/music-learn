@@ -294,11 +294,11 @@ describe('ShellVoicingDrill: step indicator', () => {
 		render(ShellVoicingDrill);
 
 		await waitFor(() => screen.getByTestId('stage-subtract'));
-		expect(screen.getByTestId('step-meet')).toHaveTextContent('1 MEET');
-		expect(screen.getByTestId('step-subtract')).toHaveTextContent('2 SUBTRACT');
-		expect(screen.getByTestId('step-drill')).toHaveTextContent('3 DRILL');
-		expect(screen.getByTestId('step-subtract')).toHaveClass('step--active');
-		expect(screen.getByTestId('step-meet')).not.toHaveClass('step--active');
+		expect(screen.getByTestId('step-meet')).toHaveTextContent('1 Meet');
+		expect(screen.getByTestId('step-subtract')).toHaveTextContent('2 Subtract');
+		expect(screen.getByTestId('step-drill')).toHaveTextContent('3 Drill');
+		expect(screen.getByTestId('step-subtract')).toHaveAttribute('aria-pressed', 'true');
+		expect(screen.getByTestId('step-meet')).toHaveAttribute('aria-pressed', 'false');
 	});
 });
 
@@ -430,7 +430,7 @@ describe('ShellVoicingDrill: step tabs are freely user-navigable (UAT V1)', () =
 		expect(screen.getByTestId('stage-subtract')).toBeInTheDocument();
 		expect(screen.getByTestId('teach-panel')).toBeInTheDocument();
 		expect(screen.queryByTestId('stage-meet')).not.toBeInTheDocument();
-		expect(screen.getByTestId('step-subtract')).toHaveClass('step--active');
+		expect(screen.getByTestId('step-subtract')).toHaveAttribute('aria-pressed', 'true');
 	});
 
 	it('clicking "3 DRILL" while the real stage is meet shows the Exo nudge controls', async () => {
@@ -715,11 +715,11 @@ describe('ShellVoicingDrill: lean nudge flow replaces the 3-way selector (VOICE-
 
 		await waitFor(() => screen.getByTestId('stage-drill'));
 
-		expect(screen.getByRole('button', { name: 'Poser la fondamentale' })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Ajouter la fondamentale' })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Retirer la basse' })).toBeInTheDocument();
 		expect(screen.getByTestId('current-voicing')).toHaveTextContent('Voicing actuel :');
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Poser la fondamentale' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Ajouter la fondamentale' }));
 		expect(screen.getByTestId('current-voicing')).toHaveTextContent('Complet');
 	});
 });

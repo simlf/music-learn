@@ -1,6 +1,6 @@
 # Design: improvisation
 
-**Status:** design, partially built. The comping loop (shape one) is shipped. Shape three shipped as the chord-scale lookup reference (engine `src/lib/theory/chordScale.ts`, panel `src/lib/components/ImproviseGuide.svelte` on the Lookup result card), honoring the constraints in section 5, then iterated (quick-260816-w4h) so every handle-with-care note names the chord tone it collides with and the panel can play the chord with a chosen note over it. Shape two (guide-tone lines) remains a proposal.
+**Status:** design, partially built. The comping loop (shape one) is shipped. Shape three shipped as the chord-scale lookup reference (engine `src/lib/theory/chordScale.ts`, panel `src/lib/components/ImproviseGuide.svelte` on the Lookup result card), honoring the constraints in section 5, then iterated twice: quick-260816-w4h gave every handle-with-care note the chord tone it collides with plus playback, and the Phase 38 rebuild (section 5.5) turned the panel from a page of prose into an instrument. Shape two (guide-tone lines) remains a proposal.
 **Scope:** how a practice companion that cannot be graded coexists with a spaced-repetition trainer, and which two units of improvisation content are worth building next.
 **Companion doc:** `.planning/design/guided-path.md` (the 14-unit curriculum spine). This document is deliberately subordinate to it: where the two touch, the path wins and this doc says how it fits in.
 **Date:** 2026-07-29
@@ -132,7 +132,7 @@ Depends on guided-path Phase 2 (`InteractiveLesson` takes `steps`) and reads bet
 
 ## 5. Shape three: chord-scale mapping and modes (defer, then reframe)
 
-*Built: shipped as specified in 5.2, as `ImproviseGuide.svelte` on the Lookup result card, backed by `src/lib/theory/chordScale.ts`. Reference only: no FactKind, no Dexie version, no drill. Iterated in quick-260816-w4h after owner feedback that a greyed note did not say why: the engine now reports which chord tone a careful note rubs and what that tone does in the chord, the panel separates colour from careful and gives the blue note its own row, and `playNotesOverChord` (the one audio engine) holds the chord under a chosen note so the rub is heard rather than read.*
+*Built: shipped as specified in 5.2, as `ImproviseGuide.svelte` on the Lookup result card, backed by `src/lib/theory/chordScale.ts`. Reference only: no FactKind, no Dexie version, no drill. Iterated in quick-260816-w4h after owner feedback that a greyed note did not say why: the engine now reports which chord tone a careful note rubs and what that tone does in the chord, and `playNotesOverChord` (the one audio engine) holds the chord under a chosen note so the rub is heard rather than read. Rebuilt again in Phase 38 (section 5.5), which is the current specification of the panel's surface; 5.2's product shape and 5.3's constraints are unchanged and still binding.*
 
 ### 5.1 What the audit found, and what it implies
 
@@ -158,6 +158,50 @@ That framing is deliberately the same argument guided-path makes for unit 14 (se
 ### 5.4 If it is ever drilled
 
 The only drillable version I would defend: **given a chord symbol, tap the one note that is NOT in the scale that fits it.** That is a chord-symbol question with a single unambiguous answer, it is gradable, and it reuses the existing keyboard-tap construction interaction. Naming modes is not gradable in any way that matters, because the name is not the skill.
+
+
+### 5.5 The Phase 38 rebuild: an instrument, not a page
+
+The first two versions answered the question correctly and delivered the answer as prose. The owner's verdict, in his words: *"c'est interessant, ce qui est note, mais pas forcement tres visuel, notamment avec les cases grisees"*, *"il y a beaucoup de textes alors que c'est quelque chose de musical"*, and, decisively, *"tu parles de parentheses, mais je ne les vois pas"*.
+
+He was right on all three, and the third was literally true. The keyboard marked a careful note by wrapping its tension label in parentheses, rendered at **8px in `--color-faint`** (`PianoKeyboard.svelte`). `app.css` documents that token as decorative-only and below the text floor. So the sole visual difference between "add this colour" and "this one fights the chord" was two glyphs in a colour the design system forbids for text, while a legend string pointed straight at them. A text that points at an invisible thing is worse than no text.
+
+**What the panel is now.** One question, one board, one caption.
+
+1. **The scale choice** stays, rebuilt in the app's own labelled-chip-group idiom (a mono field label over `Button` chips, vermilion when picked) rather than a bare row: the same control grammar as the comping loop's FORME / TON / TEMPO.
+2. **One primary action: "play the scale over the chord".** The chord is struck once and HELD (`playNotesOverChord`'s `sustainChord`) while the scale walks over the top, each note lighting on the board as it sounds (`onStep`). Ten seconds, no reading, and the sound matches what the copy has always claimed the left hand is doing.
+3. **Tap any key and hear the verdict.** The keyboard is the input: tapping sounds that note over the held chord and fills ONE caption slot with what it is. Any key, not only the offered ones: `verdictForLetter` extends the engine's single clash rule past the scale, so a player who tries a note the panel never mentioned still gets a specific answer instead of silence.
+4. **The prose is a caption, revealed on demand.** Every sentence PR #75 wrote survives; what changed is that the player sees the one that applies to the note he just heard, with the nuance ("not forbidden, fine in passing") behind a fold. The panel went from about 1385px of printed explanation to about 610px of instrument.
+
+**The board's visual language**, which is where the whole complaint lived. Three treatments, no fifth colour:
+
+| Meaning | Treatment |
+|---|---|
+| Chord tone | The interval-role fill and badge, unchanged |
+| Colour tone | Ghost hatch plus its tension marker |
+| Handle with care | Ghost hatch plus a **vermilion bar along the key's playing edge** and a vermilion marker |
+| Outside the scale (the blue note) | Ghost hatch plus a **dashed outline** |
+
+Vermilion is the app's standing attention accent (the retry line, the active lesson rail), not a new colour, and the dashed outline is the drafting convention for "borrowed, drawn anyway". The shared ghost marker also moved from 8px `--color-faint` to 10px bold `--color-muted`, which clears the contrast floor and improves the voicing drill's own R/5 markers for free.
+
+**And the clash is drawn, not just asserted.** Selecting a careful note rings it in ink and rings the chord tone it rubs in vermilion (`focusKeys`), so "F sits one half step above E" is two neighbouring keys lit at once. The board dropped to **one octave** for this: with a root-position chord the second octave carried no chord tones, so hatching it repeated every marker with nothing to relate them to and would have put a vermilion clash ring on a blank white key.
+
+**Accessibility.** Audio-first is not audio-only: the caption is the visible equivalent of everything the ear is taught, every key is a real button reachable by keyboard, and the walk deliberately suppresses the caption's prose and its live region while running (seven explanations flickering past unread, and seven queued announcements, help nobody) while every note it sounds stays individually tappable.
+
+**What did not change.** The theory engine's derivations are untouched: the single half-step-above-a-chord-tone rule, the colliding-degree naming, the `fineOn` dominant/blues context, the blue note and its either-side qualification including the C6 case. `verdictForLetter` is additive and reuses the same rule rather than inventing a second one. No new audio path, no new dependency, no new colour token, and the panel is still reference only.
+
+### 5.6 The voicing drill's two menus
+
+Separate complaint, same session: *"ce n'est pas encore tres clair car il y a deux genres de menus. Ca casse un peu l'UX ... ca ne correspond pas vraiment a la direction artistique du reste du projet."*
+
+`ShellVoicingDrill.svelte` had a hand-rolled 1px segmented stage bar (Voir / Retirer / Exo, ink-filled when active) and, two rows below it, a second row of hand-rolled 1px boxes for the voicing nudges. Two menus of equal visual weight, in a style used nowhere else: the rest of the app draws controls with 2px ink borders, an offset ink shadow, and vermilion for the selected one.
+
+Both are now `Button` chips in the app's labelled-chip-group idiom, and the hierarchy the pair was missing is structural rather than stylistic:
+
+- **Above a 2px rule**, alone, labelled `ÉTAPE`: the stage chips, which choose WHICH exercise.
+- **Below the rule**, inside the exercise: the voicing readout with its two adjustments on the same line, so they read as two verbs acting on a stated voicing rather than as a second menu. Same shape as the comping loop's tempo row.
+
+A side effect worth keeping: the French step labels no longer have to fit a fixed-width segment, so `3 EXO` became `3 Exercice`.
 
 ---
 

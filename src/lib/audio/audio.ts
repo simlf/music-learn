@@ -431,12 +431,37 @@ const DEMO_HOLD_SEC = 1.7;
 const DEMO_GAP_SEC = 0.35;
 /** The note being judged sits above comp velocity: it is the subject, the chord is the ground. */
 const DEMO_MELODY_VELOCITY = 0.8;
+/**
+ * How much quieter a once-struck sustained chord enters than a per-step one.
+ * A chord re-struck under every step gets a fresh attack each time and stays
+ * behind the melody on its own; one held for the whole walk starts loud and
+ * only decays, so without this the first two notes of a walk sit inside it.
+ */
+const SUSTAINED_COMP_ATTENUATION = 0.75;
 
 export interface ChordDemoOptions {
 	/** Seconds each step is held. Defaults to DEMO_HOLD_SEC. */
 	holdSec?: number;
 	/** Seconds of silence between steps. Defaults to DEMO_GAP_SEC. */
 	gapSec?: number;
+	/**
+	 * Strike the chord ONCE and let it ring under every step, instead of
+	 * re-striking it per step (the default). This is what a walk up a scale
+	 * needs: the copy says the left hand HOLDS the chord while the right hand
+	 * explores, and a chord re-attacked under every scale note contradicts it
+	 * by ear. A two-step A/B keeps the default, where re-striking is what
+	 * makes the pair read as two separate comparisons.
+	 */
+	sustainChord?: boolean;
+	/**
+	 * Called with each step's index the moment that step actually attacks,
+	 * and with null once the sequence has finished or been cut. Lets a caller
+	 * light the sounding note on the keyboard in time with the sound, which
+	 * is the visible equivalent of what the ear is being taught. Never fires
+	 * for a demo the engine could not start, and never fires after the demo
+	 * it belongs to has been superseded.
+	 */
+	onStep?: (index: number | null) => void;
 }
 
 /** Generation counter: every start and every stop invalidates pending steps. */
@@ -448,6 +473,12 @@ let demoWakeups: (() => void)[] = [];
 let demoRinging: string[] = [];
 /** True from the click until the last step has rung out or been cut. */
 let demoRunning = false;
+/**
+ * The running demo's step reporter, so `stopChordDemo` can tell the caller
+ * its walk is over (index null) from the one place every cut goes through.
+ * Cleared as it fires, so a cut can never report twice.
+ */
+let demoOnStep: ((index: number | null) => void) | null = null;
 
 /**
  * Waits between demo steps. The wait is registered so `stopChordDemo` can both
@@ -476,6 +507,15 @@ function demoWait(ms: number): Promise<void> {
 export function stopChordDemo(): void {
 	demoToken += 1;
 	demoRunning = false;
+	const reportEnd = demoOnStep;
+	demoOnStep = null;
+	if (reportEnd) {
+		try {
+			reportEnd(null);
+		} catch {
+			// A caller's own render error must not leave the cut half-done.
+		}
+	}
 	for (const timer of demoTimers) clearTimeout(timer);
 	demoTimers.length = 0;
 	const wakeups = demoWakeups;
@@ -520,6 +560,7 @@ export function playNotesOverChord(
 	const holdSec = opts.holdSec ?? DEMO_HOLD_SEC;
 	const gapSec = opts.gapSec ?? DEMO_GAP_SEC;
 	const stepMs = (holdSec + gapSec) * 1000;
+	const sustainChord = opts.sustainChord === true;
 
 	// The root is voiced separately as the bass, so it must not also appear in
 	// the upper shell; only the first occurrence is dropped, so a chord that
@@ -530,7 +571,18 @@ export function playNotesOverChord(
 	const steps = melodies.length === 0 ? [null] : melodies;
 
 	demoRunning = true;
+	demoOnStep = opts.onStep ?? null;
 	markAudioBusyFor(steps.length * stepMs + CHORD_AUDIO_GATE_MS);
+
+	/** Reports one step to the caller without ever letting its error reach the engine. */
+	function reportStep(index: number | null): void {
+		if (token !== demoToken) return;
+		try {
+			opts.onStep?.(index);
+		} catch {
+			// Never throw into UI code.
+		}
+	}
 
 	void (async () => {
 		// The engine is acquired ONCE, before any step is scheduled: on the first
@@ -547,14 +599,35 @@ export function playNotesOverChord(
 		// sound actually starts, so a slow load cannot let it expire mid-demo.
 		markAudioBusyFor(steps.length * stepMs + CHORD_AUDIO_GATE_MS);
 
+		// A sustained walk strikes the chord once and lets it ring for the whole
+		// sequence, so the left hand is heard HOLDING it while the notes move
+		// over the top. Held that long the chord would drown the line, so it
+		// enters below its per-step velocity.
+		if (sustainChord) {
+			try {
+				const totalSec = (steps.length - 1) * (stepMs / 1000) + holdSec;
+				instrument.triggerAttackRelease(
+					chordPitches,
+					totalSec,
+					undefined,
+					COMP_VELOCITY * SUSTAINED_COMP_ATTENUATION
+				);
+				demoRinging.push(...chordPitches);
+			} catch {
+				// Never throw into UI code.
+			}
+		}
+
 		for (const [index, melody] of steps.entries()) {
 			if (index > 0) {
 				await demoWait(stepMs);
 				if (token !== demoToken) return;
 			}
 			try {
-				instrument.triggerAttackRelease(chordPitches, holdSec, undefined, COMP_VELOCITY);
-				demoRinging.push(...chordPitches);
+				if (!sustainChord) {
+					instrument.triggerAttackRelease(chordPitches, holdSec, undefined, COMP_VELOCITY);
+					demoRinging.push(...chordPitches);
+				}
 				if (melody !== null) {
 					const melodyPitch = toMelodyPitch(melody, chordPitches);
 					instrument.triggerAttackRelease(melodyPitch, holdSec, undefined, DEMO_MELODY_VELOCITY);
@@ -563,12 +636,15 @@ export function playNotesOverChord(
 			} catch {
 				// Never throw into UI code.
 			}
+			reportStep(index);
 		}
 
 		// Once the last step has rung out there is nothing left to cut, so the
 		// demo stops counting as active without anyone having to click again.
 		await demoWait((holdSec + SAMPLER_RELEASE_SEC) * 1000);
 		if (token !== demoToken) return;
+		reportStep(null);
+		demoOnStep = null;
 		demoRinging = [];
 		demoRunning = false;
 	})();

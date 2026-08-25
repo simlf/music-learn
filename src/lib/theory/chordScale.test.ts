@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { spellChord } from './chord';
-import { improvGuideFor, type ChordScaleOption, type ImprovGuide } from './chordScale';
+import {
+	improvGuideFor,
+	verdictForLetter,
+	type ChordScaleOption,
+	type ImprovGuide,
+	type ImprovVerdict
+} from './chordScale';
 
 /** Convenience: the guide for a symbol, asserted present. */
 function guideFor(symbol: string): ImprovGuide {
@@ -291,5 +297,97 @@ describe('improvGuideFor: the blue note', () => {
 		expect(guideFor('C6').blueNoteRubsWith).toBe('A');
 		expect(guideFor('C6/9').blueNoteRubsWith).toBe('A');
 		expect(guideFor('C').blueNoteRubsWith).toBeUndefined();
+	});
+});
+
+
+describe('verdictForLetter: any key on the board gets an honest answer', () => {
+	/** The verdict for tapping `letter` over `symbol`, on that guide's default scale. */
+	function verdict(symbol: string, letter: string, scaleId?: string): ImprovVerdict {
+		const chord = spellChord(symbol);
+		const guide = guideFor(symbol);
+		const scale = scaleId ? scaleById(guide, scaleId) : (guide.scales[0] ?? null);
+		const read = verdictForLetter(chord, guide, scale, letter);
+		expect(read, `expected a verdict for ${letter} over ${symbol}`).not.toBeNull();
+		return read!;
+	}
+
+	it('reads a scale note exactly as the scale itself tagged it', () => {
+		expect(verdict('Cmaj7', 'E').kind).toBe('chord-tone');
+		expect(verdict('Cmaj7', 'D').kind).toBe('color');
+		const careful = verdict('Cmaj7', 'F');
+		expect(careful.kind).toBe('careful');
+		expect(careful.clashesWith).toBe('E');
+		expect(careful.clashesWithRole).toBe('third');
+	});
+
+	it('names the blue note by name rather than filing it as merely outside', () => {
+		const blue = verdict('C', 'A#');
+		expect(blue.kind).toBe('blue');
+		// Spelled the way the chord would spell it, not as the key's sharp name.
+		expect(blue.letter).toBe('B♭');
+		expect(blue.label).toBe('♭7');
+	});
+
+	it('lets the blue note report a chord tone on EITHER side of it', () => {
+		// Over Cmaj7 the tone it rubs sits ABOVE it (the major 7th), which is the
+		// case a below-only rule would miss and the copy would then leave blank.
+		expect(verdict('Cmaj7', 'A#').clashesWith).toBe('B');
+		// Over C6 it sits below (the 6th), the same rule the careful notes use.
+		expect(verdict('C6', 'A#').clashesWith).toBe('A');
+		// Over a plain triad there is nothing either side of it.
+		expect(verdict('C', 'A#').clashesWith).toBeUndefined();
+	});
+
+	it('reads a note outside the scale as outside, with the same one clash rule', () => {
+		// D♯ over Am7: outside A dorian, and no chord tone sits a half step below.
+		const free = verdict('Am7', 'D#');
+		expect(free.kind).toBe('outside');
+		expect(free.clashesWith).toBeUndefined();
+
+		// F over Am7: outside dorian, but a half step above the chord's own E.
+		const rubs = verdict('Am7', 'F');
+		expect(rubs.kind).toBe('outside');
+		expect(rubs.clashesWith).toBe('E');
+		expect(rubs.clashesWithRole).toBe('fifth');
+	});
+
+	it('never claims an outside note rubs a tone that is ABOVE it, since its copy says above', () => {
+		// C♯ over Am7 sits a half step above the chord's own C, which is a real
+		// rub; B over Am7 sits a half step BELOW the chord's C and must not be
+		// reported as rubbing it, or the sentence would be false.
+		expect(verdict('Am7', 'C#').clashesWith).toBe('C');
+		expect(verdict('Am7', 'A#').clashesWith).toBe('A');
+		// D♯ over Cmaj7 in lydian: the chord's own E sits a half step ABOVE it and
+		// D below it is not a chord tone, so nothing may be reported.
+		const above = verdict('Cmaj7', 'D#', 'lydian');
+		expect(above.kind).toBe('outside');
+		expect(above.clashesWith).toBeUndefined();
+	});
+
+	it('still calls a chord tone a chord tone when the offered scale left it out', () => {
+		// The ♭9 of C7♭9 is not in mixolydian, but the left hand is holding it.
+		const read = verdict('C7b9', 'C#');
+		expect(read.kind).toBe('chord-tone');
+	});
+
+	it('reads against whichever scale is showing, not always the default', () => {
+		// The 4 is careful in C ionian and gone from lydian, where F♯ takes over.
+		expect(verdict('Cmaj7', 'F', 'ionian').kind).toBe('careful');
+		expect(verdict('Cmaj7', 'F', 'lydian').kind).toBe('outside');
+		expect(verdict('Cmaj7', 'F#', 'lydian').kind).toBe('color');
+	});
+
+	it('is total: junk in, null out, never a throw', () => {
+		const chord = spellChord('Cmaj7');
+		expect(verdictForLetter(chord, guideFor('Cmaj7'), null, 'zzz')).toBeNull();
+	});
+
+	it('answers with no scale at all (the diminished caution), reading the chord only', () => {
+		const chord = spellChord('Cdim7');
+		const guide = guideFor('Cdim7');
+		expect(guide.scales).toEqual([]);
+		expect(verdictForLetter(chord, guide, null, 'C')?.kind).toBe('chord-tone');
+		expect(verdictForLetter(chord, guide, null, 'D')?.kind).toBe('outside');
 	});
 });

@@ -1,6 +1,16 @@
 <script module lang="ts">
 	import type { IntervalInfo } from '$lib/theory/interval';
 
+	/**
+	 * How strongly a ghost-hatched key is flagged. `'plain'` (the default when
+	 * a `ghostKeys` entry omits it) is the original treatment: allowed but not
+	 * required. `'careful'` adds the app's vermilion attention accent, for a
+	 * note that is in play but rubs when held. `'outside'` dashes the key's
+	 * outline, for a note that is not in the offered scale at all and is
+	 * borrowed on purpose. Neither adds a fifth interval color.
+	 */
+	export type GhostTone = 'plain' | 'careful' | 'outside';
+
 	/** What an inspect-mode tap reports: the tapped key, fully named, plus its interval from the current root. */
 	export interface InspectPayload {
 		/** Spelled letter with display glyphs; black keys use the enharmonic that reads simplest from the root. */
@@ -185,7 +195,25 @@
 		 * `.piano-keyboard__key--ghost` class or `data-ghost` attribute is
 		 * ever applied).
 		 */
-		ghostKeys?: { letter: string; octave: number; marker: string }[];
+		ghostKeys?: { letter: string; octave: number; marker: string; tone?: GhostTone }[];
+		/**
+		 * Keys carrying a transient ring, for "look at THIS key right now"
+		 * (Phase 38, improvisation guide): `kind: 'focus'` is the note the
+		 * player picked or the one the walk is sounding this instant, and
+		 * `kind: 'clash'` is the chord tone a careful note rubs against, so
+		 * the half step the copy names is visible as two adjacent ringed keys
+		 * rather than only asserted in a sentence.
+		 *
+		 * Matched by CHROMA + octave like `ghostKeys`/`bassHint`, and NOT
+		 * role-gated (also like `bassHint`): the clash partner is by
+		 * definition a chord tone and therefore always already role-filled, so
+		 * gating on `!role` would make the one case this exists for
+		 * unrenderable. Layers on top of a role fill, a ghost hatch, or a
+		 * plain key. Neutral ink for focus, the app's existing vermilion
+		 * attention accent for a clash: never a fifth interval color.
+		 * Omitting it leaves rendering byte-identical.
+		 */
+		focusKeys?: { letter: string; octave: number; kind: 'focus' | 'clash' }[];
 		/**
 		 * The single key that should carry the bass ink-ring + "B" badge
 		 * (Phase 35, INV-01): matched by CHROMA + octave, like `ghostKeys`, so
@@ -234,6 +262,7 @@
 		pulseToken,
 		pendingKeys,
 		ghostKeys,
+		focusKeys,
 		bassHint,
 		showIntervalTicks = false
 	}: Props = $props();
@@ -953,7 +982,7 @@
 	function ghostEntryFor(
 		letter: string,
 		octave: number
-	): { letter: string; octave: number; marker: string } | undefined {
+	): { letter: string; octave: number; marker: string; tone?: GhostTone } | undefined {
 		if (!ghostKeys?.length) return undefined;
 		const keyChroma = Note.chroma(toAsciiAccidentals(letter));
 		if (keyChroma === undefined) return undefined;
@@ -980,6 +1009,41 @@
 	/** The matching (by chroma+octave) ghostKeys entry's tiny mono marker ("R"/"5"), or undefined when this key has none. */
 	function ghostMarker(letter: string, octave: number): string | undefined {
 		return ghostEntryFor(letter, octave)?.marker;
+	}
+
+	/**
+	 * The ghost entry's `tone` as a data attribute, so the marker and the key
+	 * outline can be styled per flag from CSS alone. Only emitted for a key
+	 * that is actually rendering as a ghost (the `!role` guard), and only for
+	 * a non-default tone, so every existing caller's DOM is unchanged.
+	 */
+	function ghostTone(
+		letter: string,
+		octave: number,
+		role: IntervalRole | undefined
+	): GhostTone | undefined {
+		if (role) return undefined;
+		const tone = ghostEntryFor(letter, octave)?.tone;
+		return tone && tone !== 'plain' ? tone : undefined;
+	}
+
+	/**
+	 * The `focusKeys` ring class for this physical key, matched by CHROMA +
+	 * octave and NOT role-gated (see the prop's own note: the clash partner is
+	 * always a role-filled chord tone). A key listed twice takes the clash
+	 * ring, since the point of a clash ring is that it never goes unseen.
+	 */
+	function focusClass(letter: string, octave: number): string {
+		if (!focusKeys?.length) return '';
+		const keyChroma = Note.chroma(toAsciiAccidentals(letter));
+		if (keyChroma === undefined) return '';
+		const matches = focusKeys.filter(
+			(k) => Note.chroma(toAsciiAccidentals(k.letter)) === keyChroma && k.octave === octave
+		);
+		if (matches.length === 0) return '';
+		return matches.some((k) => k.kind === 'clash')
+			? 'piano-keyboard__key--clash-ring'
+			: 'piano-keyboard__key--focus-ring';
 	}
 
 	/**
@@ -1064,13 +1128,21 @@
 				key.note?.letter ?? key.letter,
 				octaveForWhiteIndex(key.index),
 				key.note?.role
-			)} {bassHintClass(key.note?.letter ?? key.letter, octaveForWhiteIndex(key.index))}"
+			)} {bassHintClass(
+				key.note?.letter ?? key.letter,
+				octaveForWhiteIndex(key.index)
+			)} {focusClass(key.note?.letter ?? key.letter, octaveForWhiteIndex(key.index))}"
 			style="left: {key.leftPct}%; width: {boardWhiteKeyWidthPct}%;"
 			role={keysActive ? 'button' : undefined}
 			tabindex={keysActive ? 0 : undefined}
 			aria-pressed={interactive ? (selected?.has(key.letter) ?? false) : undefined}
 			aria-label={keysActive ? keyAriaLabel(key.letter) : undefined}
 			data-ghost={ghostMarker(key.note?.letter ?? key.letter, octaveForWhiteIndex(key.index))}
+			data-ghost-tone={ghostTone(
+				key.note?.letter ?? key.letter,
+				octaveForWhiteIndex(key.index),
+				key.note?.role
+			)}
 			data-bass={bassBadge(key.note?.letter ?? key.letter, octaveForWhiteIndex(key.index))}
 			onclick={keysActive ? () => activateWhiteKey(key) : undefined}
 			onkeydown={keysActive
@@ -1129,6 +1201,9 @@
 			)} {bassHintClass(
 				key.note?.letter ?? key.sharpLetter,
 				octaveForBlackAfterWhiteIndex(key.position - 1)
+			)} {focusClass(
+				key.note?.letter ?? key.sharpLetter,
+				octaveForBlackAfterWhiteIndex(key.position - 1)
 			)}"
 			style="left: {key.leftPct}%; width: {boardBlackKeyWidthPct}%;"
 			role={keysActive ? 'button' : undefined}
@@ -1138,6 +1213,11 @@
 			data-ghost={ghostMarker(
 				key.note?.letter ?? key.sharpLetter,
 				octaveForBlackAfterWhiteIndex(key.position - 1)
+			)}
+			data-ghost-tone={ghostTone(
+				key.note?.letter ?? key.sharpLetter,
+				octaveForBlackAfterWhiteIndex(key.position - 1),
+				key.note?.role
 			)}
 			data-bass={bassBadge(
 				key.note?.letter ?? key.sharpLetter,
@@ -1647,16 +1727,65 @@
 		);
 	}
 
+	/*
+	 * The marker was 8px in --color-faint, which app.css itself documents as
+	 * decorative-only and below the text floor: on the improvisation board it
+	 * was the ONLY thing separating a colour tone from an avoid note, and the
+	 * owner reported simply not seeing it. 10px bold in --color-muted clears
+	 * 5.09:1 on paper-bright while staying a marker rather than a label.
+	 */
 	.piano-keyboard__key--ghost::after {
 		content: attr(data-ghost);
 		position: absolute;
-		top: 6px;
+		top: 5px;
 		left: 50%;
 		transform: translateX(-50%);
 		font-family: var(--font-mono);
-		font-size: 8px;
+		font-size: 10px;
+		font-weight: 700;
 		line-height: 1;
-		color: var(--color-faint);
+		color: var(--color-muted);
+	}
+
+	/*
+	 * Ghost tones (Phase 38): a ghost key is "allowed", and these say HOW it
+	 * is allowed, using only accents the app already owns.
+	 *
+	 * `careful` = in the scale, but a half step above a note the left hand is
+	 * holding: vermilion, the app's standing attention accent (the same one
+	 * `.retry` and the active lesson rail use), as a marker ink plus a bar
+	 * along the key's playing edge. It replaced a pair of 8px parentheses that
+	 * the copy pointed at and nobody could see.
+	 *
+	 * `outside` = not in the offered scale at all (the blue note): a dashed
+	 * ink outline, the drafting convention for "borrowed, drawn anyway".
+	 *
+	 * Neither is a fill, so neither can be mistaken for one of the four
+	 * reserved interval colors.
+	 */
+	.piano-keyboard__key--ghost[data-ghost-tone='careful']::after {
+		color: var(--color-vermilion);
+	}
+
+	/*
+	 * The bar is a ::before rather than an inset box-shadow so a key can carry
+	 * it AND a focus ring's own halo at the same time: the careful note is
+	 * exactly the key most likely to be both.
+	 */
+	.piano-keyboard__key--ghost[data-ghost-tone='careful']::before {
+		content: '';
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		height: 6px;
+		background: var(--color-vermilion);
+		z-index: 3;
+	}
+
+	.piano-keyboard__key--ghost[data-ghost-tone='outside'] {
+		outline: 2px dashed var(--color-muted);
+		outline-offset: -2px;
 	}
 
 	/* Black-key ghost stays legible over the dark key (mirrors `--selected`'s own black-key override). */
@@ -1672,6 +1801,46 @@
 
 	.piano-keyboard__key--black.piano-keyboard__key--ghost::after {
 		color: var(--color-paper-bright);
+	}
+
+	/*
+	 * On a black key vermilion ink would sit on near-black and fail contrast,
+	 * so the flag moves entirely into the bar: the marker stays paper-bright
+	 * and the vermilion edge carries the meaning. The dashed outside outline
+	 * lightens for the same reason.
+	 */
+	.piano-keyboard__key--black.piano-keyboard__key--ghost[data-ghost-tone='careful']::after {
+		color: var(--color-paper-bright);
+	}
+
+	.piano-keyboard__key--black.piano-keyboard__key--ghost[data-ghost-tone='outside'] {
+		outline-color: var(--color-paper-bright);
+	}
+
+	/*
+	 * Focus and clash rings (Phase 38, improvisation guide). `focus` is a
+	 * neutral ink ring on the note being sounded or read right now, drawn
+	 * thicker than `bassHint`'s so the two are never confused on a board that
+	 * could show both. `clash` is the vermilion attention accent on the chord
+	 * tone a careful note rubs: the copy says "a half step above E", and this
+	 * is that sentence drawn on the keys, two neighbours ringed at once.
+	 * Neither is role-gated, so both layer over an interval fill.
+	 */
+	.piano-keyboard__key--focus-ring.piano-keyboard__key--focus-ring.piano-keyboard__key--focus-ring.piano-keyboard__key--focus-ring {
+		/* 5px against the key's own 1.5px border: heavy enough to read as a ring
+		   rather than as a slightly darker edge, on a hatch or on a colour fill.
+		   Selector repeated to 0-4-0 so the ring's `outline` beats the resting
+		   dashed `[data-ghost-tone='outside']` outline (0-2-0, black-key 0-3-0)
+		   while the key is focused, and the dash returns on deselect. */
+		outline: 5px solid var(--color-ink);
+		outline-offset: -5px;
+		z-index: 6;
+	}
+
+	.piano-keyboard__key--clash-ring.piano-keyboard__key--clash-ring.piano-keyboard__key--clash-ring.piano-keyboard__key--clash-ring {
+		outline: 4px solid var(--color-vermilion);
+		outline-offset: -4px;
+		z-index: 6;
 	}
 
 	/*
