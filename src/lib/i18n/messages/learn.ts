@@ -51,6 +51,14 @@ export const learn = {
 		'learn.comping.holdLabel': 'HOLD',
 		'learn.comping.holdBar': 'Loop this bar',
 		'learn.comping.holdNote': 'Holding this bar. It repeats instead of moving through the form.',
+		'learn.comping.scaleLabel': 'SCALE',
+		'learn.comping.scaleChip': 'Show the scale',
+		// {BAR} is the bar number and {SCALE} the scale name, both assembled in
+		// CompingLoop.svelte: the number is a figure and the name comes from the
+		// shared improvise.scale.name.* dictionary.
+		'learn.comping.scaleLine': 'Bar {BAR}: {SCALE}',
+		'learn.comping.scaleCaption':
+			'The hatched keys are the whole scale playable over this bar. The keys the loop is holding keep their interval colour. A vermilion bar means the note rubs against the chord if it is held. Nothing here is graded.',
 		'learn.comping.start': 'Start the loop',
 		'learn.comping.starting': 'Starting',
 		'learn.comping.stop': 'Stop',
@@ -104,6 +112,11 @@ export const learn = {
 		'learn.comping.holdBar': 'Boucler cette mesure',
 		'learn.comping.holdNote':
 			"Cette mesure est bouclée. Elle se répète au lieu d'avancer dans la grille.",
+		'learn.comping.scaleLabel': 'GAMME',
+		'learn.comping.scaleChip': 'Afficher la gamme',
+		'learn.comping.scaleLine': 'Mesure {BAR} : {SCALE}',
+		'learn.comping.scaleCaption':
+			"Les touches hachurées sont toute la gamme jouable sur cette mesure. Celles que la boucle tient gardent leur couleur d'intervalle. Une barre vermillon signale une note qui frotte contre l'accord si elle est tenue. Rien n'est noté ici.",
 		'learn.comping.start': 'Lancer la boucle',
 		'learn.comping.starting': 'Démarrage',
 		'learn.comping.stop': 'Arrêter',

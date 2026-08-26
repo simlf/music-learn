@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { Note } from 'tonal';
-import { buildCompBars, compVoicing, romanShape, templateMode } from './compLoop';
+import {
+	buildCompBars,
+	compBarScale,
+	compScaleGhosts,
+	compVoicing,
+	romanShape,
+	templateMode
+} from './compLoop';
 import { PROGRESSION_KEYS, PROGRESSION_TEMPLATES, buildProgression } from './progressions';
 import { spellChord } from '$lib/theory/chord';
+import { improvGuideFor } from '$lib/theory/chordScale';
+import { toAsciiAccidentals as toAscii } from '$lib/theory/interval';
 import { hasFlatFifth, shellNotes } from './shellVoicing';
 
 /**
@@ -157,5 +166,165 @@ describe('form labels', () => {
 		expect(templateMode('major-ii-V-I')).toBe('major');
 		expect(templateMode('minor-ii-V-i')).toBe('minor');
 		expect(templateMode('nope')).toBe('major');
+	});
+});
+
+/**
+ * The per-bar chord-scale overlay (design doc 4.3.2 / 5.2). Two promises:
+ *
+ * 1. The loop never invents a second answer. Every bar's scale is exactly
+ *    `improvGuideFor(spellChord(symbol)).scales[0]`, i.e. what the Lookup
+ *    improvisation board shows for that same symbol.
+ * 2. Every bar the loop can play has one, so turning the overlay on can never
+ *    leave the player staring at a bar with no reading.
+ */
+describe('compBarScale: the loop reads its own bars through the chord-scale engine', () => {
+	it('agrees note for note with the improvisation guide’s default scale', () => {
+		for (const symbol of ['Dm7', 'G7', 'Cmaj7', 'Bm7b5', 'A♭7']) {
+			const guide = improvGuideFor(spellChord(symbol));
+			expect(guide, symbol).not.toBeNull();
+			expect(compBarScale(symbol), symbol).toEqual(guide?.scales[0]);
+		}
+	});
+
+	it('reads G7 as G mixolydian, with the 11 flagged careful against the 3rd', () => {
+		const scale = compBarScale('G7');
+
+		expect(scale?.id).toBe('mixolydian');
+		expect(scale?.tonic).toBe('G');
+		expect(scale?.notes.map((note) => note.letter)).toEqual(['G', 'A', 'B', 'C', 'D', 'E', 'F']);
+		// The chord tones the loop is already holding.
+		expect(scale?.notes.filter((note) => note.kind === 'chord-tone').map((n) => n.letter)).toEqual([
+			'G',
+			'B',
+			'D',
+			'F'
+		]);
+
+		const careful = scale?.notes.filter((note) => note.kind === 'careful') ?? [];
+		expect(careful.map((note) => note.letter)).toEqual(['C']);
+		expect(careful[0].label).toBe('11');
+		// C sits one half step above B, the major 3rd: the classic avoid note.
+		expect(careful[0].clashesWith).toBe('B');
+		expect(careful[0].clashesWithLabel).toBe('M3');
+	});
+
+	it('reads Dm7 as D dorian, which has no careful note at all', () => {
+		const scale = compBarScale('Dm7');
+
+		expect(scale?.id).toBe('dorian');
+		expect(scale?.notes.map((note) => note.letter)).toEqual(['D', 'E', 'F', 'G', 'A', 'B', 'C']);
+		expect(scale?.notes.every((note) => note.kind !== 'careful')).toBe(true);
+	});
+
+	it('gives every one of the loop’s 120 bars a scale rooted on that bar’s own root', () => {
+		let barsChecked = 0;
+		for (const template of PROGRESSION_TEMPLATES) {
+			for (const key of PROGRESSION_KEYS) {
+				for (const bar of buildCompBars(template.id, key)) {
+					const label = `${template.id} in ${key} bar ${bar.index + 1} (${bar.symbol})`;
+					const scale = compBarScale(bar.symbol);
+					expect(scale, label).not.toBeNull();
+					// The scale starts on the chord's own root: that IS the mapping.
+					expect(scale?.tonic, label).toBe(bar.root);
+					// Every note the loop strikes is a chord tone of the reading, so
+					// the overlay never hatches a key the left hand is holding.
+					for (const played of bar.notes) {
+						const inScale = scale?.notes.find((note) => note.letter === played.letter);
+						expect(inScale?.kind, `${label}: ${played.letter}`).toBe('chord-tone');
+					}
+					barsChecked += 1;
+				}
+			}
+		}
+		expect(barsChecked).toBe(120);
+	});
+
+	it('returns null rather than a wrong reading when the guide has no honest answer', () => {
+		// Diminished: the guide deliberately offers no scale (design doc 5.2).
+		expect(compBarScale('Cdim7')).toBeNull();
+		// Augmented and minor/major seventh are out of the reference’s scope.
+		expect(compBarScale('Caug')).toBeNull();
+		expect(compBarScale('CmMaj7')).toBeNull();
+		// Unrecognized input never throws.
+		expect(compBarScale('H7')).toBeNull();
+		expect(compBarScale('')).toBeNull();
+	});
+});
+
+describe('compScaleGhosts: what the overlay draws on top of the comp', () => {
+	function ghostsFor(symbol: string, octaves: readonly number[] = [4]) {
+		const scale = compBarScale(symbol);
+		expect(scale, `the guide should offer a scale over ${symbol}`).not.toBeNull();
+		return compScaleGhosts(scale!, octaves);
+	}
+
+	it('draws the whole scale in each requested octave', () => {
+		const scale = compBarScale('G7')!;
+		const ghosts = compScaleGhosts(scale, [4, 5]);
+
+		// G mixolydian entire, twice: the keyboard, not this function, decides
+		// which of those keys is already carrying an interval fill.
+		expect(ghosts.filter((ghost) => ghost.octave === 4).map((ghost) => ghost.letter)).toEqual(
+			scale.notes.map((note) => note.letter)
+		);
+		expect(ghosts.filter((ghost) => ghost.octave === 5).map((ghost) => ghost.letter)).toEqual(
+			scale.notes.map((note) => note.letter)
+		);
+		expect(ghosts).toHaveLength(scale.notes.length * 2);
+	});
+
+	it('draws the fifth the comp never strikes, on every chord family the loop uses', () => {
+		expect(ghostsFor('Dm7').map((ghost) => ghost.letter)).toContain('A');
+		expect(ghostsFor('G7').map((ghost) => ghost.letter)).toContain('D');
+		expect(ghostsFor('Cmaj7').map((ghost) => ghost.letter)).toContain('G');
+	});
+
+	it('leaves no scale note undrawn, across all three forms in every key', () => {
+		for (const template of PROGRESSION_TEMPLATES) {
+			for (const key of PROGRESSION_KEYS) {
+				for (const bar of buildCompBars(template.id, key)) {
+					const scale = compBarScale(bar.symbol);
+					expect(scale, `${bar.symbol} should read as a scale`).not.toBeNull();
+					const drawn = new Set(
+						compScaleGhosts(scale!, [4, 5]).map(
+							(ghost) => `${Note.chroma(toAscii(ghost.letter))}:${ghost.octave}`
+						)
+					);
+
+					for (const note of scale!.notes) {
+						for (const octave of [4, 5]) {
+							expect(
+								drawn.has(`${Note.chroma(toAscii(note.letter))}:${octave}`),
+								`${bar.symbol} in ${key}: ${note.letter}${octave} is in the scale, so it must be drawn`
+							).toBe(true);
+						}
+					}
+				}
+			}
+		}
+	});
+
+	it('carries each note’s label as its marker and flags only the careful one', () => {
+		expect(ghostsFor('G7').map((ghost) => [ghost.letter, ghost.marker, ghost.tone])).toEqual([
+			['G', 'R', 'plain'],
+			['A', '9', 'plain'],
+			['B', 'M3', 'plain'],
+			['C', '11', 'careful'],
+			['D', 'P5', 'plain'],
+			['E', '13', 'plain'],
+			['F', 'm7', 'plain']
+		]);
+	});
+
+	it('draws no vermilion bar on a scale with nothing to be careful about', () => {
+		const ghosts = ghostsFor('Dm7');
+
+		expect(ghosts.every((ghost) => ghost.tone === 'plain')).toBe(true);
+		expect(ghosts.map((ghost) => ghost.letter)).toEqual(['D', 'E', 'F', 'G', 'A', 'B', 'C']);
+	});
+
+	it('returns nothing for no octaves (total)', () => {
+		expect(compScaleGhosts(compBarScale('G7')!, [])).toEqual([]);
 	});
 });

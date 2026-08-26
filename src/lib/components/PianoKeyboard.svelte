@@ -39,6 +39,7 @@
 		blackKeysForOctaves,
 		MIN_ONE_OCTAVE_WHITE_KEY_PX,
 		minBoardWidthPx,
+		octaveForWhiteIndex,
 		octavesForWidth,
 		shouldStackRows,
 		splitBoardIntoRows,
@@ -487,17 +488,9 @@
 		if (interactive) onPress?.(letter, octave);
 	}
 
-	/** Base octave of the keyboard's leftmost C (matches the audio voicing's octave 4). */
-	const BASE_OCTAVE = 4;
-
-	/** Octave of a white key by index (a new octave starts every 7 white keys). */
-	function octaveForWhiteIndex(index: number): number {
-		return BASE_OCTAVE + Math.floor(index / 7);
-	}
-
-	/** Octave of a black key by the white-key index it follows. */
+	/** Octave of a black key by the white-key index it follows (same 7-key span as its white neighbour). */
 	function octaveForBlackAfterWhiteIndex(afterWhiteIndex: number): number {
-		return BASE_OCTAVE + Math.floor(afterWhiteIndex / 7);
+		return octaveForWhiteIndex(afterWhiteIndex);
 	}
 
 	/** Clears the transient pressed state on release/cancel/leave (D-11). */

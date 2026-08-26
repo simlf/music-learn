@@ -3,12 +3,19 @@
 	import Button from '$lib/components/Button.svelte';
 	import ChordGlyph from '$lib/components/ChordGlyph.svelte';
 	import PianoKeyboard from '$lib/components/PianoKeyboard.svelte';
+	import { renderableOctaves } from '$lib/components/keyboardLayout';
 	import { soundEnabled, startCompLoop, studyModeEnabled } from '$lib/audio/audio';
 	import type { CompLoopHandle } from '$lib/audio/audio';
 	import { BEATS_PER_BAR, TEMPO_DEFAULT, nudgeTempo } from '$lib/audio/loopTiming';
-	import { buildCompBars, romanShape, templateMode } from '$lib/practice/compLoop';
+	import {
+		buildCompBars,
+		compBarScale,
+		compScaleGhosts,
+		romanShape,
+		templateMode
+	} from '$lib/practice/compLoop';
 	import { PROGRESSION_KEYS, PROGRESSION_TEMPLATES } from '$lib/practice/progressions';
-	import { t } from '$lib/i18n/locale.svelte';
+	import { t, type MessageKey } from '$lib/i18n/locale.svelte';
 
 	/**
 	 * The comping loop: a play-along companion, not a drill.
@@ -23,6 +30,15 @@
 	 * Three controls and nothing else: the form, the key, and the tempo. The
 	 * only readouts are the current bar's symbol and where you are in the form,
 	 * so the player can follow it without looking away from the keys.
+	 *
+	 * One optional fourth control, default OFF so the plain comp above is
+	 * untouched for anyone not improvising: SCALE draws the current bar's
+	 * chord-scale over the keyboard (design doc 4.3.2 and 5.2). It is purely a
+	 * READING of what the loop is already playing - the derivation is
+	 * `compBarScale`, i.e. the very answer the Lookup improvisation board
+	 * gives for that symbol - and it touches no audio at all: no second
+	 * playback path, nothing to overlap when the bar turns over. Left hand
+	 * (the loop) holds the chord, right hand (the player) reads the hatch.
 	 *
 	 * Progressions come from the one existing engine (progressions.ts, 3 forms x
 	 * 12 keys) via compLoop.ts. Timing is Tone's Transport (audio.ts's
@@ -55,6 +71,13 @@
 	 * instead of the whole form and simply never advances `barIndex`.
 	 */
 	let holdBar = $state(false);
+	/**
+	 * The chord-scale overlay. Default off, and off is byte-identical to the
+	 * loop as it shipped: no `ghostKeys` prop reaches the keyboard, no extra
+	 * line renders. Visual only - flipping it never restarts the loop, because
+	 * nothing about the sound changes.
+	 */
+	let scaleOn = $state(false);
 
 	let handle: CompLoopHandle | null = null;
 	/**
@@ -69,6 +92,42 @@
 	const mode = $derived(templateMode(templateId));
 	/** A ♭5 bar comps three notes above the root (3rd, ♭5, 7th), so the caption gains its sibling line. */
 	const flatFiveBar = $derived((currentBar?.notes.length ?? 0) > 3);
+
+	/*
+	 * ---- The scale overlay ----
+	 *
+	 * Derived PER BAR, so it follows the changes the way the player's right
+	 * hand has to. Every octave the board can render is hatched, taken from
+	 * the board's own `renderableOctaves` rather than restated here: the
+	 * loop's keyboard is the responsive one (one octave on a phone, two once
+	 * there is room, and either span ends on a trailing C an octave above its
+	 * span), and the comp's own notes are assigned to keys by position, so
+	 * which octave a given scale note should appear in is not knowable here.
+	 * Entries whose octave is not rendered simply match no key.
+	 *
+	 * The overlay stays an INSTRUMENT (design doc section 6): no grade, no
+	 * counter, no streak, and no tap-a-key verdict. The verdict caption the
+	 * Lookup board offers is per-chord prose, and a bar lasts four beats - it
+	 * would be stale before it could be read, and reading is not what the
+	 * player's hands are doing here.
+	 */
+	const OVERLAY_OCTAVES = renderableOctaves();
+	const barScale = $derived(scaleOn && currentBar ? compBarScale(currentBar.symbol) : null);
+	const scaleGhosts = $derived(barScale ? compScaleGhosts(barScale, OVERLAY_OCTAVES) : undefined);
+	/**
+	 * "G mixolydian", assembled exactly as the Lookup board assembles it: the
+	 * tonic is a letter (an immune display value) and the mode name comes from
+	 * the shared `improvise.scale.name.*` dictionary, so the two surfaces can
+	 * never name the same scale differently.
+	 */
+	const scaleTitle = $derived(
+		barScale ? `${barScale.tonic} ${t(`improvise.scale.name.${barScale.id}` as MessageKey)}` : ''
+	);
+	const scaleLine = $derived(
+		t('learn.comping.scaleLine')
+			.replace('{BAR}', String(barIndex + 1))
+			.replace('{SCALE}', scaleTitle)
+	);
 
 	async function start(): Promise<void> {
 		const mine = ++intent;
@@ -126,6 +185,11 @@
 			barIndex = resumeIndex;
 			void start();
 		}
+	}
+
+	/** Visual only: the loop keeps playing exactly as it was. */
+	function toggleScale(): void {
+		scaleOn = !scaleOn;
 	}
 
 	/** Changing the form or the key restarts the loop from bar 1 if it is playing. */
@@ -243,6 +307,22 @@
 	</div>
 </div>
 
+<div class="flex flex-col gap-2">
+	<p class="text-label font-mono uppercase" style="letter-spacing: 0.08em;">
+		{t('learn.comping.scaleLabel')}
+	</p>
+	<div class="flex flex-wrap gap-2" data-testid="comping-scale-row">
+		<Button
+			type="button"
+			variant={scaleOn ? 'primary' : 'ghost'}
+			aria-pressed={scaleOn}
+			onclick={toggleScale}
+		>
+			{t('learn.comping.scaleChip')}
+		</Button>
+	</div>
+</div>
+
 <div>
 	<Button type="button" variant="primary" disabled={!soundOn} onclick={toggle}>
 		{#if starting}
@@ -288,7 +368,13 @@
 			{/each}
 		</div>
 
-		<PianoKeyboard notes={currentBar.notes} />
+		<PianoKeyboard notes={currentBar.notes} ghostKeys={scaleGhosts} />
+		{#if barScale}
+			<p class="text-body font-bold" data-testid="comping-scale-line">{scaleLine}</p>
+			<p class="text-body text-muted" data-testid="comping-scale-caption">
+				{t('learn.comping.scaleCaption')}
+			</p>
+		{/if}
 		<p class="text-body text-muted">{t('learn.comping.keyboardCaption')}</p>
 		<p class="text-body">{t('learn.comping.voicingCaption')}</p>
 		{#if flatFiveBar}

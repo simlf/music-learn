@@ -106,6 +106,47 @@ export function whiteKeyCountForOctaves(octaves: 1 | 2): number {
 	return octaves * 7 + 1;
 }
 
+/** Octave of the board's leftmost C (matches the audio voicing's octave 4). */
+export const BASE_OCTAVE = 4;
+
+/**
+ * The octave a white key belongs to, by its board index: a new octave starts
+ * every 7 white keys, so the trailing C of an `octaves`-wide span (index
+ * `7 * octaves`) already belongs to the NEXT octave. The one definition of
+ * this arithmetic; PianoKeyboard renders keys with it and
+ * `renderableOctaves` derives the board's octave range from it, so the two
+ * cannot drift.
+ */
+export function octaveForWhiteIndex(index: number): number {
+	return BASE_OCTAVE + Math.floor(index / 7);
+}
+
+/** Every octave an `octaves`-wide board puts on screen, lowest first (the trailing C's own octave included). */
+export function octavesForBoard(octaves: 1 | 2): number[] {
+	const highest = octaveForWhiteIndex(whiteKeyCountForOctaves(octaves) - 1);
+	const range: number[] = [];
+	for (let octave = BASE_OCTAVE; octave <= highest; octave += 1) range.push(octave);
+	return range;
+}
+
+/** The octave spans the board chooses between for its width (see `octavesForWidth`). */
+export const BOARD_OCTAVE_SPANS: readonly (1 | 2)[] = [1, 2];
+
+/**
+ * Every octave the board can EVER render, across both spans it chooses
+ * between for its width. A caller decorating keys (ghost markers, bass hints)
+ * does not know which span the board picked - that is measured inside
+ * PianoKeyboard - so it addresses the union: an entry for an octave that is
+ * not on screen matches no key and simply draws nothing.
+ */
+export function renderableOctaves(): number[] {
+	const octaves = new Set<number>();
+	for (const span of BOARD_OCTAVE_SPANS) {
+		for (const octave of octavesForBoard(span)) octaves.add(octave);
+	}
+	return [...octaves].sort((a, b) => a - b);
+}
+
 /**
  * The narrowest the rendered board may be while every white key still meets the
  * fingertip floor: 8 keys (352px) at one octave, 15 (660px) at two. A board

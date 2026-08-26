@@ -4,9 +4,13 @@ import {
 	blackKeysForOctaves,
 	firstRowWhiteCount,
 	fitsWithoutScrolling,
+	BASE_OCTAVE,
 	MIN_WHITE_KEY_PX,
 	minBoardWidthPx,
+	octaveForWhiteIndex,
+	octavesForBoard,
 	octavesForWidth,
+	renderableOctaves,
 	shouldStackRows,
 	splitBoardIntoRows,
 	whiteKeyCountForOctaves,
@@ -262,6 +266,46 @@ describe('whiteLettersForOctaves', () => {
 			'B',
 			'C'
 		]);
+	});
+});
+
+describe('the octaves a board can render', () => {
+	/**
+	 * The union any key-decorating caller must address (ghost markers, bass
+	 * hints): the board picks its own span from its measured width, so a
+	 * caller cannot know whether octave 6's trailing C is on screen.
+	 */
+	it('spans base octave through the trailing C of the widest board', () => {
+		expect(octavesForBoard(1)).toEqual([BASE_OCTAVE, BASE_OCTAVE + 1]);
+		expect(octavesForBoard(2)).toEqual([BASE_OCTAVE, BASE_OCTAVE + 1, BASE_OCTAVE + 2]);
+		expect(renderableOctaves()).toEqual(octavesForBoard(2));
+	});
+
+	it('reports exactly the octaves the rendered keys occupy, for both spans', () => {
+		for (const octaves of [1, 2] as const) {
+			const whiteOctaves = whiteLettersForOctaves(octaves).map((_letter, index) =>
+				octaveForWhiteIndex(index)
+			);
+			const blackOctaves = blackKeysForOctaves(octaves).map((key) =>
+				octaveForWhiteIndex(key.afterWhiteIndex)
+			);
+			const occupied = [...new Set([...whiteOctaves, ...blackOctaves])].sort((a, b) => a - b);
+
+			expect(octavesForBoard(octaves), `${octaves}-octave board`).toEqual(occupied);
+		}
+	});
+
+	it('puts the trailing C in the octave above its span, which is what the range exists for', () => {
+		// One key past the last full span: index 7 on a one-octave board, 14 on two.
+		expect(octaveForWhiteIndex(7)).toBe(BASE_OCTAVE + 1);
+		expect(octaveForWhiteIndex(whiteKeyCountForOctaves(2) - 1)).toBe(BASE_OCTAVE + 2);
+		expect(octavesForBoard(2)).toContain(octaveForWhiteIndex(whiteKeyCountForOctaves(2) - 1));
+	});
+
+	it('never reports an octave the widest board cannot render', () => {
+		const highest = octaveForWhiteIndex(whiteKeyCountForOctaves(2) - 1);
+		expect(Math.max(...renderableOctaves())).toBe(highest);
+		expect(Math.min(...renderableOctaves())).toBe(BASE_OCTAVE);
 	});
 });
 

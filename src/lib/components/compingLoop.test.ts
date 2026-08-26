@@ -14,7 +14,8 @@ import type { CompLoopHandle, CompLoopOptions } from '$lib/audio/audio';
  *    stopping a loop writes nothing anywhere.
  * 2. It stops cleanly. Stop stops it, unmounting stops it, and unmounting
  *    while the piano is still loading stops the loop the moment it arrives.
- * 3. Three controls and no more: form, key, tempo.
+ * 3. Three controls and no more: form, key, tempo, plus the two default-off
+ *    toggles (hold, scale) that each add exactly one chip.
  */
 
 let handleStops = 0;
@@ -175,10 +176,10 @@ describe('three controls: form, key, tempo', () => {
 		expect(screen.getByTestId('comping-tempo-value')).toHaveTextContent('120 BPM');
 	});
 
-	it('shows no other option: the only buttons are the forms, the keys, the tempo pair, hold, and start', () => {
+	it('shows no other option: the only buttons are the forms, the keys, the tempo pair, hold, scale, and start', () => {
 		render(CompingLoop);
 		const all = screen.getAllByRole('button');
-		expect(all).toHaveLength(3 + 12 + 2 + 1 + 1);
+		expect(all).toHaveLength(3 + 12 + 2 + 1 + 1 + 1);
 	});
 });
 
@@ -406,6 +407,206 @@ describe('loop this bar (hold)', () => {
 	});
 });
 
+/**
+ * The chord-scale overlay (design doc `.planning/design/improvisation.md`
+ * 4.3.2 and 5.2): the loop shows what can be played over the bar it is
+ * already playing. Default off, so the plain comp is untouched for anyone not
+ * improvising, and it stays an INSTRUMENT (section 6): it reads, it never
+ * grades, and it never touches the audio path.
+ */
+describe('scale overlay', () => {
+	function scaleButton(): HTMLElement {
+		return screen.getByRole('button', { name: 'Show the scale' });
+	}
+
+	const ROLE_CLASSES = [
+		'root',
+		'second',
+		'third',
+		'fourth',
+		'fifth',
+		'sixth',
+		'seventh'
+	].map((role) => `piano-keyboard__key--${role}`);
+
+	/**
+	 * Every key that actually RENDERS as a hatch, in board order (whites then
+	 * blacks). The ghost class is what the hatch and the marker hang off, so a
+	 * key the comp is already interval-filling is absent from this list even
+	 * though the overlay offered it a ghost entry.
+	 */
+	function ghosts(): { marker: string | null; tone: string | null }[] {
+		return Array.from(document.querySelectorAll('.piano-keyboard__key--ghost')).map((key) => ({
+			marker: key.getAttribute('data-ghost'),
+			tone: key.getAttribute('data-ghost-tone')
+		}));
+	}
+
+	const WHITE_LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+
+	/** The white key for `letter` in `octave`, by board position (the board starts at C4). */
+	function whiteKey(letter: string, octave: number): Element {
+		const keys = Array.from(document.querySelectorAll('.piano-keyboard__key--white'));
+		const index = (octave - 4) * 7 + WHITE_LETTERS.indexOf(letter);
+		const key = keys[index];
+		expect(key, `the board should render ${letter}${octave} at white index ${index}`).toBeDefined();
+		return key;
+	}
+
+	function isGhosted(key: Element): boolean {
+		return key.classList.contains('piano-keyboard__key--ghost');
+	}
+
+	function isRoleFilled(key: Element): boolean {
+		return ROLE_CLASSES.some((role) => key.classList.contains(role));
+	}
+
+	it('is off by default, and off draws nothing extra at all', () => {
+		render(CompingLoop);
+
+		expect(scaleButton()).toHaveAttribute('aria-pressed', 'false');
+		expect(screen.queryByTestId('comping-scale-line')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('comping-scale-caption')).not.toBeInTheDocument();
+		expect(ghosts()).toEqual([]);
+	});
+
+	it('names the current bar’s scale and hatches its non-chord tones', async () => {
+		render(CompingLoop);
+		await fireEvent.click(scaleButton());
+
+		expect(scaleButton()).toHaveAttribute('aria-pressed', 'true');
+		// Bar 1 of the ii V I in C is Dm7: D dorian.
+		expect(screen.getByTestId('comping-scale-line')).toHaveTextContent('Bar 1: D dorian');
+		// The comp strikes D4/F4/C5 and those three keys keep their interval
+		// fills; every other key of D dorian in the overlay's two octaves
+		// hatches, the fifth (A) and the octave twins included, and dorian has
+		// nothing to be careful about.
+		expect(ghosts().map((ghost) => ghost.marker)).toEqual([
+			'm7',
+			'9',
+			'11',
+			'P5',
+			'13',
+			'R',
+			'9',
+			'm3',
+			'11',
+			'P5',
+			'13',
+			'm7'
+		]);
+		expect(ghosts().every((ghost) => ghost.tone === null)).toBe(true);
+	});
+
+	it('hatches the octave twin of a comped note, which the comp itself never reaches', async () => {
+		render(CompingLoop);
+		await fireEvent.click(scaleButton());
+
+		// Dm7 comps D4/F4/C5, so those three keys are filled...
+		for (const [letter, octave] of [
+			['D', 4],
+			['F', 4],
+			['C', 5]
+		] as const) {
+			const key = whiteKey(letter, octave);
+			expect(isRoleFilled(key), `${letter}${octave} should carry its interval fill`).toBe(true);
+			expect(isGhosted(key), `${letter}${octave} is filled, so it must not hatch too`).toBe(false);
+		}
+
+		// ...while D5, F5 and C4 are the same scale notes one octave over, and a
+		// note that belongs to the scale must never read as outside it.
+		for (const [letter, octave] of [
+			['D', 5],
+			['F', 5],
+			['C', 4]
+		] as const) {
+			expect(isGhosted(whiteKey(letter, octave)), `${letter}${octave} should hatch`).toBe(true);
+		}
+	});
+
+	it('hatches the board’s trailing key too, on every bar of the form', async () => {
+		render(CompingLoop);
+		await fireEvent.click(scaleButton());
+		await clickStart();
+
+		// D dorian, G mixolydian and C ionian all contain C, and the two-octave
+		// board's last key is C6: an octave the spans themselves do not cover.
+		for (const [bar, scaleName] of [
+			[0, 'D dorian'],
+			[1, 'G mixolydian'],
+			[2, 'C major (ionian)']
+		] as const) {
+			flushSync(() => lastStart().onBar?.(bar));
+			expect(screen.getByTestId('comping-scale-line')).toHaveTextContent(scaleName);
+			expect(isGhosted(whiteKey('C', 6)), `C6 over ${scaleName}`).toBe(true);
+		}
+	});
+
+	it('never draws a hatch on a key the comp is already interval-filling', async () => {
+		render(CompingLoop);
+		await fireEvent.click(scaleButton());
+
+		const doubled = Array.from(document.querySelectorAll('.piano-keyboard__key')).filter(
+			(key) => isRoleFilled(key) && isGhosted(key)
+		);
+		expect(doubled).toEqual([]);
+	});
+
+	it('follows the changes: the scale is re-read for every bar the loop reports', async () => {
+		render(CompingLoop);
+		await fireEvent.click(scaleButton());
+		await clickStart();
+
+		flushSync(() => lastStart().onBar?.(1));
+		expect(screen.getByTestId('comping-scale-line')).toHaveTextContent('Bar 2: G mixolydian');
+		// G7's 11 (C) rubs the major 3rd, so it earns the vermilion bar.
+		expect([
+			...new Set(
+				ghosts()
+					.filter((ghost) => ghost.tone === 'careful')
+					.map((ghost) => ghost.marker)
+			)
+		]).toEqual(['11']);
+
+		flushSync(() => lastStart().onBar?.(2));
+		expect(screen.getByTestId('comping-scale-line')).toHaveTextContent('Bar 3: C major (ionian)');
+	});
+
+	it('is display only: turning it on never touches the running loop', async () => {
+		render(CompingLoop);
+		await clickStart();
+		expect(startCalls).toHaveLength(1);
+
+		await fireEvent.click(scaleButton());
+		await fireEvent.click(scaleButton());
+
+		// No restart, no stop, no second audio call of any kind.
+		expect(startCalls).toHaveLength(1);
+		expect(handleStops).toBe(0);
+		expect(handleTempos).toEqual([]);
+	});
+
+	it('grades nothing and persists nothing while it is on', async () => {
+		render(CompingLoop);
+		await fireEvent.click(scaleButton());
+		await clickStart();
+		flushSync(() => lastStart().onBar?.(1));
+		await fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
+
+		expect(localStorage.length).toBe(0);
+		// No verdict, no tally: the overlay adds a reading and nothing else.
+		expect(document.body.textContent).not.toMatch(/correct|try again|not quite|streak/i);
+	});
+
+	it('reads the minor iiø bar too, so no bar of any form is left without an answer', async () => {
+		render(CompingLoop);
+		await fireEvent.click(screen.getByRole('button', { name: 'iiø V i' }));
+		await fireEvent.click(scaleButton());
+
+		expect(screen.getByTestId('comping-scale-line')).toHaveTextContent('Bar 1: D locrian');
+	});
+});
+
 describe('clean teardown', () => {
 	it('stops the loop when the page is left', async () => {
 		const { unmount } = render(CompingLoop);
@@ -485,11 +686,23 @@ describe('French parity (I18N-02)', () => {
 		expect(screen.getByRole('button', { name: 'Lancer la boucle' })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Plus vite' })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Boucler cette mesure' })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Afficher la gamme' })).toBeInTheDocument();
 		expect(screen.getByTestId('comping-position')).toHaveTextContent('TON: C MAJEUR');
 		expect(screen.getByTestId('comping-position')).toHaveTextContent('MESURE 1 / 3');
 		// Immune: the roman shapes and the chord symbols never translate.
 		expect(screen.getByRole('button', { name: 'ii V I' })).toBeInTheDocument();
 		expect(currentChip()).toHaveTextContent('Dm7');
 		expect(document.body.textContent).not.toMatch(/—|–/);
+	});
+
+	it('names the bar’s scale in French, keeping the tonic letter immune', async () => {
+		setLocale('fr');
+		render(CompingLoop);
+		await fireEvent.click(screen.getByRole('button', { name: 'Afficher la gamme' }));
+
+		expect(screen.getByTestId('comping-scale-line')).toHaveTextContent('Mesure 1 : D dorien');
+		expect(screen.getByTestId('comping-scale-caption')).toHaveTextContent(
+			'Les touches hachurées sont toute la gamme jouable sur cette mesure'
+		);
 	});
 });

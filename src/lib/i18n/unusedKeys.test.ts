@@ -102,8 +102,8 @@ const DYNAMIC_PREFIXES: { prefix: string; site: string; note?: string }[] = [
 	{ prefix: 'songs.preset.', site: 'SongManager.svelte', note: 'preset id, .note suffix' },
 	{
 		prefix: 'improvise.scale.name.',
-		site: 'ImproviseGuide.svelte',
-		note: 'ChordScaleId (dorian, mixolydian...)'
+		site: 'ImproviseGuide.svelte and CompingLoop.svelte',
+		note: 'ChordScaleId (dorian, mixolydian...), shared by the Lookup board and the loop overlay'
 	},
 	{
 		prefix: 'improvise.scale.color.',
