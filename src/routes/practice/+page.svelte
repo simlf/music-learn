@@ -96,9 +96,16 @@
 	 * DAILY_TARGET of its own rather than uncapped. `answeredEarlier` is what
 	 * the day had already banked before this round, so a resumed day says
 	 * "5 of 12 done" instead of pretending the day starts over.
+	 *
+	 * `seededCount` is how many of `roundSize` the user explicitly REQUESTED
+	 * (seeds bypass the daily cut and widen `roundTarget`). The register needs
+	 * it to stay arithmetically honest on a partly-spent day: without it,
+	 * "5 OF 12 DONE TODAY · 9 TO GO" reads as a 14-question day against a
+	 * 12-question target.
 	 */
 	let roundTarget = $state(0);
 	let roundSize = $state(0);
+	let seededCount = $state(0);
 	let waiting = $state(0);
 	let extraRound = $state(false);
 	let answeredEarlier = $state(0);
@@ -209,13 +216,28 @@
 	const SYNTHETIC_INVERSION_COUNT = 2;
 
 	/**
+	 * How many questions the round's budget reserves per seeded item. A seed
+	 * is one question plus room for its own delayed retry, so a missed
+	 * requested chord is re-asked inside the round it was requested for
+	 * rather than swept into `waiting` - on a fully spent day the composed
+	 * budget is zero, so without the reserve the round would end on the miss.
+	 * The composed half's bound is untouched: the reserve only ever pays for
+	 * re-asking an item already in the queue, never for drawing a new card.
+	 */
+	const SEED_QUESTION_BUDGET = 2;
+
+	/**
 	 * REG-01 seed handoff: consumes both one-shot channels and builds
-	 * prioritized name-it CardedQueueItems, mirroring the old /drills page's
+	 * prioritized play-it CardedQueueItems, mirroring the old /drills page's
 	 * seed-consumption semantics (30-CONTEXT "Preserve the drill-seed
 	 * handoff"). Both channels are drained via consumeDrillSeeds/
-	 * consumeLessonSeeds regardless of which wins, so neither leaks into a
-	 * later session; a lesson handoff takes precedence over a Progress
-	 * weak-list handoff when both are somehow present. A symbol that does not
+	 * consumeLessonSeeds, and BOTH are honoured: draining a one-shot channel
+	 * and then discarding what it held destroys a chord the user explicitly
+	 * asked for, which is exactly the failure this handoff exists to prevent.
+	 * A lesson handoff still leads (it is the more recent, more specific
+	 * intent), the weak-list handoff follows, and a symbol present in both
+	 * channels is kept once - deduped by factId, since the two channels can
+	 * spell the same fact from different surfaces. A symbol that does not
 	 * resolve to a supported chord-formula fact (factById) is skipped
 	 * (T-30-02-01: a tampered/malformed seed can never inject an unrenderable
 	 * question).
@@ -223,7 +245,7 @@
 	async function buildSeededItems(): Promise<CardedQueueItem[]> {
 		const lessonSeedSymbols = consumeLessonSeeds();
 		const drillSeedSymbols = consumeDrillSeeds();
-		const seedSymbols = lessonSeedSymbols.length > 0 ? lessonSeedSymbols : drillSeedSymbols;
+		const seedSymbols = [...lessonSeedSymbols, ...drillSeedSymbols];
 		if (seedSymbols.length === 0) return [];
 
 		const existingCards = await getAllCards();
@@ -232,13 +254,25 @@
 			cardsByKey.set(`${card.factId}:${card.mode}`, card);
 		}
 
-		const mode: Mode = 'formula';
+		/**
+		 * A seed arrives from a surface that has ALREADY shown the answer:
+		 * Lookup has just spelled the chord out, the end card has just
+		 * revealed the miss, Progress has just named the weak symbol. Asking
+		 * "which of these four names is it?" a second later tests nothing.
+		 * The honest question is the one the seed was requested for - see the
+		 * symbol, put your hands on it - so the handoff seeds the see-play
+		 * card (family 'play-it', keyboard + one Check) rather than formula.
+		 */
+		const mode: Mode = 'see-play';
 		const now = new Date();
 		const items: CardedQueueItem[] = [];
+		const seenFactIds = new Set<string>();
 		for (const symbol of seedSymbols) {
 			const factId = `chord-formula:${symbol}`;
 			const fact = factById(factId);
 			if (fact === undefined || fact.factKind !== 'chord-formula') continue;
+			if (seenFactIds.has(factId)) continue;
+			seenFactIds.add(factId);
 
 			const card: CardRecord =
 				cardsByKey.get(`${factId}:${mode}`) ??
@@ -253,7 +287,7 @@
 
 			items.push({
 				id: `fsrs:${factId}:${mode}`,
-				family: 'name-it',
+				family: 'play-it',
 				factId,
 				mode,
 				factKind: 'chord-formula',
@@ -267,6 +301,7 @@
 
 	async function load(): Promise<void> {
 		pageState = 'loading';
+		seededCount = 0;
 		try {
 			const seededItems = await buildSeededItems();
 
@@ -401,30 +436,63 @@
 				return;
 			}
 
-			// Seeded items lead the queue; a due card that is ALSO seeded is
-			// deduped from the composed half by id, so it is drilled once, at
-			// the front, not twice.
-			const seedIds = new Set(seededItems.map((item) => item.id));
-			const dedupedComposed = composed.filter((item) => !seedIds.has(item.id));
-			const finalQueue: HybridQueueItem[] = [...seededItems, ...dedupedComposed];
+			// Seeded items lead the queue; a due card for a seeded FACT is
+			// deduped from the composed half, so the chord is drilled once, at
+			// the front, not twice. A card dropped that way is still FSRS-due
+			// UNLESS the seed asks that exact card (same fact, same mode): the
+			// seed replaces it and grades it, so only drops the seed does not
+			// itself ask are counted into `waiting` below - the rest would
+			// otherwise vanish from both the round and the register.
+			// The dedup key is the factId, not the item id:
+			// the seed deliberately asks a different MODE of the same fact
+			// (see-play), so an id-keyed dedup (`fsrs:{factId}:{mode}`) would
+			// let the same chord be asked twice in one round - exactly the
+			// same-symbol adjacency composePracticeQueue guards against.
+			// Only CARDED items are dropped: a synthetic voicing/progression/
+			// inversion item carries no factId and is a different question
+			// about the symbol, not the same question twice.
+			const seedFactIds = new Set(seededItems.map((item) => item.factId));
+			const seedItemIds = new Set(seededItems.map((item) => item.id));
+			const droppedByDedup = composed.filter(
+				(item) => 'factId' in item && seedFactIds.has(item.factId)
+			);
+			const dedupedComposed = composed.filter(
+				(item) => !('factId' in item) || !seedFactIds.has(item.factId)
+			);
+			const droppedStillDue = droppedByDedup.filter((item) => !seedItemIds.has(item.id)).length;
 
 			/**
 			 * B1: bound the composed queue to what the DAY still owes, not to
 			 * the whole due set. sliceRound preserves the composer's order
-			 * exactly (its variety weave, its cold-session first-pick guard,
-			 * and the seeded items leading the queue all survive the cut), and
-			 * reports the remainder so the pre-start card can show it. A day
-			 * whose target is already spent slices to nothing and lands on the
-			 * pre-start card's done branch, where extra practice is an explicit
-			 * opt-in rather than an unbounded default.
+			 * exactly (its variety weave and its cold-session first-pick guard
+			 * survive the cut) and reports the remainder so the pre-start card
+			 * can show it. A day whose target is already spent slices the
+			 * composed half to nothing and lands on the pre-start card's done
+			 * branch, where extra practice is an explicit opt-in rather than an
+			 * unbounded default.
+			 *
+			 * Seeds are held OUT of that cut on purpose. A seed is not the
+			 * scheduler's suggestion, it is the user asking for one specific
+			 * chord ("Drill it" from Lookup, "Fix this one" from the end card,
+			 * "Drill these" from Progress) - and the seed channel is one-shot,
+			 * so an item the slice dropped was not deferred, it was destroyed:
+			 * "Keep going" re-runs load() against an already-drained channel
+			 * and the chord is simply gone. The day's budget may bound what the
+			 * app PROPOSES; it must not silently discard what the user
+			 * REQUESTED. So the seeds always lead and always run, and the
+			 * round's question budget is widened by SEED_QUESTION_BUDGET per
+			 * seed (the seed itself plus its retry slot) so the bound on the
+			 * composed half is unchanged.
 			 */
 			answeredEarlier = answeredToday();
-			roundTarget = extraRound ? DAILY_TARGET : remainingDailyTarget();
-			const sliced = sliceRound(finalQueue, roundTarget);
+			const composedTarget = extraRound ? DAILY_TARGET : remainingDailyTarget();
+			const sliced = sliceRound(dedupedComposed, composedTarget);
 
-			queue = sliced.round;
-			roundSize = sliced.round.length;
-			waiting = sliced.waiting;
+			queue = [...seededItems, ...sliced.round];
+			roundTarget = composedTarget + seededItems.length * SEED_QUESTION_BUDGET;
+			roundSize = queue.length;
+			seededCount = seededItems.length;
+			waiting = sliced.waiting + droppedStillDue;
 
 			/**
 			 * B5: yesterday's line, and specifically which of yesterday's misses
@@ -433,7 +501,7 @@
 			 * `waiting` is not coming back in this session.
 			 */
 			lastSession = previousSummary();
-			const roundLabels = new Set(sliced.round.map(missedLabelFor));
+			const roundLabels = new Set(queue.map(missedLabelFor));
 			returningItems =
 				lastSession === undefined
 					? []
@@ -539,6 +607,18 @@
 	 * - the day is partly spent: "5 OF 12 DONE TODAY · 7 TO GO", so a resumed
 	 *   day picks up instead of pretending to start over.
 	 * A day whose target is already met gets the done line instead.
+	 *
+	 * Seeds bypass the daily cut, so on a partly-spent day the round can hold
+	 * more questions than the day still owes, and answering them can bank more
+	 * than DAILY_TARGET on the day - the fraction is clamped to the target so
+	 * the line never reads "13 OF 12 DONE TODAY". A fourth clause names that
+	 * surplus rather than folding it into "TO GO": "5 OF 12 DONE TODAY ·
+	 * 7 TO GO · 2 ON REQUEST" keeps the fraction about the DAY and the
+	 * arithmetic true, instead of a "9 TO GO" that adds up to 14 of 12. When
+	 * the day owes nothing and the round IS the seeds, the resume line reads
+	 * "12 OF 12 DONE TODAY · 1 TO GO". Any held-back remainder is named on the
+	 * resume line too, exactly as it is on the sliced and done lines - the
+	 * register's contract is that the remainder is shown, never hidden.
 	 */
 	const preStartRegister = $derived.by((): string => {
 		const waitingLine = t('practice.pre.waiting').replace('{N}', String(waiting));
@@ -551,9 +631,17 @@
 		// "12 OF 12 DONE TODAY · 12 TO GO".
 		if (answeredEarlier > 0 && !extraRound) {
 			const resume = t('practice.pre.resume')
-				.replace('{DONE}', String(answeredEarlier))
+				.replace('{DONE}', String(Math.min(answeredEarlier, DAILY_TARGET)))
 				.replace('{TARGET}', String(DAILY_TARGET));
-			return `${resume} · ${t('practice.pre.toGo').replace('{N}', String(roundSize))}`;
+			const composedPortion = roundSize - seededCount;
+			if (seededCount > 0 && composedPortion > 0) {
+				const toGo = t('practice.pre.toGo').replace('{N}', String(composedPortion));
+				const onRequest = t('practice.pre.onRequest').replace('{N}', String(seededCount));
+				const spent = `${resume} · ${toGo} · ${onRequest}`;
+				return waiting > 0 ? `${spent} · ${waitingLine}` : spent;
+			}
+			const toGo = t('practice.pre.toGo').replace('{N}', String(roundSize));
+			return waiting > 0 ? `${resume} · ${toGo} · ${waitingLine}` : `${resume} · ${toGo}`;
 		}
 		if (waiting > 0) {
 			return `${t('practice.pre.today').replace('{N}', String(roundSize))} · ${waitingLine}`;

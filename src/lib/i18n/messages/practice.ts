@@ -44,6 +44,7 @@ export const practice = {
 		// Resuming a day whose target is partly spent already.
 		'practice.pre.resume': '{DONE} OF {TARGET} DONE TODAY',
 		'practice.pre.toGo': '{N} TO GO',
+		'practice.pre.onRequest': '{N} ON REQUEST',
 		// Re-entry on a day whose target is already met.
 		'practice.pre.doneToday': "TODAY'S PRACTICE IS DONE",
 
@@ -138,6 +139,7 @@ export const practice = {
 		'practice.pre.waiting': '{N} EN ATTENTE',
 		'practice.pre.resume': "{DONE} SUR {TARGET} FAITES AUJOURD'HUI",
 		'practice.pre.toGo': '{N} À FAIRE',
+		'practice.pre.onRequest': '{N} SUR DEMANDE',
 		'practice.pre.doneToday': 'LA PRATIQUE DU JOUR EST FAITE',
 
 		'practice.pre.yesterday': 'Hier : {N} bonnes, meilleure série {B}.',

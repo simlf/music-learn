@@ -149,8 +149,11 @@ describe('B4: a missed chord chip drills that chord', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Drill Dm7 again' }));
 		await screen.findByTestId('practice-chord-drill');
 
-		// The seeded chord leads the fresh round.
-		expect(screen.getByRole('button', { name: 'Answer: Dm7' })).toBeInTheDocument();
+		// The seeded chord leads the fresh round, and it is asked as a play-it
+		// question: the end card has just revealed the answer, so re-asking
+		// "which of these four names is it?" would test nothing.
+		expect(screen.getByTestId('practice-chord-drill')).toHaveAttribute('data-mode', 'see-play');
+		expect(screen.getByTestId('chord-drill-play-prompt')).toHaveTextContent('Dm7');
 		// One-shot: the handoff channel is drained, never left to leak into a
 		// later session.
 		expect(localStorage.getItem(DRILL_SEEDS_KEY)).toBeNull();
