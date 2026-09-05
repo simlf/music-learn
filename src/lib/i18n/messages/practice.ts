@@ -104,6 +104,23 @@ export const practice = {
 		'practice.error.body':
 			"Couldn't open the practice queue. Reload the page, mon ami. If it keeps happening, your browser's storage might be full or blocked.",
 
+		// Song play-through (Phase 40, PLAY-01/02/03). Its own register, never
+		// the daily "today/waiting" language: a play-through neither draws from
+		// nor reports against the daily target (proposal 3's fix). {SONG} is
+		// interpolated verbatim (song names are user data, never localized).
+		'practice.playthrough.pre': 'PLAYING THROUGH {SONG} · {N} CHORDS',
+		'practice.playthrough.startCta': 'Start play-through',
+		'practice.playthrough.reviewingLabel': 'Playing through {SONG}',
+		'practice.playthrough.end': 'You played through {SONG}.',
+		'practice.playthrough.continueCta': 'Continue practicing',
+		// PLAY-03: a symbol outside the practice catalog is skipped, visibly,
+		// rather than crashing the run.
+		'practice.playthrough.skippedSingular': '1 chord skipped (not in your practice catalog yet).',
+		'practice.playthrough.skippedPlural': '{N} chords skipped (not in your practice catalog yet).',
+		'practice.empty.playthrough.heading': 'Nothing to play through.',
+		'practice.empty.playthrough.body':
+			"None of {SONG}'s chords are in your practice catalog yet ({N} skipped).",
+
 		// Per-question family cue (27-UI-SPEC "Family Cue Between Questions").
 		// Added for all six families now (voicing/progression/inversion), even
 		// though those synthetic items only appear once their own host-wiring
@@ -170,6 +187,19 @@ export const practice = {
 
 		'practice.error.body':
 			"Impossible d'ouvrir la file de pratique. Recharge la page, mon ami. Si ça continue, le stockage de ton navigateur est peut-être plein ou bloqué.",
+
+		'practice.playthrough.pre': 'LECTURE DE {SONG} · {N} ACCORDS',
+		'practice.playthrough.startCta': 'Commencer la lecture',
+		'practice.playthrough.reviewingLabel': 'Lecture de {SONG}',
+		'practice.playthrough.end': 'Tu as joué {SONG} en entier.',
+		'practice.playthrough.continueCta': 'Continuer la pratique',
+		'practice.playthrough.skippedSingular':
+			'1 accord ignoré (pas encore dans ton catalogue de pratique).',
+		'practice.playthrough.skippedPlural':
+			'{N} accords ignorés (pas encore dans ton catalogue de pratique).',
+		'practice.empty.playthrough.heading': 'Rien à jouer.',
+		'practice.empty.playthrough.body':
+			"Aucun accord de {SONG} n'est encore dans ton catalogue de pratique ({N} ignorés).",
 
 		'practice.cue.nameIt': 'NOMMER',
 		'practice.cue.playIt': 'JOUER',

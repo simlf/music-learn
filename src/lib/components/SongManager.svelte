@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import {
 		deleteSong,
 		findSongByPresetId,
@@ -14,6 +15,8 @@
 	import SongFilterToggle from '$lib/components/SongFilterToggle.svelte';
 	import { readSongFilter, writeSongFilter } from '$lib/practice/songFilterPref';
 	import { drillableSongSymbols } from '$lib/practice/songProvenance';
+	import { setSongPlaythrough } from '$lib/practice/songPlaythrough';
+	import { setCompSongSeed } from '$lib/practice/compSongSeed';
 	import { t, type MessageKey } from '$lib/i18n/locale.svelte';
 
 	/**
@@ -262,6 +265,18 @@
 		songs = listSongs();
 		closeEdit();
 	}
+
+	/** PLAY-01: drills `song`'s own chords, in sheet order, on /practice - the per-song play-through action. */
+	function playThroughSong(song: Song): void {
+		setSongPlaythrough(song.name, song.chordSymbols);
+		void goto('/practice');
+	}
+
+	/** Proposal 2's "Play over it": feeds `song`'s chords into the comping loop on /learn. */
+	function playOverSong(song: Song): void {
+		setCompSongSeed(song.name, song.chordSymbols);
+		void goto('/learn');
+	}
 </script>
 
 {#if draft === null}
@@ -294,37 +309,57 @@
 		<ul class="mt-8 flex list-none flex-col gap-3 p-0">
 			{#each songs as song (song.id)}
 				<li
-					class="song-row border-ink bg-paper-bright flex items-stretch border-2"
+					class="song-row border-ink bg-paper-bright flex flex-col border-2"
 					id={`song-${song.id}`}
 					data-testid="song-row"
 				>
-					<button
-						type="button"
-						class="song-row__open min-w-0 flex-1 cursor-pointer text-left"
-						data-testid="song-open"
-						onclick={() => startEdit(song)}
-					>
-						<span class="block truncate font-bold">{song.name}</span>
-						<span class="text-label text-muted mt-1 block font-mono uppercase">
-							{registerLine(song)}
-						</span>
-					</button>
-					<button
-						type="button"
-						role="switch"
-						class="song-toggle cursor-pointer"
-						aria-checked={song.active}
-						aria-label={`${t('songs.page.aria.practicePrefix')} ${song.name}`}
-						data-testid="song-toggle"
-						onclick={() => toggleActive(song)}
-					>
-						<span class="song-toggle__box" class:song-toggle__box--on={song.active}>
-							{song.active ? t('songs.page.toggle.on') : ''}
-						</span>
-						<span class="text-label text-muted font-mono uppercase">
-							{song.active ? t('songs.page.toggle.inRotation') : t('songs.page.toggle.resting')}
-						</span>
-					</button>
+					<div class="flex items-stretch">
+						<button
+							type="button"
+							class="song-row__open min-w-0 flex-1 cursor-pointer text-left"
+							data-testid="song-open"
+							onclick={() => startEdit(song)}
+						>
+							<span class="block truncate font-bold">{song.name}</span>
+							<span class="text-label text-muted mt-1 block font-mono uppercase">
+								{registerLine(song)}
+							</span>
+						</button>
+						<button
+							type="button"
+							role="switch"
+							class="song-toggle cursor-pointer"
+							aria-checked={song.active}
+							aria-label={`${t('songs.page.aria.practicePrefix')} ${song.name}`}
+							data-testid="song-toggle"
+							onclick={() => toggleActive(song)}
+						>
+							<span class="song-toggle__box" class:song-toggle__box--on={song.active}>
+								{song.active ? t('songs.page.toggle.on') : ''}
+							</span>
+							<span class="text-label text-muted font-mono uppercase">
+								{song.active ? t('songs.page.toggle.inRotation') : t('songs.page.toggle.resting')}
+							</span>
+						</button>
+					</div>
+					<div class="song-actions border-ink flex border-t-2">
+						<button
+							type="button"
+							class="song-action cursor-pointer"
+							data-testid="song-play-through"
+							onclick={() => playThroughSong(song)}
+						>
+							{t('songs.page.action.playThrough')}
+						</button>
+						<button
+							type="button"
+							class="song-action song-action--border cursor-pointer"
+							data-testid="song-play-over"
+							onclick={() => playOverSong(song)}
+						>
+							{t('songs.page.action.playOverIt')}
+						</button>
+					</div>
 				</li>
 			{/each}
 		</ul>
@@ -521,6 +556,30 @@
 		background: var(--color-ink);
 		color: var(--color-mustard);
 		animation: stamp-in 240ms ease-out;
+	}
+
+	/* Per-song play-through / play-over-it actions: same mono-uppercase,
+	   border-separated idiom as song-toggle, one text row instead of a stamp box. */
+	.song-action {
+		flex: 1;
+		background: transparent;
+		border: none;
+		min-height: 44px;
+		padding: var(--spacing-sm) var(--spacing-md);
+		font-family: var(--font-mono);
+		font-size: var(--text-label);
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		color: var(--color-ink);
+	}
+
+	.song-action--border {
+		border-left: 2px solid var(--color-ink);
+	}
+
+	.song-action:hover,
+	.song-action:focus-visible {
+		color: var(--color-vermilion);
 	}
 
 	.preset-card {

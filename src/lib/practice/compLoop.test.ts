@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Note } from 'tonal';
 import {
+	barsFromSymbols,
 	buildCompBars,
 	compBarScale,
 	compScaleGhosts,
@@ -326,5 +327,63 @@ describe('compScaleGhosts: what the overlay draws on top of the comp', () => {
 
 	it('returns nothing for no octaves (total)', () => {
 		expect(compScaleGhosts(compBarScale('G7')!, [])).toEqual([]);
+	});
+});
+
+describe('barsFromSymbols: the song-driven sibling of buildCompBars', () => {
+	it('voices an ordered symbol list exactly like buildCompBars voices the same chords', () => {
+		const bars = barsFromSymbols(['Dm7', 'G7', 'Cmaj7']);
+		const templateBars = buildCompBars('major-ii-V-I', 'C');
+
+		expect(bars.map((bar) => bar.symbol)).toEqual(['Dm7', 'G7', 'Cmaj7']);
+		expect(bars.map((bar) => bar.root)).toEqual(templateBars.map((bar) => bar.root));
+		expect(bars.map((bar) => bar.quality)).toEqual(templateBars.map((bar) => bar.quality));
+		expect(bars.map((bar) => bar.pitches)).toEqual(templateBars.map((bar) => bar.pitches));
+		expect(bars.map((bar) => bar.notes)).toEqual(templateBars.map((bar) => bar.notes));
+	});
+
+	it('carries no roman numeral - a song is not a step of a fixed template', () => {
+		const bars = barsFromSymbols(['Cm7']);
+		expect(bars[0].roman).toBe('');
+	});
+
+	it('assigns each bar its own sequential index, in the given order', () => {
+		const bars = barsFromSymbols(['Cm7', 'F7', 'Bbmaj7']);
+		expect(bars.map((bar) => bar.index)).toEqual([0, 1, 2]);
+	});
+
+	it('keeps repeats intact, in order (PLAY-02: real tunes repeat their ii-V-Is)', () => {
+		const bars = barsFromSymbols(['Dm7', 'G7', 'Dm7', 'G7']);
+		expect(bars.map((bar) => bar.symbol)).toEqual(['Dm7', 'G7', 'Dm7', 'G7']);
+	});
+
+	it('drops an unrecognized symbol rather than crashing', () => {
+		const bars = barsFromSymbols(['Cm7', 'NotAChord', 'F7']);
+		expect(bars.map((bar) => bar.symbol)).toEqual(['Cm7', 'F7']);
+	});
+
+	it('returns [] for an all-unvoiceable list, never throwing', () => {
+		expect(() => barsFromSymbols(['NotAChord', 'AlsoNot'])).not.toThrow();
+		expect(barsFromSymbols(['NotAChord', 'AlsoNot'])).toEqual([]);
+	});
+
+	it('returns [] for an empty symbol list', () => {
+		expect(barsFromSymbols([])).toEqual([]);
+	});
+
+	it('strips the slash bass from quality for a recognized inversion', () => {
+		const bars = barsFromSymbols(['Cmaj7/G']);
+		expect(bars[0].quality).toBe('maj7');
+	});
+
+	it('keeps and correctly voices an add9 chord (tonal chord.quality is empty for this one)', () => {
+		const bars = barsFromSymbols(['Cadd9']);
+		expect(bars).toHaveLength(1);
+		expect(bars[0].quality).toBe('add9');
+	});
+
+	it('keeps a slash embedded in the quality name itself, not a bass, intact', () => {
+		const bars = barsFromSymbols(['C6/9']);
+		expect(bars[0].quality).toBe('6/9');
 	});
 });

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import Button from '$lib/components/Button.svelte';
 	import ChordGlyph from '$lib/components/ChordGlyph.svelte';
 	import PianoKeyboard from '$lib/components/PianoKeyboard.svelte';
@@ -12,13 +12,16 @@
 	import { BEATS_PER_BAR, TEMPO_DEFAULT, nudgeTempo } from '$lib/audio/loopTiming';
 	import {
 		buildCompBars,
+		barsFromSymbols,
 		compBarScale,
 		compScaleGhosts,
 		romanShape,
-		templateMode
+		templateMode,
+		type CompBar
 	} from '$lib/practice/compLoop';
 	import { toStrudelPattern } from '$lib/practice/liveCode';
 	import { PROGRESSION_KEYS, PROGRESSION_TEMPLATES } from '$lib/practice/progressions';
+	import { consumeCompSongSeed } from '$lib/practice/compSongSeed';
 	import { t, type MessageKey } from '$lib/i18n/locale.svelte';
 
 	/**
@@ -84,6 +87,41 @@
 	let scaleOn = $state(false);
 
 	/**
+	 * Proposal 2's "Play over it": a one-shot handoff from song management
+	 * (`compSongSeed.ts`) that replaces the template+key progression with the
+	 * song's OWN chords, voiced via `barsFromSymbols`. Consumed once at
+	 * mount, so it never persists (matches this component's own "nothing
+	 * here is graded, scored, or persisted" contract). `songModeEmpty` covers
+	 * the edge case where none of the song's chords voice at all - rare, but
+	 * "never crashes on an exotic symbol" applies here too, not only to the
+	 * practice engine's play-through.
+	 */
+	let songMode = $state(false);
+	let songName = $state('');
+	let songBars = $state<CompBar[]>([]);
+	let songModeEmpty = $state(false);
+
+	onMount(() => {
+		const seed = consumeCompSongSeed();
+		if (seed === null) return;
+		const built = barsFromSymbols(seed.symbols);
+		songName = seed.songName;
+		if (built.length === 0) {
+			songModeEmpty = true;
+			return;
+		}
+		songMode = true;
+		songBars = built;
+	});
+
+	/** Leaves song mode back to the template+key progressions, stopping whatever is playing first. */
+	function exitSongMode(): void {
+		stop();
+		songMode = false;
+		songBars = [];
+	}
+
+	/**
 	 * ---- Live code escape hatch ----
 	 *
 	 * Inspired by the Strudel live-coding environment: the current bars,
@@ -130,7 +168,7 @@
 	 */
 	let intent = 0;
 
-	const bars = $derived(buildCompBars(templateId, key));
+	const bars = $derived(songMode ? songBars : buildCompBars(templateId, key));
 	const currentBar = $derived(bars[barIndex] ?? bars[0]);
 	const mode = $derived(templateMode(templateId));
 	/** A ♭5 bar comps three notes above the root (3rd, ♭5, 7th), so the caption gains its sibling line. */
@@ -375,41 +413,61 @@
 	<p class="text-body text-muted" data-testid="comping-sound-off">{t('learn.comping.soundOff')}</p>
 {/if}
 
-<div class="flex flex-col gap-2">
-	<p class="text-label font-mono uppercase" style="letter-spacing: 0.08em;">
-		{t('learn.comping.formLabel')}
+{#if songModeEmpty}
+	<p class="text-body text-muted" data-testid="comping-song-mode-empty">
+		{t('learn.comping.songMode.empty').replace('{SONG}', songName)}
 	</p>
-	<div class="flex flex-wrap gap-2" data-testid="comping-form-row">
-		{#each PROGRESSION_TEMPLATES as template (template.id)}
-			<Button
-				type="button"
-				variant={template.id === templateId ? 'primary' : 'ghost'}
-				aria-pressed={template.id === templateId}
-				onclick={() => pickForm(template.id)}
-			>
-				{romanShape(template.id)}
-			</Button>
-		{/each}
-	</div>
-</div>
+{/if}
 
-<div class="flex flex-col gap-2">
-	<p class="text-label font-mono uppercase" style="letter-spacing: 0.08em;">
-		{t('learn.comping.keyLabel')}
-	</p>
-	<div class="flex flex-wrap gap-2" data-testid="comping-key-row">
-		{#each PROGRESSION_KEYS as root (root)}
-			<Button
-				type="button"
-				variant={root === key ? 'primary' : 'ghost'}
-				aria-pressed={root === key}
-				onclick={() => pickKey(root)}
-			>
-				{root}
+{#if songMode}
+	<div class="flex flex-col gap-2">
+		<p class="text-label font-mono uppercase" style="letter-spacing: 0.08em;">
+			{t('learn.comping.songMode.label')}
+		</p>
+		<p class="text-body font-bold" data-testid="comping-song-mode-name">{songName}</p>
+		<div>
+			<Button type="button" variant="ghost" onclick={exitSongMode}>
+				{t('learn.comping.songMode.exit')}
 			</Button>
-		{/each}
+		</div>
 	</div>
-</div>
+{:else}
+	<div class="flex flex-col gap-2">
+		<p class="text-label font-mono uppercase" style="letter-spacing: 0.08em;">
+			{t('learn.comping.formLabel')}
+		</p>
+		<div class="flex flex-wrap gap-2" data-testid="comping-form-row">
+			{#each PROGRESSION_TEMPLATES as template (template.id)}
+				<Button
+					type="button"
+					variant={template.id === templateId ? 'primary' : 'ghost'}
+					aria-pressed={template.id === templateId}
+					onclick={() => pickForm(template.id)}
+				>
+					{romanShape(template.id)}
+				</Button>
+			{/each}
+		</div>
+	</div>
+
+	<div class="flex flex-col gap-2">
+		<p class="text-label font-mono uppercase" style="letter-spacing: 0.08em;">
+			{t('learn.comping.keyLabel')}
+		</p>
+		<div class="flex flex-wrap gap-2" data-testid="comping-key-row">
+			{#each PROGRESSION_KEYS as root (root)}
+				<Button
+					type="button"
+					variant={root === key ? 'primary' : 'ghost'}
+					aria-pressed={root === key}
+					onclick={() => pickKey(root)}
+				>
+					{root}
+				</Button>
+			{/each}
+		</div>
+	</div>
+{/if}
 
 <div class="flex flex-col gap-2">
 	<p class="text-label font-mono uppercase" style="letter-spacing: 0.08em;">
@@ -543,8 +601,12 @@
 			style="letter-spacing: 0.08em;"
 			data-testid="comping-position"
 		>
-			{t('learn.comping.keyLabel')}: {key}
-			{t(mode === 'minor' ? 'progressions.key.minor' : 'progressions.key.major')} ·
+			{#if songMode}
+				{songName} ·
+			{:else}
+				{t('learn.comping.keyLabel')}: {key}
+				{t(mode === 'minor' ? 'progressions.key.minor' : 'progressions.key.major')} ·
+			{/if}
 			{t('progressions.bar.progress.label')}
 			{barIndex + 1} / {bars.length}
 		</p>
@@ -563,7 +625,7 @@
 					data-testid="comping-bar-chip"
 					data-current={bar.index === barIndex ? 'true' : undefined}
 				>
-					<span class="text-label font-mono">{bar.roman}</span>
+					{#if bar.roman}<span class="text-label font-mono">{bar.roman}</span>{/if}
 					<span class="text-body">{bar.symbol}</span>
 				</div>
 			{/each}

@@ -66,6 +66,12 @@ export const songs = {
 
 		'songs.page.button.newSong': 'New song',
 
+		// Per-song actions (Phase 40 PLAY-01, and proposal 2's "Play over it"):
+		// play-through drills the song's own chords, in sheet order, on
+		// /practice; play-over-it feeds them into the comping loop on /learn.
+		'songs.page.action.playThrough': 'Play through',
+		'songs.page.action.playOverIt': 'Play over it',
+
 		'songs.page.presets.heading': 'The preset shelf',
 		'songs.page.presets.subtitle':
 			"One tap sets a standard in your list, already in rotation. Yours to edit after: charts disagree, your arrangement wins.",
@@ -146,6 +152,9 @@ export const songs = {
 		'songs.page.toggle.resting': 'Au repos',
 
 		'songs.page.button.newSong': 'Nouveau morceau',
+
+		'songs.page.action.playThrough': 'Jouer le morceau',
+		'songs.page.action.playOverIt': 'Improviser dessus',
 
 		'songs.page.presets.heading': "L'étagère des préréglages",
 		'songs.page.presets.subtitle':

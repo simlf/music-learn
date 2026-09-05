@@ -2,6 +2,7 @@ import { render, screen, cleanup, fireEvent, within } from '@testing-library/sve
 import { flushSync } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setLocale } from '$lib/i18n/locale.svelte';
+import { setCompSongSeed } from '$lib/practice/compSongSeed';
 import type { CompLoopHandle, CompLoopOptions } from '$lib/audio/audio';
 
 /**
@@ -305,6 +306,63 @@ describe('what the loop shows before it even starts', () => {
 				'.piano-keyboard__key--root, .piano-keyboard__key--third, .piano-keyboard__key--fifth, .piano-keyboard__key--seventh'
 			)
 		).toHaveLength(4);
+	});
+});
+
+describe('song mode (proposal 2: Play over it)', () => {
+	it('plays the song’s own chords instead of a template, with no roman numeral', () => {
+		setCompSongSeed('Blue Bossa', ['Cm7', 'Fm7', 'Bb7']);
+		render(CompingLoop);
+
+		expect(screen.getByTestId('comping-song-mode-name')).toHaveTextContent('Blue Bossa');
+		expect(screen.getByTestId('comping-position')).toHaveTextContent('Blue Bossa');
+		expect(screen.getByTestId('comping-position')).toHaveTextContent('BAR 1 / 3');
+		expect(currentChip()).toHaveTextContent('Cm7');
+		expect(barChips().map((chip) => chip.textContent?.trim())).toEqual(['Cm7', 'Fm7', 'Bb7']);
+		// No roman numeral - a song's chords are not steps of a fixed template.
+		expect(screen.queryByTestId('comping-form-row')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('comping-key-row')).not.toBeInTheDocument();
+	});
+
+	it('keeps repeats intact, in order (PLAY-02’s own rule, mirrored here)', () => {
+		setCompSongSeed('Song', ['Dm7', 'G7', 'Dm7', 'G7']);
+		render(CompingLoop);
+
+		expect(barChips().map((chip) => chip.textContent?.trim())).toEqual(['Dm7', 'G7', 'Dm7', 'G7']);
+	});
+
+	it('leaves song mode back to the template pickers, stopping the loop first', async () => {
+		setCompSongSeed('Blue Bossa', ['Cm7', 'Fm7']);
+		render(CompingLoop);
+		await clickStart();
+		expect(handleStops).toBe(0);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Back to progressions' }));
+
+		expect(handleStops).toBe(1);
+		expect(screen.getByTestId('comping-form-row')).toBeInTheDocument();
+		expect(screen.getByTestId('comping-key-row')).toBeInTheDocument();
+		expect(screen.queryByTestId('comping-song-mode-name')).not.toBeInTheDocument();
+	});
+
+	it('consumes the seed one-shot: nothing persists, and a later mount with no seed is a plain template loop', () => {
+		setCompSongSeed('Blue Bossa', ['Cm7']);
+		render(CompingLoop);
+		expect(screen.getByTestId('comping-song-mode-name')).toBeInTheDocument();
+		cleanup();
+
+		render(CompingLoop);
+		expect(screen.queryByTestId('comping-song-mode-name')).not.toBeInTheDocument();
+		expect(screen.getByTestId('comping-form-row')).toBeInTheDocument();
+	});
+
+	it('never crashes when none of the song’s chords can be voiced, and says so', () => {
+		setCompSongSeed('Modern chart', ['NotAChord', 'AlsoNot']);
+		expect(() => render(CompingLoop)).not.toThrow();
+
+		expect(screen.getByTestId('comping-song-mode-empty')).toHaveTextContent('Modern chart');
+		// Falls back to the ordinary template pickers rather than a dead loop.
+		expect(screen.getByTestId('comping-form-row')).toBeInTheDocument();
 	});
 });
 

@@ -25,10 +25,10 @@ The structural decision underneath all three: the app now has two kinds of surfa
 | Piece | File | What it owns |
 |---|---|---|
 | The clock | `src/lib/audio/loopTiming.ts` | Tempo range, tempo to duration, bar advance and wrap. Zero imports, so audio.ts never reaches the theory layer. |
-| The voicing and the form | `src/lib/practice/compLoop.ts` | `buildCompBars(templateId, key)`, `compVoicing(symbol)`, `romanShape`, `templateMode`. |
+| The voicing and the form | `src/lib/practice/compLoop.ts` | `buildCompBars(templateId, key)`, its song-driven sibling `barsFromSymbols(symbols)` (roman always `''`), `compVoicing(symbol)`, `romanShape`, `templateMode`. |
 | The comp voicing math | `src/lib/audio/voicing.ts` | `toCompPitches(root, upper)`: root in octave 3, guide tones from octave 4, strictly ascending. |
 | The scheduler | `src/lib/audio/audio.ts` | `startCompLoop` / `stopCompLoop` / `compLoopRunning`, on Tone's Transport. |
-| The surface | `src/lib/components/CompingLoop.svelte`, mounted at `src/routes/learn/+page.svelte` (`data-testid="learn-comping"`) | Three controls (FORME / TON / TEMPO), two readouts, plus two default-off toggles: HOLD (3.3) and SCALE, the chord-scale overlay of 5.2. |
+| The surface | `src/lib/components/CompingLoop.svelte`, mounted at `src/routes/learn/+page.svelte` (`data-testid="learn-comping"`) | Three controls (FORME / TON / TEMPO), two readouts, plus two default-off toggles: HOLD (3.3) and SCALE, the chord-scale overlay of 5.2. A song mode, fed by the one-shot channel `src/lib/practice/compSongSeed.ts` from song management's "Play over it", swaps FORME/TON for the song's own progression (falling back to the template pickers with a one-line message if none of the song's chords can be voiced). |
 | The copy | `src/lib/i18n/messages/learn.ts`, `learn.comping.*` | en + fr. |
 
 It reuses the one progression engine (`src/lib/practice/progressions.ts`): 3 templates at `:108-137`, 12 keys at `:140`, which are `MAJOR_SCALE_ROOTS`. It invents no second progression table, and a test asserts symbol-for-symbol agreement with `buildProgression` across all 36 template/key pairs.

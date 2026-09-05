@@ -13,6 +13,7 @@
 
 import { spellChord } from '$lib/theory/chord';
 import { chromaOf } from '$lib/theory/interval';
+import { allFacts, chordFormulaFactId, factById } from '$lib/srs/facts';
 import { activeSongChordSymbols, listSongs } from './songs';
 
 /**
@@ -98,4 +99,58 @@ export function symbolHasProvenance(symbol: string, index?: Map<string, string[]
  */
 export function drillableSongSymbols(): string[] {
 	return activeSongChordSymbols().filter((symbol) => spellChord(symbol).recognized);
+}
+
+/**
+ * Lazily built, once: every chord-formula catalog symbol's own
+ * `normalizeSymbolForMatch` identity, mapped back to that catalog symbol.
+ * The catalog (`allFacts()`) is a pure, static module-load-time constant, so
+ * this never goes stale and is safe to memoize for the process lifetime.
+ */
+let catalogByNormalizedKey: Map<string, string> | null = null;
+
+function catalogIndex(): Map<string, string> {
+	if (catalogByNormalizedKey !== null) return catalogByNormalizedKey;
+	const index = new Map<string, string>();
+	for (const fact of allFacts()) {
+		if (fact.factKind !== 'chord-formula') continue;
+		index.set(normalizeSymbolForMatch(fact.symbol), fact.symbol);
+	}
+	catalogByNormalizedKey = index;
+	return index;
+}
+
+/**
+ * Resolves a song's chord symbol to the nearest DRILLABLE catalog symbol
+ * (PLAY-03): the symbol itself when it already IS one of the catalog's
+ * chord-formula facts, or, failing that, whichever catalog symbol shares its
+ * `normalizeSymbolForMatch` identity - an enharmonic root respelling
+ * (D#m7 -> Ebm7) or a quality alias the catalog also knows under a different
+ * spelling. Returns undefined when no catalog chord shares that identity at
+ * all: a genuinely exotic quality (sus2, 9, 13, add9, alt...) outside the
+ * 14-suffix catalog, which the caller counts as skipped rather than crashing
+ * a play-through on it.
+ */
+export function resolveDrillableSymbol(symbol: string): string | undefined {
+	if (factById(chordFormulaFactId(symbol)) !== undefined) return symbol;
+
+	/*
+	 * BUG PIN: tonal leaves `Chord.get(...).type` (spellChord's `quality`)
+	 * as the empty string for several real quality names it otherwise spells
+	 * correctly (verified: 'add9' AND '7#5' both report `type: ''`, despite
+	 * '7#5' being one of the 14 catalog suffixes). normalizeSymbolForMatch's
+	 * identity key is `${rootChroma}:${quality}`, so every empty-`quality`
+	 * chord on the same root collapses into ONE key regardless of how
+	 * different the chords actually are - resolveDrillableSymbol('Cadd9')
+	 * would otherwise "resolve" to the catalog's unrelated C7#5 fact. An
+	 * empty quality is therefore never trustworthy as a match key here: the
+	 * symbol is treated as unresolvable (skipped) rather than risking a
+	 * wrong remap. Every catalog suffix EXCEPT '7#5' spells its own quality
+	 * name, so '7#5' itself is still reached above via the direct factById
+	 * check; only the FALLBACK path (alias/enharmonic remap for a symbol not
+	 * already in the catalog) is guarded here.
+	 */
+	const spelled = spellChord(symbol);
+	if (!spelled.recognized || spelled.quality === '') return undefined;
+	return catalogIndex().get(normalizeSymbolForMatch(symbol));
 }

@@ -36,6 +36,11 @@
 	import { Rating, newCard } from '$lib/srs/scheduler';
 	import { factById } from '$lib/srs/facts';
 	import { consumeDrillSeeds, consumeLessonSeeds, setDrillSeeds } from '$lib/practice/drillSeeds';
+	import {
+		consumeSongPlaythrough,
+		buildPlaythroughItems,
+		type SongPlaythroughSeed
+	} from '$lib/practice/songPlaythrough';
 	import { readSongFilter } from '$lib/practice/songFilterPref';
 	import { buildProvenanceIndex, symbolHasProvenance } from '$lib/practice/songProvenance';
 	import { recordPracticeAnswer } from '$lib/practice/answerTelemetry';
@@ -72,12 +77,29 @@
 		| 'empty-no-deck'
 		| 'empty-none-due'
 		| 'empty-filtered'
+		| 'empty-playthrough'
 		| 'reviewing'
 		| 'complete'
 		| 'error';
 
 	let pageState = $state<PageState>('loading');
 	let queue = $state<HybridQueueItem[]>([]);
+
+	/**
+	 * PLAY-01/02 (Phase 40): a song play-through, one-shot from
+	 * `songPlaythrough.ts`. `isPlaythrough` gates the pre-start/reviewing/
+	 * complete copy over to the song's own register instead of the daily
+	 * one; `playthroughSongName` names it; `playthroughSkipped` is the
+	 * PLAY-03 visible count of chords the run could not resolve to a
+	 * catalog fact. A play-through never touches the FSRS pool at all (see
+	 * loadPlaythrough below) - proposal 3's fix generalized: rather than
+	 * widening the round's question budget per seed the way drill-seeds do,
+	 * this removes the budget entirely, since the run's own length already
+	 * IS the bound PLAY-02 asks for ("no pool questions diluting the run").
+	 */
+	let isPlaythrough = $state(false);
+	let playthroughSongName = $state('');
+	let playthroughSkipped = $state(0);
 
 	/**
 	 * B1, the bounded daily session.
@@ -299,10 +321,63 @@
 		return items;
 	}
 
+	/**
+	 * PLAY-01/02: a song play-through bypasses the FSRS pool entirely - no
+	 * due-loading, no composePracticeQueue, no sliceRound - so the daily
+	 * target can never dilute or cut a run the user explicitly started.
+	 * `roundTarget = Infinity` means `maybeFinishRound`'s `asked < roundTarget`
+	 * check can never end the round early; the round ends only when the
+	 * queue itself is empty (isHybridSessionComplete), which happens exactly
+	 * once every symbol - and every delayed retry a miss produces - has been
+	 * asked. PLAY-03: an unresolvable symbol is counted in `skipped` rather
+	 * than surfacing a malformed question; a song with nothing resolvable at
+	 * all lands on its own empty state instead of a silent no-op.
+	 */
+	async function loadPlaythrough(playthrough: SongPlaythroughSeed): Promise<void> {
+		const existingCards = await getAllCards();
+		const cardsByKey = new Map<string, CardRecord>();
+		for (const card of existingCards) {
+			cardsByKey.set(`${card.factId}:${card.mode}`, card);
+		}
+		const { items, skipped } = buildPlaythroughItems(playthrough.symbols, cardsByKey);
+		playthroughSongName = playthrough.songName;
+		playthroughSkipped = skipped;
+
+		if (items.length === 0) {
+			pageState = 'empty-playthrough';
+			return;
+		}
+
+		isPlaythrough = true;
+		dayDone = false;
+		queue = items;
+		roundTarget = Number.POSITIVE_INFINITY;
+		roundSize = items.length;
+		seededCount = 0;
+		waiting = 0;
+		extraRound = false;
+		answeredEarlier = answeredToday();
+		lastSession = undefined;
+		returningItems = [];
+		asked = 0;
+		score = { correct: 0, streak: 0 };
+		bestStreak = 0;
+		missed = [];
+		cardEpoch = 0;
+		pageState = 'pre-start';
+	}
+
 	async function load(): Promise<void> {
 		pageState = 'loading';
 		seededCount = 0;
+		isPlaythrough = false;
 		try {
+			const playthrough = consumeSongPlaythrough();
+			if (playthrough !== null) {
+				await loadPlaythrough(playthrough);
+				return;
+			}
+
 			const seededItems = await buildSeededItems();
 
 			const dueBase = await loadDueWithIntroduction();
@@ -620,6 +695,19 @@
 	 * resume line too, exactly as it is on the sliced and done lines - the
 	 * register's contract is that the remainder is shown, never hidden.
 	 */
+	/** PLAY-01/03: the play-through's own pre-start register - the song's name, its drillable count, and any skipped count - never the daily "today/waiting" language, which does not apply to it. */
+	const playthroughPreStartLine = $derived.by((): string => {
+		const base = t('practice.playthrough.pre')
+			.replace('{SONG}', playthroughSongName)
+			.replace('{N}', String(roundSize));
+		if (playthroughSkipped === 0) return base;
+		const skippedLine =
+			playthroughSkipped === 1
+				? t('practice.playthrough.skippedSingular')
+				: t('practice.playthrough.skippedPlural').replace('{N}', String(playthroughSkipped));
+		return `${base} · ${skippedLine}`;
+	});
+
 	const preStartRegister = $derived.by((): string => {
 		const waitingLine = t('practice.pre.waiting').replace('{N}', String(waiting));
 		if (roundSize === 0) {
@@ -739,6 +827,22 @@
 		if (!isHybridSessionComplete(queue) && asked < roundTarget) return;
 
 		/**
+		 * A play-through has no daily-target concept to satisfy or claim: it
+		 * reports its own song's score line instead (see the end card's
+		 * isPlaythrough branch), never "today's practice is done" - the
+		 * user's real FSRS backlog is untouched by it either way, so claiming
+		 * the day done here would be a lie in exactly the direction PLAY-02
+		 * exists to prevent (the run itself never gets diluted by the daily
+		 * target, so the daily target should not get to claim credit for it).
+		 */
+		if (isPlaythrough) {
+			bankedToday = answeredToday();
+			refreshEndStreak();
+			pageState = 'complete';
+			return;
+		}
+
+		/**
 		 * B2: what is left over is everything the round never drew PLUS
 		 * anything it drew but did not resolve (a late miss whose delayed retry
 		 * fell outside the budget). Both are still FSRS-due, so both belong in
@@ -835,8 +939,25 @@
 			const updatedCard = await recordGrade(item.card, rating);
 			recordPracticeAnswer({ ...telemetryFor(item), correct, durationMs });
 			finishItem(item, correct);
-			const updatedItem = { ...item, card: updatedCard };
-			queue = advanceHybridQueue([updatedItem, ...queue.slice(1)], rating, RETRY_OPTIONS);
+			/**
+			 * A song play-through can carry the SAME (factId, mode) card at
+			 * several positions at once (repeats kept, PLAY-02) - refresh
+			 * every queue item sharing that identity, not just the one just
+			 * graded. recordGrade computes its FSRS transition off whatever
+			 * CardRecord it is handed and Dexie's put() is last-write-wins
+			 * keyed on that same identity, so without this a later repeat
+			 * would grade from the stale pre-round snapshot every occurrence
+			 * started from and silently revert the first repeat's update the
+			 * moment it is graded.
+			 */
+			const refreshedQueue = queue.map((queueItem) =>
+				isHostGraded(queueItem) &&
+				queueItem.factId === item.factId &&
+				queueItem.mode === item.mode
+					? { ...queueItem, card: updatedCard }
+					: queueItem
+			);
+			queue = advanceHybridQueue(refreshedQueue, rating, RETRY_OPTIONS);
 			questionShownAt = startQuestionClock();
 			cardEpoch += 1;
 			maybeFinishRound();
@@ -1002,10 +1123,19 @@
 				<Button type="button" variant="ghost" onclick={load}>{t('recall.cta.try-again')}</Button>
 			</div>
 		</div>
+	{:else if pageState === 'empty-playthrough'}
+		<div class="mt-6" data-testid="practice-empty-playthrough">
+			<p class="text-heading font-bold">{t('practice.empty.playthrough.heading')}</p>
+			<p class="text-body mt-4">
+				{t('practice.empty.playthrough.body')
+					.replace('{SONG}', playthroughSongName)
+					.replace('{N}', String(playthroughSkipped))}
+			</p>
+		</div>
 	{:else if pageState === 'pre-start'}
 		<div class="border-ink bg-paper-bright mt-6 border-2 p-6" data-testid="practice-pre-start">
 			<p class="text-label font-mono uppercase" data-testid="practice-due-register">
-				{preStartRegister}
+				{isPlaythrough ? playthroughPreStartLine : preStartRegister}
 			</p>
 
 			{#if lastSessionLine || comingBackLine}
@@ -1022,7 +1152,7 @@
 			<div class="mt-6">
 				{#if roundSize > 0}
 					<Button type="button" variant="primary" onclick={startSession}>
-						{t('practice.cta.start')}
+						{isPlaythrough ? t('practice.playthrough.startCta') : t('practice.cta.start')}
 					</Button>
 				{:else}
 					<Button type="button" variant="primary" onclick={() => void keepGoing()}>
@@ -1037,6 +1167,11 @@
 			{score.correct} {t('drills.score.right')} · {score.streak}
 			{t('drills.score.streak')}
 		</p>
+		{#if isPlaythrough}
+			<p class="text-label text-muted mt-1 font-mono uppercase" data-testid="practice-playthrough-label">
+				{t('practice.playthrough.reviewingLabel').replace('{SONG}', playthroughSongName)}
+			</p>
+		{/if}
 		<p
 			class="text-label text-muted mb-2 mt-4 font-mono uppercase"
 			data-testid="question-source-tag"
@@ -1115,11 +1250,24 @@
 				{t('drills.end.bestRunPrefix')} {bestStreak} {t('drills.end.bestRunSuffix')}
 			</p>
 
-			<p class="text-body mt-4 font-bold" data-testid="practice-end-card-done">{endDoneLine}</p>
-			{#if endRemainderLine}
-				<p class="text-body text-muted mt-1" data-testid="practice-end-card-remainder">
-					{endRemainderLine}
+			{#if isPlaythrough}
+				<p class="text-body mt-4 font-bold" data-testid="practice-end-card-done">
+					{t('practice.playthrough.end').replace('{SONG}', playthroughSongName)}
 				</p>
+				{#if playthroughSkipped > 0}
+					<p class="text-body text-muted mt-1" data-testid="practice-end-card-remainder">
+						{playthroughSkipped === 1
+							? t('practice.playthrough.skippedSingular')
+							: t('practice.playthrough.skippedPlural').replace('{N}', String(playthroughSkipped))}
+					</p>
+				{/if}
+			{:else}
+				<p class="text-body mt-4 font-bold" data-testid="practice-end-card-done">{endDoneLine}</p>
+				{#if endRemainderLine}
+					<p class="text-body text-muted mt-1" data-testid="practice-end-card-remainder">
+						{endRemainderLine}
+					</p>
+				{/if}
 			{/if}
 			{#if endStreakLine}
 				<p
@@ -1152,7 +1300,7 @@
 				<p class="text-body mt-6">{t('drills.end.cleanSheet')}</p>
 			{/if}
 
-			{#if seedableMisses.length > 0 || waiting > 0}
+			{#if seedableMisses.length > 0 || waiting > 0 || isPlaythrough}
 				<div class="mt-6 flex flex-wrap gap-2">
 					{#if seedableMisses.length > 0}
 						<Button
@@ -1172,6 +1320,15 @@
 							onclick={() => void keepGoing()}
 						>
 							{t('practice.cta.keepGoing')}
+						</Button>
+					{/if}
+					{#if isPlaythrough}
+						<Button
+							type="button"
+							variant={seedableMisses.length > 0 ? 'ghost' : 'primary'}
+							onclick={() => void keepGoing()}
+						>
+							{t('practice.playthrough.continueCta')}
 						</Button>
 					{/if}
 				</div>

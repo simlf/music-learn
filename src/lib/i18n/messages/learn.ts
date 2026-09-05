@@ -72,6 +72,14 @@ export const learn = {
 		'learn.comping.studyNote':
 			'Study mode is on, so each bar rolls one note at a time instead of landing as a block.',
 
+		// Song mode (proposal 2's "Play over it", improvisation.md 4.3.2/5.2):
+		// the loop plays a song's own chords instead of a template+key
+		// progression. {SONG} is interpolated verbatim (song names are user
+		// data, never localized).
+		'learn.comping.songMode.label': 'PLAYING OVER',
+		'learn.comping.songMode.exit': 'Back to progressions',
+		'learn.comping.songMode.empty': "None of {SONG}'s chords can be played over here.",
+
 		// Live code escape hatch (inspired by the Strudel live-coding
 		// environment). IMMUNITY: the seeded pattern text itself is never
 		// translated, and the raw engine error message onStrudelError reports
@@ -147,6 +155,10 @@ export const learn = {
 			'Le son est coupé, la boucle n\'a donc rien à jouer. Réactive-le dans Progrès, dans les réglages de pratique.',
 		'learn.comping.studyNote':
 			"Le mode étude est activé : chaque mesure est arpégée note par note au lieu d'être plaquée.",
+
+		'learn.comping.songMode.label': 'IMPROVISATION SUR',
+		'learn.comping.songMode.exit': 'Retour aux progressions',
+		'learn.comping.songMode.empty': "Aucun accord de {SONG} ne peut être joué ici.",
 
 		'learn.comping.liveCodeLabel': 'LIVE CODE',
 		'learn.comping.liveCodeChip': 'Ouvrir en live code',

@@ -4,6 +4,7 @@ import {
 	buildProvenanceIndex,
 	drillableSongSymbols,
 	normalizeSymbolForMatch,
+	resolveDrillableSymbol,
 	songsForSymbol,
 	symbolHasProvenance
 } from './songProvenance';
@@ -156,6 +157,32 @@ describe('songProvenance', () => {
 			saveSong(song({ id: 'b', name: 'Inactive', chordSymbols: ['F7'], active: false }));
 
 			expect(drillableSongSymbols()).toEqual(['Cm7']);
+		});
+	});
+
+	describe('resolveDrillableSymbol (PLAY-03)', () => {
+		it('returns the symbol itself when it already is a catalog chord-formula fact', () => {
+			expect(resolveDrillableSymbol('Cm7')).toBe('Cm7');
+		});
+
+		it('remaps an enharmonic root respelling to the catalog symbol', () => {
+			// The catalog's ROOTS list spells this root 'Eb', never 'D#'.
+			expect(resolveDrillableSymbol('D#m7')).toBe('Ebm7');
+		});
+
+		it('remaps a quality alias to the catalog spelling', () => {
+			expect(resolveDrillableSymbol('C-7')).toBe('Cm7');
+			expect(resolveDrillableSymbol('Cmin7')).toBe('Cm7');
+		});
+
+		it('returns undefined for a genuinely exotic quality outside the catalog', () => {
+			expect(resolveDrillableSymbol('C9')).toBeUndefined();
+			expect(resolveDrillableSymbol('Cadd9')).toBeUndefined();
+		});
+
+		it('returns undefined, never throws, for garbage input', () => {
+			expect(() => resolveDrillableSymbol('NotAChord')).not.toThrow();
+			expect(resolveDrillableSymbol('NotAChord')).toBeUndefined();
 		});
 	});
 });

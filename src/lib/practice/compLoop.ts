@@ -3,6 +3,7 @@ import { shellNotes } from '$lib/practice/shellVoicing';
 import { toCompPitches } from '$lib/audio/voicing';
 import { buildProgression, PROGRESSION_TEMPLATES } from '$lib/practice/progressions';
 import { improvGuideFor, type ChordScaleOption } from '$lib/theory/chordScale';
+import { toAsciiAccidentals } from '$lib/theory/interval';
 import type { SpelledNote } from '$lib/theory/types';
 
 /**
@@ -93,6 +94,44 @@ export function buildCompBars(templateId: string, key: string): CompBar[] {
 			symbol: bar.symbol,
 			root: voicing.root,
 			quality: bar.quality,
+			notes: voicing.notes,
+			pitches: voicing.pitches
+		});
+	}
+	return bars;
+}
+
+/**
+ * The loop's bars for an arbitrary ordered chord-symbol list - the
+ * song-driven sibling of buildCompBars (proposal 2's "Play over it"): feed a
+ * song's own `chordSymbols` through this instead of a template+key, and the
+ * loop comps the tune's actual changes rather than a fixed ii-V-I/I-vi-ii-V/
+ * minor-ii-V-i shape. Voices each symbol exactly the same way
+ * (`compVoicing`, already proven per-symbol) but carries no roman numeral or
+ * diatonic function - a song's chords are not steps of a fixed template, so
+ * `roman` is always ''.
+ *
+ * Total like buildCompBars: an unrecognized symbol, or one `compVoicing`
+ * cannot voice, is dropped rather than surfaced, so one exotic chart chord
+ * thins the loop instead of crashing it.
+ */
+export function barsFromSymbols(symbols: readonly string[]): CompBar[] {
+	const bars: CompBar[] = [];
+	for (const symbol of symbols) {
+		const chord = spellChord(symbol);
+		if (!chord.recognized) continue;
+		const voicing = compVoicing(symbol);
+		if (!voicing) continue;
+		const asciiRoot = toAsciiAccidentals(chord.root);
+		const bodySymbol =
+			chord.bass !== undefined ? chord.symbol.slice(0, chord.symbol.lastIndexOf('/')) : chord.symbol;
+		const quality = bodySymbol.startsWith(asciiRoot) ? bodySymbol.slice(asciiRoot.length) : '';
+		bars.push({
+			index: bars.length,
+			roman: '',
+			symbol: chord.symbol,
+			root: voicing.root,
+			quality,
 			notes: voicing.notes,
 			pitches: voicing.pitches
 		});
