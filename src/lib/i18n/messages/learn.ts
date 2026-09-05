@@ -72,6 +72,22 @@ export const learn = {
 		'learn.comping.studyNote':
 			'Study mode is on, so each bar rolls one note at a time instead of landing as a block.',
 
+		// Live code escape hatch (inspired by the Strudel live-coding
+		// environment). IMMUNITY: the seeded pattern text itself is never
+		// translated, and the raw engine error message onStrudelError reports
+		// is technical text from Strudel's own parser, appended after
+		// liveCodeErrorPrefix rather than translated.
+		'learn.comping.liveCodeLabel': 'LIVE CODE',
+		'learn.comping.liveCodeChip': 'Open in live code',
+		'learn.comping.liveCodeIntro':
+			'The same chords, written as code you can edit. Change it and press play to hear the difference. Nothing here is graded, and it never touches your practice queue.',
+		'learn.comping.liveCodePlay': 'Play the pattern',
+		'learn.comping.liveCodeStop': 'Stop the pattern',
+		'learn.comping.liveCodeReset': 'Reset',
+		'learn.comping.liveCodeErrorPrefix': 'That pattern has a problem:',
+		'learn.comping.liveCodeUnavailable':
+			"Live code isn't available right now. Open this once with an internet connection so your device can keep it for offline use.",
+
 		// Footer CTA
 		'learn.footer.practiceButton': 'Go to Practice',
 
@@ -129,6 +145,17 @@ export const learn = {
 			'Le son est coupé, la boucle n\'a donc rien à jouer. Réactive-le dans Progrès, dans les réglages de pratique.',
 		'learn.comping.studyNote':
 			"Le mode étude est activé : chaque mesure est arpégée note par note au lieu d'être plaquée.",
+
+		'learn.comping.liveCodeLabel': 'LIVE CODE',
+		'learn.comping.liveCodeChip': 'Ouvrir en live code',
+		'learn.comping.liveCodeIntro':
+			"Les mêmes accords, écrits en code que tu peux modifier. Change le texte puis lance la lecture pour entendre la différence. Rien n'est noté ici, rien ne rejoint ta file de pratique.",
+		'learn.comping.liveCodePlay': 'Jouer le motif',
+		'learn.comping.liveCodeStop': 'Arrêter le motif',
+		'learn.comping.liveCodeReset': 'Réinitialiser',
+		'learn.comping.liveCodeErrorPrefix': 'Ce motif a un problème :',
+		'learn.comping.liveCodeUnavailable':
+			"Le live code n'est pas disponible pour l'instant. Ouvre cette page une fois avec une connexion internet pour que ton appareil puisse le garder hors ligne.",
 
 		'learn.footer.practiceButton': 'Direction la pratique',
 		'learn.scale-practice.toggle': 'Pratique de gamme',

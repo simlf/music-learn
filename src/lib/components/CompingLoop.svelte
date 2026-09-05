@@ -6,6 +6,7 @@
 	import { renderableOctaves } from '$lib/components/keyboardLayout';
 	import { soundEnabled, startCompLoop, studyModeEnabled } from '$lib/audio/audio';
 	import type { CompLoopHandle } from '$lib/audio/audio';
+	import { onStrudelError, runStrudelPattern, stopStrudelPattern } from '$lib/audio/strudel';
 	import { BEATS_PER_BAR, TEMPO_DEFAULT, nudgeTempo } from '$lib/audio/loopTiming';
 	import {
 		buildCompBars,
@@ -14,6 +15,7 @@
 		romanShape,
 		templateMode
 	} from '$lib/practice/compLoop';
+	import { toStrudelPattern } from '$lib/practice/liveCode';
 	import { PROGRESSION_KEYS, PROGRESSION_TEMPLATES } from '$lib/practice/progressions';
 	import { t, type MessageKey } from '$lib/i18n/locale.svelte';
 
@@ -79,6 +81,24 @@
 	 */
 	let scaleOn = $state(false);
 
+	/**
+	 * ---- Live code escape hatch ----
+	 *
+	 * Inspired by the Strudel live-coding environment: the current bars,
+	 * rendered as an editable pattern (`$lib/practice/liveCode`) the player can
+	 * change and hear, via a second, deliberately separate engine
+	 * ($lib/audio/strudel; see its header for why). Same discipline as the
+	 * rest of this component: no grading, no persistence, and it stops the
+	 * moment the player leaves it. The two engines never sound at once: each
+	 * start stops whichever one was playing.
+	 */
+	let liveCodeOpen = $state(false);
+	let liveCodeText = $state('');
+	let liveCodeRunning = $state(false);
+	let liveCodeError = $state<string | null>(null);
+	let liveCodeUnavailable = $state(false);
+	let unsubscribeLiveCodeError: (() => void) | null = null;
+
 	let handle: CompLoopHandle | null = null;
 	/**
 	 * Bumped by every start and every stop request (including destroy), so an
@@ -130,6 +150,7 @@
 	);
 
 	async function start(): Promise<void> {
+		if (liveCodeRunning) stopLiveCode();
 		const mine = ++intent;
 		starting = true;
 		// Holding: play only the one bar currently on screen, on repeat, and
@@ -218,8 +239,56 @@
 		handle?.setTempo(next);
 	}
 
+	/** The seeded pattern for the CURRENT bars and tempo, in Strudel's own syntax. */
+	function seedLiveCode(): void {
+		liveCodeText = toStrudelPattern(bars, tempo);
+		liveCodeError = null;
+		liveCodeUnavailable = false;
+	}
+
+	/**
+	 * Opens or closes the live-code panel. Opening seeds it from what is on
+	 * screen right now; closing stops whatever pattern was playing, since a
+	 * sound with no visible stop control left behind would be dishonest.
+	 */
+	function toggleLiveCode(): void {
+		liveCodeOpen = !liveCodeOpen;
+		if (liveCodeOpen) seedLiveCode();
+		else if (liveCodeRunning) stopLiveCode();
+	}
+
+	/** Reseeds the pattern from the current form/key/tempo, discarding edits. */
+	function resetLiveCode(): void {
+		seedLiveCode();
+	}
+
+	/** Runs the edited pattern on Strudel's own engine, stopping the main loop first. */
+	async function playLiveCode(): Promise<void> {
+		if (running || starting) stop();
+		liveCodeError = null;
+		liveCodeUnavailable = false;
+		if (!unsubscribeLiveCodeError) {
+			unsubscribeLiveCodeError = onStrudelError((message) => {
+				liveCodeError = message;
+			});
+		}
+		const result = await runStrudelPattern(liveCodeText);
+		if (!result.ok) {
+			liveCodeUnavailable = true;
+			return;
+		}
+		liveCodeRunning = true;
+	}
+
+	function stopLiveCode(): void {
+		liveCodeRunning = false;
+		stopStrudelPattern();
+	}
+
 	onDestroy(() => {
 		stop();
+		if (liveCodeRunning) stopLiveCode();
+		unsubscribeLiveCodeError?.();
 	});
 </script>
 
@@ -322,6 +391,57 @@
 		</Button>
 	</div>
 </div>
+
+<div class="flex flex-col gap-2">
+	<p class="text-label font-mono uppercase" style="letter-spacing: 0.08em;">
+		{t('learn.comping.liveCodeLabel')}
+	</p>
+	<div class="flex flex-wrap gap-2" data-testid="comping-livecode-row">
+		<Button
+			type="button"
+			variant={liveCodeOpen ? 'primary' : 'ghost'}
+			aria-pressed={liveCodeOpen}
+			onclick={toggleLiveCode}
+		>
+			{t('learn.comping.liveCodeChip')}
+		</Button>
+	</div>
+</div>
+
+{#if liveCodeOpen}
+	<div class="border-ink flex flex-col gap-2 border-t-2 pt-4" data-testid="comping-livecode-panel">
+		<p class="text-body">{t('learn.comping.liveCodeIntro')}</p>
+		<textarea
+			class="border-ink bg-paper-bright font-mono w-full border-2 p-2"
+			rows="3"
+			spellcheck="false"
+			data-testid="comping-livecode-input"
+			bind:value={liveCodeText}
+		></textarea>
+		<div class="flex flex-wrap gap-2">
+			<Button type="button" variant="primary" disabled={!soundOn} onclick={playLiveCode}>
+				{t('learn.comping.liveCodePlay')}
+			</Button>
+			<Button type="button" variant="ghost" onclick={stopLiveCode}>
+				{t('learn.comping.liveCodeStop')}
+			</Button>
+			<Button type="button" variant="ghost" onclick={resetLiveCode}>
+				{t('learn.comping.liveCodeReset')}
+			</Button>
+		</div>
+		{#if liveCodeUnavailable}
+			<p class="text-body text-muted" data-testid="comping-livecode-unavailable">
+				{t('learn.comping.liveCodeUnavailable')}
+			</p>
+		{/if}
+		{#if liveCodeError}
+			<p class="text-body" data-testid="comping-livecode-error">
+				{t('learn.comping.liveCodeErrorPrefix')}
+				{liveCodeError}
+			</p>
+		{/if}
+	</div>
+{/if}
 
 <div>
 	<Button type="button" variant="primary" disabled={!soundOn} onclick={toggle}>

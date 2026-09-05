@@ -64,6 +64,27 @@ vi.mock('$lib/audio/audio', () => ({
 /** Set before a start to keep startCompLoop unresolved (the slow-sample-load case). */
 let holdStart = false;
 
+let strudelRuns: string[] = [];
+let strudelStops = 0;
+let strudelRunResult: { ok: boolean; unavailable?: boolean } = { ok: true };
+let strudelErrorCallback: ((message: string) => void) | null = null;
+
+vi.mock('$lib/audio/strudel', () => ({
+	runStrudelPattern: async (code: string) => {
+		strudelRuns.push(code);
+		return strudelRunResult;
+	},
+	stopStrudelPattern: () => {
+		strudelStops += 1;
+	},
+	onStrudelError: (callback: (message: string) => void) => {
+		strudelErrorCallback = callback;
+		return () => {
+			strudelErrorCallback = null;
+		};
+	}
+}));
+
 const { default: CompingLoop } = await import('./CompingLoop.svelte');
 
 function lastStart(): CompLoopOptions {
@@ -93,6 +114,10 @@ beforeEach(() => {
 	holdStart = false;
 	soundOn = true;
 	studyOn = false;
+	strudelRuns = [];
+	strudelStops = 0;
+	strudelRunResult = { ok: true };
+	strudelErrorCallback = null;
 });
 
 afterEach(() => {
@@ -176,10 +201,12 @@ describe('three controls: form, key, tempo', () => {
 		expect(screen.getByTestId('comping-tempo-value')).toHaveTextContent('120 BPM');
 	});
 
-	it('shows no other option: the only buttons are the forms, the keys, the tempo pair, hold, scale, and start', () => {
+	it('shows no other option: the only buttons are the forms, the keys, the tempo pair, hold, scale, live code, and start', () => {
 		render(CompingLoop);
 		const all = screen.getAllByRole('button');
-		expect(all).toHaveLength(3 + 12 + 2 + 1 + 1 + 1);
+		// forms(3) + keys(12) + tempo(2) + hold(1) + scale(1) + live code chip(1) + start(1).
+		// The live-code panel itself (play/stop/reset) is closed by default and adds no buttons yet.
+		expect(all).toHaveLength(3 + 12 + 2 + 1 + 1 + 1 + 1);
 	});
 });
 
@@ -607,6 +634,155 @@ describe('scale overlay', () => {
 	});
 });
 
+/**
+ * The "open in live code" escape hatch (inspired by the Strudel live-coding
+ * environment): the current bars, rendered as an editable pattern the player
+ * can change and hear on a second, separate engine ($lib/audio/strudel).
+ * Same discipline as the rest of this companion: no grading, and the two
+ * engines never sound at once.
+ */
+describe('live code escape hatch', () => {
+	function liveCodeButton(): HTMLElement {
+		return screen.getByRole('button', { name: 'Open in live code' });
+	}
+
+	function input(): HTMLTextAreaElement {
+		return screen.getByTestId('comping-livecode-input') as HTMLTextAreaElement;
+	}
+
+	it('is closed by default and adds exactly one chip', () => {
+		render(CompingLoop);
+
+		expect(liveCodeButton()).toHaveAttribute('aria-pressed', 'false');
+		expect(screen.queryByTestId('comping-livecode-panel')).not.toBeInTheDocument();
+	});
+
+	it('opens to a pattern seeded from the current form, key and tempo', async () => {
+		render(CompingLoop);
+		await fireEvent.click(liveCodeButton());
+
+		expect(liveCodeButton()).toHaveAttribute('aria-pressed', 'true');
+		expect(input().value).toBe('setcpm(17.5)\nchord("<Dm7 G7 Cmaj7>").voicing().s("sawtooth")');
+	});
+
+	it('never clobbers an edit when the key changes elsewhere on the page: reset is the only way back', async () => {
+		render(CompingLoop);
+		await fireEvent.click(liveCodeButton());
+		await fireEvent.input(input(), { target: { value: 'note("c e g")' } });
+
+		await fireEvent.click(screen.getByRole('button', { name: 'F' }));
+		expect(input().value).toBe('note("c e g")');
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+		expect(input().value).toBe('setcpm(17.5)\nchord("<Gm7 C7 Fmaj7>").voicing().s("sawtooth")');
+	});
+
+	it('lets the player edit the seeded text', async () => {
+		render(CompingLoop);
+		await fireEvent.click(liveCodeButton());
+
+		await fireEvent.input(input(), { target: { value: 'note("c e g").s("triangle")' } });
+
+		expect(input().value).toBe('note("c e g").s("triangle")');
+	});
+
+	it('plays the edited pattern, stopping the main loop first', async () => {
+		render(CompingLoop);
+		await clickStart();
+		await fireEvent.click(liveCodeButton());
+		await fireEvent.input(input(), { target: { value: 'note("c e g")' } });
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Play the pattern' }));
+
+		expect(handleStops).toBe(1);
+		expect(strudelRuns).toEqual(['note("c e g")']);
+	});
+
+	it('stops the live pattern before starting the main loop', async () => {
+		render(CompingLoop);
+		await fireEvent.click(liveCodeButton());
+		await fireEvent.click(screen.getByRole('button', { name: 'Play the pattern' }));
+
+		await clickStart();
+
+		expect(strudelStops).toBe(1);
+		expect(startCalls).toHaveLength(1);
+	});
+
+	it('stops the pattern with its own stop button', async () => {
+		render(CompingLoop);
+		await fireEvent.click(liveCodeButton());
+		await fireEvent.click(screen.getByRole('button', { name: 'Play the pattern' }));
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Stop the pattern' }));
+
+		expect(strudelStops).toBe(1);
+	});
+
+	it('resets the edited text back to the current seeded pattern', async () => {
+		render(CompingLoop);
+		await fireEvent.click(liveCodeButton());
+		await fireEvent.input(input(), { target: { value: 'garbage' } });
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+
+		expect(input().value).toBe('setcpm(17.5)\nchord("<Dm7 G7 Cmaj7>").voicing().s("sawtooth")');
+	});
+
+	it('shows the engine’s own error when the pattern fails, and clears it on the next play', async () => {
+		render(CompingLoop);
+		await fireEvent.click(liveCodeButton());
+		await fireEvent.click(screen.getByRole('button', { name: 'Play the pattern' }));
+
+		strudelErrorCallback?.('[eval] error: unexpected token');
+		await Promise.resolve();
+
+		expect(screen.getByTestId('comping-livecode-error')).toHaveTextContent(
+			'That pattern has a problem: [eval] error: unexpected token'
+		);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Play the pattern' }));
+		expect(screen.queryByTestId('comping-livecode-error')).not.toBeInTheDocument();
+	});
+
+	it('shows an honest unavailable message when the engine fails to load, never a silent no-op', async () => {
+		strudelRunResult = { ok: false, unavailable: true };
+		render(CompingLoop);
+		await fireEvent.click(liveCodeButton());
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Play the pattern' }));
+
+		expect(screen.getByTestId('comping-livecode-unavailable')).toBeInTheDocument();
+	});
+
+	it('disables play, like the main start button, when sound is off', async () => {
+		soundOn = false;
+		render(CompingLoop);
+		await fireEvent.click(liveCodeButton());
+
+		expect(screen.getByRole('button', { name: 'Play the pattern' })).toBeDisabled();
+	});
+
+	it('stops a running pattern when the panel is closed', async () => {
+		render(CompingLoop);
+		await fireEvent.click(liveCodeButton());
+		await fireEvent.click(screen.getByRole('button', { name: 'Play the pattern' }));
+
+		await fireEvent.click(liveCodeButton());
+
+		expect(strudelStops).toBe(1);
+	});
+
+	it('persists nothing at all across an open, play and stop cycle', async () => {
+		render(CompingLoop);
+		await fireEvent.click(liveCodeButton());
+		await fireEvent.click(screen.getByRole('button', { name: 'Play the pattern' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Stop the pattern' }));
+
+		expect(localStorage.length).toBe(0);
+	});
+});
+
 describe('clean teardown', () => {
 	it('stops the loop when the page is left', async () => {
 		const { unmount } = render(CompingLoop);
@@ -615,6 +791,16 @@ describe('clean teardown', () => {
 		unmount();
 
 		expect(handleStops).toBe(1);
+	});
+
+	it('stops a running live-code pattern when the page is left', async () => {
+		const { unmount } = render(CompingLoop);
+		await fireEvent.click(screen.getByRole('button', { name: 'Open in live code' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Play the pattern' }));
+
+		unmount();
+
+		expect(strudelStops).toBe(1);
 	});
 
 	it('stops a loop whose piano finished loading only AFTER the page was left', async () => {
@@ -687,6 +873,7 @@ describe('French parity (I18N-02)', () => {
 		expect(screen.getByRole('button', { name: 'Plus vite' })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Boucler cette mesure' })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Afficher la gamme' })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Ouvrir en live code' })).toBeInTheDocument();
 		expect(screen.getByTestId('comping-position')).toHaveTextContent('TON: C MAJEUR');
 		expect(screen.getByTestId('comping-position')).toHaveTextContent('MESURE 1 / 3');
 		// Immune: the roman shapes and the chord symbols never translate.
