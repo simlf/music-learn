@@ -7,6 +7,8 @@
 	import { soundEnabled, startCompLoop, studyModeEnabled } from '$lib/audio/audio';
 	import type { CompLoopHandle } from '$lib/audio/audio';
 	import { onStrudelError, runStrudelPattern, stopStrudelPattern } from '$lib/audio/strudel';
+	import { onPianorollError, startPianoroll, stopPianoroll } from '$lib/audio/strudelPianoroll';
+	import type { PianorollTheme } from '$lib/audio/strudelPianoroll';
 	import { BEATS_PER_BAR, TEMPO_DEFAULT, nudgeTempo } from '$lib/audio/loopTiming';
 	import {
 		buildCompBars,
@@ -91,13 +93,34 @@
 	 * rest of this component: no grading, no persistence, and it stops the
 	 * moment the player leaves it. The two engines never sound at once: each
 	 * start stops whichever one was playing.
+	 *
+	 * Two follow-ups from that PR landed here: syntax highlighting (a
+	 * CodeMirror 6 editor, `StrudelEditor.svelte` + `$lib/practice/strudelHighlight`,
+	 * restyled to app tokens) and a pianoroll so the player SEES the pattern
+	 * they hear (`$lib/audio/strudelPianoroll`, wrapping `@strudel/draw`). Both
+	 * are pinned/self-hosted and code-split behind their own lazy chunk (see
+	 * the PR body for exact gzipped sizes) - neither loads until this panel is
+	 * actually opened.
 	 */
 	let liveCodeOpen = $state(false);
+	/**
+	 * CodeMirror only loads the first time this panel is opened, the same
+	 * lazy-on-first-use discipline `$lib/audio/strudel` already applies to
+	 * `@strudel/web` - an escape hatch nobody opens should cost nothing on
+	 * every other visit to this page.
+	 */
+	let strudelEditorModule = $state<Promise<typeof import('$lib/components/StrudelEditor.svelte')> | null>(
+		null
+	);
 	let liveCodeText = $state('');
 	let liveCodeRunning = $state(false);
 	let liveCodeError = $state<string | null>(null);
 	let liveCodeUnavailable = $state(false);
+	/** The pianoroll canvas failed to load or draw; the pattern itself is still sounding fine (offline-honest, never a silent no-op). */
+	let liveCodeVisualUnavailable = $state(false);
 	let unsubscribeLiveCodeError: (() => void) | null = null;
+	let unsubscribeLiveCodePianorollError: (() => void) | null = null;
+	let liveCodeCanvas: HTMLCanvasElement | undefined = $state();
 
 	let handle: CompLoopHandle | null = null;
 	/**
@@ -244,6 +267,33 @@
 		liveCodeText = toStrudelPattern(bars, tempo);
 		liveCodeError = null;
 		liveCodeUnavailable = false;
+		liveCodeVisualUnavailable = false;
+	}
+
+	/** Reads the pianoroll's colours from the app's own CSS tokens (app.css), never a hardcoded hex. */
+	function pianorollTheme(): PianorollTheme {
+		const style = getComputedStyle(document.documentElement);
+		return {
+			active: style.getPropertyValue('--color-vermilion').trim(),
+			inactive: style.getPropertyValue('--color-ink').trim(),
+			background: 'transparent',
+			playheadColor: style.getPropertyValue('--color-muted').trim()
+		};
+	}
+
+	/**
+	 * Sizes the canvas backing store for the device's pixel ratio, so notes
+	 * stay crisp rather than blurry. `drawPianoroll` computes every
+	 * coordinate as a fraction of `ctx.canvas.width`/`height` (the backing
+	 * store, not the CSS size), so a bigger backing store alone is enough -
+	 * no `ctx.scale()`, which would double-apply the ratio and draw
+	 * everything squeezed into one corner.
+	 */
+	function sizeLiveCodeCanvas(canvas: HTMLCanvasElement): CanvasRenderingContext2D | null {
+		const ratio = window.devicePixelRatio || 1;
+		canvas.width = canvas.clientWidth * ratio;
+		canvas.height = canvas.clientHeight * ratio;
+		return canvas.getContext('2d');
 	}
 
 	/**
@@ -253,8 +303,10 @@
 	 */
 	function toggleLiveCode(): void {
 		liveCodeOpen = !liveCodeOpen;
-		if (liveCodeOpen) seedLiveCode();
-		else if (liveCodeRunning) stopLiveCode();
+		if (liveCodeOpen) {
+			seedLiveCode();
+			strudelEditorModule ??= import('$lib/components/StrudelEditor.svelte');
+		} else if (liveCodeRunning) stopLiveCode();
 	}
 
 	/** Reseeds the pattern from the current form/key/tempo, discarding edits. */
@@ -262,14 +314,26 @@
 		seedLiveCode();
 	}
 
-	/** Runs the edited pattern on Strudel's own engine, stopping the main loop first. */
+	/**
+	 * Runs the edited pattern on Strudel's own engine, stopping the main loop
+	 * first, and starts a matching pianoroll on the panel's canvas so the
+	 * player SEES what they hear. The pianoroll is a bonus, never a gate: a
+	 * failed visualization (chunk never cached offline, no 2d context) shows
+	 * its own honest message but never stops or masks the sounding pattern.
+	 */
 	async function playLiveCode(): Promise<void> {
 		if (running || starting) stop();
 		liveCodeError = null;
 		liveCodeUnavailable = false;
+		liveCodeVisualUnavailable = false;
 		if (!unsubscribeLiveCodeError) {
 			unsubscribeLiveCodeError = onStrudelError((message) => {
 				liveCodeError = message;
+			});
+		}
+		if (!unsubscribeLiveCodePianorollError) {
+			unsubscribeLiveCodePianorollError = onPianorollError(() => {
+				liveCodeVisualUnavailable = true;
 			});
 		}
 		const result = await runStrudelPattern(liveCodeText);
@@ -278,17 +342,26 @@
 			return;
 		}
 		liveCodeRunning = true;
+		const ctx = liveCodeCanvas && sizeLiveCodeCanvas(liveCodeCanvas);
+		if (ctx && result.pattern && result.now) {
+			const drawn = await startPianoroll(result.pattern, result.now, ctx, pianorollTheme());
+			liveCodeVisualUnavailable = !drawn.ok;
+		} else {
+			liveCodeVisualUnavailable = true;
+		}
 	}
 
 	function stopLiveCode(): void {
 		liveCodeRunning = false;
 		stopStrudelPattern();
+		stopPianoroll();
 	}
 
 	onDestroy(() => {
 		stop();
 		if (liveCodeRunning) stopLiveCode();
 		unsubscribeLiveCodeError?.();
+		unsubscribeLiveCodePianorollError?.();
 	});
 </script>
 
@@ -411,13 +484,16 @@
 {#if liveCodeOpen}
 	<div class="border-ink flex flex-col gap-2 border-t-2 pt-4" data-testid="comping-livecode-panel">
 		<p class="text-body">{t('learn.comping.liveCodeIntro')}</p>
-		<textarea
-			class="border-ink bg-paper-bright font-mono w-full border-2 p-2"
-			rows="3"
-			spellcheck="false"
-			data-testid="comping-livecode-input"
-			bind:value={liveCodeText}
-		></textarea>
+		{#if strudelEditorModule}
+			{#await strudelEditorModule then { default: StrudelEditor }}
+				<StrudelEditor bind:value={liveCodeText} dataTestId="comping-livecode-input" />
+			{/await}
+		{/if}
+		<canvas
+			bind:this={liveCodeCanvas}
+			class="border-ink bg-paper-bright h-24 w-full border-2"
+			data-testid="comping-livecode-pianoroll"
+		></canvas>
 		<div class="flex flex-wrap gap-2">
 			<Button type="button" variant="primary" disabled={!soundOn} onclick={playLiveCode}>
 				{t('learn.comping.liveCodePlay')}
@@ -432,6 +508,11 @@
 		{#if liveCodeUnavailable}
 			<p class="text-body text-muted" data-testid="comping-livecode-unavailable">
 				{t('learn.comping.liveCodeUnavailable')}
+			</p>
+		{/if}
+		{#if liveCodeVisualUnavailable}
+			<p class="text-body text-muted" data-testid="comping-livecode-visual-unavailable">
+				{t('learn.comping.liveCodeVisualUnavailable')}
 			</p>
 		{/if}
 		{#if liveCodeError}

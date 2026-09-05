@@ -87,6 +87,8 @@ export const learn = {
 		'learn.comping.liveCodeErrorPrefix': 'That pattern has a problem:',
 		'learn.comping.liveCodeUnavailable':
 			"Live code isn't available right now. Open this once with an internet connection so your device can keep it for offline use.",
+		'learn.comping.liveCodeVisualUnavailable':
+			"The pattern is playing, but its pianoroll can't be shown right now. Open this once with an internet connection so your device can keep it for offline use.",
 
 		// Footer CTA
 		'learn.footer.practiceButton': 'Go to Practice',
@@ -156,6 +158,8 @@ export const learn = {
 		'learn.comping.liveCodeErrorPrefix': 'Ce motif a un problème :',
 		'learn.comping.liveCodeUnavailable':
 			"Le live code n'est pas disponible pour l'instant. Ouvre cette page une fois avec une connexion internet pour que ton appareil puisse le garder hors ligne.",
+		'learn.comping.liveCodeVisualUnavailable':
+			"Le motif joue, mais son affichage pianoroll ne peut pas s'afficher pour l'instant. Ouvre cette page une fois avec une connexion internet pour que ton appareil puisse le garder hors ligne.",
 
 		'learn.footer.practiceButton': 'Direction la pratique',
 		'learn.scale-practice.toggle': 'Pratique de gamme',

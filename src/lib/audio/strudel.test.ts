@@ -10,8 +10,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockStrudel = vi.hoisted(() => ({
 	initStrudel: vi.fn(async () => {}),
-	evaluate: vi.fn(async () => {}),
-	hush: vi.fn()
+	evaluate: vi.fn(async () => 'fake-pattern'),
+	hush: vi.fn(),
+	getTime: vi.fn(() => 0)
 }));
 
 vi.mock('@strudel/web', () => mockStrudel);
@@ -32,6 +33,7 @@ beforeEach(() => {
 	mockStrudel.initStrudel.mockClear();
 	mockStrudel.evaluate.mockClear();
 	mockStrudel.hush.mockClear();
+	mockStrudel.getTime.mockClear();
 });
 
 afterEach(() => {
@@ -42,7 +44,9 @@ describe('runStrudelPattern', () => {
 	it('initializes the engine once and evaluates the given code', async () => {
 		const result = await runStrudelPattern('note("c e g")');
 
-		expect(result).toEqual({ ok: true });
+		expect(result.ok).toBe(true);
+		expect(result.pattern).toBe('fake-pattern');
+		expect(result.now).toBe(mockStrudel.getTime);
 		expect(mockStrudel.initStrudel).toHaveBeenCalledTimes(1);
 		expect(mockStrudel.evaluate).toHaveBeenCalledWith('note("c e g")');
 	});
@@ -78,7 +82,7 @@ describe('runStrudelPattern', () => {
 
 		const result = await runStrudelPattern('b');
 
-		expect(result).toEqual({ ok: true });
+		expect(result.ok).toBe(true);
 		expect(mockStrudel.initStrudel).toHaveBeenCalledTimes(2);
 	});
 });

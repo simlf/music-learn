@@ -21,16 +21,24 @@
  * module load or during prerendering.
  */
 
+/** Opaque handle to the evaluated Strudel Pattern: never inspected here, only handed to `$lib/audio/strudelPianoroll`. */
+export type StrudelPattern = unknown;
+
 export interface StrudelRunResult {
 	ok: boolean;
 	/** Set when ok is false: the engine itself failed to load (offline, chunk never cached). */
 	unavailable?: boolean;
+	/** Set when ok is true: the evaluated pattern, for `startPianoroll` to draw. */
+	pattern?: StrudelPattern;
+	/** Set when ok is true: the engine's transport clock (in cycles), for `startPianoroll` to sync against. */
+	now?: () => number;
 }
 
 type StrudelModule = {
 	initStrudel: (opts?: Record<string, unknown>) => Promise<unknown>;
 	evaluate: (code: string, autoplay?: boolean) => Promise<unknown>;
 	hush: () => void;
+	getTime: () => number;
 };
 
 let modulePromise: Promise<StrudelModule> | null = null;
@@ -76,8 +84,8 @@ export async function runStrudelPattern(code: string): Promise<StrudelRunResult>
 	try {
 		await ensureReady();
 		const mod = await loadModule();
-		await mod.evaluate(code);
-		return { ok: true };
+		const pattern = await mod.evaluate(code);
+		return { ok: true, pattern, now: mod.getTime };
 	} catch {
 		return { ok: false, unavailable: true };
 	}

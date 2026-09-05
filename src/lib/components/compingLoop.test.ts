@@ -66,7 +66,14 @@ let holdStart = false;
 
 let strudelRuns: string[] = [];
 let strudelStops = 0;
-let strudelRunResult: { ok: boolean; unavailable?: boolean } = { ok: true };
+const fakePattern = { queryArc: () => [] };
+const fakeNow = () => 0;
+let strudelRunResult: {
+	ok: boolean;
+	unavailable?: boolean;
+	pattern?: unknown;
+	now?: () => number;
+} = { ok: true, pattern: fakePattern, now: fakeNow };
 let strudelErrorCallback: ((message: string) => void) | null = null;
 
 vi.mock('$lib/audio/strudel', () => ({
@@ -81,6 +88,28 @@ vi.mock('$lib/audio/strudel', () => ({
 		strudelErrorCallback = callback;
 		return () => {
 			strudelErrorCallback = null;
+		};
+	}
+}));
+
+/** What the pianoroll was asked to draw, per play; see the "live code pianoroll" suite below. */
+let pianorollStarts: Array<{ pattern: unknown; now: () => number }> = [];
+let pianorollStops = 0;
+let pianorollResult: { ok: boolean } = { ok: true };
+let pianorollErrorCallback: (() => void) | null = null;
+
+vi.mock('$lib/audio/strudelPianoroll', () => ({
+	startPianoroll: async (pattern: unknown, now: () => number) => {
+		pianorollStarts.push({ pattern, now });
+		return pianorollResult;
+	},
+	stopPianoroll: () => {
+		pianorollStops += 1;
+	},
+	onPianorollError: (callback: () => void) => {
+		pianorollErrorCallback = callback;
+		return () => {
+			pianorollErrorCallback = null;
 		};
 	}
 }));
@@ -116,8 +145,20 @@ beforeEach(() => {
 	studyOn = false;
 	strudelRuns = [];
 	strudelStops = 0;
-	strudelRunResult = { ok: true };
+	strudelRunResult = { ok: true, pattern: fakePattern, now: fakeNow };
 	strudelErrorCallback = null;
+	pianorollStarts = [];
+	pianorollErrorCallback = null;
+	pianorollStops = 0;
+	pianorollResult = { ok: true };
+	/**
+	 * jsdom does not implement a real 2d canvas context (no native `canvas`
+	 * package installed): without this, CompingLoop's own `getContext('2d')`
+	 * call returns null and every play would look like a pianoroll failure.
+	 */
+	HTMLCanvasElement.prototype.getContext = vi.fn(() => ({
+		clearRect: vi.fn()
+	})) as unknown as typeof HTMLCanvasElement.prototype.getContext;
 });
 
 afterEach(() => {
@@ -646,8 +687,28 @@ describe('live code escape hatch', () => {
 		return screen.getByRole('button', { name: 'Open in live code' });
 	}
 
-	function input(): HTMLTextAreaElement {
-		return screen.getByTestId('comping-livecode-input') as HTMLTextAreaElement;
+	/** The live-code editor is a real CodeMirror 6 EditorView: its editable surface is `.cm-content`, not a `<textarea>`. */
+	function input(): HTMLElement {
+		return screen.getByTestId('comping-livecode-input');
+	}
+
+	/**
+	 * CodeMirror renders each line as its own `.cm-line` block element, so a
+	 * plain `.textContent` read on the editor loses the newlines between
+	 * them (block elements insert no text of their own). Joining the lines
+	 * back with '\n' recovers the seeded pattern's actual two-line text.
+	 */
+	function editorText(): string {
+		return Array.from(input().querySelectorAll('.cm-line'))
+			.map((line) => line.textContent ?? '')
+			.join('\n');
+	}
+
+	/** CodeMirror's own DOM observer reads the mutated `.cm-content`, not a synthetic `.value` (see StrudelEditor's own test for why). */
+	async function typeInEditor(text: string): Promise<void> {
+		const el = input();
+		el.textContent = text;
+		await fireEvent.input(el);
 	}
 
 	it('is closed by default and adds exactly one chip', () => {
@@ -660,37 +721,41 @@ describe('live code escape hatch', () => {
 	it('opens to a pattern seeded from the current form, key and tempo', async () => {
 		render(CompingLoop);
 		await fireEvent.click(liveCodeButton());
+		await screen.findByTestId('comping-livecode-input');
 
 		expect(liveCodeButton()).toHaveAttribute('aria-pressed', 'true');
-		expect(input().value).toBe('setcpm(17.5)\nchord("<Dm7 G7 Cmaj7>").voicing().s("sawtooth")');
+		expect(editorText()).toBe('setcpm(17.5)\nchord("<Dm7 G7 Cmaj7>").voicing().s("sawtooth")');
 	});
 
 	it('never clobbers an edit when the key changes elsewhere on the page: reset is the only way back', async () => {
 		render(CompingLoop);
 		await fireEvent.click(liveCodeButton());
-		await fireEvent.input(input(), { target: { value: 'note("c e g")' } });
+		await screen.findByTestId('comping-livecode-input');
+		await typeInEditor('note("c e g")');
 
 		await fireEvent.click(screen.getByRole('button', { name: 'F' }));
-		expect(input().value).toBe('note("c e g")');
+		expect(editorText()).toBe('note("c e g")');
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
-		expect(input().value).toBe('setcpm(17.5)\nchord("<Gm7 C7 Fmaj7>").voicing().s("sawtooth")');
+		expect(editorText()).toBe('setcpm(17.5)\nchord("<Gm7 C7 Fmaj7>").voicing().s("sawtooth")');
 	});
 
 	it('lets the player edit the seeded text', async () => {
 		render(CompingLoop);
 		await fireEvent.click(liveCodeButton());
+		await screen.findByTestId('comping-livecode-input');
 
-		await fireEvent.input(input(), { target: { value: 'note("c e g").s("triangle")' } });
+		await typeInEditor('note("c e g").s("triangle")');
 
-		expect(input().value).toBe('note("c e g").s("triangle")');
+		expect(editorText()).toBe('note("c e g").s("triangle")');
 	});
 
 	it('plays the edited pattern, stopping the main loop first', async () => {
 		render(CompingLoop);
 		await clickStart();
 		await fireEvent.click(liveCodeButton());
-		await fireEvent.input(input(), { target: { value: 'note("c e g")' } });
+		await screen.findByTestId('comping-livecode-input');
+		await typeInEditor('note("c e g")');
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Play the pattern' }));
 
@@ -722,11 +787,12 @@ describe('live code escape hatch', () => {
 	it('resets the edited text back to the current seeded pattern', async () => {
 		render(CompingLoop);
 		await fireEvent.click(liveCodeButton());
-		await fireEvent.input(input(), { target: { value: 'garbage' } });
+		await screen.findByTestId('comping-livecode-input');
+		await typeInEditor('garbage');
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
 
-		expect(input().value).toBe('setcpm(17.5)\nchord("<Dm7 G7 Cmaj7>").voicing().s("sawtooth")');
+		expect(editorText()).toBe('setcpm(17.5)\nchord("<Dm7 G7 Cmaj7>").voicing().s("sawtooth")');
 	});
 
 	it('shows the engine’s own error when the pattern fails, and clears it on the next play', async () => {
@@ -780,6 +846,97 @@ describe('live code escape hatch', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Stop the pattern' }));
 
 		expect(localStorage.length).toBe(0);
+	});
+});
+
+/**
+ * The pianoroll: so the player SEES the pattern they hear, not just a
+ * sound. Drawing lives entirely in `$lib/audio/strudelPianoroll` (mocked
+ * here, exactly like `$lib/audio/strudel`) - this only locks CompingLoop's
+ * own contract with it: what gets started, and that it is always stopped
+ * wherever the pattern itself is stopped.
+ */
+describe('live code pianoroll', () => {
+	function liveCodeButton(): HTMLElement {
+		return screen.getByRole('button', { name: 'Open in live code' });
+	}
+
+	it('draws a canvas inside the panel', async () => {
+		render(CompingLoop);
+		await fireEvent.click(liveCodeButton());
+
+		expect(screen.getByTestId('comping-livecode-pianoroll').tagName).toBe('CANVAS');
+	});
+
+	it('starts a pianoroll for the evaluated pattern and clock on play', async () => {
+		render(CompingLoop);
+		await fireEvent.click(liveCodeButton());
+		await fireEvent.click(screen.getByRole('button', { name: 'Play the pattern' }));
+
+		expect(pianorollStarts).toEqual([{ pattern: fakePattern, now: fakeNow }]);
+	});
+
+	it('stops the pianoroll with the pattern’s own stop button', async () => {
+		render(CompingLoop);
+		await fireEvent.click(liveCodeButton());
+		await fireEvent.click(screen.getByRole('button', { name: 'Play the pattern' }));
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Stop the pattern' }));
+
+		expect(pianorollStops).toBe(1);
+	});
+
+	it('stops the pianoroll before starting the main loop', async () => {
+		render(CompingLoop);
+		await fireEvent.click(liveCodeButton());
+		await fireEvent.click(screen.getByRole('button', { name: 'Play the pattern' }));
+
+		await clickStart();
+
+		expect(pianorollStops).toBe(1);
+	});
+
+	it('stops the pianoroll when the panel is closed', async () => {
+		render(CompingLoop);
+		await fireEvent.click(liveCodeButton());
+		await fireEvent.click(screen.getByRole('button', { name: 'Play the pattern' }));
+
+		await fireEvent.click(liveCodeButton());
+
+		expect(pianorollStops).toBe(1);
+	});
+
+	it('shows an honest message when the pianoroll fails to draw, without hiding that the pattern is still playing', async () => {
+		pianorollResult = { ok: false };
+		render(CompingLoop);
+		await fireEvent.click(liveCodeButton());
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Play the pattern' }));
+
+		expect(screen.getByTestId('comping-livecode-visual-unavailable')).toBeInTheDocument();
+		expect(screen.queryByTestId('comping-livecode-unavailable')).not.toBeInTheDocument();
+	});
+
+	it('shows an honest message when a later, asynchronous pianoroll draw fails mid-playback', async () => {
+		render(CompingLoop);
+		await fireEvent.click(liveCodeButton());
+		await fireEvent.click(screen.getByRole('button', { name: 'Play the pattern' }));
+
+		expect(screen.queryByTestId('comping-livecode-visual-unavailable')).not.toBeInTheDocument();
+		pianorollErrorCallback?.();
+		await Promise.resolve();
+
+		expect(screen.getByTestId('comping-livecode-visual-unavailable')).toBeInTheDocument();
+	});
+
+	it('never starts a pianoroll when the engine itself is unavailable', async () => {
+		strudelRunResult = { ok: false, unavailable: true };
+		render(CompingLoop);
+		await fireEvent.click(liveCodeButton());
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Play the pattern' }));
+
+		expect(pianorollStarts).toHaveLength(0);
 	});
 });
 
