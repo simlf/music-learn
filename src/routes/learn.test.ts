@@ -360,3 +360,33 @@ describe('/learn: guide tones and voice leading is reachable, right after functi
 		expect(text).toContain('The shell voicing drill on /practice already grades this');
 	});
 });
+
+/**
+ * PR #80 follow-up 2 (chord-tones-vs-scale-tones concept lesson): reachable
+ * from /learn as a peer of the other units, right after guide tones and
+ * before the dominant lesson. Full content/behaviour coverage lives in
+ * chordScaleConcept.test.ts; this is the hub-level reachability smoke test.
+ */
+describe('/learn: chord tones vs scale tones is reachable, between guide tones and the dominant lesson', () => {
+	it('renders between the guide-tone section and the dominant lesson', () => {
+		renderPage();
+		const sections = Array.from(
+			document.querySelectorAll<HTMLElement>('[data-testid^="section-"]')
+		).map((element) => element.dataset.testid);
+
+		expect(sections.indexOf('section-chord-scale')).toBeGreaterThan(
+			sections.indexOf('section-guide-tones')
+		);
+		expect(sections.indexOf('section-chord-scale')).toBeLessThan(
+			sections.indexOf('section-dominant')
+		);
+	});
+
+	it('names the chord tones and the rest of the scale from the same engine the comping loop overlay uses', () => {
+		renderPage();
+		const section = screen.getByTestId('section-chord-scale');
+
+		expect(section.textContent).toContain('C, E, G, B');
+		expect(section.textContent).toContain('D, F, A');
+	});
+});

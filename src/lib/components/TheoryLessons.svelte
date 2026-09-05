@@ -10,6 +10,7 @@
 	import InteractiveLesson from '$lib/components/InteractiveLesson.svelte';
 	import BuildSession from '$lib/components/BuildSession.svelte';
 	import SpellIntervalDrill from '$lib/components/SpellIntervalDrill.svelte';
+	import ChordScaleConcept from '$lib/components/ChordScaleConcept.svelte';
 	import { GUIDE_TONE_BARS, shellPitches, type GuideToneBar } from '$lib/lessons/guideTones';
 	import { INTERVAL_NAMING_LESSON } from '$lib/lessons/intervalNamingLesson';
 	import { t, type MessageKey } from '$lib/i18n/locale.svelte';
@@ -422,6 +423,13 @@
 		>
 	</div>
 	<p class="text-body text-muted">{t('theory.guideTones.practiceNote')}</p>
+</section>
+
+<section
+	class="border-ink bg-paper-bright flex flex-col gap-4 border-2 px-4 py-6"
+	data-testid="section-chord-scale"
+>
+	<ChordScaleConcept />
 </section>
 
 <section

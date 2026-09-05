@@ -103,6 +103,21 @@ export const theory = {
 		'theory.guideTones.practiceNote':
 			'The shell voicing drill on /practice already grades this, in every key.',
 
+		'theory.chordScale.label': 'Chord tones and scale tones',
+		'theory.chordScale.heading': 'Two roles, one scale',
+		'theory.chordScale.body':
+			"A chord borrows its notes from a scale, but it does not own every note in it. Four of C major's seven notes ARE Cmaj7, its skeleton; the other three just pass through around it. Press play, then edit the pattern below to hear a note fit or clash.",
+		'theory.chordScale.chordToneCaption': 'The chord tones, its skeleton:',
+		'theory.chordScale.scaleToneCaption': 'The rest of the scale, just passing through:',
+		'theory.chordScale.play': 'Play the pattern',
+		'theory.chordScale.stop': 'Stop',
+		'theory.chordScale.reset': 'Reset',
+		'theory.chordScale.errorPrefix': 'That pattern has a problem:',
+		'theory.chordScale.unavailable':
+			"This pattern isn't available right now. Open this page once with an internet connection so your device can keep it for offline use.",
+		'theory.chordScale.soundOff':
+			'Sound is off, so this pattern has nothing to play. Turn it back on in Progress, under Practice Settings.',
+
 		'theory.dominant.label': 'The dominant engine',
 		'theory.dominant.heading': 'Why 7 pulls home',
 		'theory.dominant.body':
@@ -205,6 +220,21 @@ export const theory = {
 		'theory.guideTones.hearButton': 'Écouter le mouvement',
 		'theory.guideTones.practiceNote':
 			"L'exercice de voicing en shell, sur /practice, note déjà ça, dans tous les tons.",
+
+		'theory.chordScale.label': 'Notes de l\'accord et notes de la gamme',
+		'theory.chordScale.heading': 'Deux rôles, une gamme',
+		'theory.chordScale.body':
+			"Un accord emprunte ses notes à une gamme, mais il ne possède pas toutes ses notes. Quatre des sept notes de Do majeur SONT Cmaj7, son squelette ; les trois autres ne font que passer autour. Lance la lecture, puis modifie le motif ci-dessous pour entendre une note s'accorder ou frotter.",
+		'theory.chordScale.chordToneCaption': "Les notes de l'accord, son squelette :",
+		'theory.chordScale.scaleToneCaption': 'Le reste de la gamme, juste de passage :',
+		'theory.chordScale.play': 'Jouer le motif',
+		'theory.chordScale.stop': 'Arrêter',
+		'theory.chordScale.reset': 'Réinitialiser',
+		'theory.chordScale.errorPrefix': 'Ce motif a un problème :',
+		'theory.chordScale.unavailable':
+			"Ce motif n'est pas disponible pour l'instant. Ouvre cette page une fois avec une connexion internet pour que ton appareil puisse le garder hors ligne.",
+		'theory.chordScale.soundOff':
+			"Le son est coupé, ce motif n'a donc rien à jouer. Réactive-le dans Progrès, dans les réglages de pratique.",
 
 		'theory.dominant.label': 'Le moteur dominant',
 		'theory.dominant.heading': 'Pourquoi 7 tire vers la maison',
