@@ -162,27 +162,22 @@
 	});
 
 	/**
-	 * Step-tab free navigation (UAT V1 fix): the three pedagogy stages are
-	 * user-navigable at any time for the current chord, so the player can
-	 * freely move Voir<->Retirer<->Exo to learn or practice, instead of the
-	 * step tabs only ever reflecting the FSRS-derived `stage`. `null` means
-	 * "no override" - the tabs show the real derived `stage`; a non-null
-	 * value overrides it until the next chord (`next()` resets this to null)
-	 * or another tab click.
+	 * "See it again" (demoted UAT V1 fix, Phase 41): the FSRS-derived `stage`
+	 * drives the view (matching InversionDrill/PracticeChordDrill's "app
+	 * decides, you just play" pattern) EXCEPT while `revisitingMeet` is set,
+	 * which re-shows the meet compare card once on request from the
+	 * subtract/drill stages - the one thing the former 3-button step-tab row
+	 * was solving, without a persistent stage picker on screen for every
+	 * chord in every stage.
 	 */
-	let activeStage = $state<VoicingStage | null>(null);
+	let revisitingMeet = $state(false);
 
-	/** The stage whose content is currently rendered: the user's override when set, else the real derived `stage`. */
-	const effectiveStage = $derived(activeStage ?? stage);
+	/** The stage whose content is currently rendered: `meet` while revisiting, else the real derived `stage`. */
+	const effectiveStage = $derived(revisitingMeet ? 'meet' : stage);
 
-	/**
-	 * Step-tab click handler: sets the active override to whichever tab was
-	 * clicked (meet/subtract/drill alike), starting the newly-shown stage's
-	 * per-attempt state clean (a stage switch is never mid-question).
-	 */
-	function selectStep(target: VoicingStage) {
-		if (target === effectiveStage) return;
-		activeStage = target;
+	/** "See it again" link handler (subtract/drill stages only): re-shows the meet compare card. */
+	function seeItAgain() {
+		revisitingMeet = true;
 		selected = new Set();
 		answered = false;
 		wrongRetry = false;
@@ -339,14 +334,20 @@
 		wrongRetry = false;
 		missedOnce = false;
 		voicingStyle = 'shell';
-		activeStage = null;
+		revisitingMeet = false;
 	}
 
-	/** Got it (meet stage): marks the compare intro shown for this chord and re-derives the stage (fades to subtract). */
+	/**
+	 * Got it (meet stage): marks the compare intro shown for this chord and
+	 * re-derives the stage (fades to subtract). Also clears `revisitingMeet`,
+	 * so tapping Got it during a "see it again" revisit returns to whichever
+	 * subtract/drill stage the chord's own maturity actually derives.
+	 */
 	function gotIt() {
 		markVoicingMet(symbol);
 		metVersion += 1;
 		selected = new Set();
+		revisitingMeet = false;
 	}
 
 	const glyphQuality = $derived(chord.symbol.slice(chord.root.length));
@@ -394,63 +395,6 @@
 		</div>
 	</div>
 	{:else}
-	<!--
-		ONE control idiom (Phase 38). The stage picker used to be a hand-rolled
-		1px segmented bar and the voicing nudges a second row of hand-rolled 1px
-		boxes: two menus of equal visual weight, in a style the rest of the app
-		does not use, which the owner read as "it works, but it does not look
-		like the rest of the project".
-
-		Both are now the app's own labelled-chip-group idiom, the one
-		CompingLoop uses for FORME / TON / TEMPO: a mono uppercase field label
-		over a row of `Button` chips, vermilion when picked. The hierarchy the
-		two rows were missing is now structural rather than stylistic: this row
-		chooses WHICH exercise and sits above the rule, alone; the voicing
-		nudges sit below it, inside the exercise, attached to the readout they
-		change (see `.voicing-line`), so they read as two verbs acting on a
-		state rather than as a second menu.
-	-->
-	<div class="field">
-		<p class="field-label">{t('voicings.step.label')}</p>
-		<div
-			class="chip-row"
-			data-testid="step-indicator"
-			role="group"
-			aria-label={t('voicings.aria.stepGroup')}
-		>
-			<Button
-				type="button"
-				variant={effectiveStage === 'meet' ? 'primary' : 'ghost'}
-				aria-pressed={effectiveStage === 'meet'}
-				data-testid="step-meet"
-				onclick={() => selectStep('meet')}
-			>
-				{t('voicings.step.meet')}
-			</Button>
-			<Button
-				type="button"
-				variant={effectiveStage === 'subtract' ? 'primary' : 'ghost'}
-				aria-pressed={effectiveStage === 'subtract'}
-				data-testid="step-subtract"
-				onclick={() => selectStep('subtract')}
-			>
-				{t('voicings.step.subtract')}
-			</Button>
-			<Button
-				type="button"
-				variant={effectiveStage === 'drill' ? 'primary' : 'ghost'}
-				aria-pressed={effectiveStage === 'drill'}
-				data-testid="step-drill"
-				onclick={() => selectStep('drill')}
-			>
-				{t('voicings.step.drill')}
-			</Button>
-		</div>
-	</div>
-	<!-- The one rule that makes the hierarchy visible: choosing the exercise
-	     above it, doing the exercise below it (CompingLoop's own divider). -->
-	<hr class="stage-rule" />
-
 	{#if effectiveStage === 'meet'}
 		<div data-testid="stage-meet">
 			<div class="meet-glyph mb-4" data-testid="meet-glyph">
@@ -493,6 +437,13 @@
 			<div class="mt-4 mb-4" data-testid="target-glyph">
 				<ChordGlyph root={chord.root} quality={glyphQuality} />
 			</div>
+			<!-- Demoted UAT V1 fix (Phase 41): the only navigation the former
+			     3-button step-tab row actually needed to preserve - revisiting
+			     the meet compare card - as a single small link instead of a
+			     persistent stage picker. -->
+			<button type="button" class="see-it-again" data-testid="see-it-again" onclick={seeItAgain}>
+				{t('voicings.link.seeItAgain')}
+			</button>
 			{#if effectiveStage === 'subtract'}
 				<div class="teach-panel" data-testid="teach-panel">
 					<p>{flatFifth ? t('voicings.subtract.teach-flat5') : t('voicings.subtract.teach')}</p>
@@ -580,37 +531,19 @@
 </div>
 
 <style>
-	/*
-	 * The app's labelled-control-group idiom (CompingLoop's FORME / TON /
-	 * TEMPO), reused verbatim so this screen's controls read like every other
-	 * control in the app instead of like a widget of their own.
-	 */
-	.field {
-		display: flex;
-		flex-direction: column;
-		gap: var(--spacing-sm);
-	}
-
-	.field-label {
+	.see-it-again {
+		display: inline-block;
 		font-family: var(--font-mono);
 		font-size: var(--text-label);
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
 		color: var(--color-muted);
-		margin: 0;
-	}
-
-	.chip-row {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--spacing-sm);
-	}
-
-	/* Choosing the exercise above, doing it below. */
-	.stage-rule {
-		border: 0;
-		border-top: 2px solid var(--color-ink);
-		margin: var(--spacing-md) 0 0;
+		background: none;
+		border: none;
+		padding: 0;
+		margin-bottom: var(--spacing-sm);
+		text-decoration: underline;
+		cursor: pointer;
 	}
 
 	/*

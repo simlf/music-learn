@@ -2,14 +2,14 @@ import type { LocaleDict } from './index';
 
 /**
  * Voicings domain (Phase 25 Plan 07, sketch-019 synthesis, SK-019; Phase 33
- * Plan 01, sketch-022 variant A, VOICE-01): every literal the /voicings
- * staged shell-voicing drill renders - the page title/subtitle, the 1 Meet /
- * 2 Subtract / 3 Drill step-indicator chips, the compare-intro "what you
- * know"/"what players use" vcard labels and captions plus its "Got it"
- * advance, the subtraction-stage teach-panel body, the drill-stage
- * add-root/remove-bass nudges and the current-voicing by-product label, the
- * play/Check/Next controls, and the wrong-retry/correct-confirm feedback
- * lines.
+ * Plan 01, sketch-022 variant A, VOICE-01; Phase 41, the persistent
+ * step-tab row's demotion to a single "see it again" link): every literal
+ * the /voicings staged shell-voicing drill renders - the "see it again"
+ * link, the compare-intro "what you know"/"what players use" vcard labels
+ * and captions plus its "Got it" advance, the subtraction-stage teach-panel
+ * body, the drill-stage add-root/remove-bass nudges and the current-voicing
+ * by-product label, the play/Check/Next controls, and the wrong-retry/
+ * correct-confirm feedback lines.
  *
  * IMMUNITY (never keyed here, per the project's Chord Glyph & Symbol
  * Immunity rule): chord symbols, interval shorthand (R/3/5/7), and the
@@ -42,11 +42,7 @@ import type { LocaleDict } from './index';
  */
 export const voicings = {
 	en: {
-		'voicings.step.label': 'Stage',
-		'voicings.step.meet': '1 Meet',
-		'voicings.step.subtract': '2 Subtract',
-		'voicings.step.drill': '3 Drill',
-		'voicings.aria.stepGroup': 'Voicing stage',
+		'voicings.link.seeItAgain': 'See it again',
 
 		'voicings.compare.knowLabel': 'WHAT YOU KNOW',
 		'voicings.compare.knowCaption': 'The full stack. Root, third, fifth, seventh.',
@@ -85,11 +81,7 @@ export const voicings = {
 			'No shell to drill on this symbol: a shell keeps the third and the seventh, and this one does not spell both.'
 	},
 	fr: {
-		'voicings.step.label': 'Étape',
-		'voicings.step.meet': '1 Voir',
-		'voicings.step.subtract': '2 Retirer',
-		'voicings.step.drill': '3 Exercice',
-		'voicings.aria.stepGroup': 'Étape du voicing',
+		'voicings.link.seeItAgain': 'Revoir',
 
 		'voicings.compare.knowLabel': 'CE QUE TU SAIS',
 		'voicings.compare.knowCaption': 'La pile complète. Fondamentale, tierce, quinte, septième.',

@@ -65,15 +65,21 @@ export type PracticeFamily =
 export type CardedFamily = 'name-it' | 'play-it' | 'ear-it' | 'build-it' | 'interval' | 'degree';
 
 /**
- * The two "scaffold-heavy" families (Phase 36's QUEUE-01 term, 36-CONTEXT):
+ * The "scaffold-heavy" families (Phase 36's QUEUE-01 term, 36-CONTEXT):
  * progression and inversion both lean on a prior family's foundation
- * (spelling/voicing) rather than being answerable cold - a bad first item
- * for a low-mastery session. Their complement, the "simpler" families, is
- * name-it/play-it/ear-it/build-it/interval/degree/voicing. Single source of truth: reused by
- * composePracticeQueue's first-pick guard below AND by the host/tests -
- * never re-listed as a duplicated string literal elsewhere.
+ * (spelling/voicing) rather than being answerable cold, and voicing (PRAC-06)
+ * leans on the chord's own recognition having been internalized first - all
+ * three are a bad first item for a low-mastery session. Their complement, the
+ * "simpler" families, is name-it/play-it/ear-it/build-it/interval/degree.
+ * Single source of truth: reused by composePracticeQueue's first-pick guard
+ * below AND by the host/tests - never re-listed as a duplicated string
+ * literal elsewhere.
  */
-export const SCAFFOLD_HEAVY: ReadonlySet<PracticeFamily> = new Set(['progression', 'inversion']);
+export const SCAFFOLD_HEAVY: ReadonlySet<PracticeFamily> = new Set([
+	'progression',
+	'inversion',
+	'voicing'
+]);
 
 /**
  * The optional signal composePracticeQueue accepts as its 4th argument

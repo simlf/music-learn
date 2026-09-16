@@ -33,7 +33,7 @@
 	import { pickStreakLine } from '$lib/copy/streak';
 	import { getAllCards, recordGrade, type CardRecord, type Mode } from '$lib/srs/deck';
 	import { selectReviewCards, interleaveQueue } from '$lib/srs/rotation';
-	import { Rating, newCard } from '$lib/srs/scheduler';
+	import { Rating, State, newCard } from '$lib/srs/scheduler';
 	import { factById } from '$lib/srs/facts';
 	import { consumeDrillSeeds, consumeLessonSeeds, setDrillSeeds } from '$lib/practice/drillSeeds';
 	import {
@@ -438,8 +438,23 @@
 						cardsBySymbol.set(fact.symbol, [card]);
 					}
 				}
+				// PRAC-06: a chord is eligible for a voicing item only once its
+				// OWN recognition cards have left State.New and reached
+				// State.Review ("fully internalized") - a chord's name-it card
+				// is due the same day it's introduced, so gating on due-ness
+				// alone (above) let a brand-new chord's voicing item ("meet")
+				// appear the very day the chord was first seen. This does not
+				// change voicingStageForChord's own meet/subtract/drill
+				// pedagogy - only whether the chord is in the round at all.
+				const reviewGatedSymbols = new Set<string>();
+				for (const symbol of dueChordSymbols) {
+					const cards = cardsBySymbol.get(symbol);
+					if (cards?.some((card) => card.state === State.Review)) {
+						reviewGatedSymbols.add(symbol);
+					}
+				}
 				voicingItems = syntheticVoicingItems(cardsBySymbol).filter((item) =>
-					dueChordSymbols.has(item.symbol)
+					reviewGatedSymbols.has(item.symbol)
 				);
 				if (songFilterOn && provenanceIndex.size > 0) {
 					voicingItems = filterVoicingsBySong(voicingItems, (symbol) =>

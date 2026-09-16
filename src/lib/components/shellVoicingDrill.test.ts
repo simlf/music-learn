@@ -287,18 +287,25 @@ describe('ShellVoicingDrill: stage UI gated on the deck read (WR-05)', () => {
 	});
 });
 
-describe('ShellVoicingDrill: step indicator', () => {
-	it('always renders the 1 Meet / 2 Subtract / 3 Drill chips, with the current stage inverted', async () => {
+describe('ShellVoicingDrill: no persistent stage picker (Phase 41)', () => {
+	it('never renders a step-tab row on any stage', async () => {
+		getAllCardsMock.mockResolvedValue([]);
+		const { unmount } = render(ShellVoicingDrill);
+		await waitFor(() => screen.getByTestId('stage-meet'));
+		expect(screen.queryByTestId('step-indicator')).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: /1 Meet|1 Voir/ })).not.toBeInTheDocument();
+		unmount();
+
 		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);
-
-		render(ShellVoicingDrill);
-
+		const subtractRender = render(ShellVoicingDrill);
 		await waitFor(() => screen.getByTestId('stage-subtract'));
-		expect(screen.getByTestId('step-meet')).toHaveTextContent('1 Meet');
-		expect(screen.getByTestId('step-subtract')).toHaveTextContent('2 Subtract');
-		expect(screen.getByTestId('step-drill')).toHaveTextContent('3 Drill');
-		expect(screen.getByTestId('step-subtract')).toHaveAttribute('aria-pressed', 'true');
-		expect(screen.getByTestId('step-meet')).toHaveAttribute('aria-pressed', 'false');
+		expect(screen.queryByTestId('step-indicator')).not.toBeInTheDocument();
+		subtractRender.unmount();
+
+		getAllCardsMock.mockResolvedValue([makeCard(State.Review)]);
+		render(ShellVoicingDrill);
+		await waitFor(() => screen.getByTestId('stage-drill'));
+		expect(screen.queryByTestId('step-indicator')).not.toBeInTheDocument();
 	});
 });
 
@@ -418,40 +425,23 @@ describe('ShellVoicingDrill: grading + advance', () => {
 	});
 });
 
-describe('ShellVoicingDrill: step tabs are freely user-navigable (UAT V1)', () => {
-	it('clicking "2 SUBTRACT" while the real stage is meet actually shows the Retirer content, not stuck on Voir', async () => {
+describe('ShellVoicingDrill: "see it again" link re-shows the meet stage (demoted UAT V1)', () => {
+	it('is not offered on the meet stage itself', async () => {
 		getAllCardsMock.mockResolvedValue([]);
 
 		render(ShellVoicingDrill);
 
 		await waitFor(() => screen.getByTestId('stage-meet'));
-		await fireEvent.click(screen.getByTestId('step-subtract'));
-
-		expect(screen.getByTestId('stage-subtract')).toBeInTheDocument();
-		expect(screen.getByTestId('teach-panel')).toBeInTheDocument();
-		expect(screen.queryByTestId('stage-meet')).not.toBeInTheDocument();
-		expect(screen.getByTestId('step-subtract')).toHaveAttribute('aria-pressed', 'true');
+		expect(screen.queryByTestId('see-it-again')).not.toBeInTheDocument();
 	});
 
-	it('clicking "3 DRILL" while the real stage is meet shows the Exo nudge controls', async () => {
-		getAllCardsMock.mockResolvedValue([]);
-
-		render(ShellVoicingDrill);
-
-		await waitFor(() => screen.getByTestId('stage-meet'));
-		await fireEvent.click(screen.getByTestId('step-drill'));
-
-		expect(screen.getByTestId('stage-drill')).toBeInTheDocument();
-		expect(screen.getByTestId('voicing-nudges')).toBeInTheDocument();
-	});
-
-	it('clicking "1 MEET" while the real stage is subtract shows the compare reference, with Got it still available', async () => {
+	it('on the subtract stage, re-shows the meet compare card', async () => {
 		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);
 
 		render(ShellVoicingDrill);
 
 		await waitFor(() => screen.getByTestId('stage-subtract'));
-		await fireEvent.click(screen.getByTestId('step-meet'));
+		await fireEvent.click(screen.getByTestId('see-it-again'));
 
 		expect(screen.getByTestId('stage-meet')).toBeInTheDocument();
 		expect(screen.getByTestId('compare-know')).toBeInTheDocument();
@@ -459,31 +449,40 @@ describe('ShellVoicingDrill: step tabs are freely user-navigable (UAT V1)', () =
 		expect(screen.getByRole('button', { name: 'Got it' })).toBeInTheDocument();
 	});
 
-	it('clicking the real stage\'s own tab returns to it from an override', async () => {
-		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);
-
-		render(ShellVoicingDrill);
-
-		await waitFor(() => screen.getByTestId('stage-subtract'));
-		await fireEvent.click(screen.getByTestId('step-meet'));
-		expect(screen.getByTestId('stage-meet')).toBeInTheDocument();
-
-		await fireEvent.click(screen.getByTestId('step-subtract'));
-
-		expect(screen.getByTestId('stage-subtract')).toBeInTheDocument();
-		expect(screen.queryByTestId('stage-meet')).not.toBeInTheDocument();
-	});
-
-	it('navigating away and back never corrupts grading: Check still grades whichever stage is currently shown (drill)', async () => {
+	it('on the drill stage, re-shows the meet compare card', async () => {
 		getAllCardsMock.mockResolvedValue([makeCard(State.Review)]);
 
 		render(ShellVoicingDrill);
 
 		await waitFor(() => screen.getByTestId('stage-drill'));
+		await fireEvent.click(screen.getByTestId('see-it-again'));
 
-		await fireEvent.click(screen.getByTestId('step-meet'));
 		expect(screen.getByTestId('stage-meet')).toBeInTheDocument();
-		await fireEvent.click(screen.getByTestId('step-drill'));
+	});
+
+	it('Got it, tapped during a revisit, returns to the chord\'s actual derived stage', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Review)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-drill'));
+		await fireEvent.click(screen.getByTestId('see-it-again'));
+		expect(screen.getByTestId('stage-meet')).toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Got it' }));
+
+		expect(screen.getByTestId('stage-drill')).toBeInTheDocument();
+	});
+
+	it('navigating into a revisit and back never corrupts grading: Check still grades the drill stage', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Review)]);
+
+		render(ShellVoicingDrill);
+
+		await waitFor(() => screen.getByTestId('stage-drill'));
+		await fireEvent.click(screen.getByTestId('see-it-again'));
+		expect(screen.getByTestId('stage-meet')).toBeInTheDocument();
+		await fireEvent.click(screen.getByRole('button', { name: 'Got it' }));
 		expect(screen.getByTestId('stage-drill')).toBeInTheDocument();
 
 		clickKey('E');
@@ -493,22 +492,23 @@ describe('ShellVoicingDrill: step tabs are freely user-navigable (UAT V1)', () =
 		expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
 	});
 
-	it('a fresh chord (Next) resets any stage override back to the newly-derived stage', async () => {
+	it('a fresh chord (Next) clears the revisit back to the newly-derived stage', async () => {
 		getAllCardsMock.mockResolvedValue([makeCard(State.Learning)]);
 
 		render(ShellVoicingDrill);
 
 		await waitFor(() => screen.getByTestId('stage-subtract'));
-		await fireEvent.click(screen.getByTestId('step-drill'));
-		expect(screen.getByTestId('stage-drill')).toBeInTheDocument();
+		await fireEvent.click(screen.getByTestId('see-it-again'));
+		expect(screen.getByTestId('stage-meet')).toBeInTheDocument();
 
+		await fireEvent.click(screen.getByRole('button', { name: 'Got it' }));
 		clickKey('E');
 		clickKey('B');
 		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
 		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
 		// The next chord's stage is derived fresh (same Learning cards): back
-		// to subtract, not still pinned to the previous chord's drill override.
+		// to subtract, not stuck on a stale revisit.
 		await waitFor(() => screen.getByTestId('stage-subtract'));
 	});
 });
@@ -890,7 +890,7 @@ describe('ShellVoicingDrill: undrillable shell guard (music-theory audit Bug E)'
 			'a shell keeps the third and the seventh'
 		);
 		// No unwinnable question is offered: no stage UI, no Check.
-		expect(screen.queryByTestId('step-indicator')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('see-it-again')).not.toBeInTheDocument();
 		expect(screen.queryByTestId('stage-subtract')).not.toBeInTheDocument();
 		expect(screen.queryByTestId('stage-drill')).not.toBeInTheDocument();
 		expect(screen.queryByRole('button', { name: 'Check' })).not.toBeInTheDocument();
@@ -928,7 +928,7 @@ describe('ShellVoicingDrill: undrillable shell guard (music-theory audit Bug E)'
 	it('every drillable chord is untouched: the seventh families still render their stages', async () => {
 		for (const symbol of ['Cmaj7', 'Cm7', 'C7', 'Cm7b5', 'Cdim7']) {
 			const { unmount } = await renderEmbedded(symbol);
-			await waitFor(() => screen.getByTestId('step-indicator'));
+			await waitFor(() => screen.getByTestId('see-it-again'));
 			expect(screen.queryByTestId('shell-unavailable'), symbol).not.toBeInTheDocument();
 			unmount();
 		}

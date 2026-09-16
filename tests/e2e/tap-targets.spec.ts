@@ -717,7 +717,12 @@ for (const [label, viewport, keyboardFitsContainer] of [
 			page
 		}) => {
 			await openPracticeFamily(page, 'voicing');
-			await page.getByTestId('step-meet').click();
+			// PRAC-06: a gated-in chord's recognition card is already
+			// State.Review, so voicingStageForChord lands on 'drill' directly
+			// (see practiceVoicingGate.test.ts) - the meet compare card is only
+			// reachable via the "see it again" revisit link now that the
+			// persistent 3-stage picker is gone.
+			await page.getByTestId('see-it-again').click();
 			await expect(page.getByTestId('stage-meet')).toBeVisible();
 
 			const measured = await page.evaluate(() => ({
