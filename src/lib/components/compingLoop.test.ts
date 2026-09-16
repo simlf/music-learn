@@ -782,7 +782,7 @@ describe('live code escape hatch', () => {
 		await screen.findByTestId('comping-livecode-input');
 
 		expect(liveCodeButton()).toHaveAttribute('aria-pressed', 'true');
-		expect(editorText()).toBe('setcpm(17.5)\nchord("<Dm7 G7 Cmaj7>").voicing().s("sawtooth")');
+		expect(editorText()).toBe('setcpm(17.5)\nchord("<Dm7 G7 Cmaj7>").voicing().s("triangle")');
 	});
 
 	it('never clobbers an edit when the key changes elsewhere on the page: reset is the only way back', async () => {
@@ -795,7 +795,7 @@ describe('live code escape hatch', () => {
 		expect(editorText()).toBe('note("c e g")');
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
-		expect(editorText()).toBe('setcpm(17.5)\nchord("<Gm7 C7 Fmaj7>").voicing().s("sawtooth")');
+		expect(editorText()).toBe('setcpm(17.5)\nchord("<Gm7 C7 Fmaj7>").voicing().s("triangle")');
 	});
 
 	it('lets the player edit the seeded text', async () => {
@@ -850,7 +850,7 @@ describe('live code escape hatch', () => {
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
 
-		expect(editorText()).toBe('setcpm(17.5)\nchord("<Dm7 G7 Cmaj7>").voicing().s("sawtooth")');
+		expect(editorText()).toBe('setcpm(17.5)\nchord("<Dm7 G7 Cmaj7>").voicing().s("triangle")');
 	});
 
 	it('shows the engine’s own error when the pattern fails, and clears it on the next play', async () => {

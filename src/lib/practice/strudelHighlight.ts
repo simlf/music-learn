@@ -8,7 +8,7 @@ import { EditorView } from '@codemirror/view';
  * rather than any CodeMirror default theme - a pasted-in default theme would
  * look foreign next to the rest of the app (see AGENTS.md).
  *
- * A Strudel pattern like `chord("<Cmaj7 Dm7>").voicing().s("sawtooth")` is
+ * A Strudel pattern like `chord("<Cmaj7 Dm7>").voicing().s("triangle")` is
  * literal JavaScript: the mini-notation itself only ever lives inside string
  * literals. So "highlighting the mini-notation" is, concretely, giving those
  * strings the app's one standing attention accent (vermilion) - the pattern

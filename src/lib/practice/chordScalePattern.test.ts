@@ -29,8 +29,8 @@ describe('chordScaleConceptPattern', () => {
 			[
 				'setcpm(10)',
 				'stack(',
-				'  chord("<Cmaj7>").voicing().s("sawtooth"),',
-				'  note("c5 e5 g5 b5 d5 f5 a5").s("sawtooth sawtooth sawtooth sawtooth triangle triangle triangle")',
+				'  chord("<Cmaj7>").voicing().s("triangle"),',
+				'  note("c5 e5 g5 b5 d5 f5 a5").s("triangle triangle triangle triangle sine sine sine")',
 				')'
 			].join('\n')
 		);

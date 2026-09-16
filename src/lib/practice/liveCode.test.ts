@@ -18,7 +18,7 @@ describe('toStrudelPattern', () => {
 		const bars = buildCompBars('major-ii-V-I', 'C');
 
 		expect(toStrudelPattern(bars, 70)).toBe(
-			'setcpm(17.5)\nchord("<Dm7 G7 Cmaj7>").voicing().s("sawtooth")'
+			'setcpm(17.5)\nchord("<Dm7 G7 Cmaj7>").voicing().s("triangle")'
 		);
 	});
 

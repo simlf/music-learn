@@ -44,8 +44,9 @@ export function chordScaleConceptLetters(): { chordTones: string[]; scaleTones: 
 /**
  * Renders the concept as an editable pattern: the chord held on one voice,
  * then its own chord tones, then the scale's remaining tones on a second
- * voice, chord tones and scale tones each on their own waveform so the ear
- * tells them apart without reading anything. Bending a note in the melodic
+ * voice, chord tones and scale tones each on their own waveform (`triangle`
+ * vs `sine`, both softer than `sawtooth`'s harsh buzz - see liveCode.ts) so
+ * the ear tells them apart without reading anything. Bending a note in the melodic
  * line (swapping a scale tone for one outside the scale, or for a repeated
  * chord tone) is exactly how the lesson lets the player hear a clash or a
  * fit, per the design brief.
@@ -59,12 +60,12 @@ export function chordScaleConceptPattern(): string {
 	const { chordTones, scaleTones } = chordScaleConceptLetters();
 	const ordered = [...chordTones, ...scaleTones];
 	const pitches = ordered.map((letter) => `${letter.toLowerCase()}${MELODY_OCTAVE}`).join(' ');
-	const sounds = [...chordTones.map(() => 'sawtooth'), ...scaleTones.map(() => 'triangle')].join(' ');
+	const sounds = [...chordTones.map(() => 'triangle'), ...scaleTones.map(() => 'sine')].join(' ');
 	const symbol = toAsciiAccidentals(CHORD_SCALE_CONCEPT_SYMBOL);
 	return [
 		`setcpm(${CONCEPT_CPM})`,
 		'stack(',
-		`  chord("<${symbol}>").voicing().s("sawtooth"),`,
+		`  chord("<${symbol}>").voicing().s("triangle"),`,
 		`  note("${pitches}").s("${sounds}")`,
 		')'
 	].join('\n');

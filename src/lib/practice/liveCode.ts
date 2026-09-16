@@ -15,7 +15,11 @@ import type { CompBar } from './compLoop';
  * waveform, never a sample name, because the point of the escape hatch is
  * showing the same progression in Strudel's own idiom, not reproducing the
  * shell a second time. Only a synthesized waveform ever ships in the seeded
- * pattern (never a sample) so it plays fully offline; see strudel.ts.
+ * pattern (never a sample) so it plays fully offline; see strudel.ts. `triangle`
+ * (superdough's own default `s`) is used rather than `sawtooth` because its
+ * harmonic content is far softer - `sawtooth`'s full harmonic series reads as
+ * a harsh buzz on sustained chords, which is what the piano-like/pleasant
+ * requirement here is about.
  *
  * `<...>` is Strudel's alternate-each-cycle notation, and `setcpm` takes
  * cycles per minute: at one chord per 4/4 bar, one cycle IS one bar, so
@@ -27,5 +31,5 @@ export function toStrudelPattern(bars: readonly CompBar[], bpm: number): string 
 	if (bars.length === 0) return '';
 	const symbols = bars.map((bar) => toAsciiAccidentals(bar.symbol)).join(' ');
 	const cpm = Math.round((bpm / BEATS_PER_BAR) * 100) / 100;
-	return `setcpm(${cpm})\nchord("<${symbols}>").voicing().s("sawtooth")`;
+	return `setcpm(${cpm})\nchord("<${symbols}>").voicing().s("triangle")`;
 }

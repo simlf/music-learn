@@ -49,7 +49,7 @@ vi.mock('$lib/audio/strudel', () => ({
 const { default: ChordScaleConcept } = await import('./ChordScaleConcept.svelte');
 
 const SEEDED_PATTERN =
-	'setcpm(10)\nstack(\n  chord("<Cmaj7>").voicing().s("sawtooth"),\n  note("c5 e5 g5 b5 d5 f5 a5").s("sawtooth sawtooth sawtooth sawtooth triangle triangle triangle")\n)';
+	'setcpm(10)\nstack(\n  chord("<Cmaj7>").voicing().s("triangle"),\n  note("c5 e5 g5 b5 d5 f5 a5").s("triangle triangle triangle triangle sine sine sine")\n)';
 
 function input(): HTMLTextAreaElement {
 	return screen.getByTestId('chord-scale-pattern-input') as HTMLTextAreaElement;
