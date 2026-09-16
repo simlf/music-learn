@@ -4,6 +4,7 @@ import { factById } from '$lib/srs/facts';
 import { seventhChordSymbols, voicingStageForChord, type VoicingStage } from './shellVoicing';
 import { PROGRESSION_TEMPLATES, PROGRESSION_KEYS, buildProgression } from './progressions';
 import { inversionCountFor } from './inversions';
+import { isChordScaleQuestionAnswerable, generateChordScaleQuestion } from './chordScaleQuestion';
 
 /**
  * The pure, DOM-free HYBRID queue composer (27-CONTEXT "Queue model =
@@ -45,10 +46,13 @@ import { inversionCountFor } from './inversions';
  */
 
 /**
- * The nine practice-hub drill families (27-CONTEXT domain boundary;
+ * The ten practice-hub drill families (27-CONTEXT domain boundary;
  * 'inversion' added by Phase 35, INV-03 - synthetic, not carded; 'play-it'
  * and 'ear-it' added by T13, see familyForCard; 'degree' added by W1, which is
- * what finally made the catalog's 84 scale-degree facts reachable here).
+ * what finally made the catalog's 84 scale-degree facts reachable here;
+ * 'chord-scale' added by ml-modes-practice - synthetic, not carded, same
+ * shape as voicing/inversion: no FactKind, no Dexie schema, staged by the
+ * drilled chord's own card via the due-symbol gate at the host).
  */
 export type PracticeFamily =
 	| 'name-it'
@@ -59,7 +63,8 @@ export type PracticeFamily =
 	| 'degree'
 	| 'voicing'
 	| 'progression'
-	| 'inversion';
+	| 'inversion'
+	| 'chord-scale';
 
 /** The six FSRS-backed families this module maps from a CardRecord. */
 export type CardedFamily = 'name-it' | 'play-it' | 'ear-it' | 'build-it' | 'interval' | 'degree';
@@ -156,8 +161,20 @@ export interface InversionQueueItem {
 	inversionIndex: number;
 }
 
+/** A synthetic (non-persisted) chord-scale queue item: one chord symbol (ml-modes-practice). */
+export interface ChordScaleQueueItem {
+	id: string;
+	family: 'chord-scale';
+	symbol: string;
+}
+
 /** The discriminated union every composed queue slot is one of. */
-export type HybridQueueItem = CardedQueueItem | VoicingQueueItem | ProgressionQueueItem | InversionQueueItem;
+export type HybridQueueItem =
+	| CardedQueueItem
+	| VoicingQueueItem
+	| ProgressionQueueItem
+	| InversionQueueItem
+	| ChordScaleQueueItem;
 
 /**
  * Maps a CardRecord to its practice family: ONE family per chord-formula
@@ -419,6 +436,30 @@ export function syntheticInversionItems(
 		});
 	}
 	return items;
+}
+
+/**
+ * Draws up to `count` distinct chord-scale items from `candidateSymbols`, via
+ * the injected rng, mirroring syntheticInversionItems' enumerate-shuffle-take
+ * idiom. A symbol `improvGuideFor` has no honest scale answer for
+ * (isChordScaleQuestionAnswerable false: diminished, augmented, unrecognized)
+ * contributes no item. An empty `candidateSymbols` yields [] (PRAC-05's
+ * single-type-due gate: no chord-scale items drawn when none are due).
+ */
+export function syntheticChordScaleItems(
+	candidateSymbols: string[],
+	count: number,
+	rng: () => number = Math.random
+): ChordScaleQueueItem[] {
+	const drillable = candidateSymbols.filter((symbol) =>
+		isChordScaleQuestionAnswerable(generateChordScaleQuestion(symbol))
+	);
+	const shuffled = shuffleWithRng(drillable, rng);
+	return shuffled.slice(0, count).map((symbol) => ({
+		id: `chord-scale:${symbol}`,
+		family: 'chord-scale',
+		symbol
+	}));
 }
 
 /**
@@ -704,6 +745,14 @@ export function filterInversionsBySong(
 	items: InversionQueueItem[],
 	predicate: (symbol: string) => boolean
 ): InversionQueueItem[] {
+	return items.filter((item) => predicate(item.symbol));
+}
+
+/** Keeps only chord-scale items whose symbol satisfies `predicate` (PRAC-04's synthetic-half restriction, mirrors filterVoicingsBySong/filterInversionsBySong). */
+export function filterChordScaleBySong(
+	items: ChordScaleQueueItem[],
+	predicate: (symbol: string) => boolean
+): ChordScaleQueueItem[] {
 	return items.filter((item) => predicate(item.symbol));
 }
 

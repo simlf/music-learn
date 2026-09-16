@@ -79,7 +79,11 @@ vi.mock('$lib/practice/practiceQueue', async (importOriginal) => {
 	return {
 		...actual,
 		syntheticProgressionItems: (...args: unknown[]) => syntheticProgressionItemsMock(...args),
-		syntheticInversionItems: () => []
+		syntheticInversionItems: () => [],
+		// ml-modes-practice: a 7th synthetic family outside this file's scope
+		// (the pre-existing five-family PRAC-02 mix) - stubbed to [] for the
+		// same isolation reason syntheticInversionItems already is.
+		syntheticChordScaleItems: () => []
 	};
 });
 

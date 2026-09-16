@@ -9,6 +9,7 @@ import {
 	syntheticVoicingItems,
 	syntheticProgressionItems,
 	syntheticInversionItems,
+	syntheticChordScaleItems,
 	composePracticeQueue,
 	SCAFFOLD_HEAVY,
 	isLowMasterySession,
@@ -18,6 +19,7 @@ import {
 	RETRY_MAX_GAP,
 	filterVoicingsBySong,
 	filterInversionsBySong,
+	filterChordScaleBySong,
 	familiesInQueue,
 	hybridSessionRemaining,
 	isHybridSessionComplete,
@@ -25,6 +27,7 @@ import {
 	type VoicingQueueItem,
 	type ProgressionQueueItem,
 	type InversionQueueItem,
+	type ChordScaleQueueItem,
 	type HybridQueueItem
 } from './practiceQueue';
 import { seventhChordSymbols } from './shellVoicing';
@@ -273,6 +276,40 @@ describe('syntheticInversionItems', () => {
 	});
 });
 
+describe('syntheticChordScaleItems', () => {
+	it('draws distinct, valid, stable-id items from the candidate symbols', () => {
+		const items = syntheticChordScaleItems(['Dm7', 'G7'], 5, seededRng(1));
+		expect(items).toHaveLength(2);
+		const ids = new Set(items.map((item) => item.id));
+		expect(ids.size).toBe(2);
+		for (const item of items) {
+			expect(item.family).toBe('chord-scale');
+			expect(item.id).toBe(`chord-scale:${item.symbol}`);
+			expect(['Dm7', 'G7']).toContain(item.symbol);
+		}
+	});
+
+	it('excludes a candidate the guide has no honest scale answer for', () => {
+		const items = syntheticChordScaleItems(['Dm7', 'Cdim7'], 5, seededRng(2));
+		expect(items.map((item) => item.symbol)).toEqual(['Dm7']);
+	});
+
+	it('respects `count`, returning at most that many items', () => {
+		const items = syntheticChordScaleItems(['Dm7', 'G7', 'Cmaj7'], 2, seededRng(3));
+		expect(items).toHaveLength(2);
+	});
+
+	it('returns [] for an empty candidate list (single-type-due gate preserved)', () => {
+		expect(syntheticChordScaleItems([], 5, seededRng(4))).toEqual([]);
+	});
+
+	it('is deterministic for a given seeded rng', () => {
+		const a = syntheticChordScaleItems(['Dm7', 'G7', 'Cmaj7'], 2, seededRng(42));
+		const b = syntheticChordScaleItems(['Dm7', 'G7', 'Cmaj7'], 2, seededRng(42));
+		expect(a).toEqual(b);
+	});
+});
+
 /** Test-only fixture builder for a CardedQueueItem, mirroring cardsToQueueItems' own id/shape. */
 function makeCarded(
 	family: 'name-it' | 'build-it' | 'interval',
@@ -308,6 +345,11 @@ function makeProgression(templateId: string, key: string): ProgressionQueueItem 
 /** Test-only fixture builder for an InversionQueueItem. */
 function makeInversion(symbol: string, inversionIndex: number): InversionQueueItem {
 	return { id: `inversion:${symbol}:${inversionIndex}`, family: 'inversion', symbol, inversionIndex };
+}
+
+/** Test-only fixture builder for a ChordScaleQueueItem. */
+function makeChordScale(symbol: string): ChordScaleQueueItem {
+	return { id: `chord-scale:${symbol}`, family: 'chord-scale', symbol };
 }
 
 /** True iff `queue` contains 3+ consecutive items from the same family. */
@@ -843,6 +885,18 @@ describe('filterInversionsBySong', () => {
 			makeInversion('Em7', 0)
 		];
 		const filtered = filterInversionsBySong(items, (symbol) => symbol === 'Dm7');
+		expect(filtered.map((item) => item.symbol)).toEqual(['Dm7']);
+	});
+});
+
+describe('filterChordScaleBySong', () => {
+	it('restricts chord-scale items by the song predicate', () => {
+		const items: ChordScaleQueueItem[] = [
+			makeChordScale('Cm7'),
+			makeChordScale('Dm7'),
+			makeChordScale('Em7')
+		];
+		const filtered = filterChordScaleBySong(items, (symbol) => symbol === 'Dm7');
 		expect(filtered.map((item) => item.symbol)).toEqual(['Dm7']);
 	});
 });

@@ -69,7 +69,12 @@ vi.mock('$lib/practice/practiceQueue', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('$lib/practice/practiceQueue')>();
 	return {
 		...actual,
-		syntheticProgressionItems: (...args: unknown[]) => syntheticProgressionItemsMock(...args)
+		syntheticProgressionItems: (...args: unknown[]) => syntheticProgressionItemsMock(...args),
+		// ml-modes-practice: a 7th synthetic family that this REG test's scope
+		// (the pre-existing six-family weave, INV-03) never intended to cover -
+		// stubbed to [] so its real, non-deterministic draw cannot perturb this
+		// file's byte-identical assertions about the other six.
+		syntheticChordScaleItems: () => []
 	};
 });
 

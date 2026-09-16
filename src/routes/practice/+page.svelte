@@ -11,11 +11,13 @@
 		syntheticVoicingItems,
 		syntheticProgressionItems,
 		syntheticInversionItems,
+		syntheticChordScaleItems,
 		filterVoicingsBySong,
 		isLowMasterySession,
 		type HybridQueueItem,
 		type VoicingQueueItem,
 		type InversionQueueItem,
+		type ChordScaleQueueItem,
 		type CardedQueueItem
 	} from '$lib/practice/practiceQueue';
 	import {
@@ -55,6 +57,7 @@
 	import ShellVoicingDrill from '$lib/components/ShellVoicingDrill.svelte';
 	import ProgressionDrill from '$lib/components/ProgressionDrill.svelte';
 	import InversionDrill from '$lib/components/InversionDrill.svelte';
+	import ChordScaleDrill from '$lib/components/ChordScaleDrill.svelte';
 	import PracticeDegreeDrill from '$lib/components/PracticeDegreeDrill.svelte';
 	import ScaleKeyboardDrill from '$lib/components/ScaleKeyboardDrill.svelte';
 	import { MAJOR_SCALE_ROOTS, majorScaleNotes } from '$lib/theory/scale';
@@ -236,6 +239,15 @@
 	 * carded half - mirrors SYNTHETIC_PROGRESSION_COUNT's own rationale.
 	 */
 	const SYNTHETIC_INVERSION_COUNT = 2;
+
+	/**
+	 * The small, session-scaled count of synthetic chord-scale items woven into
+	 * one round when at least one chord-formula card is due (ml-modes-practice).
+	 * One tap per item (lighter than a voicing/inversion attempt), so a small
+	 * fixed count keeps variety without crowding the carded half - mirrors
+	 * SYNTHETIC_INVERSION_COUNT's own rationale.
+	 */
+	const SYNTHETIC_CHORD_SCALE_COUNT = 2;
 
 	/**
 	 * How many questions the round's budget reserves per seeded item. A seed
@@ -420,6 +432,7 @@
 			let voicingItems: VoicingQueueItem[] = [];
 			let progressionItems: HybridQueueItem[] = [];
 			let inversionItems: InversionQueueItem[] = [];
+			let chordScaleItems: ChordScaleQueueItem[] = [];
 			if (dueChordSymbols.size > 0) {
 				// Voicing synthetics: one item per DUE seventh chord only - a
 				// chord card that isn't due never surfaces its voicing item,
@@ -491,12 +504,30 @@
 					SYNTHETIC_INVERSION_COUNT,
 					Math.random
 				);
+
+				// Chord-scale synthetics (ml-modes-practice): drawn from the same
+				// due chord-formula symbols, gated identically on the due-chord
+				// signal (PRAC-05's single-type-due gate). Carries a single chord
+				// symbol of its own, so it is song-filterable exactly like
+				// voicing/inversion rather than omitted entirely.
+				let chordScaleCandidates = [...dueChordSymbols];
+				if (songFilterOn && provenanceIndex.size > 0) {
+					chordScaleCandidates = chordScaleCandidates.filter((symbol) =>
+						symbolHasProvenance(symbol, provenanceIndex)
+					);
+				}
+				chordScaleItems = syntheticChordScaleItems(
+					chordScaleCandidates,
+					SYNTHETIC_CHORD_SCALE_COUNT,
+					Math.random
+				);
 			}
 
 			const syntheticItems: HybridQueueItem[] = [
 				...voicingItems,
 				...progressionItems,
-				...inversionItems
+				...inversionItems,
+				...chordScaleItems
 			];
 			/**
 			 * QUEUE-01 (36-CONTEXT): a session is cold/low-mastery when the
@@ -770,7 +801,8 @@
 			interval: t('practice.cue.interval'),
 			degree: t('practice.cue.degree'),
 			progression: t('practice.cue.progression'),
-			inversion: t('practice.cue.inversion')
+			inversion: t('practice.cue.inversion'),
+			'chord-scale': t('practice.cue.chordScale')
 		})
 	);
 
@@ -1039,7 +1071,10 @@
 		const item = currentItem;
 		if (
 			item === undefined ||
-			(item.family !== 'voicing' && item.family !== 'progression' && item.family !== 'inversion')
+			(item.family !== 'voicing' &&
+				item.family !== 'progression' &&
+				item.family !== 'inversion' &&
+				item.family !== 'chord-scale')
 		)
 			return;
 		finishItem(item, firstTry);
@@ -1249,6 +1284,11 @@
 					symbol={currentItem.symbol}
 					inversionIndex={currentItem.inversionIndex}
 					onComplete={(firstTry) => completeSynthetic(firstTry)}
+				/>
+			{:else if currentItem.family === 'chord-scale'}
+				<ChordScaleDrill
+					symbol={currentItem.symbol}
+					onComplete={(correct) => completeSynthetic(correct)}
 				/>
 			{/if}
 		{/key}

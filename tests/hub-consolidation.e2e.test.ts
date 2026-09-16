@@ -142,13 +142,15 @@ vi.mock('$lib/practice/levelState', () => ({
 const syntheticVoicingItemsMock = vi.fn((..._args: unknown[]) => [] as unknown[]);
 const syntheticProgressionItemsMock = vi.fn((..._args: unknown[]) => [] as unknown[]);
 const syntheticInversionItemsMock = vi.fn((..._args: unknown[]) => [] as unknown[]);
+const syntheticChordScaleItemsMock = vi.fn((..._args: unknown[]) => [] as unknown[]);
 vi.mock('$lib/practice/practiceQueue', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('$lib/practice/practiceQueue')>();
 	return {
 		...actual,
 		syntheticVoicingItems: (...args: unknown[]) => syntheticVoicingItemsMock(...args),
 		syntheticProgressionItems: (...args: unknown[]) => syntheticProgressionItemsMock(...args),
-		syntheticInversionItems: (...args: unknown[]) => syntheticInversionItemsMock(...args)
+		syntheticInversionItems: (...args: unknown[]) => syntheticInversionItemsMock(...args),
+		syntheticChordScaleItems: (...args: unknown[]) => syntheticChordScaleItemsMock(...args)
 	};
 });
 
@@ -206,6 +208,7 @@ beforeEach(() => {
 	syntheticVoicingItemsMock.mockReset().mockReturnValue([]);
 	syntheticProgressionItemsMock.mockReset().mockReturnValue([]);
 	syntheticInversionItemsMock.mockReset().mockReturnValue([]);
+	syntheticChordScaleItemsMock.mockReset().mockReturnValue([]);
 	fetchStatsMock.mockReset().mockResolvedValue({ items: [], weakest: [] });
 	fetchStreakMock.mockReset().mockResolvedValue({ streak: 0, practicedToday: false });
 });

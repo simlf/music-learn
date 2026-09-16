@@ -52,7 +52,8 @@ vi.mock('$lib/practice/practiceQueue', async (importOriginal) => {
 		cardsToQueueItems: () => [],
 		syntheticVoicingItems: () => [],
 		syntheticProgressionItems: () => [],
-		syntheticInversionItems: () => [INVERSION_ITEM]
+		syntheticInversionItems: () => [INVERSION_ITEM],
+		syntheticChordScaleItems: () => []
 	};
 });
 

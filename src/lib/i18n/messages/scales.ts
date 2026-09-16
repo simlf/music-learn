@@ -77,6 +77,26 @@ export const scales = {
 			'Start on {TONIC} and climb the major scale: 2 2 1 2 2 2 1 half steps. Count the steps up to {NOTE}.',
 		'scales.degreeDrill.hintClosing': 'That is the whole method. It works in every key.',
 
+		// Practice hub CHORD-SCALE family (ChordScaleDrill.svelte, design doc
+		// improvisation.md 5.4): given a chord, tap the one key that is NOT in
+		// its fitting scale. `scaleName.*` keys are per ChordScaleId (dorian,
+		// ionian...) and are read via a template-literal key, so they carry a
+		// DYNAMIC_PREFIXES entry in unusedKeys.test.ts. The chord symbol and
+		// scale tonic letter stay immune, never routed through t().
+		'scales.chordScaleDrill.prompt': 'Tap the one key that does NOT fit this chord.',
+		'scales.chordScaleDrill.verdictCorrect': 'That note sits outside the scale. Nicely spotted.',
+		'scales.chordScaleDrill.verdictClose':
+			"Close. That note IS in the scale, it just rubs on a held beat, it's not the outsider.",
+		'scales.chordScaleDrill.verdictWrong': 'That note is part of the chord or its scale.',
+		'scales.chordScaleDrill.scaleLabelPrefix': 'The scale that fits:',
+		'scales.chordScaleDrill.scaleName.ionian': 'ionian',
+		'scales.chordScaleDrill.scaleName.lydian': 'lydian',
+		'scales.chordScaleDrill.scaleName.mixolydian': 'mixolydian',
+		'scales.chordScaleDrill.scaleName.dorian': 'dorian',
+		'scales.chordScaleDrill.scaleName.aeolian': 'aeolian',
+		'scales.chordScaleDrill.scaleName.minor-pentatonic': 'minor pentatonic',
+		'scales.chordScaleDrill.scaleName.locrian': 'locrian',
+
 		// InspectRegister idleText prop (owned by 20-09; this key only supplies
 		// the translated value, InspectRegister.svelte itself is untouched).
 		'scales.inspect.idle': 'Tap a key to inspect it.'
@@ -125,6 +145,20 @@ export const scales = {
 			'Pars de {TONIC} et monte la gamme majeure : 2 2 1 2 2 2 1 demi-tons. Compte les degrés jusqu\'à {NOTE}.',
 		'scales.degreeDrill.hintClosing':
 			"C'est toute la méthode. Elle marche dans toutes les tonalités.",
+
+		'scales.chordScaleDrill.prompt': "Touche l'unique note qui NE va PAS avec cet accord.",
+		'scales.chordScaleDrill.verdictCorrect': "Cette note est hors de la gamme. Bien vu.",
+		'scales.chordScaleDrill.verdictClose':
+			"Presque. Cette note EST dans la gamme, elle frotte juste sur un temps tenu, ce n'est pas l'intruse.",
+		'scales.chordScaleDrill.verdictWrong': "Cette note fait partie de l'accord ou de sa gamme.",
+		'scales.chordScaleDrill.scaleLabelPrefix': 'La gamme qui va avec :',
+		'scales.chordScaleDrill.scaleName.ionian': 'ionien',
+		'scales.chordScaleDrill.scaleName.lydian': 'lydien',
+		'scales.chordScaleDrill.scaleName.mixolydian': 'mixolydien',
+		'scales.chordScaleDrill.scaleName.dorian': 'dorien',
+		'scales.chordScaleDrill.scaleName.aeolian': 'éolien',
+		'scales.chordScaleDrill.scaleName.minor-pentatonic': 'pentatonique mineure',
+		'scales.chordScaleDrill.scaleName.locrian': 'locrien',
 
 		'scales.inspect.idle': "Touche une note pour l'inspecter."
 	}

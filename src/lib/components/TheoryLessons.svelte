@@ -13,6 +13,7 @@
 	import ChordScaleConcept from '$lib/components/ChordScaleConcept.svelte';
 	import { GUIDE_TONE_BARS, shellPitches, type GuideToneBar } from '$lib/lessons/guideTones';
 	import { INTERVAL_NAMING_LESSON } from '$lib/lessons/intervalNamingLesson';
+	import { CHORD_SCALE_LESSON, CHORD_SCALE_LESSON_DRILL_SEEDS } from '$lib/lessons/chordScaleLesson';
 	import { t, type MessageKey } from '$lib/i18n/locale.svelte';
 
 	/**
@@ -430,6 +431,18 @@
 	data-testid="section-chord-scale"
 >
 	<ChordScaleConcept />
+</section>
+
+<section
+	class="border-ink bg-paper-bright flex flex-col gap-4 border-2 px-4 py-6"
+	data-testid="section-chord-scale-lesson"
+>
+	<InteractiveLesson
+		steps={CHORD_SCALE_LESSON}
+		seeds={CHORD_SCALE_LESSON_DRILL_SEEDS}
+		previewRole="second"
+		subtitleKey="theory.chordScaleLesson.subtitle"
+	/>
 </section>
 
 <section

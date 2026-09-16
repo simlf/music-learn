@@ -141,7 +141,8 @@ export const practice = {
 		'practice.cue.interval': 'INTERVAL',
 		'practice.cue.degree': 'DEGREE',
 		'practice.cue.progression': 'PROGRESSION',
-		'practice.cue.inversion': 'INVERSION'
+		'practice.cue.inversion': 'INVERSION',
+		'practice.cue.chordScale': 'SCALE FIT'
 	},
 	fr: {
 		'practice.page.title': 'Pratique',
@@ -209,6 +210,7 @@ export const practice = {
 		'practice.cue.interval': 'INTERVALLE',
 		'practice.cue.degree': 'DEGRÉ',
 		'practice.cue.progression': 'PROGRESSION',
-		'practice.cue.inversion': 'INVERSION'
+		'practice.cue.inversion': 'INVERSION',
+		'practice.cue.chordScale': 'HORS GAMME'
 	}
 } satisfies LocaleDict;

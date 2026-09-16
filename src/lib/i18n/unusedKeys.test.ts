@@ -109,6 +109,11 @@ const DYNAMIC_PREFIXES: { prefix: string; site: string; note?: string }[] = [
 		prefix: 'improvise.scale.color.',
 		site: 'ImproviseGuide.svelte',
 		note: 'ChordScaleId, the mood one-liner per scale'
+	},
+	{
+		prefix: 'scales.chordScaleDrill.scaleName.',
+		site: 'ChordScaleDrill.svelte',
+		note: 'ChordScaleId (dorian, ionian...), the CHORD-SCALE drill family reveal label'
 	}
 ];
 

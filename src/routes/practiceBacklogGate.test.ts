@@ -41,7 +41,8 @@ vi.mock('$lib/practice/practiceQueue', async (importOriginal) => {
 		...actual,
 		syntheticVoicingItems: () => [],
 		syntheticProgressionItems: () => [],
-		syntheticInversionItems: () => []
+		syntheticInversionItems: () => [],
+		syntheticChordScaleItems: () => []
 	};
 });
 

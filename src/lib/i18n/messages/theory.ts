@@ -48,6 +48,13 @@ export const theory = {
 		'theory.intervalNaming.prove.body':
 			'Pick the letter first, then the accidental. The right key with the wrong letter still misses: that mismatch is exactly what this lesson is about.',
 
+		// The CHORD-SCALE lesson (ml-modes-practice §4.1): "the scale that fits
+		// a chord is the major scale it came from, started on the chord's own
+		// root." Same convention as intervalNaming above, step content lives in
+		// chordScaleLesson.ts, only the subtitle is keyed here.
+		'theory.chordScaleLesson.subtitle':
+			'The scale that fits a chord is the same seven letters, just started on a different note.',
+
 		'theory.scale.label': 'The major scale',
 		'theory.scale.heading': 'One ruler, every key',
 		'theory.scale.body':
@@ -162,6 +169,9 @@ export const theory = {
 		'theory.intervalNaming.prove.heading': 'Épelle-en quelques-uns',
 		'theory.intervalNaming.prove.body':
 			"Choisis d'abord la lettre, puis l'altération. La bonne touche avec la mauvaise lettre reste fausse : c'est exactement le piège de cette leçon.",
+
+		'theory.chordScaleLesson.subtitle':
+			"La gamme qui va avec un accord, ce sont les mêmes sept lettres, juste comptées à partir d'une autre note.",
 
 		'theory.scale.label': 'La gamme majeure',
 		'theory.scale.heading': 'Une règle, tous les tons',

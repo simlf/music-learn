@@ -160,6 +160,8 @@ That framing is deliberately the same argument guided-path makes for unit 14 (se
 
 The only drillable version I would defend: **given a chord symbol, tap the one note that is NOT in the scale that fits it.** That is a chord-symbol question with a single unambiguous answer, it is gradable, and it reuses the existing keyboard-tap construction interaction. Naming modes is not gradable in any way that matters, because the name is not the skill.
 
+*Built: shipped exactly as specified, as a synthetic (non-persisted) `/practice` family — `src/lib/practice/chordScaleQuestion.ts` (generator/grader, mirroring `degreeQuestion.ts`) and `ChordScaleDrill.svelte` (mirroring `PracticeDegreeDrill.svelte`), wired into `practiceQueue.ts` and `/practice` alongside the voicing/progression/inversion families. No new `FactKind`, no Dexie version — 5.3's point 4 held. Grading is structural via `verdictForLetter` rather than a single pre-picked target chroma, since a diatonic scale leaves 5 of 12 pitch classes outside it and all are equally correct "not in scale" answers. A same-angle `CHORD_SCALE_LESSON` (report 4.1, hardcoded to C per `InteractiveLesson`'s own limits) ships alongside it on `/learn`, distinct from `ChordScaleConcept.svelte`'s chord-tone-vs-scale-tone lesson.*
+
 
 ### 5.5 The Phase 38 rebuild: an instrument, not a page
 
