@@ -1,8 +1,8 @@
 import { spellChord } from '$lib/theory/chord';
 import { chromaOf } from '$lib/theory/interval';
 import { shellNotes } from '$lib/practice/shellVoicing';
-import { buildProgression } from '$lib/practice/progressions';
-import type { SpelledNote } from '$lib/theory/types';
+import { buildProgression, type ProgressionBar } from '$lib/practice/progressions';
+import type { ChordResult, SpelledNote } from '$lib/theory/types';
 
 /**
  * Pure content + math for guided-path unit 11: guide tones and voice
@@ -25,15 +25,19 @@ import type { SpelledNote } from '$lib/theory/types';
  * same note is a 7th and then a 3rd" - `guideToneMotion` below returns two
  * distinct SpelledNote-derived letters for exactly that reason.
  *
- * Scope: the major ii-V-I only (Dm7 -> G7 -> Cmaj7), the design doc's own
- * worked example and the clearest first case (all three shipped
- * `progressions.ts` templates are ii-V-I derivatives, per
- * .planning/design/guided-path.md's unit 11 sketch). The minor ii-V-i
- * template is deliberately NOT extended to this same "falls a half step"
- * claim: G7's 7th (F) resolves to Cm7's 3rd (E♭), a WHOLE step, because
+ * The FIXED demo below (`GUIDE_TONE_BARS`) is scoped to the major ii-V-I only
+ * (Dm7 -> G7 -> Cmaj7), the design doc's own worked example and the clearest
+ * first case for a 90-second lesson. `guideToneMotion` and
+ * `guideToneBarsForProgression` themselves are NOT scoped that way: they take
+ * any `ProgressionBar`s across all 12 keys and all 3 `progressions.ts`
+ * templates (the common-tone bridge step in `ProgressionDrill.svelte` is the
+ * other caller). The minor ii-V-i template's 7th-to-3rd motion is a WHOLE
+ * step, not a half step (G7's 7th, F, resolves to Cm7's 3rd, E♭, because
  * natural minor's 3rd-to-4th scale-degree gap is a whole step where major's
- * is a half step. Teaching the major case only keeps every claim here true
- * without a per-mode caveat cluttering a 90-second lesson.
+ * is a half step) - `fallingSemitones` is computed per call for exactly this
+ * reason, never assumed to be 1. The unit-11 lesson copy keeps its major-only
+ * claim true by never rendering the minor case; a caller that does render
+ * `fallingSemitones` (the bridge step) must show the number, not assert it.
  *
  * Pure module: no DOM, no Svelte, no audio. `$lib/audio/audio`'s existing
  * `playChord` is the caller's job, not this module's.
@@ -54,16 +58,14 @@ export interface GuideToneBar {
 }
 
 /**
- * The three bars, built from the SAME engine every other progression surface
- * uses (`progressions.ts`), never a second hand-rolled table. Total: if the
- * template or key were ever wrong this collapses to [], same as
- * `buildProgression` itself - kept as a plain constant since the key and
- * template are both fixed.
+ * Converts one `buildProgression` bar into a `GuideToneBar` (attaches its
+ * spelled root and shell). The single conversion step every caller needing
+ * guide-tone motion for an arbitrary key/template goes through - never a
+ * second hand-rolled shell computation. Total: an unrecognized symbol yields
+ * `root: ''` (spellChord's own default) and whatever shell shellNotes finds
+ * (possibly empty), same as every other total function in this module.
  */
-export const GUIDE_TONE_BARS: GuideToneBar[] = buildProgression(
-	GUIDE_TONE_TEMPLATE_ID,
-	GUIDE_TONE_KEY
-).map((bar) => {
+export function toGuideToneBar(bar: ProgressionBar): GuideToneBar {
 	const chord = spellChord(bar.symbol);
 	return {
 		roman: bar.roman,
@@ -72,7 +74,23 @@ export const GUIDE_TONE_BARS: GuideToneBar[] = buildProgression(
 		quality: bar.quality,
 		shell: shellNotes(chord)
 	};
-});
+}
+
+/** Converts a whole built progression (any key, any of the 3 templates) into its GuideToneBar list. */
+export function guideToneBarsForProgression(bars: ProgressionBar[]): GuideToneBar[] {
+	return bars.map(toGuideToneBar);
+}
+
+/**
+ * The three bars of the fixed C-major ii-V-I lesson demo, built from the SAME
+ * engine every other progression surface uses (`progressions.ts`), never a
+ * second hand-rolled table. Total: if the template or key were ever wrong
+ * this collapses to [], same as `buildProgression` itself - kept as a plain
+ * constant since the key and template are both fixed.
+ */
+export const GUIDE_TONE_BARS: GuideToneBar[] = guideToneBarsForProgression(
+	buildProgression(GUIDE_TONE_TEMPLATE_ID, GUIDE_TONE_KEY)
+);
 
 /** The voice-leading motion from one bar's shell into the next bar's shell. */
 export interface GuideToneMotion {
@@ -114,6 +132,28 @@ export function guideToneMotion(fromBar: GuideToneBar, toBar: GuideToneBar): Gui
 		fallingFrom: fromSeventh.letter,
 		fallingTo: toThird.letter,
 		fallingSemitones: (fromChroma - toChroma + 12) % 12
+	};
+}
+
+/**
+ * The common-tone bridge step's harder "play" answer target (`ProgressionDrill.svelte`,
+ * Phase 41): the held note plus the falling note, matchChord-ready. Wraps them
+ * in a minimal ChordResult shell (matchChord only reads `.notes`) rather than
+ * asking the drill to hand-build one. Total: reuses the motion's own two
+ * letters, so it inherits guideToneMotion's null-safety at the call site.
+ */
+export function bridgePlayTarget(motion: GuideToneMotion): ChordResult {
+	return {
+		input: '',
+		symbol: '',
+		root: '',
+		quality: '',
+		recognized: true,
+		aliases: [],
+		notes: [
+			{ letter: motion.heldLetter, solfege: '', role: 'third' },
+			{ letter: motion.fallingFrom, solfege: '', role: 'seventh' }
+		]
 	};
 }
 

@@ -56,6 +56,11 @@ async function playBar(letters: string[]) {
 	await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
 }
 
+/** Answers the common-tone bridge's recognize substep (the deck mock resolves every bar to 'meet' stage here, so this alone completes the bridge). */
+async function bridgeRecognize(letter: string) {
+	await fireEvent.click(screen.getByRole('button', { name: `Bridge note choice: ${letter}` }));
+}
+
 beforeEach(() => {
 	localStorage.clear();
 	getAllCardsMock.mockReset();
@@ -85,8 +90,10 @@ describe('ProgressionDrill: embed seam (27-02)', () => {
 
 		await nameBar('Dm7');
 		await playBar(['D', 'F', 'A', 'C']);
+		await bridgeRecognize('F');
 		await nameBar('G7');
 		await playBar(['G', 'B', 'D', 'F']);
+		await bridgeRecognize('B');
 		await nameBar('Cmaj7');
 		await playBar(['C', 'E', 'G', 'B']);
 
@@ -109,8 +116,10 @@ describe('ProgressionDrill: embed seam (27-02)', () => {
 
 		await nameBar('Dm7');
 		await playBar(['D', 'F', 'A', 'C']);
+		await bridgeRecognize('F');
 		await nameBar('G7');
 		await playBar(['G', 'B', 'D', 'F']);
+		await bridgeRecognize('B');
 		await nameBar('Cmaj7');
 		await playBar(['C', 'E', 'G', 'B']);
 

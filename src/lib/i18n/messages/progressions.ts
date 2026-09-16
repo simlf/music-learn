@@ -78,7 +78,19 @@ export const progressions = {
 
 		'progressions.hint.ghost.body': 'The dashed keys show where to play. Play them, then check.',
 
-		'progressions.hint.closing': 'The symbol stays hidden. You still earn it.'
+		'progressions.hint.closing': 'The symbol stays hidden. You still earn it.',
+
+		// Common-tone bridge step (Phase 41): the ungraded, unscheduled third
+		// step between bar N's play and bar N+1's name. Recognize
+		// (multiple-choice chip) then, once past the 'meet' stage, Play (a
+		// two-note keyboard answer). IMMUNITY: the played note letters
+		// themselves are never keyed here, only the surrounding words.
+		'progressions.register.bridge': 'BRIDGE: FIND THE COMMON TONE',
+		'progressions.bridge.instruction.recognize': 'Which note carries into the next chord?',
+		'progressions.bridge.instruction.play': 'Play the held note and the falling note.',
+		'progressions.bridge.aria.chip': 'Bridge note choice:',
+		'progressions.bridge.retry.recognize': 'Not quite. Try again.',
+		'progressions.bridge.retry.play': 'Not quite. Play it again.'
 	},
 	fr: {
 		'progressions.key.banner.label': 'TON :',
@@ -137,6 +149,13 @@ export const progressions = {
 
 		'progressions.hint.ghost.body': 'Les touches en pointillé indiquent où jouer. Joue-les, puis vérifie.',
 
-		'progressions.hint.closing': 'Le symbole reste caché. Tu le gagnes toujours.'
+		'progressions.hint.closing': 'Le symbole reste caché. Tu le gagnes toujours.',
+
+		'progressions.register.bridge': 'PONT : TROUVE LA NOTE COMMUNE',
+		'progressions.bridge.instruction.recognize': 'Quelle note se prolonge dans le prochain accord ?',
+		'progressions.bridge.instruction.play': 'Joue la note tenue et la note qui descend.',
+		'progressions.bridge.aria.chip': 'Choix de note du pont :',
+		'progressions.bridge.retry.recognize': 'Pas tout à fait. Réessaie.',
+		'progressions.bridge.retry.play': 'Pas tout à fait. Rejoue-le.'
 	}
 } satisfies LocaleDict;

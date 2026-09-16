@@ -130,14 +130,37 @@ async function completeVoicing(shellLetters: [string, string]): Promise<void> {
 	await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 }
 
-/** Drives an embedded ProgressionDrill round bar-by-bar (name then play). */
+/**
+ * Drives an embedded ProgressionDrill round bar-by-bar (name then play), and
+ * answers the common-tone bridge step between consecutive bars (Phase 41,
+ * report §A). A bar whose own card is pre-seeded to State.Review in this
+ * file's shared getAllCardsMock mounts the bridge past 'meet', so
+ * recognizing the held note escalates to the harder play substep (held note
+ * + falling note - the same two letters as that bar's own
+ * VOICING_SHELL_LETTERS entry, since the bridge's "play" answer is literally
+ * the outgoing bar's shell); this helper detects which happened and
+ * finishes either way. The fixed major-ii-V-I-in-C bars held letters are F
+ * (Dm7 -> G7) then B (G7 -> Cmaj7).
+ */
 async function completeProgression(bars: { symbol: string; letters: string[] }[]): Promise<void> {
-	for (const bar of bars) {
+	const bridgeHeldLetters = ['F', 'B'];
+	for (const [i, bar] of bars.entries()) {
 		await fireEvent.click(screen.getByText(bar.symbol));
 		for (const letter of bar.letters) {
 			await clickKey(letter);
 		}
 		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+		if (i < bars.length - 1) {
+			await fireEvent.click(
+				screen.getByRole('button', { name: `Bridge note choice: ${bridgeHeldLetters[i]}` })
+			);
+			if (screen.getByTestId('step-register').textContent?.includes('BRIDGE')) {
+				const [heldLetter, fallingLetter] = VOICING_SHELL_LETTERS[bar.symbol];
+				await clickKey(heldLetter);
+				await clickKey(fallingLetter);
+				await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+			}
+		}
 	}
 	await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 }

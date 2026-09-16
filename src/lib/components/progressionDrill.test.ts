@@ -89,6 +89,11 @@ async function playBar(letters: string[]) {
 	await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
 }
 
+/** Answers the common-tone bridge's recognize substep by tapping the held-note chip (the deck mock defaults every bar to 'meet' stage, so this alone completes the bridge and advances the cursor). */
+async function bridgeRecognize(letter: string) {
+	await fireEvent.click(screen.getByRole('button', { name: `Bridge note choice: ${letter}` }));
+}
+
 /** Clicks the hint ladder's single reveal control (SCAF-01, Phase 34 Plan 02). */
 async function revealHint() {
 	const cta = screen.getByTestId('progression-hint-cta');
@@ -148,6 +153,10 @@ describe('ProgressionDrill: derive-then-play two-step earning', () => {
 		expect(screen.getByTestId('symbol-0').querySelector('.chord-glyph')).toBeInTheDocument();
 		expect(screen.getByTestId('measure-0')).toHaveClass('measure--played');
 		expect(screen.getByTestId('function-reveal')).toHaveTextContent('SUBDOMINANT');
+
+		// The common-tone bridge fires before the cursor advances (report §A).
+		expect(screen.getByTestId('step-register')).toHaveTextContent('BRIDGE');
+		await bridgeRecognize('F');
 
 		// The cursor advanced to bar 1 (V/G7), back at step 1.
 		expect(screen.getByTestId('step-register')).toHaveTextContent('STEP 1');
@@ -217,8 +226,10 @@ describe('ProgressionDrill: completion', () => {
 
 		await nameBar('Dm7');
 		await playBar(['D', 'F', 'A', 'C']);
+		await bridgeRecognize('F');
 		await nameBar('G7');
 		await playBar(['G', 'B', 'D', 'F']);
+		await bridgeRecognize('B');
 		await nameBar('Cmaj7');
 		await playBar(['C', 'E', 'G', 'B']);
 
@@ -267,6 +278,105 @@ describe('ProgressionDrill: beginner keyboard span from per-bar card maturity (S
 			expect(screen.getByRole('img', { name: 'Piano keyboard, one octave' })).toBeInTheDocument();
 		});
 		expect(screen.getByTestId('beginner-caption')).toBeInTheDocument();
+	});
+});
+
+describe('ProgressionDrill: common-tone bridge step (Phase 41, report §A)', () => {
+	it('fires only between bar N and bar N+1 (not after the last bar), and shows both bars\' shells as ghost keys', async () => {
+		render(ProgressionDrill);
+
+		await nameBar('Dm7');
+		await playBar(['D', 'F', 'A', 'C']);
+
+		expect(screen.getByTestId('step-register')).toHaveTextContent('BRIDGE');
+		expect(screen.getByTestId('bridge-instruction')).toBeInTheDocument();
+		const ghostKeys = document.querySelectorAll('.piano-keyboard__key--ghost');
+		expect(ghostKeys.length).toBeGreaterThan(0);
+	});
+
+	it('at the meet stage (empty deck), a correct recognize tap alone completes the bridge and advances the cursor', async () => {
+		render(ProgressionDrill);
+
+		await nameBar('Dm7');
+		await playBar(['D', 'F', 'A', 'C']);
+		await bridgeRecognize('F');
+
+		expect(screen.getByTestId('step-register')).toHaveTextContent('STEP 1');
+		expect(screen.getByTestId('roman-1')).toBeInTheDocument();
+	});
+
+	it('a wrong recognize tap never gates: it stays on the bridge step with a gentle retry', async () => {
+		render(ProgressionDrill);
+
+		await nameBar('Dm7');
+		await playBar(['D', 'F', 'A', 'C']);
+		await bridgeRecognize('C');
+
+		expect(screen.getByTestId('bridge-recognize-retry')).toBeInTheDocument();
+		expect(screen.getByTestId('step-register')).toHaveTextContent('BRIDGE');
+	});
+
+	it('at a matured stage (State.Review), the recognize substep escalates to a play substep once answered correctly, graded as a two-note answer', async () => {
+		getAllCardsMock.mockResolvedValue([makeCard(State.Review)]);
+		render(ProgressionDrill);
+
+		await nameBar('Dm7');
+		await playBar(['D', 'F', 'A', 'C']);
+		await waitFor(() => {
+			expect(screen.getByTestId('bridge-chip-choices')).toBeInTheDocument();
+		});
+		await bridgeRecognize('F');
+
+		// Escalated to the harder play substep: not yet advanced.
+		expect(screen.getByTestId('step-register')).toHaveTextContent('BRIDGE');
+		expect(screen.queryByTestId('bridge-chip-choices')).not.toBeInTheDocument();
+
+		// Wrong play: held note only, missing the falling note.
+		clickKey('F');
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+		expect(screen.getByTestId('bridge-play-retry')).toBeInTheDocument();
+		expect(screen.getByTestId('step-register')).toHaveTextContent('BRIDGE');
+
+		// Correct play: the held note (F) and the falling note (C, Dm7's 7th).
+		clickKey('F');
+		clickKey('C');
+		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+		expect(screen.getByTestId('step-register')).toHaveTextContent('STEP 1');
+	});
+
+	it('never fires after the last bar of the progression', async () => {
+		render(ProgressionDrill);
+
+		await nameBar('Dm7');
+		await playBar(['D', 'F', 'A', 'C']);
+		await bridgeRecognize('F');
+		await nameBar('G7');
+		await playBar(['G', 'B', 'D', 'F']);
+		await bridgeRecognize('B');
+		await nameBar('Cmaj7');
+		await playBar(['C', 'E', 'G', 'B']);
+
+		expect(screen.getByTestId('progression-complete')).toBeInTheDocument();
+		expect(screen.queryByTestId('bridge-instruction')).not.toBeInTheDocument();
+	});
+
+	it('a bridge miss counts toward missedOnce (first-try tracking) reported to the host queue on completion', async () => {
+		const onComplete = vi.fn();
+		render(ProgressionDrill, { onComplete });
+
+		await nameBar('Dm7');
+		await playBar(['D', 'F', 'A', 'C']);
+		await bridgeRecognize('C'); // wrong tap, retried
+		await bridgeRecognize('F');
+		await nameBar('G7');
+		await playBar(['G', 'B', 'D', 'F']);
+		await bridgeRecognize('B');
+		await nameBar('Cmaj7');
+		await playBar(['C', 'E', 'G', 'B']);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+		expect(onComplete).toHaveBeenCalledWith(false);
 	});
 });
 
@@ -366,6 +476,7 @@ describe('ProgressionDrill: escalating hint ladder (SCAF-01)', () => {
 		expect(screen.getAllByTestId('progression-hint-layer')).toHaveLength(1);
 
 		await playBar(['D', 'F', 'A', 'C']);
+		await bridgeRecognize('F');
 		await nameBar('G7');
 
 		await waitFor(() => {

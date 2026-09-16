@@ -4,9 +4,12 @@ import {
 	GUIDE_TONE_KEY,
 	GUIDE_TONE_MOTIONS,
 	GUIDE_TONE_TEMPLATE_ID,
+	guideToneBarsForProgression,
 	guideToneMotion,
 	shellPitches
 } from './guideTones';
+import { buildProgression, PROGRESSION_KEYS, PROGRESSION_TEMPLATES } from '$lib/practice/progressions';
+import { chromaOf } from '$lib/theory/interval';
 
 /**
  * Unit 11 content gate (guide tones and voice leading). Locks the exact
@@ -92,6 +95,58 @@ describe('GUIDE_TONE_MOTIONS: precomputed for the two transitions', () => {
 		for (const motion of GUIDE_TONE_MOTIONS) {
 			expect(motion).not.toBeNull();
 			expect(motion?.fallingSemitones).toBe(1);
+		}
+	});
+});
+
+describe('guideToneBarsForProgression: generalized off the fixed C-major demo (common-tone bridge, Phase 41)', () => {
+	it('builds guide-tone bars for every key and every one of the 3 progression templates without ever throwing or returning null shells', () => {
+		for (const template of PROGRESSION_TEMPLATES) {
+			for (const key of PROGRESSION_KEYS) {
+				const bars = guideToneBarsForProgression(buildProgression(template.id, key));
+				expect(bars).toHaveLength(template.degrees.length);
+				for (const bar of bars) {
+					expect(bar.shell.length).toBeGreaterThanOrEqual(2);
+				}
+			}
+		}
+	});
+
+	it('every consecutive pair in every key/template resolves to a real, computed guide-tone motion (never null)', () => {
+		for (const template of PROGRESSION_TEMPLATES) {
+			for (const key of PROGRESSION_KEYS) {
+				const bars = guideToneBarsForProgression(buildProgression(template.id, key));
+				for (let i = 0; i < bars.length - 1; i++) {
+					const motion = guideToneMotion(bars[i], bars[i + 1]);
+					expect(motion).not.toBeNull();
+					expect(motion?.fallingSemitones).toBeGreaterThan(0);
+				}
+			}
+		}
+	});
+
+	it('the minor ii-V-i template is honest about the whole-step V->i resolution (G7 -> Cm7, F falls to E flat)', () => {
+		const bars = guideToneBarsForProgression(buildProgression('minor-ii-V-i', 'C'));
+		expect(bars.map((bar) => bar.symbol)).toEqual(['Dm7b5', 'G7', 'Cm7']);
+
+		const motion = guideToneMotion(bars[1], bars[2]);
+		expect(motion).not.toBeNull();
+		expect(motion?.fallingFrom).toBe('F');
+		expect(chromaOf(motion?.fallingTo ?? '')).toBe(chromaOf('Eb'));
+		// The whole-step claim from this module's own doc comment, computed
+		// here rather than asserted: natural minor's 3rd-to-4th gap is a whole
+		// step, unlike the major ii-V-I's half-step V->I resolution.
+		expect(motion?.fallingSemitones).toBe(2);
+	});
+
+	it('the major-turnaround (I-vi-ii-V) template resolves every transition as a genuine computed motion, not the fixed 3-bar demo shape', () => {
+		const bars = guideToneBarsForProgression(buildProgression('major-turnaround-I-vi-ii-V', 'D'));
+		expect(bars).toHaveLength(4);
+		for (let i = 0; i < bars.length - 1; i++) {
+			const motion = guideToneMotion(bars[i], bars[i + 1]);
+			expect(motion).not.toBeNull();
+			expect(motion?.heldLetter).toBeTruthy();
+			expect(motion?.fallingFrom).not.toBe(motion?.fallingTo);
 		}
 	});
 });

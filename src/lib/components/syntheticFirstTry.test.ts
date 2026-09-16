@@ -132,6 +132,14 @@ describe('ProgressionDrill reports first-try honestly (B3)', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
 	}
 
+	/** Answers the common-tone bridge's recognize substep (the deck mock resolves every bar to 'meet' stage here, so this alone completes the bridge). */
+	async function bridgeRecognize(letter: string): Promise<void> {
+		await fireEvent.click(screen.getByRole('button', { name: `Bridge note choice: ${letter}` }));
+	}
+
+	/** Held-note letter carrying bar N's shell into bar N+1's, for this fixed major-ii-V-I-in-C template (Dm7 -> G7 -> Cmaj7). */
+	const BRIDGE_HELD_LETTERS = ['F', 'B'];
+
 	function renderEmbedded(onComplete: (firstTry: boolean) => void): void {
 		render(ProgressionDrill, {
 			props: { embedTemplateId: 'major-ii-V-I', embedKey: 'C', onComplete }
@@ -142,7 +150,10 @@ describe('ProgressionDrill reports first-try honestly (B3)', () => {
 		const onComplete = vi.fn();
 		renderEmbedded(onComplete);
 
-		for (const bar of BARS) await playBar(bar);
+		for (const [i, bar] of BARS.entries()) {
+			await playBar(bar);
+			if (i < BARS.length - 1) await bridgeRecognize(BRIDGE_HELD_LETTERS[i]);
+		}
 		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
 		expect(onComplete).toHaveBeenCalledWith(true);
@@ -161,7 +172,10 @@ describe('ProgressionDrill reports first-try honestly (B3)', () => {
 		await fireEvent.click(wrong!);
 		expect(screen.getByTestId('name-retry')).toBeInTheDocument();
 
-		for (const bar of BARS) await playBar(bar);
+		for (const [i, bar] of BARS.entries()) {
+			await playBar(bar);
+			if (i < BARS.length - 1) await bridgeRecognize(BRIDGE_HELD_LETTERS[i]);
+		}
 		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
 		expect(onComplete).toHaveBeenCalledWith(false);
@@ -172,7 +186,9 @@ describe('ProgressionDrill reports first-try honestly (B3)', () => {
 		renderEmbedded(onComplete);
 
 		await playBar(BARS[0]);
+		await bridgeRecognize(BRIDGE_HELD_LETTERS[0]);
 		await playBar(BARS[1]);
+		await bridgeRecognize(BRIDGE_HELD_LETTERS[1]);
 
 		await fireEvent.click(screen.getByText('Cmaj7'));
 		clickKey('C');

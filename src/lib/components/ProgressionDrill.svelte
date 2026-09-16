@@ -12,7 +12,8 @@
 	import { matchChord } from '$lib/drills/matchChord';
 	import { spellChord } from '$lib/theory/chord';
 	import type { SpelledNote } from '$lib/theory/types';
-	import { toAsciiAccidentals } from '$lib/theory/interval';
+	import { chromaOf, toAsciiAccidentals } from '$lib/theory/interval';
+	import { bridgePlayTarget, guideToneMotion, toGuideToneBar } from '$lib/lessons/guideTones';
 	import { ensureAudioReady, playChord } from '$lib/audio/audio';
 	import { buildProvenanceIndex, songsForSymbol } from '$lib/practice/songProvenance';
 	import { getAllCards, type CardRecord } from '$lib/srs/deck';
@@ -70,7 +71,8 @@
 
 	let { embedTemplateId, embedKey, onComplete }: Props = $props();
 
-	type Step = 'name' | 'play';
+	type Step = 'name' | 'play' | 'bridge';
+	type BridgeSubstep = 'recognize' | 'play';
 
 	/** A fresh random progression + its bars, mirroring randomProgression()'s own return shape. */
 	function drawProgression(): { templateId: string; key: string; bars: ProgressionBar[] } {
@@ -106,6 +108,17 @@
 	let selected = $state<Set<string>>(new Set());
 	let pulseToken = $state(0);
 	let functionReveal = $state<RomanFunction | null>(null);
+
+	/**
+	 * Common-tone bridge step (Phase 41, report §A): fires between bar N's
+	 * play and bar N+1's name, never gated - retries the same "gentle, never
+	 * blocks" way name/play do, and rolls into the same `missedOnce`
+	 * first-try tracking. Ungraded/unscheduled (no FSRS deck entry), same as
+	 * the existing function-reveal.
+	 */
+	let bridgeSubstep = $state<BridgeSubstep>('recognize');
+	let bridgeRecognizeRetry = $state(false);
+	let bridgePlayRetry = $state(false);
 
 	/** Built once at mount (mirrors /recall's own init-time buildProvenanceIndex() call). */
 	const provenanceIndex = buildProvenanceIndex();
@@ -241,6 +254,60 @@
 		});
 	});
 
+	/** The bar AFTER the current one, only meaningful while bridging the transition into it. */
+	const nextBar = $derived(progression.bars[cursor + 1] as ProgressionBar | undefined);
+
+	/**
+	 * The bridge's voice-leading motion (report §A): generalized off the fixed
+	 * C-major demo via `guideToneMotion`/`toGuideToneBar`, honest per key/
+	 * template (the minor ii-V-i's whole-step V->i is a different
+	 * `fallingSemitones` value than the major templates' half step, never
+	 * assumed).
+	 */
+	const bridgeMotion = $derived.by(() => {
+		if (!currentBar || !nextBar) return null;
+		return guideToneMotion(toGuideToneBar(currentBar), toGuideToneBar(nextBar));
+	});
+
+	/**
+	 * Recognize substep's chip row: the shell pitch classes across BOTH
+	 * chords, deduped by chroma (the two bars share exactly one - the held
+	 * note). Order is the outgoing bar's shell then the incoming bar's, never
+	 * shuffled - unlike nameChoices this isn't multiple-choice-from-a-pool, so
+	 * there's no "always the same answer position" concern to guard against.
+	 */
+	const bridgeChipChoices = $derived.by(() => {
+		if (!currentBar || !nextBar) return [];
+		const fromShell = toGuideToneBar(currentBar).shell;
+		const toShell = toGuideToneBar(nextBar).shell;
+		const seen = new Set<number>();
+		const chips: { letter: string; chroma: number }[] = [];
+		for (const note of [...fromShell, ...toShell]) {
+			const chroma = chromaOf(note.letter);
+			if (chroma === undefined || seen.has(chroma)) continue;
+			seen.add(chroma);
+			chips.push({ letter: note.letter, chroma });
+		}
+		return chips;
+	});
+
+	/** Reference ghost markers showing both bars' shells during the bridge: 'H' for the held voice, 'F' for the falling voice (on both its outgoing and incoming positions). */
+	const bridgeGhostKeys = $derived.by(() => {
+		if (!currentBar || !nextBar) return [];
+		const fromShell = toGuideToneBar(currentBar).shell;
+		const toShell = toGuideToneBar(nextBar).shell;
+		const fromThird = fromShell.find((n) => n.role === 'third');
+		const fromSeventh = fromShell.find((n) => n.role === 'seventh');
+		const toThird = toShell.find((n) => n.role === 'third');
+		const toSeventh = toShell.find((n) => n.role === 'seventh');
+		const keys: { letter: string; octave: number; marker: string }[] = [];
+		if (fromThird) keys.push({ letter: fromThird.letter, octave: KEYBOARD_BASE_OCTAVE, marker: 'H' });
+		if (fromSeventh) keys.push({ letter: fromSeventh.letter, octave: KEYBOARD_BASE_OCTAVE, marker: 'F' });
+		if (toThird) keys.push({ letter: toThird.letter, octave: KEYBOARD_BASE_OCTAVE, marker: 'F' });
+		if (toSeventh) keys.push({ letter: toSeventh.letter, octave: KEYBOARD_BASE_OCTAVE, marker: 'H' });
+		return keys;
+	});
+
 	/** The rungs offered at the current bar's maturity stage (34-UI-SPEC §4): meet offers all 3, subtract drops the degree rung, drill offers none. */
 	const offeredRungs = $derived.by((): HintLayer[] => {
 		if (stage === 'meet') return ['degree', 'count', 'ghost'];
@@ -348,11 +415,62 @@
 		void ensureAudioReady();
 		playChord(target.notes.map((note) => note.letter));
 
+		// A bar N+1 exists: bridge the transition before advancing the cursor
+		// (report §A) - the cursor stays on bar N so currentBar/nextBar still
+		// name the outgoing/incoming chord of this transition. Otherwise
+		// (last bar) there is nothing to bridge into; `complete` takes over.
 		if (cursor < progression.bars.length - 1) {
-			cursor += 1;
-			step = 'name';
-			nameRetry = false;
+			step = 'bridge';
+			bridgeSubstep = 'recognize';
+			bridgeRecognizeRetry = false;
+			bridgePlayRetry = false;
 		}
+	}
+
+	/** Bridge recognize substep: tap the chip whose chroma matches the held (shared) note. Wrong retries gently, never gates. */
+	function pickBridgeChip(chroma: number): void {
+		if (!bridgeMotion) return;
+		if (chroma !== chromaOf(bridgeMotion.heldLetter)) {
+			bridgeRecognizeRetry = true;
+			missedOnce = true;
+			return;
+		}
+		bridgeRecognizeRetry = false;
+		if (stage === 'meet') {
+			completeBridge();
+		} else {
+			bridgeSubstep = 'play';
+		}
+	}
+
+	/** Bridge play substep (unlocked once stage !== 'meet'): play the held note AND the falling note, graded by matchChord against bridgePlayTarget. Wrong retries gently, never gates. */
+	function checkBridgePlay(): void {
+		if (!bridgeMotion) return;
+		const target = bridgePlayTarget(bridgeMotion);
+		const playedChroma = new Set(
+			[...selected].map((letter) => Note.chroma(toAsciiAccidentals(letter)))
+		);
+		selected = new Set();
+		const result = matchChord(playedChroma, target);
+
+		if (!result.correct) {
+			bridgePlayRetry = true;
+			missedOnce = true;
+			return;
+		}
+
+		bridgePlayRetry = false;
+		completeBridge();
+	}
+
+	/** The bridge is answered: advance the cursor onto bar N+1 and reset bridge state for the next transition. */
+	function completeBridge(): void {
+		cursor += 1;
+		step = 'name';
+		nameRetry = false;
+		bridgeSubstep = 'recognize';
+		bridgeRecognizeRetry = false;
+		bridgePlayRetry = false;
 	}
 
 	/** Fresh-progression "Again" control (completion card): draws a new random progression, full reset. */
@@ -366,6 +484,9 @@
 		missedOnce = false;
 		selected = new Set();
 		functionReveal = null;
+		bridgeSubstep = 'recognize';
+		bridgeRecognizeRetry = false;
+		bridgePlayRetry = false;
 	}
 </script>
 
@@ -410,8 +531,10 @@
 		{#if !complete && currentBar}
 			{#if step === 'name'}
 				{t('progressions.register.step1Prefix')} {currentBar.roman}
-			{:else}
+			{:else if step === 'play'}
 				{t('progressions.register.step2')}
+			{:else}
+				{t('progressions.register.bridge')}
 			{/if}
 		{/if}
 	</div>
@@ -446,7 +569,7 @@
 			{#if nameRetry}
 				<p class="retry" data-testid="name-retry">{t('progressions.retry.wrongName')}</p>
 			{/if}
-		{:else}
+		{:else if step === 'play'}
 			<div class="play-step">
 				<PianoKeyboard
 					notes={[]}
@@ -503,6 +626,51 @@
 						</p>
 					{/if}
 				</div>
+			{/if}
+		{:else if step === 'bridge' && bridgeMotion}
+			<p class="name-instruction" data-testid="bridge-instruction">
+				{bridgeSubstep === 'recognize'
+					? t('progressions.bridge.instruction.recognize')
+					: t('progressions.bridge.instruction.play')}
+			</p>
+			{#if bridgeSubstep === 'recognize'}
+				<PianoKeyboard notes={[]} octaves={1} ghostKeys={bridgeGhostKeys} />
+				<div class="name-choices" data-testid="bridge-chip-choices">
+					{#each bridgeChipChoices as chip (chip.chroma)}
+						<Button
+							type="button"
+							variant="ghost"
+							aria-label={`${t('progressions.bridge.aria.chip')} ${chip.letter}`}
+							onclick={() => pickBridgeChip(chip.chroma)}
+						>
+							<span class="font-serif text-heading font-bold">{chip.letter}</span>
+						</Button>
+					{/each}
+				</div>
+				{#if bridgeRecognizeRetry}
+					<p class="retry" data-testid="bridge-recognize-retry">
+						{t('progressions.bridge.retry.recognize')}
+					</p>
+				{/if}
+			{:else}
+				<div class="play-step">
+					<PianoKeyboard
+						notes={[]}
+						interactive
+						{selected}
+						onToggle={toggleKey}
+						octaves={1}
+						ghostKeys={bridgeGhostKeys}
+					/>
+					<Button type="button" variant="primary" onclick={checkBridgePlay}>
+						{t('progressions.button.check')}
+					</Button>
+				</div>
+				{#if bridgePlayRetry}
+					<p class="retry" data-testid="bridge-play-retry">
+						{t('progressions.bridge.retry.play')}
+					</p>
+				{/if}
 			{/if}
 		{/if}
 	{/if}

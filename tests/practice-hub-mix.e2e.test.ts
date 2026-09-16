@@ -139,14 +139,41 @@ async function completeVoicing(shellLetters: [string, string]): Promise<void> {
 	await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 }
 
-/** Drives an embedded ProgressionDrill round bar-by-bar (name then play), mirroring ProgressionDrill.embed.test.ts's nameBar/playBar helpers. */
-async function completeProgression(bars: { symbol: string; letters: string[] }[]): Promise<void> {
-	for (const bar of bars) {
+/**
+ * Drives an embedded ProgressionDrill round bar-by-bar (name then play),
+ * mirroring ProgressionDrill.embed.test.ts's nameBar/playBar helpers. Also
+ * answers the common-tone bridge step between consecutive bars (Phase 41,
+ * report §A): a bar whose own card is pre-seeded to State.Review in this
+ * file's shared getAllCardsMock (Dm7's is, for the carded-item tests above)
+ * mounts the bridge past 'meet', so recognizing the held note alone isn't
+ * enough - the harder play substep (held note + falling note, the SAME two
+ * letters as that bar's own VOICING_SHELL_LETTERS entry, since the bridge's
+ * "play" answer is literally the outgoing bar's shell) follows. This helper
+ * detects which happened after the recognize tap and finishes either way.
+ * `bridgeHeldLetters` names the held-note chip for the transition after each
+ * non-last bar (one fewer entry than `bars`).
+ */
+async function completeProgression(
+	bars: { symbol: string; letters: string[] }[],
+	bridgeHeldLetters: string[] = []
+): Promise<void> {
+	for (const [i, bar] of bars.entries()) {
 		await fireEvent.click(screen.getByText(bar.symbol));
 		for (const letter of bar.letters) {
 			await clickKey(letter);
 		}
 		await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+		if (i < bars.length - 1) {
+			await fireEvent.click(
+				screen.getByRole('button', { name: `Bridge note choice: ${bridgeHeldLetters[i]}` })
+			);
+			if (screen.getByTestId('step-register').textContent?.includes('BRIDGE')) {
+				const [heldLetter, fallingLetter] = VOICING_SHELL_LETTERS[bar.symbol];
+				await clickKey(heldLetter);
+				await clickKey(fallingLetter);
+				await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+			}
+		}
 	}
 	await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 }
@@ -256,7 +283,7 @@ describe('five-family interleaving (PRAC-02)', () => {
 				voicingsCompleted += 1;
 				await completeVoicing(VOICING_SHELL_LETTERS[symbol]);
 			} else if (family === 'progression-drill') {
-				await completeProgression(MAJOR_II_V_I_IN_C_BARS);
+				await completeProgression(MAJOR_II_V_I_IN_C_BARS, ['F', 'B']);
 			} else {
 				throw new Error('No drill component rendered for the current queue item');
 			}
@@ -389,7 +416,7 @@ describe('grade-commit split (REG-02)', () => {
 			} else if (family === 'shell-voicing-drill') {
 				await completeVoicing(VOICING_SHELL_LETTERS.Dm7);
 			} else if (family === 'progression-drill') {
-				await completeProgression(MAJOR_II_V_I_IN_C_BARS);
+				await completeProgression(MAJOR_II_V_I_IN_C_BARS, ['F', 'B']);
 			} else {
 				throw new Error('No drill component rendered for the current queue item');
 			}
