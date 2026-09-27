@@ -20,7 +20,9 @@ import { isChordScaleQuestionAnswerable, generateChordScaleQuestion } from './ch
  *   2. selectReviewCards(due)                 (srs/rotation, weakness+cap)
  *   3. interleaveQueue(selected, rng)         (srs/rotation, FSRS ordering)
  *   4. cardsToQueueItems(orderedCards)        (this module)
- *   5. syntheticVoicingItems(symbolCards)     (this module)
+ *   5. syntheticVoicingItems(symbolCards)     (this module), then, after the
+ *      host's eligibility filters, sampleVoicingItems(items,
+ *      SYNTHETIC_VOICING_COUNT, rng) (this module - the per-round cap)
  *   6. syntheticProgressionItems(count, rng)  (this module)
  *   7. composePracticeQueue(carded, synthetic, rng) (this module - FINAL
  *      cross-family weave only; carded items arrive already FSRS-ordered,
