@@ -121,9 +121,21 @@ async function completeBuildIt(letters: string[]): Promise<void> {
 	await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 }
 
-/** Drives an embedded ShellVoicingDrill round: the chord's card is pre-seeded to State.Review, so the drill mounts straight into 'drill' stage. */
-async function completeVoicing(shellLetters: [string, string]): Promise<void> {
+/** Reads the currently-rendered voicing item's target symbol off its own target-glyph ChordGlyph shadow (mirrors currentInversionSymbol below): the voicing draw is rng-sampled (sampleVoicingItems), so which symbol renders when is not catalog-order-stable. */
+function currentVoicingSymbol(): string {
+	const glyph = screen.getByTestId('target-glyph');
+	const shadow = glyph.querySelector('[data-testid="chord-glyph-shadow"]');
+	return (shadow?.textContent ?? '').replace(/\s+/g, '');
+}
+
+/** Drives an embedded ShellVoicingDrill round for whichever symbol is rendered: the chord's card is pre-seeded to State.Review, so the drill mounts straight into 'drill' stage. */
+async function completeVoicing(): Promise<void> {
 	await waitFor(() => screen.getByTestId('stage-drill'));
+	const symbol = currentVoicingSymbol();
+	const shellLetters = VOICING_SHELL_LETTERS[symbol];
+	if (shellLetters === undefined) {
+		throw new Error(`No shell letters known for rendered voicing symbol: ${symbol}`);
+	}
 	await clickKey(shellLetters[0]);
 	await clickKey(shellLetters[1]);
 	await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
@@ -312,10 +324,9 @@ describe('REG-01: six-family interleave, carded FSRS grade-commit, and synthetic
 		await fireEvent.click(screen.getByRole('button', { name: 'Start practice' }));
 
 		const familiesSeen: string[] = [];
-		let voicingsCompleted = 0;
-		const voicingOrder = ['Cm7', 'Dm7'];
 
-		// 3 carded (build/name/interval) + 2 voicing (Cm7, Dm7) + 1 progression
+		// 3 carded (build/name/interval) + 2 voicing (Cm7, Dm7 - both survive
+		// the SYNTHETIC_VOICING_COUNT draw, rng-ordered) + 1 progression
 		// + up to 2 inversion (SYNTHETIC_INVERSION_COUNT) = up to 8.
 		for (let i = 0; i < 8 && !screen.queryByTestId('session-end-card'); i++) {
 			familiesSeen.push(screen.getByTestId('question-source-tag').textContent?.trim() ?? '');
@@ -328,9 +339,7 @@ describe('REG-01: six-family interleave, carded FSRS grade-commit, and synthetic
 			} else if (family === 'build-session') {
 				await completeBuildIt(['D♯', 'G', 'A♯']);
 			} else if (family === 'shell-voicing-drill') {
-				const symbol = voicingOrder[voicingsCompleted];
-				voicingsCompleted += 1;
-				await completeVoicing(VOICING_SHELL_LETTERS[symbol]);
+				await completeVoicing();
 			} else if (family === 'progression-drill') {
 				await completeProgression(MAJOR_II_V_I_IN_C_BARS);
 			} else if (family === 'inversion-drill') {
@@ -438,7 +447,7 @@ describe('REG-01: song filter (PRAC-04) steers the carded half, voicing, AND inv
 			if (family === 'practice-chord-drill') {
 				await completeCardedChord('G7');
 			} else if (family === 'shell-voicing-drill') {
-				await completeVoicing(VOICING_SHELL_LETTERS.G7);
+				await completeVoicing();
 			} else if (family === 'inversion-drill') {
 				// Only G7 ever surfaces here - completeCurrentInversion reads the
 				// rendered symbol itself, so a Cm7 leak would fail loudly (its

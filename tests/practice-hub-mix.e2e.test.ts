@@ -130,9 +130,21 @@ async function completeBuildIt(letters: string[]): Promise<void> {
 	await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 }
 
-/** Drives an embedded ShellVoicingDrill round: the chord's card is pre-seeded to State.Review (getAllCardsMock), so the drill mounts straight into 'drill' stage on the shell (the default, VOICE-01) - no style click, no meet/subtract steps needed. */
-async function completeVoicing(shellLetters: [string, string]): Promise<void> {
+/** Reads the currently-rendered voicing item's target symbol off its own target-glyph ChordGlyph shadow: the voicing draw is rng-sampled (sampleVoicingItems), so which symbol renders when is not catalog-order-stable. */
+function currentVoicingSymbol(): string {
+	const glyph = screen.getByTestId('target-glyph');
+	const shadow = glyph.querySelector('[data-testid="chord-glyph-shadow"]');
+	return (shadow?.textContent ?? '').replace(/\s+/g, '');
+}
+
+/** Drives an embedded ShellVoicingDrill round for whichever symbol is rendered: the chord's card is pre-seeded to State.Review (getAllCardsMock), so the drill mounts straight into 'drill' stage on the shell (the default, VOICE-01) - no style click, no meet/subtract steps needed. */
+async function completeVoicing(): Promise<void> {
 	await waitFor(() => screen.getByTestId('stage-drill'));
+	const symbol = currentVoicingSymbol();
+	const shellLetters = VOICING_SHELL_LETTERS[symbol];
+	if (shellLetters === undefined) {
+		throw new Error(`No shell letters known for rendered voicing symbol: ${symbol}`);
+	}
 	await clickKey(shellLetters[0]);
 	await clickKey(shellLetters[1]);
 	await fireEvent.click(screen.getByRole('button', { name: 'Check' }));
@@ -265,8 +277,6 @@ describe('five-family interleaving (PRAC-02)', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Start practice' }));
 
 		const familiesSeen: string[] = [];
-		let voicingsCompleted = 0;
-		const voicingOrder = ['Cm7', 'Dm7'];
 
 		for (let i = 0; i < 6; i++) {
 			familiesSeen.push(screen.getByTestId('question-source-tag').textContent?.trim() ?? '');
@@ -279,9 +289,7 @@ describe('five-family interleaving (PRAC-02)', () => {
 			} else if (family === 'build-session') {
 				await completeBuildIt(['D♯', 'G', 'A♯']);
 			} else if (family === 'shell-voicing-drill') {
-				const symbol = voicingOrder[voicingsCompleted];
-				voicingsCompleted += 1;
-				await completeVoicing(VOICING_SHELL_LETTERS[symbol]);
+				await completeVoicing();
 			} else if (family === 'progression-drill') {
 				await completeProgression(MAJOR_II_V_I_IN_C_BARS, ['F', 'B']);
 			} else {
@@ -380,7 +388,7 @@ describe('song filter steers the merged queue (PRAC-04)', () => {
 			if (family === 'practice-chord-drill') {
 				await completeCardedChord('G7');
 			} else if (family === 'shell-voicing-drill') {
-				await completeVoicing(VOICING_SHELL_LETTERS.G7);
+				await completeVoicing();
 			} else {
 				throw new Error('Only name-it/voicing for G7 are expected in this filtered session');
 			}
@@ -414,7 +422,7 @@ describe('grade-commit split (REG-02)', () => {
 			if (family === 'practice-chord-drill') {
 				await completeCardedChord('Dm7');
 			} else if (family === 'shell-voicing-drill') {
-				await completeVoicing(VOICING_SHELL_LETTERS.Dm7);
+				await completeVoicing();
 			} else if (family === 'progression-drill') {
 				await completeProgression(MAJOR_II_V_I_IN_C_BARS, ['F', 'B']);
 			} else {

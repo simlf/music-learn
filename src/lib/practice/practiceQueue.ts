@@ -359,6 +359,49 @@ export function syntheticVoicingItems(symbolCards: Map<string, CardRecord[]>): V
 	}));
 }
 
+/**
+ * The small, session-scaled cap on voicing items woven into one round: the
+ * same per-round count the host already uses for the other three synthetic
+ * families (SYNTHETIC_PROGRESSION_COUNT / SYNTHETIC_INVERSION_COUNT /
+ * SYNTHETIC_CHORD_SCALE_COUNT in the /practice host). It lives here rather
+ * than beside them so sampleVoicingItems' composition regression test and
+ * the host can never disagree about the cap (the RETRY_MIN_GAP/RETRY_MAX_GAP
+ * precedent for host-consumed constants).
+ */
+export const SYNTHETIC_VOICING_COUNT = 2;
+
+/**
+ * Draws up to `count` voicing items from `items` via the injected rng: the
+ * shuffle-take half of the enumerate-shuffle-take idiom the other synthetic
+ * families already use. Progression/inversion/chord-scale draw inside their
+ * builders; voicing cannot, because its eligibility filters (the host's
+ * review-maturity gate and the song filter) apply AFTER syntheticVoicingItems
+ * builds the per-symbol items, so the draw has to come last or the cap would
+ * be spent on items the filters then discard.
+ *
+ * WHY A CAP EXISTS AT ALL (the stuck-progression defect this closes):
+ * syntheticVoicingItems builds one item per due seventh-chord symbol, which
+ * is unbounded. At tier 3+ a normal day holds 10-40 due seventh symbols, and
+ * composePracticeQueue's most-items-remaining preference then hands the
+ * voicing family two of every three slots of a DAILY_TARGET-bounded round
+ * (8 of 12). A voicing completion deliberately commits no FSRS grade
+ * (T-27-05-01), so the cards that made those symbols due stay due, the same
+ * symbols re-qualify the next day, the due-fact backlog never falls back
+ * under DUE_BACKLOG_GATE_FACTS, and new-material introduction starves while
+ * the round replays the same chords' voicings. Capping the DRAW (never the
+ * eligibility, the grading contract, or the gate) restores the round's
+ * scheduler throughput; simulated over an always-correct daily user, tier
+ * 3-to-4 fell from 103 to 38 days and the worst same-chord repeat fell from
+ * 34 to 3 appearances in 60 days.
+ */
+export function sampleVoicingItems(
+	items: VoicingQueueItem[],
+	count: number,
+	rng: () => number = Math.random
+): VoicingQueueItem[] {
+	return shuffleWithRng(items, rng).slice(0, Math.max(0, Math.floor(count)));
+}
+
 /** Fisher-Yates shuffle driven by the injected rng, mirroring srs/rotation.ts's shuffle convention. */
 function shuffleWithRng<T>(items: T[], rng: () => number): T[] {
 	const result = [...items];
