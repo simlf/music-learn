@@ -9,6 +9,8 @@
 		RETRY_MIN_GAP,
 		RETRY_MAX_GAP,
 		syntheticVoicingItems,
+		sampleVoicingItems,
+		SYNTHETIC_VOICING_COUNT,
 		syntheticProgressionItems,
 		syntheticInversionItems,
 		syntheticChordScaleItems,
@@ -474,6 +476,15 @@
 						symbolHasProvenance(symbol, provenanceIndex)
 					);
 				}
+				// Voicing's builder is per-symbol and therefore unbounded (one
+				// item per due seventh chord), unlike the other three synthetic
+				// families whose builders draw a small fixed count themselves.
+				// The draw down to the same per-round count happens last, after
+				// both eligibility filters above, or the cap would be spent on
+				// items the filters then discard - see sampleVoicingItems'
+				// docstring for the stuck-progression defect an uncapped draw
+				// causes in a DAILY_TARGET-bounded round.
+				voicingItems = sampleVoicingItems(voicingItems, SYNTHETIC_VOICING_COUNT, Math.random);
 
 				// Progression synthetics: a small, session-scaled count, only
 				// when at least one chord card is due (progressions are

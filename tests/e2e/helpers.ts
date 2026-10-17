@@ -257,8 +257,15 @@ const TRIADS: SeedCard[] = ['C', 'D', 'E', 'F', 'G', 'A'].map((root) => ({
 	mode: 'formula' as SeedMode
 }));
 
-/** Seventh chords -- one voicing item each (shellVoicing.seventhChordSymbols). */
-const SEVENTHS: SeedCard[] = ['Cmaj7', 'Dm7', 'E7', 'Fmaj7', 'G7', 'Am7'].map((symbol) => ({
+/**
+ * Seventh chords -- one voicing item each (shellVoicing.seventhChordSymbols).
+ * Exactly TWO on purpose: voicing's per-round draw is capped at 2
+ * (practiceQueue.SYNTHETIC_VOICING_COUNT), so a bigger seventh deck can never
+ * raise voicing's item count -- it only grows name-it, which then strictly
+ * outnumbers voicing and steals the first slot. Two sevenths make name-it 2
+ * as well, the tie the voicing recipe below needs.
+ */
+const SEVENTHS: SeedCard[] = ['Cmaj7', 'Dm7'].map((symbol) => ({
 	factId: `chord-formula:${symbol}`,
 	mode: 'formula' as SeedMode
 }));
@@ -269,15 +276,22 @@ const SEVENTHS: SeedCard[] = ['Cmaj7', 'Dm7', 'E7', 'Fmaj7', 'G7', 'Am7'].map((s
  *
  * HOW EACH ONE IS FORCED (composePracticeQueue picks the family with the MOST
  * items remaining, breaking ties by position in the rng-shuffled family
- * order; synthetic counts are fixed by the page at 2 progressions and 2
- * inversions):
- *   - name-it   6 triads  -> name-it 6 vs prog 2 / inv 2. Strict max, any rng.
+ * order; every synthetic family's per-round count is 2: the page's
+ * SYNTHETIC_PROGRESSION/INVERSION/CHORD_SCALE_COUNT consts plus voicing's
+ * SYNTHETIC_VOICING_COUNT draw cap in practiceQueue.ts):
+ *   - name-it   6 triads  -> name-it 6 vs 2 per synthetic family. Strict max,
+ *               any rng.
  *   - build-it  6 triads in 'formula-build' -> build-it 6. Strict max, any rng.
  *   - interval  6 interval facts -> no chord card is due, so NO synthetics are
  *               generated at all; a single-family queue is returned verbatim.
  *               Strict, any rng.
- *   - voicing   6 sevenths -> name-it 6 and voicing 6 tie; RNG_ZERO rotates
- *               the family order so voicing precedes name-it.
+ *   - voicing   2 sevenths -> a FIVE-way tie at 2 (name-it 2; voicing,
+ *               progression, inversion and chord-scale each draw their full
+ *               count of 2). More sevenths cannot help: voicing's draw is
+ *               capped at 2 while name-it keeps growing. RNG_ZERO rotates the
+ *               insertion order (name-it, voicing, progression, inversion,
+ *               chord-scale) into (voicing, progression, inversion,
+ *               chord-scale, name-it), so voicing wins the tie.
  *   - progression 1 triad -> name-it 1, prog 2, inv 2; prog/inv tie and
  *               RNG_IDENTITY leaves prog ahead of inv in insertion order.
  *   - inversion 1 triad -> same tie, RNG_MID rotates inv ahead of prog.

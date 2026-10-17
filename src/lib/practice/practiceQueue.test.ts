@@ -7,6 +7,8 @@ import {
 	DUE_BACKLOG_GATE_FACTS,
 	cardsToQueueItems,
 	syntheticVoicingItems,
+	sampleVoicingItems,
+	SYNTHETIC_VOICING_COUNT,
 	syntheticProgressionItems,
 	syntheticInversionItems,
 	syntheticChordScaleItems,
@@ -224,6 +226,150 @@ describe('syntheticVoicingItems', () => {
 		const items = syntheticVoicingItems(cardMap);
 		const item = items.find((entry) => entry.symbol === firstSymbol);
 		expect(item?.stage).toBe('drill');
+	});
+});
+
+describe('sampleVoicingItems', () => {
+	const voicingItem = (symbol: string): VoicingQueueItem => ({
+		id: `voicing:${symbol}`,
+		family: 'voicing',
+		symbol,
+		stage: 'drill'
+	});
+	const pool = ['Cmaj7', 'Dm7', 'E7', 'Fm7b5', 'Gdim7', 'Amaj7'].map(voicingItem);
+
+	it('draws at most `count` items, each one an input item, none duplicated', () => {
+		const drawn = sampleVoicingItems(pool, 2, seededRng(1));
+		expect(drawn).toHaveLength(2);
+		const ids = new Set(drawn.map((item) => item.id));
+		expect(ids.size).toBe(2);
+		const poolIds = new Set(pool.map((item) => item.id));
+		expect(drawn.every((item) => poolIds.has(item.id))).toBe(true);
+	});
+
+	it('returns every item (a permutation) when count is at or above the pool size', () => {
+		const drawn = sampleVoicingItems(pool, pool.length + 3, seededRng(1));
+		expect(new Set(drawn.map((item) => item.id))).toEqual(new Set(pool.map((item) => item.id)));
+	});
+
+	it('returns [] for a zero or negative count', () => {
+		expect(sampleVoicingItems(pool, 0, seededRng(1))).toEqual([]);
+		expect(sampleVoicingItems(pool, -3, seededRng(1))).toEqual([]);
+	});
+
+	it('is deterministic for a given seeded rng and never mutates its input', () => {
+		const before = [...pool];
+		const a = sampleVoicingItems(pool, 3, seededRng(42));
+		const b = sampleVoicingItems(pool, 3, seededRng(42));
+		expect(a).toEqual(b);
+		expect(pool).toEqual(before);
+	});
+
+	it('caps at the same small per-round scale as the sibling synthetic families', () => {
+		// The host draws progression/inversion/chord-scale at 2 per round; the
+		// voicing cap deliberately matches. Pinned so a future change is a
+		// conscious one (mirrors the DUE_BACKLOG_GATE_FACTS relationship test).
+		expect(SYNTHETIC_VOICING_COUNT).toBe(2);
+	});
+});
+
+/**
+ * Regression suite for the stuck-progression defect (scout task
+ * ml-srs-diagnose-stuck-chord-progression): a realistic mid-tier-3 due set
+ * holds 10-40 due seventh-chord symbols, and the pre-fix host wove ONE
+ * voicing item per due seventh symbol into the round. Voicing was then the
+ * single biggest family, composePracticeQueue's most-items-remaining
+ * preference handed it two of every three slots, and because a voicing
+ * completion commits no FSRS grade, a DAILY_TARGET-bounded round spent most
+ * of its 12 questions on items the scheduler never heard about: the due
+ * backlog never cleared, the intro gate stayed shut, and the same chords
+ * came back day after day.
+ *
+ * The fixture mirrors that state: 20 due seventh symbols, each fact with the
+ * 2 due cards selectReviewCards would pass through, spread across the four
+ * chord modes the way a mature deck's due set actually lands (so the carded
+ * half is several mid-sized families, not one big one), plus the host's
+ * three capped synthetic families.
+ */
+describe('voicing cap preserves a bounded round scheduler throughput (regression)', () => {
+	const CARDED_ROUND_FAMILIES = new Set(['name-it', 'play-it', 'ear-it', 'build-it']);
+	const ROUND_TARGET = 12;
+
+	function midTier3Fixture(rng: () => number): {
+		cardedItems: CardedQueueItem[];
+		voicingPool: VoicingQueueItem[];
+		otherSynthetics: HybridQueueItem[];
+	} {
+		const dueSymbols = seventhChordSymbols().slice(0, 20);
+		const cardsBySymbol = new Map<string, CardRecord[]>();
+		const dueCards: CardRecord[] = [];
+		dueSymbols.forEach((symbol, index) => {
+			const modes: Mode[] =
+				index % 2 === 0 ? ['formula', 'see-play'] : ['formula-build', 'hear-name'];
+			const cards = modes.map((mode) =>
+				makeCardRecord({
+					factId: `chord-formula:${symbol}`,
+					factKind: 'chord-formula',
+					mode,
+					state: State.Review,
+					masteryDayCount: 1
+				})
+			);
+			cardsBySymbol.set(symbol, cards);
+			dueCards.push(...cards);
+		});
+
+		const cardedItems = cardsToQueueItems(dueCards);
+		const voicingPool = syntheticVoicingItems(cardsBySymbol).filter((item) =>
+			cardsBySymbol.has(item.symbol)
+		);
+		const otherSynthetics: HybridQueueItem[] = [
+			...syntheticProgressionItems(2, rng),
+			...syntheticInversionItems(dueSymbols, 2, rng),
+			...syntheticChordScaleItems(dueSymbols, 2, rng)
+		];
+		return { cardedItems, voicingPool, otherSynthetics };
+	}
+
+	function familyCounts(round: HybridQueueItem[]): { carded: number; voicing: number } {
+		let carded = 0;
+		let voicing = 0;
+		for (const item of round) {
+			if (CARDED_ROUND_FAMILIES.has(item.family)) carded += 1;
+			if (item.family === 'voicing') voicing += 1;
+		}
+		return { carded, voicing };
+	}
+
+	it('a capped draw keeps the majority of a 12-question round on FSRS-graded items', () => {
+		const rng = seededRng(7);
+		const { cardedItems, voicingPool, otherSynthetics } = midTier3Fixture(rng);
+		const voicingItems = sampleVoicingItems(voicingPool, SYNTHETIC_VOICING_COUNT, rng);
+		const composed = composePracticeQueue(cardedItems, [...voicingItems, ...otherSynthetics], rng);
+		const { round } = sliceRound(composed, ROUND_TARGET);
+		const { carded, voicing } = familyCounts(round);
+
+		expect(round).toHaveLength(ROUND_TARGET);
+		expect(voicing).toBeLessThanOrEqual(SYNTHETIC_VOICING_COUNT);
+		// The bar that matters: at least half the bounded round must reach the
+		// scheduler, or due cards stay due and the intro gate never reopens.
+		expect(carded).toBeGreaterThanOrEqual(6);
+	});
+
+	it('documents the defect: an uncapped voicing draw starves the same round', () => {
+		// Characterization of the pre-fix behavior, kept so the throughput
+		// numbers above are legible as a real difference rather than a given:
+		// with one voicing item per due seventh symbol (20 of them), voicing is
+		// the single biggest family and the weave hands it up to 2 of every 3
+		// slots, leaving the scheduler a minority of the round.
+		const rng = seededRng(7);
+		const { cardedItems, voicingPool, otherSynthetics } = midTier3Fixture(rng);
+		const composed = composePracticeQueue(cardedItems, [...voicingPool, ...otherSynthetics], rng);
+		const { round } = sliceRound(composed, ROUND_TARGET);
+		const { carded, voicing } = familyCounts(round);
+
+		expect(voicing).toBeGreaterThanOrEqual(6);
+		expect(carded).toBeLessThanOrEqual(6);
 	});
 });
 
