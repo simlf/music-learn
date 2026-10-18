@@ -9,9 +9,9 @@ name: visual
 # the fast unit/type checks report independently.
 
 on:
-  push:
-    branches: [main]
+  # PR-only: main already ran this on the PR, so push-to-main runs only deploy.
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read

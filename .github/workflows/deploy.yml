@@ -12,17 +12,27 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: deploy-infrabox667
-  cancel-in-progress: false
-
 env:
   REGISTRY: ghcr.io
   IMAGE_API: ghcr.io/simlf/music-learn-api
   IMAGE_WEB: ghcr.io/simlf/music-learn-web
 
 jobs:
+  # No-op gate held by the `main-debounce` environment's 10-minute wait timer
+  # (no runner minutes spent while waiting). A newer merge cancels a run still
+  # waiting here, so a burst deploys once, for the last one. See README "CI cost".
+  debounce:
+    runs-on: ubuntu-latest
+    environment: main-debounce
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-debounce
+      cancel-in-progress: true
+    permissions: {}
+    steps:
+      - run: echo ok
+
   gate:
+    needs: debounce
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -73,9 +83,14 @@ jobs:
         run: npm run test
         if: steps.decide.outputs.skip != 'true'
 
+  # Once past the debounce, a running build or deploy is never cancelled; each
+  # has its own group, where a newer pending job may replace an older one.
   build-push:
     needs: gate
     runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-build
+      cancel-in-progress: false
     timeout-minutes: 30
     permissions:
       contents: read
@@ -119,11 +134,34 @@ jobs:
   deploy:
     needs: build-push
     runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-deploy
+      cancel-in-progress: false
     timeout-minutes: 15
     permissions:
+      contents: read
       packages: read
     steps:
+      - name: Skip if a newer commit on main supersedes this one
+        id: newest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          SHA: ${{ github.sha }}
+        run: |
+          deploy=true
+          if [ "$EVENT" = "push" ]; then
+            newer=$(gh api "repos/$REPO/compare/$SHA...main" --jq '[.files[].filename | select(test("\\.md$|^\\.planning/|^docs/") | not)] | length')
+            if [ "$newer" != "0" ]; then
+              echo "newer commit on main, skipping"
+              deploy=false
+            fi
+          fi
+          echo "deploy=$deploy" >> "$GITHUB_OUTPUT"
+
       - name: Deploy on infrabox667 over SSH
+        if: steps.newest.outputs.deploy == 'true'
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -145,7 +183,7 @@ jobs:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Free disk space on the server if deploy failed
-        if: ${{ failure() }}
+        if: ${{ failure() && steps.newest.outputs.deploy == 'true' }}
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         with:
           host: ${{ secrets.SSH_HOST }}
