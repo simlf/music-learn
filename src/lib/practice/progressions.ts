@@ -158,7 +158,17 @@ function shuffle<T>(items: T[]): T[] {
 export function buildProgression(templateId: string, key: string): ProgressionBar[] {
 	const template = PROGRESSION_TEMPLATES.find((t) => t.id === templateId);
 	if (!template || !PROGRESSION_KEYS.includes(key)) return [];
+	return barsInKey(template, key);
+}
 
+/**
+ * The bar-building half of `buildProgression`, WITHOUT its 12-key guard: the
+ * key-cycle exercise (`shellCycle.ts`) spells some tonics enharmonically
+ * outside PROGRESSION_KEYS (G♭ major, G♯ and C♯ minor) because the vetted
+ * set's spelling would put double flats in the chords. Same transposition,
+ * same spellChord drop of any unrecognized bar; the caller owns the key.
+ */
+export function barsInKey(template: ProgressionTemplate, key: string): ProgressionBar[] {
 	const degreeIntervals = template.mode === 'minor' ? MINOR_DEGREE_INTERVALS : MAJOR_DEGREE_INTERVALS;
 	const bars: ProgressionBar[] = [];
 

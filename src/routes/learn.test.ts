@@ -59,6 +59,22 @@ describe('/learn: hub structure and section presence', () => {
 		expect(blocks.indexOf('learn-comping')).toBeLessThan(blocks.indexOf('learn-theory'));
 	});
 
+	it('lists the method-book chapters under the loop, each linking to its own page', () => {
+		renderPage();
+		const book = screen.getByTestId('learn-book');
+		expect(within(book).getByText('Part II · The left hand')).toBeInTheDocument();
+		const row = within(book).getByTestId('learn-chapter-row');
+		expect(row).toHaveAttribute('href', '/learn/shells-in-every-key');
+		expect(row.textContent).toContain('Chapter 15');
+		expect(row.textContent).toContain('Shells in every key');
+
+		const blocks = Array.from(
+			document.querySelectorAll<HTMLElement>('[data-testid^="learn-"]')
+		).map((element) => element.dataset.testid);
+		expect(blocks.indexOf('learn-comping')).toBeLessThan(blocks.indexOf('learn-book'));
+		expect(blocks.indexOf('learn-book')).toBeLessThan(blocks.indexOf('learn-theory'));
+	});
+
 	it('renders the Theory section with the extracted lesson sections', () => {
 		renderPage();
 		const theorySection = screen.getByTestId('learn-theory');

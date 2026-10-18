@@ -101,6 +101,11 @@
 		return href === BADGED_HREF ? dueCount() : 0;
 	}
 
+	/** A tab is active on its own route and on any page nested under it (a /learn/{chapter} page keeps Learn lit). */
+	function isActiveLink(pathname: string, href: string): boolean {
+		return pathname === href || (href !== '/' && pathname.startsWith(`${href}/`));
+	}
+
 	/**
 	 * Accessible name for a tab. With a badge showing, the count is folded
 	 * into the name ("Practice, 3 due") because the visible badge itself is
@@ -207,7 +212,7 @@
 			<a
 				href={link.href}
 				class="masthead__link text-label font-mono uppercase"
-				class:masthead__link--active={$page.url.pathname === link.href}
+				class:masthead__link--active={isActiveLink($page.url.pathname, link.href)}
 				style="letter-spacing: 0.08em;"
 				aria-label={mastheadAriaLabel(link)}
 			>
@@ -226,7 +231,7 @@
 		<a
 			href={link.href}
 			class="bottom-tab-bar__item font-mono"
-			class:bottom-tab-bar__item--active={$page.url.pathname === link.href}
+			class:bottom-tab-bar__item--active={isActiveLink($page.url.pathname, link.href)}
 			aria-label={tabAriaLabel(link)}
 		>
 			<span class="bottom-tab-bar__icon">
