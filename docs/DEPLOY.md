@@ -92,7 +92,8 @@ Either way it runs the gate (root tests, `svelte-check`, server tests), builds
 and pushes both `linux/arm64` images, then redeploys the VM with
 `docker compose pull` + `up -d`. The gate is skipped only when the merge
 commit's tree is identical to the PR head that already passed the `test`
-check.
+check. Every run first waits 10 minutes in the `main-debounce` environment,
+where a newer merge cancels it; see [CI cost](../README.md#ci-cost).
 
 ## Rollback
 

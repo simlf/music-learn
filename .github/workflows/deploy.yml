@@ -12,12 +12,6 @@ on:
 permissions:
   contents: read
 
-# Debounce: a newer merge cancels the run still waiting in `debounce`, so a
-# burst of merges deploys once, for the last one.
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 env:
   REGISTRY: ghcr.io
   IMAGE_API: ghcr.io/simlf/music-learn-api
@@ -25,10 +19,14 @@ env:
 
 jobs:
   # No-op gate held by the `main-debounce` environment's 10-minute wait timer
-  # (no runner minutes spent while waiting). See README "CI cost".
+  # (no runner minutes spent while waiting). A newer merge cancels a run still
+  # waiting here, so a burst deploys once, for the last one. See README "CI cost".
   debounce:
     runs-on: ubuntu-latest
     environment: main-debounce
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-debounce
+      cancel-in-progress: true
     permissions: {}
     steps:
       - run: echo ok
@@ -85,9 +83,14 @@ jobs:
         run: npm run test
         if: steps.decide.outputs.skip != 'true'
 
+  # Once past the debounce, a run is never cancelled: build and deploy queue
+  # behind any in-flight one instead.
   build-push:
     needs: gate
     runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-deploy
+      cancel-in-progress: false
     timeout-minutes: 30
     permissions:
       contents: read
@@ -131,6 +134,9 @@ jobs:
   deploy:
     needs: build-push
     runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-deploy
+      cancel-in-progress: false
     timeout-minutes: 15
     permissions:
       packages: read
