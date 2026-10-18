@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { matchInversion } from './matchInversion';
+import { lowestPlayedChroma, matchInversion } from './matchInversion';
 import { spellChord } from '$lib/theory/chord';
 
 describe('matchInversion', () => {
@@ -75,5 +75,25 @@ describe('matchInversion', () => {
 
 		expect(result.correct).toBe(true);
 		expect(result.bassCorrect).toBe(true);
+	});
+});
+
+describe('lowestPlayedChroma', () => {
+	it('picks the lowest sounding letter by octave, not the lowest chroma', () => {
+		const octaves = new Map([
+			['A', 4],
+			['C', 5],
+			['D', 5]
+		]);
+		expect(lowestPlayedChroma(['C', 'D', 'A'], octaves, 4)).toBe(9);
+	});
+
+	it('assumes the fallback octave for a letter with no recorded press', () => {
+		expect(lowestPlayedChroma(['F', 'D'], new Map([['F', 5]]), 4)).toBe(2);
+	});
+
+	it('is undefined for nothing played or an unresolvable letter', () => {
+		expect(lowestPlayedChroma([], new Map(), 4)).toBeUndefined();
+		expect(lowestPlayedChroma(['D', 'Q'], new Map(), 4)).toBeUndefined();
 	});
 });

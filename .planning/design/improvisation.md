@@ -255,7 +255,7 @@ The boundary I would defend if pressed: **at most a small number of instruments,
 | `/learn` becomes the ordered path plus a Reference section | The comping loop is a **third** kind of block on `/learn`: not a unit, not reference, an instrument. When the path lands, it should sit above the ordered list or beside it, still first-screen, and it must not be given an index number. |
 | The one-line "new in Learn" cue on `/practice` | The loop must never advertise itself there. That cue is for units. An instrument that nags is a drill. |
 | Unit 14, chart vocabulary, lookup-plus-strategy recommended | Shape 3 uses the identical argument (a strategy beats memorised spellings for the long tail) and is sequenced after unit 8, so it does not compete with unit 14 for the same decision. |
-| 14 units, no fifteenth | Shape 3 does **not** add unit 15. If the owner later wants modes taught rather than referenced, that is a new decision and should be argued then. |
+| 14 units, no fifteenth | Shape 3 does **not** add a unit: modes stay referenced, not taught. If the owner later wants modes taught, that is a new decision and should be argued then. (Chapters numbered from 15 do now exist, but they are the method book's left-hand chapters, not modes: see `method-book.md`, decided 2026-10-17.) |
 
 The one place this document takes a position guided-path did not: the loop leads `/learn` today, above the lesson scroll, because it is the one block on that page you open with the intent to *use* it at the piano, and burying it under seven lesson sections means scrolling past all of them on a phone every time. When the path rewrites the page, that placement should be re-argued rather than inherited by accident.
 

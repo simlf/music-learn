@@ -12,7 +12,7 @@
 		inversionVoicing,
 		INVERSION_BASE_OCTAVE
 	} from '$lib/practice/inversions';
-	import { matchInversion } from '$lib/drills/matchInversion';
+	import { lowestPlayedChroma, matchInversion } from '$lib/drills/matchInversion';
 	import type { IntervalRole } from '$lib/theory/types';
 	import PianoKeyboard from './PianoKeyboard.svelte';
 	import ChordGlyph from './ChordGlyph.svelte';
@@ -109,31 +109,6 @@
 		pressedOctaveByLetter = next;
 	}
 
-	/**
-	 * The chroma of whichever selected letter sits at the lowest absolute
-	 * pitch (octave*12 + chroma), using pressedOctaveByLetter (defaulting to
-	 * the base octave for a letter toggled without ever registering a press).
-	 * Undefined when nothing is selected, or when any selected letter does not
-	 * resolve to a pitch class (the bass is then genuinely undetermined, so it
-	 * must not grade correct - `chromaOf` makes that check fire instead of
-	 * letting a NaN score silently win or lose the comparison).
-	 */
-	function lowestPlayedBassChroma(): number | undefined {
-		let lowestScore: number | undefined;
-		let lowestChroma: number | undefined;
-		for (const letter of selected) {
-			const octave = pressedOctaveByLetter.get(letter) ?? INVERSION_BASE_OCTAVE;
-			const chroma = chromaOf(letter);
-			if (chroma === undefined) return undefined;
-			const score = octave * 12 + chroma;
-			if (lowestScore === undefined || score < lowestScore) {
-				lowestScore = score;
-				lowestChroma = chroma;
-			}
-		}
-		return lowestChroma;
-	}
-
 	/** Check: grades via matchInversion. Wrong chord notes or right notes/wrong bass both retry gently and never gate; only a correct voicing (bass lowest) reveals. */
 	function checkPlay(): void {
 		// An unresolvable selected letter maps to -1, which no target chroma can
@@ -141,7 +116,7 @@
 		// (fails CLOSED) rather than being silently dropped from the set - which
 		// would let a junk letter alongside the right notes grade correct.
 		const playedChroma = new Set([...selected].map((letter) => chromaOf(letter) ?? -1));
-		const playedBassChroma = lowestPlayedBassChroma();
+		const playedBassChroma = lowestPlayedChroma(selected, pressedOctaveByLetter, INVERSION_BASE_OCTAVE);
 		const result = matchInversion(playedChroma, playedBassChroma, target, bassChroma);
 		selected = new Set();
 		pressedOctaveByLetter = new Map();

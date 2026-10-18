@@ -1,4 +1,5 @@
 import { matchChord } from './matchChord';
+import { chromaOf } from '$lib/theory/interval';
 import type { ChordResult } from '$lib/theory/types';
 
 /** Result of grading a played note set + bass against a target chord + required bass. */
@@ -49,4 +50,34 @@ export function matchInversion(
 		missing: chordResult.missing,
 		extra: chordResult.extra
 	};
+}
+
+/**
+ * The chroma of whichever played letter sits at the lowest absolute pitch
+ * (octave*12 + chroma), reading each letter's octave from `octaveByLetter`
+ * (the keyboard's last press of that letter) and defaulting to
+ * `fallbackOctave` for a letter toggled without a registered press.
+ * Undefined when nothing is played, or when any played letter does not
+ * resolve to a pitch class (the bass is then genuinely undetermined, so it
+ * must not grade correct - `chromaOf` makes that check fire instead of
+ * letting a NaN score silently win or lose the comparison).
+ */
+export function lowestPlayedChroma(
+	letters: Iterable<string>,
+	octaveByLetter: ReadonlyMap<string, number>,
+	fallbackOctave: number
+): number | undefined {
+	let lowestScore: number | undefined;
+	let lowestChroma: number | undefined;
+	for (const letter of letters) {
+		const octave = octaveByLetter.get(letter) ?? fallbackOctave;
+		const chroma = chromaOf(letter);
+		if (chroma === undefined) return undefined;
+		const score = octave * 12 + chroma;
+		if (lowestScore === undefined || score < lowestScore) {
+			lowestScore = score;
+			lowestChroma = chroma;
+		}
+	}
+	return lowestChroma;
 }

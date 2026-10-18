@@ -3,6 +3,15 @@ import { letterToSolfege } from './solfege';
 import type { ChordResult, IntervalRole, SpelledNote } from './types';
 
 /**
+ * The display form of a spelled chord: its glyph root (B♭) plus the quality
+ * as `symbol` carries it (`symbol` itself is ASCII-normalized, "Bbmaj7").
+ * The same root + slice idiom the chord glyphs already render with.
+ */
+export function chordLabel(chord: ChordResult): string {
+	return chord.root + chord.symbol.slice(chord.root.length);
+}
+
+/**
  * Spells a jazz chord symbol into a fully typed ChordResult: enharmonically
  * correct notes (one letter per scale degree), tagged with interval role,
  * and dual-named with French solfège.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { spellChord } from './chord';
+import { chordLabel, spellChord } from './chord';
 
 const SOLFEGE_SYLLABLES = ['Do', 'Ré', 'Mi', 'Fa', 'Sol', 'La', 'Si'];
 
@@ -275,5 +275,13 @@ describe('spellChord', () => {
 			expect(typeof result.quality).toBe('string');
 			expect(typeof result.symbol).toBe('string');
 		});
+	});
+});
+
+describe('chordLabel', () => {
+	it('shows the glyph root with the quality, whatever accidental form the input used', () => {
+		expect(chordLabel(spellChord('Bbmaj7'))).toBe('B♭maj7');
+		expect(chordLabel(spellChord('F#m7b5'))).toBe('F♯m7b5');
+		expect(chordLabel(spellChord('Cm7'))).toBe('Cm7');
 	});
 });

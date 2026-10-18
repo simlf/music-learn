@@ -17,6 +17,7 @@ import { intervalView } from './messages/interval-view';
 import { practice } from './messages/practice';
 import { learn } from './messages/learn';
 import { improvise } from './messages/improvise';
+import { book } from './messages/book';
 import { setLocale, t } from './locale.svelte';
 
 /**
@@ -75,7 +76,8 @@ describe('domain dictionary key collisions (I18N-02)', () => {
 		['interval-view', intervalView.en],
 		['practice', practice.en],
 		['learn', learn.en],
-		['improvise', improvise.en]
+		['improvise', improvise.en],
+		['book', book.en]
 	];
 
 	it('has no key defined by more than one domain dictionary', () => {
