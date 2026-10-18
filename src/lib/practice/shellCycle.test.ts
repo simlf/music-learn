@@ -5,6 +5,7 @@ import { matchInversion } from '$lib/drills/matchInversion';
 import {
 	SHELL_CYCLE_KEYS,
 	SHELL_FORMS,
+	gradeRootedShell,
 	lettersForChromas,
 	positionForBar,
 	rootedShell,
@@ -73,14 +74,44 @@ describe('rootedShell', () => {
 		expect(letters('Cmaj7')).toEqual(['C', 'E', 'B']);
 	});
 
-	it('keeps the ♭5 on a ♭5 chord, so m7♭5 never collapses onto m7', () => {
-		expect(letters('Dm7b5')).toEqual(['D', 'F', 'A♭', 'C']);
-		expect(letters('Dm7b5')).not.toEqual(letters('Dm7'));
+	it('is three notes on a ♭5 chord too: the ♭5 is not part of the target', () => {
+		expect(letters('Dm7b5')).toEqual(['D', 'F', 'C']);
 	});
 
 	it('is ungradeable for an unrecognized symbol', () => {
 		const target = rootedShell(spellChord('Xq9'));
 		expect(matchInversion([], undefined, target, 0).correct).toBe(false);
+	});
+});
+
+describe('gradeRootedShell', () => {
+	const chromas = (...names: string[]) => names.map((name) => chromaOf(name)!);
+	const D = chromaOf('D')!;
+
+	it('accepts the three-note iiø shell, root lowest', () => {
+		const result = gradeRootedShell(chromas('D', 'F', 'C'), D, spellChord('Dm7b5'));
+		expect(result.correct).toBe(true);
+	});
+
+	it('also accepts the iiø shell with the ♭5 added', () => {
+		const result = gradeRootedShell(chromas('D', 'F', 'A♭', 'C'), D, spellChord('Dm7b5'));
+		expect(result).toMatchObject({ correct: true, missing: [], extra: [] });
+	});
+
+	it('still rejects a ♭5 in the bass', () => {
+		const result = gradeRootedShell(chromas('A♭', 'D', 'F', 'C'), chromaOf('A♭'), spellChord('Dm7b5'));
+		expect(result).toMatchObject({ chordCorrect: true, bassCorrect: false });
+	});
+
+	it('does not accept a perfect 5th as optional, on any chord', () => {
+		expect(gradeRootedShell(chromas('D', 'F', 'A', 'C'), D, spellChord('Dm7b5')).extra).toEqual(chromas('A'));
+		expect(gradeRootedShell(chromas('D', 'F', 'A', 'C'), D, spellChord('Dm7')).extra).toEqual(chromas('A'));
+	});
+
+	it('still requires the 3rd and the 7th', () => {
+		const result = gradeRootedShell(chromas('D', 'A♭', 'C'), D, spellChord('Dm7b5'));
+		expect(result.correct).toBe(false);
+		expect(result.missing).toEqual(chromas('F'));
 	});
 });
 
@@ -102,10 +133,9 @@ describe('voiceRootedShell', () => {
 	it('Show me always shows an answer the grader accepts', () => {
 		for (const { bar, index } of allChords()) {
 			const chord = spellChord(bar.symbol);
-			const target = rootedShell(chord);
 			const { notes } = voiceRootedShell(chord, positionForBar(index));
 			const played = notes.map((note) => chromaOf(note.letter)!);
-			const result = matchInversion(played, played[0], target, chromaOf(chord.root)!);
+			const result = gradeRootedShell(played, played[0], chord);
 			expect(result.correct, bar.symbol).toBe(true);
 		}
 	});
@@ -117,7 +147,6 @@ describe('voiceRootedShell', () => {
 		expect(above('seventh-low')).toEqual(['R', '7', '3']);
 		expect(voiceRootedShell(spellChord('Dm7b5'), 'seventh-low').notes.map((note) => note.marker)).toEqual([
 			'R',
-			'5',
 			'7',
 			'3'
 		]);

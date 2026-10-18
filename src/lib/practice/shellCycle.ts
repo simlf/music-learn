@@ -1,7 +1,8 @@
 import { Note } from 'tonal';
 import { chromaOf, toAsciiAccidentals } from '$lib/theory/interval';
 import type { ChordResult, IntervalRole, SpelledNote } from '$lib/theory/types';
-import { shellNotes } from './shellVoicing';
+import { matchInversion, type InversionMatchResult } from '$lib/drills/matchInversion';
+import { hasFlatFifth } from './shellVoicing';
 import { barsInKey, PROGRESSION_TEMPLATES, type ProgressionBar } from './progressions';
 
 /**
@@ -14,11 +15,9 @@ import { barsInKey, PROGRESSION_TEMPLATES, type ProgressionBar } from './progres
  * built around.
  *
  * The left-hand shape is the three-note "rooted shell": root at the bottom,
- * then the 3rd and the 7th in either order. `shellNotes` stays the single
- * definition of which notes carry the chord, so on a ♭5 chord (the minor
- * form's iiø) the ♭5 joins the shell here too: without it Dm7♭5 and Dm7 would
- * be the same three keys, the exact ambiguity that module's doc comment
- * forbids.
+ * then the 3rd and the 7th in either order, for every quality. On a ♭5 chord
+ * (the minor form's iiø) the ♭5 is allowed but never required: D F C over
+ * Dm7♭5 is right, and so is D F A♭ C (`gradeRootedShell`).
  *
  * Pure module: no DOM, no Svelte, no audio, no storage.
  */
@@ -59,14 +58,39 @@ export function shellCycleBars(form: ShellForm, key: string): ProgressionBar[] {
 }
 
 /**
- * The grading target: the chord's root plus its shell (3rd and 7th, plus the
- * ♭5 on a ♭5 chord). Returned as a ChordResult so it feeds `matchInversion`
- * unchanged, with the root as the required bass. Total: an unrecognized chord
- * keeps its (empty) notes and is therefore ungradeable, never trivially right.
+ * The grading target: the chord's root plus its 3rd and 7th. Returned as a
+ * ChordResult so it feeds `matchInversion` unchanged, with the root as the
+ * required bass. Total: an unrecognized chord keeps its (empty) notes and is
+ * therefore ungradeable, never trivially right.
  */
 export function rootedShell(chord: ChordResult): ChordResult {
 	const root = chord.notes.find((note) => note.role === 'root');
-	return { ...chord, notes: root ? [root, ...shellNotes(chord)] : [] };
+	const guideTones = chord.notes.filter((note) => note.role === 'third' || note.role === 'seventh');
+	return { ...chord, notes: root ? [root, ...guideTones] : [] };
+}
+
+/** Chromas a player may add to the rooted shell without it counting as extra: the ♭5 on a ♭5 chord. */
+function optionalChromas(chord: ChordResult): number[] {
+	if (!hasFlatFifth(chord)) return [];
+	const fifth = chord.notes.find((note) => note.role === 'fifth');
+	const chroma = fifth ? chromaOf(fifth.letter) : undefined;
+	return chroma === undefined ? [] : [chroma];
+}
+
+/**
+ * Grades a play against `chord`'s rooted shell by the inversion drill's rule
+ * (chroma set plus the root as the lowest note), with the ♭5 of a ♭5 chord
+ * accepted as an optional extra. The bass rule still applies: a ♭5 at the
+ * bottom is a wrong bass.
+ */
+export function gradeRootedShell(
+	played: Iterable<number>,
+	playedBassChroma: number | undefined,
+	chord: ChordResult
+): InversionMatchResult {
+	const optional = optionalChromas(chord);
+	const graded = [...played].filter((chroma) => !optional.includes(chroma));
+	return matchInversion(new Set(graded), playedBassChroma, rootedShell(chord), chromaOf(chord.root) ?? -1);
 }
 
 /**
@@ -103,12 +127,11 @@ const SHELL_BASS_OCTAVE = 4;
 /** The top key of the two-octave keyboard (C6). */
 const BOARD_TOP_MIDI = 84;
 
-/** Upper voices, low to high, for one position: the ♭5 (when present) always sits under the 7th. */
+/** Upper voices, low to high, for one position. */
 function upperOrder(shell: SpelledNote[], position: ShellPosition): SpelledNote[] {
 	const third = shell.filter((note) => note.role === 'third');
-	const fifth = shell.filter((note) => note.role === 'fifth');
 	const seventh = shell.filter((note) => note.role === 'seventh');
-	return position === 'third-low' ? [...third, ...fifth, ...seventh] : [...fifth, ...seventh, ...third];
+	return position === 'third-low' ? [...third, ...seventh] : [...seventh, ...third];
 }
 
 /** Stacks `notes` strictly ascending from the bass octave, by sounding pitch (so C♭ and B♯ land on their real keys). */
@@ -147,9 +170,8 @@ export function voiceRootedShell(
 	chord: ChordResult,
 	position: ShellPosition
 ): { position: ShellPosition; notes: VoicedShellNote[] } {
-	const root = chord.notes.find((note) => note.role === 'root');
+	const [root, ...shell] = rootedShell(chord).notes;
 	if (!root) return { position, notes: [] };
-	const shell = shellNotes(chord);
 	const voiced = stack([root, ...upperOrder(shell, position)]);
 	const top = voiced[voiced.length - 1];
 	if (top && top.midi > BOARD_TOP_MIDI) {

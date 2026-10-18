@@ -2,11 +2,13 @@
 	import { chordLabel, spellChord } from '$lib/theory/chord';
 	import { chromaOf } from '$lib/theory/interval';
 	import { ensureAudioReady, playChord } from '$lib/audio/audio';
-	import { lowestPlayedChroma, matchInversion } from '$lib/drills/matchInversion';
+	import { lowestPlayedChroma } from '$lib/drills/matchInversion';
+	import { hasFlatFifth as chordHasFlatFifth } from '$lib/practice/shellVoicing';
 	import { guideToneMotion, toGuideToneBar } from '$lib/lessons/guideTones';
 	import {
 		SHELL_CYCLE_KEYS,
 		SHELL_FORMS,
+		gradeRootedShell,
 		lettersForChromas,
 		positionForBar,
 		rootedShell,
@@ -24,9 +26,10 @@
 	 * Chapter 15's "At the piano" exercise: the ii-V-I (then the minor
 	 * iiø-V-i) as rooted shells, in all 12 keys, in the fixed cycle-of-fourths
 	 * order of `SHELL_CYCLE_KEYS`. CHECKED: every chord is graded by the
-	 * inversion drill's own rule (`matchInversion`), the chroma set of root +
-	 * shell plus the root as the lowest note, so the 3rd and 7th may sit in
-	 * either order above it.
+	 * inversion drill's own rule (`gradeRootedShell` over `matchInversion`),
+	 * the chroma set of root + 3rd + 7th plus the root as the lowest note, so
+	 * the 3rd and 7th may sit in either order above it. On the iiø the ♭5 is
+	 * accepted but never required.
 	 *
 	 * Lives on the chapter page, never in /practice: 36 chords per form would
 	 * swamp the bounded daily round (AGENTS.md, synthetic families must stay
@@ -80,8 +83,7 @@
 	const chord = $derived(spellChord(bar.symbol));
 	const target = $derived(rootedShell(chord));
 	const rootLetter = $derived(chord.root);
-	const rootChroma = $derived(chromaOf(rootLetter) ?? -1);
-	const hasFlatFifth = $derived(target.notes.some((note) => note.role === 'fifth'));
+	const hasFlatFifth = $derived(chordHasFlatFifth(chord));
 	const voiced = $derived(voiceRootedShell(chord, positionForBar(barIndex)));
 
 	/** The guide-tone move into this chord from the previous one, named on the prompt for V and I. */
@@ -147,7 +149,7 @@
 		// An unresolvable letter maps to -1, lands in `extra`, and fails closed (InversionDrill's rule).
 		const played = new Set([...selected].map((letter) => chromaOf(letter) ?? -1));
 		const bass = lowestPlayedChroma(selected, pressedOctaveByLetter, BASE_OCTAVE);
-		const result = matchInversion(played, bass, target, rootChroma);
+		const result = gradeRootedShell(played, bass, chord);
 
 		if (!result.chordCorrect) {
 			keyMissed = true;

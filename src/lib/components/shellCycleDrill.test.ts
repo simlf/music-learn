@@ -160,21 +160,30 @@ describe('ShellCycleDrill', () => {
 		expect(onClean).toHaveBeenCalledWith('major');
 	});
 
-	it('the minor form asks for the ♭5 on the iiø and starts on C minor', async () => {
+	it('the minor form accepts the three-note iiø shell and starts on C minor', async () => {
 		render(ShellCycleDrill);
 		await fireEvent.click(screen.getByRole('button', { name: 'iiø V i' }));
 		expect(screen.getByTestId('shell-cycle-prompt').textContent).toBe(
-			'Root at the bottom, then the 3rd, the ♭5 and the 7th.'
+			'Root at the bottom, then the 3rd and the 7th. You may add the ♭5 if you like.'
 		);
-		// Without the ♭5 the shell is not accepted.
 		press('D', 4);
 		press('F', 4);
 		press('C', 5);
 		await check();
-		expect(feedback().textContent).toContain('Missing: A♭.');
-		await fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
-		await playChord('minor', 'C', 0);
 		expect(feedback().textContent).toContain('Right: Dm7b5.');
 		expect(screen.getByTestId('shell-cycle-bars').textContent).toContain('G7');
+	});
+
+	it('the minor form also accepts the iiø shell with the ♭5 added', async () => {
+		render(ShellCycleDrill);
+		await fireEvent.click(screen.getByRole('button', { name: 'iiø V i' }));
+		press('D', 4);
+		press('F', 4);
+		press('A♭', 4);
+		press('C', 5);
+		await check();
+		expect(feedback().textContent).toContain('Right: Dm7b5.');
+		expect(feedback().textContent).not.toContain('Missing');
+		expect(feedback().textContent).not.toContain('Not in');
 	});
 });

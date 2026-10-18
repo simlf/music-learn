@@ -43,7 +43,7 @@ export const book = {
 			'Three notes are enough for the left hand to say a chord. The root names it, the 3rd says major or minor, the 7th says which seventh. Put the root at the bottom and the other two above it, the 3rd under the 7th or the 7th under the 3rd. From one chord to the next, swap the order: the top two notes barely move. One holds, the other steps down.',
 		'book.ch15.concept.caption': 'The ii V I of Autumn Leaves, in B♭. Tap a chord to hear it.',
 		'book.ch15.concept.flat5':
-			'On a ♭5 chord, the iiø of a minor key, keep the ♭5 as well: without it Cm7♭5 and Cm7 are the same three keys.',
+			'On a ♭5 chord, the iiø of a minor key, the same three notes still work. You may add the ♭5 too, if you want its darker sound heard: it is allowed, not required.',
 		'book.ch15.position.thirdLow': '3rd under 7th',
 		'book.ch15.position.seventhLow': '7th under 3rd',
 		'book.ch15.piano.intro':
@@ -51,7 +51,7 @@ export const book = {
 		'book.ch15.formLabel': 'Form',
 		'book.ch15.keyLabel': 'Key',
 		'book.ch15.prompt': 'Root at the bottom, then the 3rd and the 7th.',
-		'book.ch15.prompt.flat5': 'Root at the bottom, then the 3rd, the ♭5 and the 7th.',
+		'book.ch15.prompt.flat5': 'Root at the bottom, then the 3rd and the 7th. You may add the ♭5 if you like.',
 		'book.ch15.motion': 'Keep {held}. Move {from} down to {to}.',
 		'book.ch15.button.check': 'Check',
 		'book.ch15.button.hear': 'Hear it',
@@ -114,7 +114,7 @@ export const book = {
 			"Trois notes suffisent à la main gauche pour dire un accord. La fondamentale le nomme, la tierce dit majeur ou mineur, la septième dit quelle septième. Mets la fondamentale en bas et les deux autres au-dessus, la tierce sous la septième ou la septième sous la tierce. D'un accord au suivant, inverse l'ordre : les deux notes du haut bougent à peine. L'une tient, l'autre descend d'un pas.",
 		'book.ch15.concept.caption': "Le ii V I d'Autumn Leaves, en si♭. Touche un accord pour l'entendre.",
 		'book.ch15.concept.flat5':
-			"Sur un accord ♭5, le iiø d'une tonalité mineure, garde aussi la ♭5 : sans elle, Cm7♭5 et Cm7 sont les trois mêmes touches.",
+			"Sur un accord ♭5, le iiø d'une tonalité mineure, les trois mêmes notes suffisent. Tu peux aussi ajouter la ♭5 pour faire entendre sa couleur plus sombre : elle est permise, pas exigée.",
 		'book.ch15.position.thirdLow': 'tierce sous la septième',
 		'book.ch15.position.seventhLow': 'septième sous la tierce',
 		'book.ch15.piano.intro':
@@ -122,7 +122,7 @@ export const book = {
 		'book.ch15.formLabel': 'Forme',
 		'book.ch15.keyLabel': 'Ton',
 		'book.ch15.prompt': 'La fondamentale en bas, puis la tierce et la septième.',
-		'book.ch15.prompt.flat5': 'La fondamentale en bas, puis la tierce, la ♭5 et la septième.',
+		'book.ch15.prompt.flat5': 'La fondamentale en bas, puis la tierce et la septième. Tu peux ajouter la ♭5 si tu veux.',
 		'book.ch15.motion': 'Garde {held}. Descends {from} vers {to}.',
 		'book.ch15.button.check': 'Vérifier',
 		'book.ch15.button.hear': "L'entendre",
