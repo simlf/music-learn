@@ -83,13 +83,13 @@ jobs:
         run: npm run test
         if: steps.decide.outputs.skip != 'true'
 
-  # Once past the debounce, a run is never cancelled: build and deploy queue
-  # behind any in-flight one instead.
+  # Once past the debounce, a running build or deploy is never cancelled; each
+  # has its own group, where a newer pending job may replace an older one.
   build-push:
     needs: gate
     runs-on: ubuntu-latest
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}-deploy
+      group: ${{ github.workflow }}-${{ github.ref }}-build
       cancel-in-progress: false
     timeout-minutes: 30
     permissions:

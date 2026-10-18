@@ -8,8 +8,10 @@ Tests (`ci`, `visual`) run on pull requests only, not again on push to `main`.
 The `deploy` workflow on `main` starts with a no-op `debounce` job bound to the
 `main-debounce` environment. That job's concurrency group cancels an older run
 still waiting there, so a burst of merges deploys once, for the last merge.
-A run already past the wait is never cancelled: `build-push` and `deploy` share
-a non-cancelling group, so a newer run queues behind an in-flight deploy.
+A running build or deploy is never cancelled: `build-push` and `deploy` each
+have their own non-cancelling group, so a newer run queues behind an in-flight
+one, and a newer pending job may replace an older pending one (it ships the
+newer image tag).
 
 The `main-debounce` environment must have a 10-minute wait timer (a wait uses
 no runner minutes). Set it once:
