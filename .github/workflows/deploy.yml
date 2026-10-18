@@ -12,9 +12,11 @@ on:
 permissions:
   contents: read
 
+# Debounce: a newer merge cancels the run still waiting in `debounce`, so a
+# burst of merges deploys once, for the last one.
 concurrency:
-  group: deploy-infrabox667
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   REGISTRY: ghcr.io
@@ -22,7 +24,17 @@ env:
   IMAGE_WEB: ghcr.io/simlf/music-learn-web
 
 jobs:
+  # No-op gate held by the `main-debounce` environment's 10-minute wait timer
+  # (no runner minutes spent while waiting). See README "CI cost".
+  debounce:
+    runs-on: ubuntu-latest
+    environment: main-debounce
+    permissions: {}
+    steps:
+      - run: echo ok
+
   gate:
+    needs: debounce
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
