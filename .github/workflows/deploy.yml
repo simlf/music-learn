@@ -139,9 +139,29 @@ jobs:
       cancel-in-progress: false
     timeout-minutes: 15
     permissions:
+      contents: read
       packages: read
     steps:
+      - name: Skip if a newer commit on main supersedes this one
+        id: newest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          SHA: ${{ github.sha }}
+        run: |
+          deploy=true
+          if [ "$EVENT" = "push" ]; then
+            newer=$(gh api "repos/$REPO/compare/$SHA...main" --jq '[.files[].filename | select(test("\\.md$|^\\.planning/|^docs/") | not)] | length')
+            if [ "$newer" != "0" ]; then
+              echo "newer commit on main, skipping"
+              deploy=false
+            fi
+          fi
+          echo "deploy=$deploy" >> "$GITHUB_OUTPUT"
+
       - name: Deploy on infrabox667 over SSH
+        if: steps.newest.outputs.deploy == 'true'
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -163,7 +183,7 @@ jobs:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Free disk space on the server if deploy failed
-        if: ${{ failure() }}
+        if: ${{ failure() && steps.newest.outputs.deploy == 'true' }}
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         with:
           host: ${{ secrets.SSH_HOST }}
