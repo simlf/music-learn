@@ -5,14 +5,10 @@
 	"dependencyDashboard": false,
 	"packageRules": [
 		{
-			"description": "Batch every non-major update into one monthly PR",
+			"description": "Batch every non-major update into one monthly PR and automerge it once CI passes",
 			"matchUpdateTypes": ["minor", "patch", "pin", "digest"],
 			"groupName": "all non-major dependencies",
-			"groupSlug": "all-minor-patch"
-		},
-		{
-			"description": "Automerge patch-only updates once CI passes",
-			"matchUpdateTypes": ["patch"],
+			"groupSlug": "all-minor-patch",
 			"automerge": true,
 			"automergeType": "pr"
 		}
