@@ -1,0 +1,20 @@
+{
+	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
+	"extends": ["config:recommended", "schedule:monthly"],
+	"enabledManagers": ["npm", "github-actions", "dockerfile", "docker-compose"],
+	"dependencyDashboard": false,
+	"packageRules": [
+		{
+			"description": "Batch every non-major update into one monthly PR",
+			"matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+			"groupName": "all non-major dependencies",
+			"groupSlug": "all-minor-patch"
+		},
+		{
+			"description": "Automerge patch-only updates once CI passes",
+			"matchUpdateTypes": ["patch"],
+			"automerge": true,
+			"automergeType": "pr"
+		}
+	]
+}
