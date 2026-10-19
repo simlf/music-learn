@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SALAMANDER_BASE_URL } from '$lib/audio/samples';
-import { cacheName, installPrecacheList, isSampleAsset } from './precache';
+import { SAMPLE_CACHE, cacheName, installPrecacheList, isSampleAsset, keepCache } from './precache';
 
 describe('isSampleAsset', () => {
 	it('is true for a Salamander sample mp3 path', () => {
@@ -67,5 +67,17 @@ describe('cacheName', () => {
 
 	it('produces different names for different versions', () => {
 		expect(cacheName('abc123')).not.toBe(cacheName('def456'));
+	});
+});
+
+describe('keepCache', () => {
+	it('keeps the current app-shell cache and drops older ones', () => {
+		expect(keepCache(cacheName('new'), cacheName('new'))).toBe(true);
+		expect(keepCache(cacheName('old'), cacheName('new'))).toBe(false);
+	});
+
+	it('keeps the piano samples across deploys', () => {
+		expect(keepCache(SAMPLE_CACHE, cacheName('new'))).toBe(true);
+		expect(SAMPLE_CACHE).not.toBe(cacheName('new'));
 	});
 });

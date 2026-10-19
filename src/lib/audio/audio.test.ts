@@ -12,6 +12,7 @@ interface FakeInstrument {
 	triggerAttack: ReturnType<typeof vi.fn>;
 	triggerRelease: ReturnType<typeof vi.fn>;
 	releaseAll: ReturnType<typeof vi.fn>;
+	dispose: ReturnType<typeof vi.fn>;
 	toDestination: () => FakeInstrument;
 }
 
@@ -39,6 +40,7 @@ vi.mock('tone', () => {
 			triggerAttack: vi.fn(),
 			triggerRelease: vi.fn(),
 			releaseAll: vi.fn(),
+			dispose: vi.fn(),
 			toDestination: () => instrument
 		};
 		return instrument;
@@ -846,19 +848,49 @@ describe('audioState', () => {
 		expect(audioState()).toEqual({ instrument: 'sampled', samplesLoaded: true });
 	});
 
-	it('drops to a permanent synth-only session when sample loading fails', async () => {
+	it('retries a failed sample load on the next play call and then plays the sampled piano', async () => {
 		await ensureAudioReady();
-		sampler().options.onerror(new Error('offline'));
-
+		sampler(0).options.onerror(new Error('dropped request'));
 		expect(audioState()).toEqual({ instrument: 'synth', samplesLoaded: false });
-
-		// A later ensureAudioReady never retries a failed sample fetch.
-		await ensureAudioReady();
-		expect(mockTone.samplers).toHaveLength(1);
+		expect(sampler(0).dispose).toHaveBeenCalled();
 
 		playNote('C4');
 		await flush();
-		expect(synth().triggerAttackRelease).toHaveBeenCalled();
+		expect(mockTone.samplers).toHaveLength(2);
+		sampler(1).options.onload();
+		await flush();
+
+		expect(audioState()).toEqual({ instrument: 'sampled', samplesLoaded: true });
+		expect(sampler(1).triggerAttackRelease).toHaveBeenCalledWith('C4', '8n', undefined, 0.75);
+		expect(synth().triggerAttackRelease).not.toHaveBeenCalled();
+	});
+
+	it('counts one failed attempt once, however many of its files fail', async () => {
+		await ensureAudioReady();
+		sampler(0).options.onerror(new Error('A0 failed'));
+		await ensureAudioReady();
+		// A late error from the dropped attempt must not tear down the retry.
+		sampler(0).options.onerror(new Error('C1 failed'));
+		sampler(0).options.onload();
+		expect(mockTone.samplers).toHaveLength(2);
+		expect(audioState()).toEqual({ instrument: 'synth', samplesLoaded: false });
+
+		sampler(1).options.onload();
+		expect(audioState()).toEqual({ instrument: 'sampled', samplesLoaded: true });
+	});
+
+	it('settles on the synth after three failed attempts instead of refetching on every tap', async () => {
+		for (let attempt = 0; attempt < 3; attempt++) {
+			await ensureAudioReady();
+			sampler(attempt).options.onerror(new Error('offline'));
+		}
+
+		await ensureAudioReady();
+		expect(mockTone.samplers).toHaveLength(3);
+
+		playNote('C4');
+		await flush();
+		expect(synth().triggerAttackRelease).toHaveBeenCalledWith('C4', '8n', undefined, 0.75);
 	});
 });
 

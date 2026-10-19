@@ -5,12 +5,13 @@
 // effectively no-ops (no stale-cache risk while developing).
 import { build, files, prerendered, version } from '$service-worker';
 import { SALAMANDER_BASE_URL } from '$lib/audio/samples';
-import { cacheName, installPrecacheList } from '$lib/pwa/precache';
+import { SAMPLE_CACHE, cacheName, installPrecacheList, keepCache } from '$lib/pwa/precache';
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
 
 // Version-keyed cache name: a new deploy gets a fresh cache, and `activate`
-// deletes every other cache key so old builds never linger.
+// deletes every other cache key so old builds never linger. The piano samples
+// live in their own SAMPLE_CACHE instead, which survives deploys.
 const CACHE = cacheName(version);
 
 // App-shell precache: hashed build chunks, small static files (icons,
@@ -32,9 +33,12 @@ sw.addEventListener('install', (event) => {
 sw.addEventListener('activate', (event) => {
 	event.waitUntil(
 		(async () => {
-			// Version-keyed cleanup: remove every cache from a previous deploy.
+			// Version-keyed cleanup: remove every cache from a previous deploy,
+			// except the samples, which no deploy changes.
 			const keys = await caches.keys();
-			await Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)));
+			await Promise.all(
+				keys.filter((key) => !keepCache(key, CACHE)).map((key) => caches.delete(key))
+			);
 			await sw.clients.claim();
 		})()
 	);
@@ -64,12 +68,12 @@ sw.addEventListener('fetch', (event) => {
 	}
 
 	// Salamander piano samples: runtime-cache on demand. Cache-first once
-	// populated so offline playback works after first use; the synth
-	// fallback already covers offline-before-first-play.
+	// populated so offline playback works after first use, and kept across
+	// deploys; the synth fallback already covers offline-before-first-play.
 	if (url.pathname.includes(SALAMANDER_BASE_URL)) {
 		event.respondWith(
 			(async () => {
-				const cache = await caches.open(CACHE);
+				const cache = await caches.open(SAMPLE_CACHE);
 				const cached = await cache.match(request);
 				if (cached) return cached;
 

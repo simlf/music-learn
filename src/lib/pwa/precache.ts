@@ -37,3 +37,16 @@ export function installPrecacheList(
 export function cacheName(version: string): string {
 	return `music-learn-cache-${version}`;
 }
+
+/**
+ * The piano samples' own cache. Not version-keyed: the files never change
+ * under a given name, and a version-keyed home meant every deploy deleted
+ * them, so each new version had to refetch all 30 before the keyboard could
+ * sound like a piano again. Bump the suffix only if the sample files change.
+ */
+export const SAMPLE_CACHE = 'music-learn-samples-v1';
+
+/** Whether `activate` keeps a cache: the current app-shell cache and the sample cache. */
+export function keepCache(key: string, currentAppCache: string): boolean {
+	return key === currentAppCache || key === SAMPLE_CACHE;
+}
