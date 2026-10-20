@@ -272,8 +272,9 @@ describe('PianoKeyboard stacked row 2 black keys report the board-absolute octav
 		});
 		const [row1, row2] = await stackedBoards(container);
 
-		expect(container.querySelectorAll('.piano-keyboard__key--black.piano-keyboard__key--ghost')).toHaveLength(1);
-		expect(row1.querySelectorAll('.piano-keyboard__key--black.piano-keyboard__key--ghost')).toHaveLength(1);
+		const ghostedBlack = '.piano-keyboard__key--black.piano-keyboard__key--ghost';
+		expect(container.querySelectorAll(ghostedBlack)).toHaveLength(1);
+		expect(row1.querySelectorAll(ghostedBlack)).toHaveLength(1);
 		expect(row2.querySelectorAll('.piano-keyboard__key--ghost')).toHaveLength(0);
 	});
 

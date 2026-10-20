@@ -82,6 +82,47 @@ describe('pickDistractors', () => {
 			expect(d.startsWith('F#')).toBe(true);
 		}
 	});
+
+	// Note-count rule: a distractor with a different number of notes than the
+	// answer is beaten by counting the lit keys (or hearing the density), so
+	// the options match the answer's note count whenever 3 same-count
+	// qualities exist, and otherwise take the nearest counts.
+	it('every distractor has the answer\'s note count, or the nearest available, for every root x quality', () => {
+		for (const root of ROOTS) {
+			for (const quality of QUALITY_SUFFIXES) {
+				const correct = `${root}${quality}`;
+				const size = chromaSetFor(correct).size;
+				const nearest = QUALITY_SUFFIXES.filter((q) => q !== quality)
+					.map((q) => Math.abs(chromaSetFor(`${root}${q}`).size - size))
+					.sort((x, y) => x - y)
+					.slice(0, 3);
+				const distractors = pickDistractors(correct);
+				expect(distractors).toHaveLength(3);
+				const distances = distractors
+					.map((d) => Math.abs(chromaSetFor(d).size - size))
+					.sort((x, y) => x - y);
+				expect(distances, correct).toEqual(nearest);
+				for (const d of distractors) {
+					expect(rootOf(d)).toBe(root);
+					expect(spellChord(d).recognized).toBe(true);
+				}
+			}
+		}
+	});
+
+	it('a triad always gets the other triads as distractors', () => {
+		for (let run = 0; run < 20; run++) {
+			expect(pickDistractors('C').sort()).toEqual(['Cdim', 'Cm', 'Csus4']);
+		}
+	});
+
+	it('a five-note 7b9 falls back to four-note distractors', () => {
+		for (let run = 0; run < 20; run++) {
+			for (const d of pickDistractors('G7b9')) {
+				expect(chromaSetFor(d).size).toBe(4);
+			}
+		}
+	});
 });
 
 describe('pickQuestionType', () => {

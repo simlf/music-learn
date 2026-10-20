@@ -60,8 +60,16 @@ function sameChromaSet(a: Set<number>, b: Set<number>): boolean {
  * chroma set, so the enharmonic-identity guard is moot here but kept for
  * safety.
  *
+ * Note-count rule: same-root candidates are ordered by how close their note
+ * count is to the answer's (same count first, then the nearest), shuffled
+ * within each distance. Otherwise a lit three-key triad among four-note
+ * options is answered by counting keys (or hearing the density, in the ear
+ * mode) without reading any quality. A triad therefore gets the other
+ * triads, a seventh chord three other four-note qualities, and a five-note
+ * chord with no five-note sibling falls back to four-note ones.
+ *
  * Same-root candidates are drawn from the proven QUALITY_SUFFIXES matrix
- * (7 alternatives per root), so `count` = 3 is always satisfiable. A
+ * (13 alternatives per root), so `count` = 3 is always satisfiable. A
  * cross-root fallback only fires in the theoretical case of too few parseable
  * same-root qualities, keeping the function total.
  */
@@ -93,7 +101,10 @@ export function pickDistractors(correctSymbol: string, count = 3): string[] {
 		}
 	}
 
-	const orderedCandidates = [...shuffle(sameRoot), ...shuffle(crossRoot)];
+	const orderedCandidates = [
+		...byNoteCountDistance(sameRoot, correctChroma.size),
+		...shuffle(crossRoot)
+	];
 
 	// `orderedCandidates` is the finite sameRoot + crossRoot matrix, so this loop
 	// is already bounded by the array length and needs no iteration cap. The
@@ -114,6 +125,21 @@ export function pickDistractors(correctSymbol: string, count = 3): string[] {
 	}
 
 	return chosen;
+}
+
+/**
+ * Orders `symbols` by |note count - `targetSize`| ascending, shuffling within
+ * each distance so the draw stays random among equally close qualities.
+ */
+function byNoteCountDistance(symbols: string[], targetSize: number): string[] {
+	const groups = new Map<number, string[]>();
+	for (const symbol of symbols) {
+		const distance = Math.abs(chromaSetFor(symbol).size - targetSize);
+		groups.set(distance, [...(groups.get(distance) ?? []), symbol]);
+	}
+	return [...groups.keys()]
+		.sort((a, b) => a - b)
+		.flatMap((distance) => shuffle(groups.get(distance)!));
 }
 
 /** Fisher-Yates shuffle using Math.random(), matching the codebase's existing random style. */
