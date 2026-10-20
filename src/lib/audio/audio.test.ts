@@ -848,7 +848,7 @@ describe('audioState', () => {
 		expect(audioState()).toEqual({ instrument: 'sampled', samplesLoaded: true });
 	});
 
-	it('retries a failed sample load on the next play call and then plays the sampled piano', async () => {
+	it('retries a failed sample load in the background while taps sound on the synth at once', async () => {
 		await ensureAudioReady();
 		sampler(0).options.onerror(new Error('dropped request'));
 		expect(audioState()).toEqual({ instrument: 'synth', samplesLoaded: false });
@@ -857,12 +857,23 @@ describe('audioState', () => {
 		playNote('C4');
 		await flush();
 		expect(mockTone.samplers).toHaveLength(2);
+		expect(synth().triggerAttackRelease).toHaveBeenCalledWith('C4', '8n', undefined, 0.75);
+
+		playNote('E4');
+		await flush();
+		expect(synth().triggerAttackRelease).toHaveBeenCalledWith('E4', '8n', undefined, 0.75);
+		expect(mockTone.samplers).toHaveLength(2);
+
 		sampler(1).options.onload();
 		await flush();
-
 		expect(audioState()).toEqual({ instrument: 'sampled', samplesLoaded: true });
-		expect(sampler(1).triggerAttackRelease).toHaveBeenCalledWith('C4', '8n', undefined, 0.75);
-		expect(synth().triggerAttackRelease).not.toHaveBeenCalled();
+		expect(synth().triggerAttackRelease).toHaveBeenCalledTimes(2);
+		expect(sampler(1).triggerAttackRelease).not.toHaveBeenCalled();
+
+		playNote('G4');
+		await flush();
+		expect(sampler(1).triggerAttackRelease).toHaveBeenCalledWith('G4', '8n', undefined, 0.75);
+		expect(synth().triggerAttackRelease).toHaveBeenCalledTimes(2);
 	});
 
 	it('counts one failed attempt once, however many of its files fail', async () => {
