@@ -1,6 +1,7 @@
 import type { MessageKey } from '$lib/i18n/locale.svelte';
 import { SONG_PRESETS } from '$lib/practice/presets';
 import type { ShellForm } from '$lib/practice/shellCycle';
+import type { CycleDirection } from '$lib/practice/circleOfFifths';
 
 /**
  * The method-book chapters (`.planning/design/method-book.md`): the guided
@@ -124,8 +125,60 @@ export const SHELLS_CHAPTER: ChapterDef = {
 	]
 };
 
-/** Every chapter, in book order. Chapters 16 to 26 are follow-ups (method-book.md). */
-export const CHAPTERS: readonly ChapterDef[] = [SHELLS_CHAPTER];
+/** The checklist line each circle direction ticks when a whole lap has every stop right the first time. */
+export const CIRCLE_LAP_CHECK: Record<CycleDirection, string> = {
+	down: 'lap-down',
+	up: 'lap-up'
+};
+
+/** The checklist line the "how far apart" question ticks after a run of first-try pairs. */
+export const CIRCLE_DISTANCE_CHECK = 'distance-streak';
+
+export const CIRCLE_CHAPTER: ChapterDef = {
+	id: 'circle-of-fifths',
+	number: 16,
+	partKey: 'book.part.2',
+	titleKey: 'book.ch16.title',
+	ideaKey: 'book.ch16.idea',
+	grading: 'checked',
+	repertoire: [
+		{
+			id: 'fly-me-to-the-moon',
+			title: 'Fly Me to the Moon',
+			composer: 'Bart Howard',
+			year: 1954,
+			rights: 'changes-only',
+			barsKey: 'book.ch16.tune.flyMe.bars',
+			noteKey: 'book.ch16.tune.flyMe.note',
+			bars: presetBars('fly-me-to-the-moon-c', ['vi', 'ii', 'V', 'I', 'IV', 'viiø', 'V/vi', 'vi'])
+		},
+		{
+			id: 'i-got-rhythm',
+			title: 'I Got Rhythm',
+			composer: 'George Gershwin',
+			year: 1930,
+			rights: 'changes-only',
+			barsKey: 'book.ch16.tune.rhythm.bars',
+			noteKey: 'book.ch16.tune.rhythm.note',
+			bars: [
+				{ symbol: 'D7', roman: 'V/vi' },
+				{ symbol: 'G7', roman: 'V/ii' },
+				{ symbol: 'C7', roman: 'V/V' },
+				{ symbol: 'F7', roman: 'V' }
+			]
+		}
+	],
+	checklist: [
+		{ id: CIRCLE_LAP_CHECK.down, labelKey: 'book.ch16.check.lapDown', by: 'app' },
+		{ id: CIRCLE_LAP_CHECK.up, labelKey: 'book.ch16.check.lapUp', by: 'app' },
+		{ id: CIRCLE_DISTANCE_CHECK, labelKey: 'book.ch16.check.distance', by: 'app' },
+		{ id: 'out-loud', labelKey: 'book.ch16.check.outLoud', by: 'you' },
+		{ id: 'hear-fly-me', labelKey: 'book.ch16.check.hear', by: 'you' }
+	]
+};
+
+/** Every chapter, in book order. Chapters 17 to 27 are follow-ups (method-book.md). */
+export const CHAPTERS: readonly ChapterDef[] = [SHELLS_CHAPTER, CIRCLE_CHAPTER];
 
 /** Total: an unknown id returns undefined. */
 export function chapterById(id: string): ChapterDef | undefined {

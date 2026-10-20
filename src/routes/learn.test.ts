@@ -63,10 +63,13 @@ describe('/learn: hub structure and section presence', () => {
 		renderPage();
 		const book = screen.getByTestId('learn-book');
 		expect(within(book).getByText('Part II · The left hand')).toBeInTheDocument();
-		const row = within(book).getByTestId('learn-chapter-row');
-		expect(row).toHaveAttribute('href', '/learn/shells-in-every-key');
-		expect(row.textContent).toContain('Chapter 15');
-		expect(row.textContent).toContain('Shells in every key');
+		const [shells, circle] = within(book).getAllByTestId('learn-chapter-row');
+		expect(shells).toHaveAttribute('href', '/learn/shells-in-every-key');
+		expect(shells.textContent).toContain('Chapter 15');
+		expect(shells.textContent).toContain('Shells in every key');
+		expect(circle).toHaveAttribute('href', '/learn/circle-of-fifths');
+		expect(circle.textContent).toContain('Chapter 16');
+		expect(circle.textContent).toContain('The circle of fifths');
 
 		const blocks = Array.from(
 			document.querySelectorAll<HTMLElement>('[data-testid^="learn-"]')
