@@ -14,8 +14,9 @@ import type { CycleDirection } from '$lib/practice/circleOfFifths';
  *   4. Practice checklist: three to five lines, some ticked by the exercise,
  *      the rest by the player, kept per device (`pathState.ts`).
  *
- * Units 1 to 14 keep their ids and become Part I when the guided path is
- * built; new chapters are numbered from 15. Pure data: the components own
+ * Units 1 to 14 keep their ids and become Part I, one by one, as each is
+ * put on the template (chapter 11, guide tones, is the first); new chapters
+ * are numbered from 15. Pure data: the components own
  * every render and every storage call. Concept and exercise are components
  * per chapter (`/learn/[chapter]` maps the id to them); repertoire and
  * checklist are data, so the template renders them for every chapter alike.
@@ -75,11 +76,60 @@ export const SHELL_CYCLE_CHECK: Record<ShellForm, string> = {
  * A song preset's opening bars, one per roman numeral, read from the preset
  * itself so a chapter and the Songs tab can never disagree about the changes.
  */
-function presetBars(presetId: string, romans: string[]): TuneBar[] {
+function presetBars(presetId: string, romans: string[], from = 0): TuneBar[] {
 	const preset = SONG_PRESETS.find((candidate) => candidate.presetId === presetId);
 	if (!preset) return [];
-	return romans.map((roman, index) => ({ symbol: preset.chordSymbols[index], roman }));
+	return romans.map((roman, index) => ({ symbol: preset.chordSymbols[from + index], roman }));
 }
+
+/** The checklist line chapter 11's guide-tone cycle ticks when all 12 keys are clean. */
+export const GUIDE_TONE_CYCLE_CHECK = 'guide-cycle';
+
+export const GUIDE_TONES_CHAPTER: ChapterDef = {
+	id: 'guide-tones',
+	number: 11,
+	partKey: 'book.part.1',
+	titleKey: 'book.ch11.title',
+	ideaKey: 'book.ch11.idea',
+	grading: 'checked',
+	repertoire: [
+		{
+			id: 'blue-bossa',
+			title: 'Blue Bossa',
+			composer: 'Kenny Dorham',
+			year: 1963,
+			rights: 'changes-only',
+			barsKey: 'book.ch11.tune.blueBossa.bars',
+			noteKey: 'book.ch11.tune.blueBossa.note',
+			bars: presetBars('blue-bossa-cm', ['ii', 'V', 'I', 'I'], 8)
+		},
+		{
+			id: 'satin-doll',
+			title: 'Satin Doll',
+			composer: 'Duke Ellington, Billy Strayhorn',
+			year: 1953,
+			rights: 'changes-only',
+			barsKey: 'book.ch11.tune.satinDoll.bars',
+			noteKey: 'book.ch11.tune.satinDoll.note',
+			bars: [
+				{ symbol: 'Dm7', roman: 'ii' },
+				{ symbol: 'G7', roman: 'V' },
+				{ symbol: 'Dm7', roman: 'ii' },
+				{ symbol: 'G7', roman: 'V' },
+				{ symbol: 'Em7', roman: 'iii' },
+				{ symbol: 'A7', roman: 'V/ii' },
+				{ symbol: 'Em7', roman: 'iii' },
+				{ symbol: 'A7', roman: 'V/ii' }
+			]
+		}
+	],
+	checklist: [
+		{ id: GUIDE_TONE_CYCLE_CHECK, labelKey: 'book.ch11.check.cycle', by: 'app' },
+		{ id: 'no-roots', labelKey: 'book.ch11.check.noRoots', by: 'you' },
+		{ id: 'sing-the-line', labelKey: 'book.ch11.check.sing', by: 'you' },
+		{ id: 'comp-blue-bossa', labelKey: 'book.ch11.check.comp', by: 'you' }
+	]
+};
 
 export const SHELLS_CHAPTER: ChapterDef = {
 	id: 'shells-in-every-key',
@@ -177,8 +227,8 @@ export const CIRCLE_CHAPTER: ChapterDef = {
 	]
 };
 
-/** Every chapter, in book order. Chapters 17 to 27 are follow-ups (method-book.md). */
-export const CHAPTERS: readonly ChapterDef[] = [SHELLS_CHAPTER, CIRCLE_CHAPTER];
+/** Every chapter, in book order. The rest of Part I and chapters 17 to 27 are follow-ups (method-book.md). */
+export const CHAPTERS: readonly ChapterDef[] = [GUIDE_TONES_CHAPTER, SHELLS_CHAPTER, CIRCLE_CHAPTER];
 
 /** Total: an unknown id returns undefined. */
 export function chapterById(id: string): ChapterDef | undefined {

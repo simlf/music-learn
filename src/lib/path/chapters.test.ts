@@ -3,11 +3,15 @@ import { spellChord } from '$lib/theory/chord';
 import { chromaOf } from '$lib/theory/interval';
 import { shellCycleBars, SHELL_FORMS } from '$lib/practice/shellCycle';
 import { CYCLE_DIRECTIONS, isSameStop, nextInCycle } from '$lib/practice/circleOfFifths';
+import { guideToneMotion, toGuideToneBar } from '$lib/lessons/guideTones';
+import { guideToneCycleBars } from '$lib/practice/guideToneCycle';
 import {
 	CHAPTERS,
 	CIRCLE_CHAPTER,
 	CIRCLE_DISTANCE_CHECK,
 	CIRCLE_LAP_CHECK,
+	GUIDE_TONE_CYCLE_CHECK,
+	GUIDE_TONES_CHAPTER,
 	SHELLS_CHAPTER,
 	SHELL_CYCLE_CHECK,
 	chapterById
@@ -23,9 +27,11 @@ const sameChord = (a: string, b: string) => {
 };
 
 describe('CHAPTERS', () => {
-	it('numbers new chapters from 15, with unique ids', () => {
-		expect(CHAPTERS.map((chapter) => chapter.number)).toEqual([15, 16]);
+	it('keeps Part I units at their unit number, numbers new chapters from 15, with unique ids', () => {
+		expect(CHAPTERS.map((chapter) => chapter.number)).toEqual([11, 15, 16]);
+		expect(CHAPTERS.map((chapter) => chapter.partKey)).toEqual(['book.part.1', 'book.part.2', 'book.part.2']);
 		expect(new Set(CHAPTERS.map((chapter) => chapter.id)).size).toBe(CHAPTERS.length);
+		expect(chapterById('guide-tones')).toBe(GUIDE_TONES_CHAPTER);
 		expect(chapterById('shells-in-every-key')).toBe(SHELLS_CHAPTER);
 		expect(chapterById('circle-of-fifths')).toBe(CIRCLE_CHAPTER);
 		expect(chapterById('nope')).toBeUndefined();
@@ -111,5 +117,41 @@ describe('chapter 16', () => {
 		for (let i = 1; i < roots.length; i++) expect(isSameStop(roots[i], nextInCycle(roots[i - 1], 'down')!)).toBe(true);
 		// F7 is the V of B♭, where the last A section lands.
 		expect(isSameStop(nextInCycle(roots[roots.length - 1], 'down')!, 'B♭')).toBe(true);
+	});
+});
+
+describe('chapter 11', () => {
+	/** The guide-tone motion between two chord symbols, from the same engine the lesson and the drill use. */
+	const motionBetween = (from: string, to: string) =>
+		guideToneMotion(
+			toGuideToneBar({ index: 0, roman: '', symbol: from, quality: '' } as never),
+			toGuideToneBar({ index: 1, roman: '', symbol: to, quality: '' } as never)
+		)!;
+
+	it('ticks its one app line from the guide-tone cycle', () => {
+		const appLines = GUIDE_TONES_CHAPTER.checklist.filter((item) => item.by === 'app').map((item) => item.id);
+		expect(appLines).toEqual([GUIDE_TONE_CYCLE_CHECK]);
+	});
+
+	it("Blue Bossa's bars 9 to 12 are D♭'s ii V I, and each 7th falls a half step as the note says", () => {
+		const [blueBossa] = GUIDE_TONES_CHAPTER.repertoire;
+		const symbols = blueBossa.bars.map((bar) => bar.symbol);
+		expect(symbols).toEqual(['Ebm7', 'Ab7', 'Dbmaj7', 'Dbmaj7']);
+		guideToneCycleBars('D♭').forEach((bar, i) => {
+			expect(sameChord(symbols[i], bar.symbol)).toBe(true);
+			expect(blueBossa.bars[i].roman).toBe(bar.roman);
+		});
+		expect(motionBetween('Ebm7', 'Ab7')).toMatchObject({ fallingFrom: 'D♭', fallingTo: 'C', heldLetter: 'G♭', fallingSemitones: 1 });
+		expect(motionBetween('Ab7', 'Dbmaj7')).toMatchObject({ fallingFrom: 'G♭', fallingTo: 'F', heldLetter: 'C', fallingSemitones: 1 });
+	});
+
+	it("Satin Doll's two ii Vs each move the ii's 7th a half step to the V's 3rd, the second a whole step higher", () => {
+		const satin = GUIDE_TONES_CHAPTER.repertoire[1];
+		const symbols = satin.bars.map((bar) => bar.symbol);
+		expect(symbols).toEqual(['Dm7', 'G7', 'Dm7', 'G7', 'Em7', 'A7', 'Em7', 'A7']);
+		for (let i = 0; i < symbols.length; i += 2) {
+			expect(motionBetween(symbols[i], symbols[i + 1]).fallingSemitones).toBe(1);
+		}
+		expect((rootOf('Em7')! - rootOf('Dm7')! + 12) % 12).toBe(2);
 	});
 });

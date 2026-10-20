@@ -8,7 +8,7 @@
 	import type { CompLoopHandle } from '$lib/audio/audio';
 	import { onStrudelError, runStrudelPattern, stopStrudelPattern } from '$lib/audio/strudel';
 	import { onPianorollError, startPianoroll, stopPianoroll } from '$lib/audio/strudelPianoroll';
-	import type { PianorollTheme } from '$lib/audio/strudelPianoroll';
+	import { pianorollThemeFromTokens, sizePianorollCanvas } from '$lib/audio/pianorollCanvas';
 	import { BEATS_PER_BAR, TEMPO_DEFAULT, nudgeTempo } from '$lib/audio/loopTiming';
 	import {
 		buildCompBars,
@@ -308,32 +308,6 @@
 		liveCodeVisualUnavailable = false;
 	}
 
-	/** Reads the pianoroll's colours from the app's own CSS tokens (app.css), never a hardcoded hex. */
-	function pianorollTheme(): PianorollTheme {
-		const style = getComputedStyle(document.documentElement);
-		return {
-			active: style.getPropertyValue('--color-vermilion').trim(),
-			inactive: style.getPropertyValue('--color-ink').trim(),
-			background: 'transparent',
-			playheadColor: style.getPropertyValue('--color-muted').trim()
-		};
-	}
-
-	/**
-	 * Sizes the canvas backing store for the device's pixel ratio, so notes
-	 * stay crisp rather than blurry. `drawPianoroll` computes every
-	 * coordinate as a fraction of `ctx.canvas.width`/`height` (the backing
-	 * store, not the CSS size), so a bigger backing store alone is enough -
-	 * no `ctx.scale()`, which would double-apply the ratio and draw
-	 * everything squeezed into one corner.
-	 */
-	function sizeLiveCodeCanvas(canvas: HTMLCanvasElement): CanvasRenderingContext2D | null {
-		const ratio = window.devicePixelRatio || 1;
-		canvas.width = canvas.clientWidth * ratio;
-		canvas.height = canvas.clientHeight * ratio;
-		return canvas.getContext('2d');
-	}
-
 	/**
 	 * Opens or closes the live-code panel. Opening seeds it from what is on
 	 * screen right now; closing stops whatever pattern was playing, since a
@@ -380,9 +354,9 @@
 			return;
 		}
 		liveCodeRunning = true;
-		const ctx = liveCodeCanvas && sizeLiveCodeCanvas(liveCodeCanvas);
+		const ctx = liveCodeCanvas && sizePianorollCanvas(liveCodeCanvas);
 		if (ctx && result.pattern && result.now) {
-			const drawn = await startPianoroll(result.pattern, result.now, ctx, pianorollTheme());
+			const drawn = await startPianoroll(result.pattern, result.now, ctx, pianorollThemeFromTokens());
 			liveCodeVisualUnavailable = !drawn.ok;
 		} else {
 			liveCodeVisualUnavailable = true;

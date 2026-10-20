@@ -34,9 +34,10 @@
 	 * shipped thirds lesson byte-identically, so `<InteractiveLesson />` with
 	 * no props renders and behaves exactly as before
 	 * (interactiveLesson.test.ts's full existing suite is the proof). The root
-	 * itself stays hardcoded to C: both lessons that exist so far anchor there,
-	 * so parameterizing it would be speculative generality with no second
-	 * caller.
+	 * itself stays hardcoded to C: every lesson so far anchors there. A step
+	 * that needs more than one earned note or a non-C "Hear it" (chapter 11's
+	 * guide-tone lesson) says so on the step itself (`LessonStep.shows`,
+	 * `LessonStep.hearNotes`), and a step without them behaves as before.
 	 */
 	interface Props {
 		/** Which lesson's steps to render. Defaults to the shipped thirds lesson. */
@@ -147,11 +148,14 @@
 		return earnedNotes.find((note) => note.role === previewRole)?.letter ?? null;
 	}
 
-	/** "Hear it": plays the root alone (a root-only step) or the root+preview pair, then bumps the pulse - outside any soundEnabled() check, so the lit key(s) still pulse with sound off (LEARN-02). */
+	/** "Hear it": plays the step's own `hearNotes` when it declares them, else the root alone (a root-only step) or the root+preview pair, then bumps the pulse - outside any soundEnabled() check, so the lit key(s) still pulse with sound off (LEARN-02). */
 	function hearCurrent(): void {
 		void ensureAudioReady();
+		const hearNotes = steps[activeIndex]?.hearNotes;
 		const previewLetter = currentPreviewLetter();
-		if (previewLetter !== null) {
+		if (hearNotes) {
+			playChord(hearNotes);
+		} else if (previewLetter !== null) {
 			playChord(['C', previewLetter]);
 		} else {
 			playNote(toPitch('C', 4));
@@ -185,6 +189,15 @@
 				// second (D♯) replaces its major second (D) under the shared
 				// 'second' role.
 				earnedNotes = [...earnedNotes.filter((note) => note.role !== step.role), earned];
+			}
+			// A step that declares the board's whole state after its tap (unit
+			// 11's held note changing role) replaces the earned set outright.
+			if (step.shows) {
+				earnedNotes = step.shows.map((note) => ({
+					letter: note.letter,
+					solfege: letterToSolfege(note.letter),
+					role: note.role
+				}));
 			}
 			wrongFlash = null;
 			clearTimeout(flashTimer);

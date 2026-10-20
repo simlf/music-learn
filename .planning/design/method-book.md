@@ -1,6 +1,6 @@
 # Design: the method book
 
-**Status:** partially built. The chapter template, chapter 15 and chapter 16 ship; chapters 17 to 27 are follow-ups (section 7).
+**Status:** partially built. The chapter template, chapter 11 (the first Part I unit on the template), chapter 15 and chapter 16 ship; the rest of Part I and chapters 17 to 27 are follow-ups (section 7).
 **Date:** 2026-10-18 (decisions taken 2026-10-17)
 **Companion docs:** `.planning/design/guided-path.md` (the 14-unit spine) and `.planning/design/improvisation.md` (trainer vs instrument). Where they touch, the guided path wins.
 **Copy rule:** no em or en dashes in user-facing strings.
@@ -67,10 +67,19 @@ This is the US rule. Under EU life-plus-70 several of those melodies are still p
 - **Engine:** the cycle is `SHELL_CYCLE_KEYS.major`, not `MAJOR_SCALE_ROOTS` (chromatic order). Display spelling follows the circle diagram: G♭ going down, F♯ going up; grading never depends on it.
 - **Repertoire:** Fly Me to the Moon (1954, changes only, bars read from the preset): seven roots down the diatonic cycle, F to B the one diminished fifth. I Got Rhythm (1930, changes only), the bridge: D7 G7 C7 F7, four dominants each resolving down a fifth.
 
+## 6b. Chapter 11, guide tones and voice leading (shipped)
+
+Guided-path unit 11 on the template, ahead of guided-path Phase 2 (owner decision, 2026-10-20): `/learn` lists it under Part I, above Part II, and the unit keeps its number. Its detailed design is `improvisation.md` section 4.
+
+- **Idea:** in a ii V I, the 7th of each chord falls a half step to the 3rd of the next while the other note holds; that is why two notes sound like music.
+- **Concept:** a four-step `InteractiveLesson` (`src/lib/lessons/guideToneLesson.ts`) over Dm7, G7, Cmaj7 in C: tap the 7th of Dm7, then the key each falling 7th lands on. Two additive `LessonStep` fields carry it: `shows` (the whole lit board after a tap, because the held note changes role) and `hearNotes` (Hear it plays the chord on the board, not a C-anchored pair). Then `GuideToneLines.svelte`: the ii V I of any of the 12 keys as an editable Strudel pattern, one `note(...)` line per voice (top line, bottom line, roots), with the pianoroll, so the line is seen while heard. It is the unit's ear, never its grader (`improvisation.md` 3.4): no counter, no persistence.
+- **At the piano (CHECKED):** `GuideToneCycleDrill.svelte` over `src/lib/practice/guideToneCycle.ts`. The major ii V I as the 3rd and 7th only, no root, in all 12 keys in `SHELL_CYCLE_KEYS.major` order. Graded on two things: the chroma set is exactly the 3rd and the 7th, and, from the V on, each voice moved at most a whole step from the pair the player just got right (`isSmoothMove`; a whole-pair octave shift is forgiven, since the falling line eventually runs off the board). Right notes with a jump are a retry. Show me voices the move from the player's own previous pair. Major only: the minor V to i fall is a whole step. A key is clean with no retry and no Show me; 12 clean keys tick the checklist line. Never enters `/practice`.
+- **Repertoire:** Blue Bossa (1963, changes only), bars 9 to 12 read from the preset: a ii V I in D♭. Satin Doll (1953, changes only), bars 1 to 4: two ii Vs, the second a whole step higher.
+- **Not done here:** the guided-path's copy fix for `voicings.subtract.teach` (unit 11's "the 3rd and 7th are the ones that move"): it is the voicing drill's own copy, and drill changes were out of scope for this chapter.
+
 ## 7. Follow-ups, not built
 
-- **Part I conversion:** units 1 to 14 onto the template, with repertoire boxes for units 8, 9, 10, 11, 13, 14 (existing presets, changes only). Best done with guided-path Phases 1 and 2, which also turn `/learn` into the ordered path; the chapter row on `/learn` then becomes one of its rows.
-- **Unit 11's "At the piano":** the ii V guide-tone cycle in all 12 keys, merged with the queued guide-tone Strudel lesson.
+- **Part I conversion:** the remaining units onto the template (unit 11 is done), with repertoire boxes for units 8, 9, 10, 13, 14 (existing presets, changes only). Best done with guided-path Phases 1 and 2, which also turn `/learn` into the ordered path; the chapter row on `/learn` then becomes one of its rows.
 - **17, the 12-bar blues** and **18, secondary dominants and turnarounds:** templates as data in `PROGRESSION_TEMPLATES`, plus the first public-domain tunes as changes (St. Louis Blues 1914, Sweet Georgia Brown 1925, Basin Street Blues 1928, Ain't Misbehavin' and Honeysuckle Rose 1929). Check each against its original edition first.
 - **19, rootless A and B voicings:** a real `rootlessAB(chord, form)` with the 9th (today's `rootlessNotes` is chord minus root), graded as set plus bottom note.
 - **20, tritone substitution** (templates need a chromatic root offset) and **21, sus chords and fourths.**

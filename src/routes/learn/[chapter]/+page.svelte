@@ -4,11 +4,17 @@
 	import ShellCycleDrill from '$lib/components/ShellCycleDrill.svelte';
 	import CircleConcept from '$lib/components/CircleConcept.svelte';
 	import CircleOfFifthsDrill from '$lib/components/CircleOfFifthsDrill.svelte';
+	import InteractiveLesson from '$lib/components/InteractiveLesson.svelte';
+	import GuideToneLines from '$lib/components/GuideToneLines.svelte';
+	import GuideToneCycleDrill from '$lib/components/GuideToneCycleDrill.svelte';
+	import { GUIDE_TONE_LESSON } from '$lib/lessons/guideToneLesson';
 	import {
 		chapterById,
 		CIRCLE_CHAPTER,
 		CIRCLE_DISTANCE_CHECK,
 		CIRCLE_LAP_CHECK,
+		GUIDE_TONE_CYCLE_CHECK,
+		GUIDE_TONES_CHAPTER,
 		SHELL_CYCLE_CHECK,
 		SHELLS_CHAPTER
 	} from '$lib/path/chapters';
@@ -30,7 +36,24 @@
 	<!-- max-w must stay an arbitrary value: the Print Shop @theme defines
 	     --spacing-2xl: 48px, so a named max-w-2xl utility resolves to 48px. -->
 	<div class="mx-auto flex max-w-[42rem] flex-col gap-8">
-		{#if chapter?.id === SHELLS_CHAPTER.id}
+		{#if chapter?.id === GUIDE_TONES_CHAPTER.id}
+			<Chapter {chapter}>
+				{#snippet concept()}
+					<p class="text-body">{t('book.ch11.concept.body')}</p>
+					<InteractiveLesson
+						steps={GUIDE_TONE_LESSON}
+						showHandoff={false}
+						subtitleKey="book.ch11.lesson.subtitle"
+					/>
+					<p class="text-body">{t('book.ch11.concept.linesIntro')}</p>
+					<GuideToneLines />
+				{/snippet}
+				{#snippet piano(tick)}
+					<p class="text-body">{t('book.ch11.piano.intro')}</p>
+					<GuideToneCycleDrill onClean={() => tick(GUIDE_TONE_CYCLE_CHECK)} />
+				{/snippet}
+			</Chapter>
+		{:else if chapter?.id === SHELLS_CHAPTER.id}
 			<Chapter {chapter}>
 				{#snippet concept()}
 					<p class="text-body">{t('book.ch15.concept.body')}</p>
