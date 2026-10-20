@@ -187,3 +187,50 @@ describe('ShellCycleDrill', () => {
 		expect(feedback().textContent).not.toContain('Not in');
 	});
 });
+
+describe('ShellCycleDrill on a phone-width stacked keyboard', () => {
+	/**
+	 * Regression: the stacked two-row board used to report every row-2 black
+	 * key as octave 4, so a correct F7 played as F on row 1 and A + E♭ on
+	 * row 2 was graded "put the root at the bottom". Drives the real
+	 * ResizeObserver measurement path at a 358px phone container.
+	 */
+	beforeEach(() => {
+		class FakeResizeObserver {
+			private callback: ResizeObserverCallback;
+			constructor(callback: ResizeObserverCallback) {
+				this.callback = callback;
+			}
+			observe(target: Element) {
+				this.callback(
+					[{ target, contentRect: { width: 358 } } as unknown as ResizeObserverEntry],
+					this as unknown as ResizeObserver
+				);
+			}
+			unobserve() {}
+			disconnect() {}
+		}
+		vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it('grades F7 right with F on row 1 and A + E♭ on row 2', async () => {
+		const { container } = render(ShellCycleDrill);
+		await Promise.resolve();
+		await Promise.resolve();
+		expect(container.querySelectorAll('.piano-keyboard__board')).toHaveLength(2);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'B♭' }));
+		await playChord('major', 'B♭', 0);
+		expect(feedback().textContent).toContain('Right: Cm7.');
+
+		press('F', 4);
+		press('A', 5);
+		press('E♭', 5);
+		await check();
+		expect(feedback().textContent).toContain('Right: F7.');
+	});
+});
