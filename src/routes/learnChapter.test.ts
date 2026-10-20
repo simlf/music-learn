@@ -7,6 +7,7 @@ import { PATH_KEY, checklistTicks } from '$lib/path/pathState';
 import { consumeCompSongSeed } from '$lib/practice/compSongSeed';
 import { consumeDrillSeeds } from '$lib/practice/drillSeeds';
 import { SHELL_CYCLE_KEYS, positionForBar, shellCycleBars, voiceRootedShell } from '$lib/practice/shellCycle';
+import { HOPS_PER_ROUND, ROUNDS_PER_LAP, cycleRound, stepsFrom } from '$lib/practice/circleOfFifths';
 
 /**
  * /learn/[chapter]: the method-book chapter template rendering chapter 15.
@@ -30,10 +31,11 @@ const { default: ChapterPage } = await import('./learn/[chapter]/+page.svelte');
 const { load, entries } = await import('./learn/[chapter]/+page');
 
 const CHAPTER_ID = 'shells-in-every-key';
+const CIRCLE_ID = 'circle-of-fifths';
 
-function renderPage() {
+function renderPage(chapterId = CHAPTER_ID) {
 	// The page reads only `data`; the route's other props are irrelevant here.
-	return render(ChapterPage, { data: { chapterId: CHAPTER_ID } } as never);
+	return render(ChapterPage, { data: { chapterId } } as never);
 }
 
 beforeEach(() => {
@@ -49,7 +51,8 @@ afterEach(() => {
 
 describe('/learn/[chapter] route', () => {
 	it('prerenders every chapter and 404s an unknown one', () => {
-		expect(entries()).toEqual([{ chapter: CHAPTER_ID }]);
+		expect(entries()).toEqual([{ chapter: CHAPTER_ID }, { chapter: CIRCLE_ID }]);
+		expect(load({ params: { chapter: CIRCLE_ID } } as never)).toEqual({ chapterId: CIRCLE_ID });
 		expect(load({ params: { chapter: CHAPTER_ID } } as never)).toEqual({ chapterId: CHAPTER_ID });
 		expect(() => load({ params: { chapter: 'nope' } } as never)).toThrow();
 	});
@@ -186,6 +189,79 @@ describe('chapter 15 on the four-block template', () => {
 		for (const locale of ['en', 'fr'] as const) {
 			setLocale(locale);
 			const { container } = renderPage();
+			expect(container.textContent).not.toMatch(/[–—]/);
+			cleanup();
+		}
+	});
+});
+
+describe('chapter 16, the circle of fifths, on the four-block template', () => {
+	it('renders the book chrome, the one idea, and the four blocks', () => {
+		renderPage(CIRCLE_ID);
+		expect(screen.getByRole('heading', { level: 1, name: 'The circle of fifths' })).toBeInTheDocument();
+		expect(screen.getByText('Part II · The left hand · Chapter 16')).toBeInTheDocument();
+		expect(screen.getByTestId('chapter-idea').textContent).toContain('the roots of a ii V I');
+		for (const id of ['chapter-concept', 'chapter-piano', 'chapter-repertoire', 'chapter-checklist']) {
+			expect(screen.getByTestId(id)).toBeInTheDocument();
+		}
+	});
+
+	it('draws the ring clockwise up a fifth from C, and marks the picked key and its ii and V', async () => {
+		renderPage(CIRCLE_ID);
+		const nodes = () => screen.getAllByTestId('circle-concept-node');
+		expect(nodes().map((node) => node.dataset.key)).toEqual([
+			'C', 'G', 'D', 'A', 'E', 'B', 'F♯', 'D♭', 'A♭', 'E♭', 'B♭', 'F'
+		]);
+		const tags = () => Object.fromEntries(nodes().filter((node) => node.dataset.tag).map((node) => [node.dataset.key, node.dataset.tag]));
+		expect(tags()).toEqual({ C: 'I', G: 'V', D: 'ii' });
+		expect(screen.getByTestId('circle-concept-readout').textContent).toBe(
+			'C: down a fifth is F, up a fifth is G. Its ii V I has the roots D, G, C: two steps down the ring.'
+		);
+		await fireEvent.click(within(screen.getByTestId('circle-concept-row')).getByRole('button', { name: 'B♭' }));
+		expect(tags()).toEqual({ 'B♭': 'I', F: 'V', C: 'ii' });
+		expect(screen.getByTestId('circle-concept-readout').textContent).toContain('Its ii V I has the roots C, F, B♭');
+	});
+
+	it('marks the exercise CHECKED and embeds the circle drill', () => {
+		renderPage(CIRCLE_ID);
+		expect(screen.getByTestId('chapter-grading').textContent).toContain('Checked');
+		expect(within(screen.getByTestId('chapter-piano')).getByTestId('circle-drill')).toBeInTheDocument();
+	});
+
+	it('shows both tunes as changes only', () => {
+		renderPage(CIRCLE_ID);
+		const tunes = screen.getAllByTestId('chapter-tune');
+		expect(tunes).toHaveLength(2);
+		expect(tunes[0].textContent).toContain('Fly Me to the Moon');
+		expect(tunes[0].textContent).toContain('1954 · changes only');
+		expect(tunes[1].textContent).toContain('I Got Rhythm');
+		expect(tunes[1].textContent).toContain('1930 · changes only');
+		expect(within(tunes[1]).getByTestId('chapter-tune-strip').textContent?.replace(/\s+/g, '')).toBe(
+			'D7V/viG7V/iiC7V/VF7V'
+		);
+	});
+
+	it('a clean lap down ticks its checklist line and persists it', async () => {
+		renderPage(CIRCLE_ID);
+		const choices = () => within(screen.getByTestId('circle-choices'));
+		for (let round = 0; round < ROUNDS_PER_LAP; round++) {
+			const stops = cycleRound(stepsFrom('C', round * HOPS_PER_ROUND, 'down')!, 'down');
+			for (const stop of stops.slice(1)) await fireEvent.click(choices().getByRole('button', { name: stop }));
+			if (round < ROUNDS_PER_LAP - 1) await fireEvent.click(screen.getByTestId('circle-next-round'));
+		}
+		const line = screen.getAllByTestId('checklist-item').find((item) => item.dataset.item === 'lap-down')!;
+		expect(line.dataset.ticked).toBe('true');
+		expect(checklistTicks(CIRCLE_ID)).toEqual(['lap-down']);
+		expect(checklistTicks(CHAPTER_ID)).toEqual([]);
+	});
+
+	it('renders in French with no em or en dashes in either locale', () => {
+		for (const locale of ['en', 'fr'] as const) {
+			setLocale(locale);
+			const { container } = renderPage(CIRCLE_ID);
+			if (locale === 'fr') {
+				expect(screen.getByRole('heading', { level: 1, name: 'Le cycle des quintes' })).toBeInTheDocument();
+			}
 			expect(container.textContent).not.toMatch(/[–—]/);
 			cleanup();
 		}

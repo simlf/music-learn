@@ -2,7 +2,16 @@
 	import Chapter from '$lib/components/Chapter.svelte';
 	import ShellsConcept from '$lib/components/ShellsConcept.svelte';
 	import ShellCycleDrill from '$lib/components/ShellCycleDrill.svelte';
-	import { chapterById, SHELL_CYCLE_CHECK, SHELLS_CHAPTER } from '$lib/path/chapters';
+	import CircleConcept from '$lib/components/CircleConcept.svelte';
+	import CircleOfFifthsDrill from '$lib/components/CircleOfFifthsDrill.svelte';
+	import {
+		chapterById,
+		CIRCLE_CHAPTER,
+		CIRCLE_DISTANCE_CHECK,
+		CIRCLE_LAP_CHECK,
+		SHELL_CYCLE_CHECK,
+		SHELLS_CHAPTER
+	} from '$lib/path/chapters';
 	import { t } from '$lib/i18n/locale.svelte';
 	import type { PageProps } from './$types';
 
@@ -32,6 +41,22 @@
 				{#snippet piano(tick)}
 					<p class="text-body">{t('book.ch15.piano.intro')}</p>
 					<ShellCycleDrill onClean={(form) => tick(SHELL_CYCLE_CHECK[form])} />
+				{/snippet}
+			</Chapter>
+		{:else if chapter?.id === CIRCLE_CHAPTER.id}
+			<Chapter {chapter}>
+				{#snippet concept()}
+					<p class="text-body">{t('book.ch16.concept.body')}</p>
+					<CircleConcept />
+					<p class="text-label text-muted">{t('book.ch16.concept.caption')}</p>
+					<p class="text-body">{t('book.ch16.concept.why')}</p>
+				{/snippet}
+				{#snippet piano(tick)}
+					<p class="text-body">{t('book.ch16.piano.intro')}</p>
+					<CircleOfFifthsDrill
+						onLapClean={(direction) => tick(CIRCLE_LAP_CHECK[direction])}
+						onDistanceStreak={() => tick(CIRCLE_DISTANCE_CHECK)}
+					/>
 				{/snippet}
 			</Chapter>
 		{/if}
