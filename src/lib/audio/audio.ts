@@ -14,9 +14,11 @@ import { BEATS_PER_BAR, nextBarIndex, secondsPerBeat } from './loopTiming';
  *   piano (1.9 MB, 30 mp3s, self-hosted so it loads fast) is preloaded on the
  *   first user gesture, and play calls await that load so the very first note
  *   sounds on the real piano - identical to every note after it. A PolySynth
- *   is kept as a fallback only: if the sample fetch fails (offline) or is
- *   still in flight when a note is played, the synth covers that note so the
- *   app is never silent. Once samples are in, every note is the sampler.
+ *   is kept as a fallback only: if the sample fetch fails (offline), the synth
+ *   covers the notes played meanwhile so the app is never silent, and the next
+ *   play call retries the load in the background (up to
+ *   MAX_SAMPLE_LOAD_ATTEMPTS per session) while taps keep sounding on the
+ *   synth. Once samples are in, every note is the sampler.
  * - `Tone.getContext().lookAhead = 0` kills tone's built-in 100ms scheduling
  *   delay so key touches feel immediate (R2-audio.md, risk 4).
  * - Spam hygiene: a 50ms per-note retrigger guard and a 16-voice soft cap on
@@ -54,6 +56,15 @@ const RETRIGGER_WINDOW_MS = 50;
 const MAX_HELD_VOICES = 16;
 const SAMPLER_RELEASE_SEC = 0.8;
 /**
+ * Sample-load attempts per session before settling on the synth. Tone's
+ * Sampler fails as a whole when any one of its 30 files does, so a single
+ * dropped request (a phone on a flaky link, typically right after a deploy)
+ * used to pin the whole session to the synth. Retrying on the next play call
+ * recovers from that; the cap keeps an offline session from refetching on
+ * every tap.
+ */
+const MAX_SAMPLE_LOAD_ATTEMPTS = 3;
+/**
  * Conservative post-attack gate windows (ms) for `isAppAudioActive()`
  * (Spike 025 / the mic verifier, ARCHITECTURE-CONTRACTS.md Track A). Not
  * tempo-exact: NOTE_DURATION/CHORD_DURATION are Tone.js time strings ('8n',
@@ -83,11 +94,13 @@ let toneModule: ToneModule | null = null;
 let synth: ToneNS.PolySynth | null = null;
 let sampler: ToneNS.Sampler | null = null;
 let samplesLoaded = false;
-let samplerFailed = false;
+let sampleLoadAttempts = 0;
 /**
- * Resolves once the sampler has finished loading (onload) or definitively
- * failed (onerror). Play calls await this so the first audible note lands on
- * the sampled piano rather than the synth. null until sample loading begins.
+ * Resolves once the FIRST sample load has finished (onload) or failed
+ * (onerror). Play calls await this so the first audible note lands on the
+ * sampled piano rather than the synth. Retries never replace it, so a tap
+ * after a failure sounds on the synth at once instead of waiting on the
+ * reload. null until sample loading begins.
  */
 let samplerReady: Promise<void> | null = null;
 /** null = not read from localStorage yet (lazy, so import stays side-effect free). */
@@ -217,25 +230,37 @@ function loadTone(): Promise<ToneModule> {
 }
 
 function beginSampleLoad(t: ToneModule): void {
-	if (sampler || samplerFailed) return;
-	samplerReady = new Promise<void>((resolve) => {
-		sampler = new t.Sampler({
+	if (sampler || sampleLoadAttempts >= MAX_SAMPLE_LOAD_ATTEMPTS) return;
+	sampleLoadAttempts += 1;
+	const ready = new Promise<void>((resolve) => {
+		const attempt: ToneNS.Sampler = new t.Sampler({
 			urls: SALAMANDER_URLS,
 			baseUrl: SALAMANDER_BASE_URL,
 			release: SAMPLER_RELEASE_SEC,
 			onload: () => {
+				if (sampler !== attempt) return;
 				samplesLoaded = true;
 				resolve();
 			},
 			onerror: () => {
-				// Offline or misconfigured hosting: stay on the synth for this
-				// session rather than retry-looping a broken fetch.
-				samplerFailed = true;
+				// Fires once per failed file. The first one drops this attempt,
+				// so the pending notes go to the synth and the next play call
+				// starts a fresh load in the background instead of the session
+				// staying on the synth.
+				if (sampler !== attempt) return;
+				sampler = null;
 				samplesLoaded = false;
+				try {
+					attempt.dispose();
+				} catch {
+					// Never throw into UI code.
+				}
 				resolve();
 			}
 		}).toDestination();
+		sampler = attempt;
 	});
+	samplerReady ??= ready;
 }
 
 /**
@@ -253,9 +278,9 @@ export async function ensureAudioReady(): Promise<void> {
 
 /**
  * The instrument to attack on: the sampled piano once loaded, otherwise the
- * synth. Play calls await sample loading (see withInstrument) before reading
- * this, so the synth is only ever chosen when loading has failed - not merely
- * because it is still in flight.
+ * synth. Play calls await the first sample load (see withInstrument) before
+ * reading this, so the synth is only ever chosen once a load has failed - not
+ * merely because the first one is still in flight.
  */
 function activeInstrument(): Instrument | null {
 	if (sampler && samplesLoaded) return sampler;
@@ -906,7 +931,7 @@ export function _resetForTests(): void {
 	synth = null;
 	sampler = null;
 	samplesLoaded = false;
-	samplerFailed = false;
+	sampleLoadAttempts = 0;
 	samplerReady = null;
 	enabled = null;
 	studyMode = null;
