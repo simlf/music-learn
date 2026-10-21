@@ -75,13 +75,19 @@ describe('voiceGuideTones', () => {
 				const before = pairs[i - 1].map((note) => note.pitch);
 				const after = pairs[i].map((note) => note.pitch);
 				expect(isSmoothMove(before, after), key).toBe(true);
-				// Mod 12 the motion is always the same: one voice holds, the other falls one half step.
-				const moves = [0, 1]
-					.map((voice) => (((after[voice] - before[voice]) % 12) + 12) % 12)
-					.sort((a, b) => a - b);
-				expect(moves, key).toEqual([0, 11]);
+				// On the board itself, not mod 12: one voice holds, the other falls one half step, never an octave shift.
+				const moves = [0, 1].map((voice) => after[voice] - before[voice]).sort((a, b) => a - b);
+				expect(moves, key).toEqual([-1, 0]);
 			}
 		}
+	});
+
+	it('starts a key an octave up when its line would fall below C4: G starts Am7 on C5 G5', () => {
+		expect(chained('G').map((pair) => pair.map((note) => `${note.letter}${note.octave}`))).toEqual([
+			['C5', 'G5'],
+			['C5', 'F♯5'],
+			['B4', 'F♯5']
+		]);
 	});
 
 	it('Show me continues from the player own previous pair, not from a fixed position', () => {
@@ -161,6 +167,25 @@ describe('guideToneLines and guideTonePattern', () => {
 		const { upper, lower } = guideToneLines('C');
 		expect(upper.notes.map((note) => `${note.letter}${note.octave}`)).toEqual(['C5', 'B4', 'B4']);
 		expect(lower.notes.map((note) => `${note.letter}${note.octave}`)).toEqual(['F4', 'F4', 'E4']);
+	});
+
+	it('keeps every line holding or falling in all 12 keys, as written for Strudel', () => {
+		// Written pitch: the natural letter in its octave, then the accidental (so C♭5 is just under C5).
+		const sounding = (note: { letter: string; octave: number }) => {
+			const natural = chromaOf(note.letter.charAt(0))!;
+			return note.octave * 12 + natural + ((chromaOf(note.letter)! - natural + 18) % 12) - 6;
+		};
+		for (const key of GUIDE_TONE_CYCLE_KEYS) {
+			const { upper, lower } = guideToneLines(key);
+			for (const line of [upper, lower]) {
+				expect(line.notes, key).toHaveLength(3);
+				for (let i = 1; i < line.notes.length; i++) {
+					expect([0, -1], key).toContain(sounding(line.notes[i]) - sounding(line.notes[i - 1]));
+				}
+			}
+		}
+		expect(guideTonePattern('G')).toContain('note("<g5 f#5 f#5>")');
+		expect(guideTonePattern('G')).toContain('note("<c5 c5 b4>")');
 	});
 
 	it('renders the C pattern: two guide-tone lines over the roots, synthesized only, at the loop default tempo', () => {

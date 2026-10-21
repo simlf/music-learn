@@ -82,7 +82,11 @@ function presetBars(presetId: string, romans: string[], from = 0): TuneBar[] {
 	return romans.map((roman, index) => ({ symbol: preset.chordSymbols[from + index], roman }));
 }
 
-/** The checklist line chapter 11's guide-tone cycle ticks when all 12 keys are clean. */
+/**
+ * Chapter 11's guide-tone cycle line. A self-check, never ticked by the
+ * cycle drill: the unit's proof stays the voicing drill
+ * (`improvisation.md` 3.4), so the drill grades each pair but proves nothing.
+ */
 export const GUIDE_TONE_CYCLE_CHECK = 'guide-cycle';
 
 export const GUIDE_TONES_CHAPTER: ChapterDef = {
@@ -124,7 +128,7 @@ export const GUIDE_TONES_CHAPTER: ChapterDef = {
 		}
 	],
 	checklist: [
-		{ id: GUIDE_TONE_CYCLE_CHECK, labelKey: 'book.ch11.check.cycle', by: 'app' },
+		{ id: GUIDE_TONE_CYCLE_CHECK, labelKey: 'book.ch11.check.cycle', by: 'you' },
 		{ id: 'no-roots', labelKey: 'book.ch11.check.noRoots', by: 'you' },
 		{ id: 'sing-the-line', labelKey: 'book.ch11.check.sing', by: 'you' },
 		{ id: 'comp-blue-bossa', labelKey: 'book.ch11.check.comp', by: 'you' }

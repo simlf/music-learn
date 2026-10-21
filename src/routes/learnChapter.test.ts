@@ -5,6 +5,7 @@ import { spellChord } from '$lib/theory/chord';
 import { chromaOf } from '$lib/theory/interval';
 import { PATH_KEY, checklistTicks } from '$lib/path/pathState';
 import { consumeCompSongSeed } from '$lib/practice/compSongSeed';
+import { consumeCompPresetSeed } from '$lib/practice/compPresetSeed';
 import { consumeDrillSeeds } from '$lib/practice/drillSeeds';
 import { SHELL_CYCLE_KEYS, positionForBar, shellCycleBars, voiceRootedShell } from '$lib/practice/shellCycle';
 import { HOPS_PER_ROUND, ROUNDS_PER_LAP, cycleRound, stepsFrom } from '$lib/practice/circleOfFifths';
@@ -21,7 +22,8 @@ vi.mock('$lib/audio/audio', () => ({
 	playChord: vi.fn(),
 	playNote: vi.fn(),
 	ensureAudioReady: vi.fn(),
-	soundEnabled: () => true
+	soundEnabled: () => true,
+	onAppAudioStart: () => () => {}
 }));
 
 const gotoMock = vi.fn();
@@ -291,12 +293,14 @@ describe('chapter 11, guide tones, on the four-block template', () => {
 		}
 	});
 
-	it('teaches the concept as the step lesson, then the editable two-line pattern, with no /practice handoff', () => {
+	it('teaches the concept as the step lesson, hands off to the comping loop, then the editable two-line pattern, with no /practice handoff', () => {
 		renderPage(GUIDE_TONES_ID);
 		const concept = screen.getByTestId('chapter-concept');
 		const lesson = within(concept).getByTestId('interactive-lesson');
+		const handoff = within(concept).getByTestId('guide-tones-handoff');
 		const lines = within(concept).getByTestId('guide-lines');
-		expect(lesson.compareDocumentPosition(lines) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		expect(lesson.compareDocumentPosition(handoff) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		expect(handoff.compareDocumentPosition(lines) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 		expect(within(lesson).getByText('Two notes, one chord')).toBeInTheDocument();
 		expect(within(concept).queryByTestId('lesson-handoff')).toBeNull();
 		expect(within(lines).getByTestId('guide-lines-upper').textContent).toContain('C → B → B');
@@ -319,7 +323,16 @@ describe('chapter 11, guide tones, on the four-block template', () => {
 		expect(consumeDrillSeeds()).toEqual([]);
 	});
 
-	it('marks the exercise CHECKED, and a clean cycle ticks its checklist line and persists it', async () => {
+	it('the lesson hands off to the comping loop pre-set to ii V I in C', async () => {
+		renderPage(GUIDE_TONES_ID);
+		const handoff = screen.getByTestId('guide-tones-handoff');
+		expect(handoff.getAttribute('href')).toBe('/learn#learn-comping');
+		handoff.addEventListener('click', (event) => event.preventDefault());
+		await fireEvent.click(handoff);
+		expect(consumeCompPresetSeed()).toEqual({ templateId: 'major-ii-V-I', key: 'C' });
+	});
+
+	it('marks the exercise CHECKED, but a clean cycle never ticks the checklist: the proof stays the voicing drill', async () => {
 		renderPage(GUIDE_TONES_ID);
 		expect(screen.getByTestId('chapter-grading').textContent).toContain('Checked');
 		const piano = screen.getByTestId('chapter-piano');
@@ -337,9 +350,10 @@ describe('chapter 11, guide tones, on the four-block template', () => {
 				await fireEvent.click(screen.getByTestId('guide-cycle-check'));
 			}
 		}
+		expect(screen.getByTestId('guide-cycle-done').textContent).toContain('All 12 keys, every one clean.');
 		const line = screen.getAllByTestId('checklist-item').find((item) => item.dataset.item === 'guide-cycle')!;
-		expect(line.dataset.ticked).toBe('true');
-		expect(checklistTicks(GUIDE_TONES_ID)).toEqual(['guide-cycle']);
+		expect(line.dataset.ticked).not.toBe('true');
+		expect(checklistTicks(GUIDE_TONES_ID)).toEqual([]);
 	});
 
 	it('shows Blue Bossa and Satin Doll as changes only, and hands Blue Bossa to the loop', async () => {

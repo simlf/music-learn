@@ -75,6 +75,7 @@ import {
 	isAppAudioActive,
 	noteOff,
 	noteOn,
+	onAppAudioStart,
 	playArpeggio,
 	playChord,
 	playNote,
@@ -118,6 +119,30 @@ describe('import safety (jsdom)', () => {
 		expect(mockTone.synths).toHaveLength(0);
 		expect(mockTone.samplers).toHaveLength(0);
 		expect(mockTone.start).not.toHaveBeenCalled();
+	});
+});
+
+describe('onAppAudioStart (the second engine stops first)', () => {
+	it('tells a listener before a note or chord sounds, never on a release, and stops after unsubscribing', () => {
+		const listener = vi.fn();
+		const unsubscribe = onAppAudioStart(listener);
+		playNote('C4');
+		expect(listener).toHaveBeenCalledTimes(1);
+		playChord(['C', 'E', 'G']);
+		expect(listener).toHaveBeenCalledTimes(2);
+		noteOff('C4');
+		expect(listener).toHaveBeenCalledTimes(2);
+		unsubscribe();
+		playNote('D4');
+		expect(listener).toHaveBeenCalledTimes(2);
+	});
+
+	it('stays silent with sound off, since nothing will sound', () => {
+		setSoundEnabled(false);
+		const listener = vi.fn();
+		onAppAudioStart(listener);
+		playChord(['C', 'E', 'G']);
+		expect(listener).not.toHaveBeenCalled();
 	});
 });
 

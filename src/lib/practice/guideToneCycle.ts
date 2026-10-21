@@ -64,6 +64,13 @@ const BOARD_LOW = 4 * 12;
 const BOARD_HIGH = 5 * 12 + 11;
 /** The most a voice may move from one chord to the next and still be a line: a whole step. */
 export const MAX_VOICE_STEP = 2;
+/**
+ * How far a key's ii V I can carry its lower voice down from the first pair:
+ * one half step per change, two changes. A first pair whose lower note sits
+ * closer than this to the board's floor starts an octave up, so the line
+ * never has to leave the board.
+ */
+const LINE_FALL = 2;
 
 function toVoiced(letter: string, role: IntervalRole, pitch: number): VoicedGuideTone {
 	return { letter, role, marker: role === 'third' ? '3' : '7', pitch, octave: Math.floor(pitch / 12) };
@@ -83,7 +90,9 @@ function onBoard(voiced: VoicedGuideTone[]): VoicedGuideTone[] {
  * The pair voiced on the board. With no `previous` pair (the first chord of
  * a key), it is stacked from C4 in the cycle's alternation (`positionForBar`:
  * the ii with the 3rd low, the V with the 7th low, the I with the 3rd low
- * again). With a `previous` pair, each guide tone goes to the key nearest the
+ * again), an octave up when its lower note is too near C4 for the line to
+ * fall from it (`LINE_FALL`), so the whole ii V I that follows stays on the
+ * board without an octave shift. With a `previous` pair, each guide tone goes to the key nearest the
  * previous pair, which is where a held note stays and a falling note lands,
  * so "Show me" always shows the move from what was just played. Either way
  * the pair is kept on the two-octave board. Total: a chord without both guide
@@ -105,8 +114,8 @@ export function voiceGuideTones(
 		const [lowNote, lowChroma, highNote, highChroma] = lowFirst
 			? [third, thirdChroma, seventh, seventhChroma]
 			: [seventh, seventhChroma, third, thirdChroma];
-		const lowPitch = BOARD_LOW + lowChroma;
-		let highPitch = BOARD_LOW + highChroma;
+		const lowPitch = BOARD_LOW + lowChroma + (lowChroma < LINE_FALL ? 12 : 0);
+		let highPitch = lowPitch - lowChroma + highChroma;
 		while (highPitch <= lowPitch) highPitch += 12;
 		return onBoard([
 			toVoiced(lowNote.letter, lowNote.role, lowPitch),

@@ -3,7 +3,7 @@ import { shellNotes } from '$lib/practice/shellVoicing';
 import { toCompPitches } from '$lib/audio/voicing';
 import { buildProgression, PROGRESSION_TEMPLATES } from '$lib/practice/progressions';
 import { improvGuideFor, type ChordScaleOption } from '$lib/theory/chordScale';
-import { toAsciiAccidentals } from '$lib/theory/interval';
+import { chromaOf, toAsciiAccidentals } from '$lib/theory/interval';
 import type { SpelledNote } from '$lib/theory/types';
 
 /**
@@ -178,6 +178,40 @@ export function compBarScale(symbol: string): ChordScaleOption | null {
 	const guide = improvGuideFor(spellChord(symbol));
 	if (!guide) return null;
 	return guide.scales[0] ?? null;
+}
+
+/** One guide-tone voice across a bar change: the note it left, the note it lands on, and how far it fell (0 = held). */
+export interface CompGuideVoice {
+	from: string;
+	to: string;
+	semitonesDown: number;
+}
+
+/**
+ * The guide-tone reading of a bar change (improvisation.md 4.3.2), read off
+ * the loop's OWN voicing: the outgoing 3rd going to the incoming 7th, then
+ * the outgoing 7th going to the incoming 3rd, each held or falling, and by
+ * how much (a minor V to i drops its 7th a whole step, so the step is
+ * counted, never assumed). Null for any change that does not move that way
+ * (I to vi, the form wrapping round, a bar without both guide tones), so the
+ * loop never names a motion its own notes do not make.
+ */
+export function compBarGuideMotion(previous: CompBar, current: CompBar): CompGuideVoice[] | null {
+	const role = (bar: CompBar, wanted: 'third' | 'seventh') => bar.notes.find((note) => note.role === wanted);
+	const pairs: [SpelledNote | undefined, SpelledNote | undefined][] = [
+		[role(previous, 'third'), role(current, 'seventh')],
+		[role(previous, 'seventh'), role(current, 'third')]
+	];
+	const voices: CompGuideVoice[] = [];
+	for (const [from, to] of pairs) {
+		const fromChroma = from && chromaOf(from.letter);
+		const toChroma = to && chromaOf(to.letter);
+		if (!from || !to || fromChroma === undefined || toChroma === undefined) return null;
+		const semitonesDown = (fromChroma - toChroma + 12) % 12;
+		if (semitonesDown > 2) return null;
+		voices.push({ from: from.letter, to: to.letter, semitonesDown });
+	}
+	return voices;
 }
 
 /** One ghost-hatched key of the loop's scale overlay, shaped for PianoKeyboard's `ghostKeys`. */

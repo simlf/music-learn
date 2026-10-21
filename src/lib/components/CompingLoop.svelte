@@ -13,6 +13,7 @@
 	import {
 		buildCompBars,
 		barsFromSymbols,
+		compBarGuideMotion,
 		compBarScale,
 		compScaleGhosts,
 		romanShape,
@@ -22,6 +23,7 @@
 	import { toStrudelPattern } from '$lib/practice/liveCode';
 	import { PROGRESSION_KEYS, PROGRESSION_TEMPLATES } from '$lib/practice/progressions';
 	import { consumeCompSongSeed } from '$lib/practice/compSongSeed';
+	import { consumeCompPresetSeed } from '$lib/practice/compPresetSeed';
 	import { t, type MessageKey } from '$lib/i18n/locale.svelte';
 
 	/**
@@ -102,6 +104,14 @@
 	let songModeEmpty = $state(false);
 
 	onMount(() => {
+		// A lesson's hand-off (chapter 11 lands on its ii V I in C): the
+		// loop keeps its FORM / KEY mode, only pre-set. A song seed, if one
+		// is also pending, still wins below.
+		const preset = consumeCompPresetSeed();
+		if (preset !== null) {
+			templateId = preset.templateId;
+			key = preset.key;
+		}
 		const seed = consumeCompSongSeed();
 		if (seed === null) return;
 		const built = barsFromSymbols(seed.symbols);
@@ -171,6 +181,31 @@
 	const bars = $derived(songMode ? songBars : buildCompBars(templateId, key));
 	const currentBar = $derived(bars[barIndex] ?? bars[0]);
 	const mode = $derived(templateMode(templateId));
+	/**
+	 * The loop's guide-tone reading (design doc 4.3.2): which of the notes it
+	 * is playing held from the bar before and which fell, read off its own
+	 * voicing (`compBarGuideMotion`). Shown only when the change IS that
+	 * motion, so a bar that moves otherwise (I to vi, or the form wrapping
+	 * round) says nothing rather than something false.
+	 */
+	const guideMotion = $derived(
+		currentBar && bars.length > 1
+			? compBarGuideMotion(bars[(barIndex - 1 + bars.length) % bars.length], currentBar)
+			: null
+	);
+	const GUIDE_VOICE_KEYS = ['learn.comping.guideHold', 'learn.comping.guideHalf', 'learn.comping.guideWhole'] as const;
+	const guideMotionLine = $derived(
+		guideMotion
+			? t('learn.comping.guideLine').replace(
+					'{MOVES}',
+					guideMotion
+						.map((voice) =>
+							t(GUIDE_VOICE_KEYS[voice.semitonesDown]).replace('{FROM}', voice.from).replace('{TO}', voice.to)
+						)
+						.join(', ')
+				)
+			: ''
+	);
 	/** A ♭5 bar comps three notes above the root (3rd, ♭5, 7th), so the caption gains its sibling line. */
 	const flatFiveBar = $derived((currentBar?.notes.length ?? 0) > 3);
 
@@ -606,6 +641,9 @@
 		</div>
 
 		<PianoKeyboard notes={currentBar.notes} ghostKeys={scaleGhosts} />
+		{#if guideMotionLine}
+			<p class="text-body" data-testid="comping-guide-motion">{guideMotionLine}</p>
+		{/if}
 		{#if barScale}
 			<p class="text-body font-bold" data-testid="comping-scale-line">{scaleLine}</p>
 			<p class="text-body text-muted" data-testid="comping-scale-caption">

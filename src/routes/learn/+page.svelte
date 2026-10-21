@@ -56,6 +56,7 @@
 			no practice queue, creates no card, and grades nothing.
 		-->
 		<section
+			id="learn-comping"
 			data-testid="learn-comping"
 			class="border-ink bg-paper-bright flex flex-col gap-4 border-2 px-4 py-6"
 		>

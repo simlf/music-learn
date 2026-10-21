@@ -29,8 +29,10 @@
 	 * Lives on the chapter page, never in /practice, exactly like chapter 15's
 	 * ShellCycleDrill: it creates no card and writes no answer event. A key is
 	 * CLEAN when its three chords were right on the first Check with no Show
-	 * me; when all 12 are clean, `onClean()` fires and the chapter ticks its
-	 * checklist line. Clean keys are remembered for this visit only.
+	 * me; when all 12 are clean, `onClean()` fires. Chapter 11 does not tick
+	 * its checklist from it: the unit's proof stays the voicing drill
+	 * (`improvisation.md` 3.4), so this grades each pair and proves nothing.
+	 * Clean keys are remembered for this visit only.
 	 */
 	interface Props {
 		onClean?: () => void;

@@ -44,6 +44,9 @@ export const book = {
 		'book.ch11.concept.body':
 			'The shell is two notes, the 3rd and the 7th, because those two carry the chord: the 3rd says major or minor, the 7th says which seventh. They are also the two that move. Play a ii V I with nothing else and, at each change, one of them holds while the other steps down a half step. Tap your way through it first.',
 		'book.ch11.lesson.subtitle': 'ii V I in C, the 3rd and the 7th only. Tap each note the line moves to.',
+		'book.ch11.handoff.body':
+			'The comping loop plays this ii V I in C on repeat and names, bar by bar, which guide tone holds and which falls. Play the two notes along with it.',
+		'book.ch11.handoff.cta': 'Open the comping loop on ii V I in C',
 		'book.ch11.concept.linesIntro':
 			'The same ii V I as a pattern, one line of code per voice: the top line, the bottom line, then the roots. Pick a key and press Play. Then open the pattern, delete the roots line, and hear that the two guide tones still say ii V I.',
 		'book.ch11.lines.keyLabel': 'Key',
@@ -81,7 +84,7 @@ export const book = {
 		'book.ch11.shown.next': 'Shown moving on from the pair you just played. Play it, then Check.',
 		'book.ch11.right': 'Right: {symbol}.',
 		'book.ch11.keyDone': '{key} done. Next key: {next}.',
-		'book.ch11.done.clean': 'All 12 keys, every one clean. The checklist line is ticked.',
+		'book.ch11.done.clean': 'All 12 keys, every one clean.',
 		'book.ch11.done.retry':
 			'All 12 keys. Still to play clean, with no retry and no Show me: {keys}. Tap a key to run it again.',
 		'book.ch11.check.cycle': 'ii V I guide tones in all 12 keys, every key clean: no retry, no jump, no Show me.',
@@ -242,6 +245,9 @@ export const book = {
 			"Le shell, ce sont deux notes, la tierce et la septième, parce que ces deux-là portent l'accord : la tierce dit majeur ou mineur, la septième dit quelle septième. Ce sont aussi les deux qui bougent. Joue un ii V I avec rien d'autre et, à chaque changement, l'une tient pendant que l'autre descend d'un demi-ton. Fais-le d'abord du bout des doigts.",
 		'book.ch11.lesson.subtitle':
 			"ii V I en do, la tierce et la septième seulement. Touche chaque note vers laquelle la ligne se déplace.",
+		'book.ch11.handoff.body':
+			"La boucle d'accompagnement joue ce ii V I en do en boucle et dit, mesure par mesure, quel ton de guidage tient et lequel descend. Joue les deux notes avec elle.",
+		'book.ch11.handoff.cta': "Ouvrir la boucle d'accompagnement sur ii V I en do",
 		'book.ch11.concept.linesIntro':
 			"Le même ii V I sous forme de motif, une ligne de code par voix : la ligne du haut, la ligne du bas, puis les fondamentales. Choisis un ton et appuie sur Jouer. Ouvre ensuite le motif, supprime la ligne des fondamentales, et écoute : les deux tons de guidage disent encore ii V I.",
 		'book.ch11.lines.keyLabel': 'Ton',
@@ -280,7 +286,7 @@ export const book = {
 		'book.ch11.shown.next': 'Montré dans la suite de la paire que tu viens de jouer. Joue-le, puis Vérifier.',
 		'book.ch11.right': 'Juste : {symbol}.',
 		'book.ch11.keyDone': '{key} fini. Tonalité suivante : {next}.',
-		'book.ch11.done.clean': 'Les 12 tonalités, toutes sans faute. La ligne de la liste est cochée.',
+		'book.ch11.done.clean': 'Les 12 tonalités, toutes sans faute.',
 		'book.ch11.done.retry':
 			'Les 12 tonalités. Reste à jouer sans faute, sans nouvel essai ni Montre-moi : {keys}. Touche une tonalité pour la refaire.',
 		'book.ch11.check.cycle':

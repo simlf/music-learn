@@ -7,13 +7,15 @@
 	import InteractiveLesson from '$lib/components/InteractiveLesson.svelte';
 	import GuideToneLines from '$lib/components/GuideToneLines.svelte';
 	import GuideToneCycleDrill from '$lib/components/GuideToneCycleDrill.svelte';
+	import Button from '$lib/components/Button.svelte';
 	import { GUIDE_TONE_LESSON } from '$lib/lessons/guideToneLesson';
+	import { GUIDE_TONE_KEY, GUIDE_TONE_TEMPLATE_ID } from '$lib/lessons/guideTones';
+	import { setCompPresetSeed } from '$lib/practice/compPresetSeed';
 	import {
 		chapterById,
 		CIRCLE_CHAPTER,
 		CIRCLE_DISTANCE_CHECK,
 		CIRCLE_LAP_CHECK,
-		GUIDE_TONE_CYCLE_CHECK,
 		GUIDE_TONES_CHAPTER,
 		SHELL_CYCLE_CHECK,
 		SHELLS_CHAPTER
@@ -30,6 +32,11 @@
 	let { data }: PageProps = $props();
 
 	const chapter = $derived(chapterById(data.chapterId));
+
+	/** Chapter 11's lesson hands off to the comping loop pre-set to the ii V I in C it just taught (improvisation.md 4.3.1). */
+	function openGuideToneLoop(): void {
+		setCompPresetSeed(GUIDE_TONE_TEMPLATE_ID, GUIDE_TONE_KEY);
+	}
 </script>
 
 <main class="bg-paper text-ink min-h-screen px-2 py-8 font-sans sm:px-8">
@@ -45,12 +52,18 @@
 						showHandoff={false}
 						subtitleKey="book.ch11.lesson.subtitle"
 					/>
+					<p class="text-body">{t('book.ch11.handoff.body')}</p>
+					<div>
+						<Button href="/learn#learn-comping" onclick={openGuideToneLoop} data-testid="guide-tones-handoff">
+							{t('book.ch11.handoff.cta')}
+						</Button>
+					</div>
 					<p class="text-body">{t('book.ch11.concept.linesIntro')}</p>
 					<GuideToneLines />
 				{/snippet}
-				{#snippet piano(tick)}
+				{#snippet piano()}
 					<p class="text-body">{t('book.ch11.piano.intro')}</p>
-					<GuideToneCycleDrill onClean={() => tick(GUIDE_TONE_CYCLE_CHECK)} />
+					<GuideToneCycleDrill />
 				{/snippet}
 			</Chapter>
 		{:else if chapter?.id === SHELLS_CHAPTER.id}

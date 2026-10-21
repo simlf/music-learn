@@ -21,7 +21,8 @@ import type { LessonStep } from './thirdsLesson';
  * `shows` sets the whole board after each tap, because the held note's role
  * (and so its colour) changes from one chord to the next. `hearNotes` plays
  * the chord on the board, not a C-anchored pair. The last step hands over to
- * the editable pattern rendered right under the lesson.
+ * the comping loop pre-set to this ii V I in C (design 4.2 step 4), through
+ * the hand-off link the chapter page renders right under the lesson.
  */
 export const GUIDE_TONE_LESSON: LessonStep[] = [
 	{
@@ -99,8 +100,8 @@ export const GUIDE_TONE_LESSON: LessonStep[] = [
 	{
 		title: { en: 'Two lines, not two notes', fr: 'Deux lignes, pas deux notes' },
 		body: {
-			en: 'At every change one note holds and the other falls a half step. Your ear follows that fall as a line resolving, and that is why two notes sound like music. Just below, hear the two lines as a pattern you can edit.',
-			fr: "À chaque changement, une note tient et l'autre descend d'un demi-ton. L'oreille suit cette chute comme une ligne qui se résout : voilà pourquoi deux notes sonnent comme de la musique. Juste en dessous, écoute les deux lignes dans un motif que tu peux modifier."
+			en: 'At every change one note holds and the other falls a half step. Your ear follows that fall as a line resolving, and that is why two notes sound like music. Now hear it under your hands: the comping loop, set to this ii V I in C.',
+			fr: "À chaque changement, une note tient et l'autre descend d'un demi-ton. L'oreille suit cette chute comme une ligne qui se résout : voilà pourquoi deux notes sonnent comme de la musique. Maintenant, écoute-le sous tes doigts : la boucle d'accompagnement, réglée sur ce ii V I en do."
 		},
 		targetChroma: null,
 		role: null,

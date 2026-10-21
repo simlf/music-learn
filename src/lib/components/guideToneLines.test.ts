@@ -12,8 +12,13 @@ import { GUIDE_TONE_CYCLE_KEYS, guideTonePattern } from '$lib/practice/guideTone
  */
 
 let soundOn = true;
+const appAudioListeners = new Set<() => void>();
 vi.mock('$lib/audio/audio', () => ({
-	soundEnabled: () => soundOn
+	soundEnabled: () => soundOn,
+	onAppAudioStart: (listener: () => void) => {
+		appAudioListeners.add(listener);
+		return () => appAudioListeners.delete(listener);
+	}
 }));
 
 let strudelRuns: string[] = [];
@@ -24,10 +29,13 @@ let strudelResult: { ok: boolean; unavailable?: boolean; pattern?: unknown; now?
 	now: () => 0
 };
 let strudelErrorCallback: ((message: string) => void) | null = null;
+/** When set, the next run waits on it, standing in for Strudel's lazy first load. */
+let strudelGate: Promise<void> | null = null;
 
 vi.mock('$lib/audio/strudel', () => ({
 	runStrudelPattern: async (code: string) => {
 		strudelRuns.push(code);
+		if (strudelGate) await strudelGate;
 		return strudelResult;
 	},
 	stopStrudelPattern: () => {
@@ -65,6 +73,8 @@ beforeEach(() => {
 	strudelStops = 0;
 	strudelResult = { ok: true, pattern: { id: 'pattern' }, now: () => 0 };
 	strudelErrorCallback = null;
+	strudelGate = null;
+	appAudioListeners.clear();
 	pianorollStarts = 0;
 	pianorollStops = 0;
 	localStorage.clear();
@@ -144,6 +154,37 @@ describe('GuideToneLines', () => {
 		render(GuideToneLines);
 		expect(playButton()).toBeDisabled();
 		expect(screen.getByTestId('guide-lines-sound-off')).toBeInTheDocument();
+	});
+
+	it('a Stop, a key change or leaving the page while the engine loads hushes the play when it lands', async () => {
+		for (const interrupt of ['stop', 'key', 'unmount'] as const) {
+			let release!: () => void;
+			strudelGate = new Promise((resolve) => (release = resolve));
+			strudelStops = 0;
+			pianorollStarts = 0;
+			const { unmount } = render(GuideToneLines);
+			await fireEvent.click(playButton());
+			if (interrupt === 'stop') await fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
+			if (interrupt === 'key') {
+				await fireEvent.click(within(screen.getByTestId('guide-lines-key-row')).getByRole('button', { name: 'F' }));
+			}
+			if (interrupt === 'unmount') unmount();
+			const stopsBeforeLanding = strudelStops;
+			release();
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			expect(strudelStops, interrupt).toBe(stopsBeforeLanding + 1);
+			expect(pianorollStarts, interrupt).toBe(0);
+			if (interrupt !== 'unmount') unmount();
+		}
+	});
+
+	it('stops the pattern before anything on the page plays through the app engine', async () => {
+		render(GuideToneLines);
+		await fireEvent.click(playButton());
+		expect(strudelStops).toBe(0);
+		for (const listener of appAudioListeners) listener();
+		expect(strudelStops).toBe(1);
+		expect(pianorollStops).toBe(1);
 	});
 
 	it('stops on unmount and writes nothing to storage', async () => {

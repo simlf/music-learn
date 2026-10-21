@@ -128,9 +128,9 @@ describe('chapter 11', () => {
 			toGuideToneBar({ index: 1, roman: '', symbol: to, quality: '' } as never)
 		)!;
 
-	it('ticks its one app line from the guide-tone cycle', () => {
-		const appLines = GUIDE_TONES_CHAPTER.checklist.filter((item) => item.by === 'app').map((item) => item.id);
-		expect(appLines).toEqual([GUIDE_TONE_CYCLE_CHECK]);
+	it('has no app-ticked line: the cycle line is a self-check, since the proof stays the voicing drill', () => {
+		expect(GUIDE_TONES_CHAPTER.checklist.filter((item) => item.by === 'app')).toEqual([]);
+		expect(GUIDE_TONES_CHAPTER.checklist.find((item) => item.id === GUIDE_TONE_CYCLE_CHECK)?.by).toBe('you');
 	});
 
 	it("Blue Bossa's bars 9 to 12 are D♭'s ii V I, and each 7th falls a half step as the note says", () => {
