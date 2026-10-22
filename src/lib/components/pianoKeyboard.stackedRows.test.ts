@@ -1,4 +1,4 @@
-import { render, cleanup } from '@testing-library/svelte';
+import { render, cleanup, fireEvent } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { spellChord } from '$lib/theory/chord';
 
@@ -213,5 +213,82 @@ describe('PianoKeyboard never stacks when stacking would not clear the fingertip
 		const boards = container.querySelectorAll('.piano-keyboard__board');
 		expect(boards).toHaveLength(1);
 		expect(boards[0].querySelectorAll('.piano-keyboard__key--white')).toHaveLength(8);
+	});
+});
+
+describe('PianoKeyboard stacked row 2 black keys report the board-absolute octave (regression, phone misgrade)', () => {
+	/**
+	 * REGRESSION CONTEXT: each stacked row built its black keys with a
+	 * row-relative `position`, and every black-key octave is derived from
+	 * `position`, so every row-2 black key reported octave 4 instead of 5.
+	 * Only octave-graded surfaces noticed: chapter 15's shell cycle marked a
+	 * correct F7 (F on row 1, A + E♭ on row 2) wrong, and Show me painted a
+	 * ghost on BOTH E♭ keys. White keys always used the absolute index.
+	 */
+	beforeEach(() => {
+		stubResizeObserverWidth(358);
+	});
+
+	async function stackedBoards(container: HTMLElement): Promise<NodeListOf<Element>> {
+		await Promise.resolve();
+		await Promise.resolve();
+		const boards = container.querySelectorAll('.piano-keyboard__board');
+		expect(boards).toHaveLength(2);
+		return boards;
+	}
+
+	function blackKeyIn(board: Element, name: string): HTMLElement {
+		const key = Array.from(board.querySelectorAll('.piano-keyboard__key--black')).find(
+			(el) => el.getAttribute('aria-label') === name
+		);
+		expect(key).toBeDefined();
+		return key as HTMLElement;
+	}
+
+	it('interactive: a row-1 D♯ press reports octave 4 and a row-2 D♯ press reports octave 5', async () => {
+		const onPress = vi.fn();
+		const { container } = render(PianoKeyboard, {
+			notes: [],
+			interactive: true,
+			octaves: 2,
+			selected: new Set<string>(),
+			onToggle: () => {},
+			onPress
+		});
+		const [row1, row2] = await stackedBoards(container);
+
+		await fireEvent.click(blackKeyIn(row1, 'D♯ key'));
+		expect(onPress).toHaveBeenLastCalledWith('D♯', 4);
+
+		await fireEvent.click(blackKeyIn(row2, 'D♯ key'));
+		expect(onPress).toHaveBeenLastCalledWith('D♯', 5);
+	});
+
+	it('ghostKeys: an E♭4 ghost lands on exactly one black key, in row 1', async () => {
+		const { container } = render(PianoKeyboard, {
+			notes: [],
+			octaves: 2,
+			ghostKeys: [{ letter: 'E♭', octave: 4, marker: '3' }]
+		});
+		const [row1, row2] = await stackedBoards(container);
+
+		const ghostedBlack = '.piano-keyboard__key--black.piano-keyboard__key--ghost';
+		expect(container.querySelectorAll(ghostedBlack)).toHaveLength(1);
+		expect(row1.querySelectorAll(ghostedBlack)).toHaveLength(1);
+		expect(row2.querySelectorAll('.piano-keyboard__key--ghost')).toHaveLength(0);
+	});
+
+	it('constructable: a row-2 black-key tap reports octave 5', async () => {
+		const onConstructTap = vi.fn();
+		const { container } = render(PianoKeyboard, {
+			notes: spellChord('C').notes,
+			octaves: 2,
+			constructable: true,
+			onConstructTap
+		});
+		const [, row2] = await stackedBoards(container);
+
+		await fireEvent.click(blackKeyIn(row2, 'A♯ key'));
+		expect(onConstructTap).toHaveBeenLastCalledWith('A♯', 5);
 	});
 });

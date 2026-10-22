@@ -278,8 +278,8 @@
 	 * Arrival-key gap badge text (`showIntervalTicks`, quick-260804-1uq): the
 	 * `+m3`/`+M3`/`+P4`-style label for a gap the rail could not draw, keyed
 	 * by the SAME `SpelledNote` object `noteAssignment` uses - never by key
-	 * index, since a stacked row's `BlackKey` carries only a row-relative
-	 * `position` and no absolute black-key index.
+	 * index, since a stacked row's `BlackKey` carries a board-absolute
+	 * `position` but no absolute black-key index.
 	 */
 	function gapBadgeFor(note: SpelledNote | undefined): string | undefined {
 		return note ? gapBadges.get(note) : undefined;
@@ -520,7 +520,12 @@
 	}
 
 	interface BlackKey {
-		/** Fractional key position (afterWhiteIndex + 1) used for ascending-order comparison. */
+		/**
+		 * Fractional key position (afterWhiteIndex + 1) used for ascending-order
+		 * comparison and octave derivation. Board-absolute in BOTH layouts: a
+		 * stacked row's black key counts from the board's first white key, not
+		 * its row's, or every row-2 black key would report octave 4.
+		 */
 		position: number;
 		leftPct: number;
 		sharpLetter: string;
@@ -691,7 +696,7 @@
 	 *
 	 * Badges are keyed by the `SpelledNote` OBJECT (never by key index/kind):
 	 * the `board` snippet renders stacked rows from `BlackKey` objects whose
-	 * `position` is row-relative and carries no absolute black-key index, so
+	 * `position` is board-absolute but carries no black-key index, so
 	 * an index key would silently miss every stacked black key. The note
 	 * object is the same identity `noteAssignment` uses. If two undrawn gaps
 	 * somehow arrived at the same physical key, the later `Map.set` wins
@@ -804,7 +809,7 @@
 									(pattern) => pattern.afterWhiteIndex === absoluteAfterWhiteIndex
 								);
 					return {
-						position: afterWhiteIndex + 1,
+						position: absoluteAfterWhiteIndex + 1,
 						leftPct: (afterWhiteIndex + 1) * rowWhiteKeyWidthPct - rowBlackKeyWidthPct / 2,
 						sharpLetter,
 						flatLetter,
