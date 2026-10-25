@@ -160,6 +160,18 @@ jobs:
           fi
           echo "deploy=$deploy" >> "$GITHUB_OUTPUT"
 
+      # SSH on the server is reachable only from the tailnet, so the runner
+      # joins it as an ephemeral node for this job. Needs secrets
+      # TS_OAUTH_CLIENT_ID and TS_OAUTH_SECRET from a Tailscale OAuth client
+      # (auth_keys scope) that owns tag:ci-deploy; see docs/DEPLOY.md.
+      - name: Join the tailnet
+        if: steps.newest.outputs.deploy == 'true'
+        uses: tailscale/github-action@99a8333667fff04fdd6cffb46dfd409f8329a7bf # v4.3.0
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci-deploy
+
       - name: Deploy on infrabox667 over SSH
         if: steps.newest.outputs.deploy == 'true'
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5

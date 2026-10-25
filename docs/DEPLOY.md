@@ -24,12 +24,17 @@ below is run through `sudo` -- same as the deploy workflow does.
 
 Settings -> Secrets and variables -> Actions:
 
-- `SSH_HOST` - real IP or DNS of the VM. Neither the `infrabox667` ssh-config
-  alias nor the `infra` tailnet name resolves inside GitHub Actions.
+- `SSH_HOST` - tailnet address of the VM (its Tailscale IP or MagicDNS name).
+  SSH is reachable only from the tailnet; the `infrabox667` ssh-config alias
+  does not resolve inside GitHub Actions.
 - `SSH_USER` - login user on the VM.
 - `SSH_PORT` - SSH port.
 - `SSH_KEY`  - a private key whose public half is in the VM user's
   `~/.ssh/authorized_keys`.
+- `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET` - a Tailscale OAuth client with the
+  `auth_keys` scope that owns `tag:ci-deploy`. The deploy job uses it to join
+  the tailnet as an ephemeral `tag:ci-deploy` node before SSHing in; the
+  tailnet ACL must let `tag:ci-deploy` reach the VM's SSH port.
 
 Pushing and pulling images uses the built-in `GITHUB_TOKEN` - no PAT secret
 needed. The deploy job logs in to GHCR with an ephemeral token and logs out
