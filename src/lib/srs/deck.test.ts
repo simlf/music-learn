@@ -193,6 +193,30 @@ describe('deck', () => {
 		expect(await introduceNewCards(1000, now0)).toBe(0);
 	});
 
+	it('deferKinds walks the rest of the curriculum first, and takes a deferred kind only when nothing else is teachable', async () => {
+		// Tier 1 is 3 atoms, 14 triads, then 9 scale-degree facts (C/G/F x 1/3/5).
+		await introduceNewCards(17, now0, 1);
+		expect(new Set((await getAllCards()).map((c) => c.factKind))).toEqual(
+			new Set(['interval-size', 'chord-formula'])
+		);
+
+		// Tier 2 opened: its first atom or chord comes before tier 1's queued degrees.
+		await introduceNewCards(1, now0, 2, { deferKinds: ['scale-degree'] });
+		const afterTrickle = await getAllCards();
+		expect(afterTrickle.some((c) => c.factKind === 'scale-degree')).toBe(false);
+		expect(new Set(afterTrickle.map((c) => c.factId)).size).toBe(18);
+
+		// Without the option, the curriculum order is untouched: degrees next.
+		await introduceNewCards(1, now0, 2);
+		expect((await getAllCards()).some((c) => c.factId === 'scale-degree:C:1')).toBe(true);
+
+		// With only degrees left at tier 1, the deferred kind is still taught.
+		await clearDeck();
+		await introduceNewCards(17, now0, 1);
+		expect(await introduceNewCards(1, now0, 1, { deferKinds: ['scale-degree'] })).toBe(1);
+		expect((await getAllCards()).some((c) => c.factKind === 'scale-degree')).toBe(true);
+	});
+
 	it("maxTier 4 is no longer the top of the ladder (n1-tier-unlock): it seeds exactly the original 187 tier-1..4 facts, not the whole (now larger) catalog", async () => {
 		// MIGRATION SAFETY: 187 and 379 are the exact facts/records tier 1-4
 		// always produced (7 interval atoms x1 card + 96 chord facts x3-card

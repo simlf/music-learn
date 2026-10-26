@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
 	consumeIntroBudget,
+	consumeTrickle,
+	trickleSpentToday,
 	remainingIntroBudget,
 	INTRO_BUDGET_KEY,
 	MAX_NEW_CARDS_PER_DAY
@@ -100,5 +102,24 @@ describe('consumeIntroBudget', () => {
 	it('never writes a negative count even if called with a negative n', () => {
 		consumeIntroBudget(-5, day1);
 		expect(remainingIntroBudget(day1)).toBe(MAX_NEW_CARDS_PER_DAY);
+	});
+});
+
+describe('trickle bookkeeping', () => {
+	it('marks the trickle spent for the day, consumes only its facts, and resets on rollover', () => {
+		expect(trickleSpentToday(day1)).toBe(false);
+		consumeTrickle(1, day1);
+		expect(trickleSpentToday(day1Later)).toBe(true);
+		expect(remainingIntroBudget(day1Later)).toBe(MAX_NEW_CARDS_PER_DAY - 1);
+		consumeIntroBudget(2, day1Later);
+		expect(trickleSpentToday(day1Later)).toBe(true);
+		expect(trickleSpentToday(day2)).toBe(false);
+		expect(remainingIntroBudget(day2)).toBe(MAX_NEW_CARDS_PER_DAY);
+	});
+
+	it('reads an older record without the trickle flag as not trickled', () => {
+		localStorage.setItem(INTRO_BUDGET_KEY, JSON.stringify({ date: '2026-07-15', count: 3 }));
+		expect(trickleSpentToday(day1)).toBe(false);
+		expect(remainingIntroBudget(day1)).toBe(MAX_NEW_CARDS_PER_DAY - 3);
 	});
 });

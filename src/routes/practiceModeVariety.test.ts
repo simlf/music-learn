@@ -196,12 +196,16 @@ describe('a hear-name card asks the user to NAME what they hear', () => {
 	});
 });
 
-describe('one chord, three modes, three DIFFERENT questions in one round', () => {
-	it('walks a teach cluster and never asks the same question twice', async () => {
+describe('one chord, several modes: DIFFERENT questions, spread across rounds', () => {
+	it('asks a lone chord at most twice in a round, in two different modes, and leaves the rest of its cluster due', async () => {
 		// The exact shape a newly introduced chord fact seeds, plus its later
-		// hear-name card: before T13 this round was three multiple-choice
-		// questions about Cm7 in a row (two of them byte-identical) and the
-		// third the build flow.
+		// hear-name card. Before T13 this round was three multiple-choice
+		// questions about Cm7 in a row (two of them byte-identical); after T13
+		// it was three different questions about Cm7, still back to back. The
+		// planner (ml-practice-variety) asks a chord once per round and lets
+		// the rest of its cluster wait for later rounds; only because Cm7 is
+		// the ONLY thing due does the round spend a second slot on it, in a
+		// different mode (practiceQueue.planRound's last-resort pass).
 		await startRound([
 			makeCard('chord-formula:Cm7', 'chord-formula', 'formula'),
 			makeCard('chord-formula:Cm7', 'chord-formula', 'see-play'),
@@ -211,7 +215,7 @@ describe('one chord, three modes, three DIFFERENT questions in one round', () =>
 		const cues: string[] = [];
 		const modes: string[] = [];
 
-		for (let i = 0; i < 3; i++) {
+		for (let i = 0; i < 2; i++) {
 			cues.push(screen.getByTestId('question-source-tag').textContent?.trim() ?? '');
 			const drill = screen.getByTestId('practice-chord-drill');
 			const mode = drill.getAttribute('data-mode') ?? '';
@@ -228,16 +232,37 @@ describe('one chord, three modes, three DIFFERENT questions in one round', () =>
 			await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 		}
 
-		expect(new Set(modes)).toEqual(new Set(['formula', 'see-play', 'hear-name']));
-		expect(new Set(cues)).toEqual(new Set(['NAME IT', 'PLAY IT', 'BY EAR']));
+		// New cards are taught build, then play, then name, ear last
+		// (TEACH_MODE_ORDER): with no build card here, play leads and name follows.
+		expect(new Set(modes)).toEqual(new Set(['see-play', 'formula']));
+		expect(new Set(cues)).toEqual(new Set(['PLAY IT', 'NAME IT']));
 
 		// One grade per card, each against its own (factId, mode) identity.
-		expect(recordGradeMock).toHaveBeenCalledTimes(3);
+		expect(recordGradeMock).toHaveBeenCalledTimes(2);
 		expect(new Set(recordGradeMock.mock.calls.map((call) => call[0].mode))).toEqual(
-			new Set(['formula', 'see-play', 'hear-name'])
+			new Set(['see-play', 'formula'])
 		);
 
 		expect(screen.getByTestId('session-end-card')).toHaveTextContent('ROUND COMPLETE');
+		// The ear card is still due, counted rather than hidden.
+		expect(screen.getByTestId('practice-end-card-done')).toHaveTextContent('1');
+	});
+
+	it('asks each chord once when there are enough chords to fill the round', async () => {
+		const symbols = ['C', 'D', 'E', 'F', 'G', 'A', 'B', 'Cm', 'Dm', 'Em', 'Fm', 'Gm'];
+		getDueCardsMock.mockResolvedValue(
+			symbols.flatMap((symbol) =>
+				(['formula', 'see-play', 'formula-build'] as const).map((mode) =>
+					makeCard(`chord-formula:${symbol}`, 'chord-formula', mode)
+				)
+			)
+		);
+		render(PracticePage);
+		await screen.findByTestId('practice-pre-start');
+
+		// 12 chords x a 3-mode cluster: one question per chord, the other 24
+		// cluster cards wait for the next rounds.
+		expect(screen.getByTestId('practice-due-register')).toHaveTextContent('12 TODAY · 24 WAITING');
 	});
 
 	it('reports all three modes to answer telemetry as chord answers (REG-01: unchanged contract)', async () => {

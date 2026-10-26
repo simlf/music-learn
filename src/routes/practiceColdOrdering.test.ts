@@ -3,7 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import PracticePage from './practice/+page.svelte';
 import { newCard, State } from '$lib/srs/scheduler';
 import type { CardRecord } from '$lib/srs/deck';
-import type { HybridQueueItem, ComposeOptions } from '$lib/practice/practiceQueue';
+import type {
+	CardedQueueItem,
+	HybridQueueItem,
+	PlanOptions
+} from '$lib/practice/practiceQueue';
 import { t } from '$lib/i18n/locale.svelte';
 
 /**
@@ -12,8 +16,9 @@ import { t } from '$lib/i18n/locale.svelte';
  * prove the never-leads-with-scaffold-heavy guarantee GIVEN the signal).
  * This file proves the /practice HOST computes and passes that signal
  * correctly: a cold (all-New chord cards) session's carded half yields
- * composePracticeQueue's 4th argument as `{ lowMastery: true }`, a warm
- * (majority State.Review) session yields `{ lowMastery: false }`, and a
+ * planRound's options with `lowMastery: true` (planRound hands it to the
+ * composePracticeQueue weave), a warm (majority State.Review) session yields
+ * `lowMastery: false`, and a
  * cold session's first rendered family cue is never the progression or
  * inversion (scaffold-heavy) family - the end-to-end guarantee.
  *
@@ -21,7 +26,7 @@ import { t } from '$lib/i18n/locale.svelte';
  * deck/introBudget/telemetry/audio mocked, songFilterPref/songProvenance
  * REAL (song filter stays OFF/default so every synthetic family - voicing,
  * progression, inversion - is woven in). `$lib/practice/practiceQueue` is
- * mocked ONLY for composePracticeQueue, via importOriginal: the spy
+ * mocked ONLY for planRound, via importOriginal: the spy
  * captures every call's arguments and then delegates to the REAL
  * implementation, so isLowMasterySession/syntheticVoicingItems/
  * syntheticProgressionItems/syntheticInversionItems all stay real and the
@@ -66,16 +71,16 @@ vi.mock('$lib/audio/audio', () => ({
 	playArpeggio: () => {}
 }));
 
-type ComposeArgs = [HybridQueueItem[], HybridQueueItem[], () => number, ComposeOptions?];
-let composeCalls: ComposeArgs[] = [];
+type PlanArgs = [CardedQueueItem[], HybridQueueItem[], number, () => number, PlanOptions?];
+let planCalls: PlanArgs[] = [];
 
 vi.mock('$lib/practice/practiceQueue', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('$lib/practice/practiceQueue')>();
 	return {
 		...actual,
-		composePracticeQueue: (...args: ComposeArgs) => {
-			composeCalls.push(args);
-			return actual.composePracticeQueue(...args);
+		planRound: (...args: PlanArgs) => {
+			planCalls.push(args);
+			return actual.planRound(...args);
 		}
 	};
 });
@@ -129,7 +134,7 @@ function warmChordCards(): CardRecord[] {
 
 beforeEach(() => {
 	localStorage.clear();
-	composeCalls = [];
+	planCalls = [];
 	introduceNewCardsMock.mockReset();
 	getDueCardsMock.mockReset();
 	getAllCardsMock.mockReset().mockResolvedValue([]);
@@ -155,26 +160,26 @@ afterEach(() => {
 });
 
 describe('QUEUE-01: /practice host computes and passes the low-mastery signal', () => {
-	it('a cold (all-New) chord session passes lowMastery: true to composePracticeQueue', async () => {
+	it('a cold (all-New) chord session passes lowMastery: true to planRound', async () => {
 		vi.spyOn(Math, 'random').mockReturnValue(0.1);
 		getDueCardsMock.mockResolvedValue(coldChordCards());
 
 		render(PracticePage);
 		await screen.findByTestId('practice-pre-start');
 
-		expect(composeCalls).toHaveLength(1);
-		expect(composeCalls[0][3]).toEqual({ lowMastery: true });
+		expect(planCalls).toHaveLength(1);
+		expect(planCalls[0][4]?.lowMastery).toBe(true);
 	});
 
-	it('a warm (majority State.Review) chord session passes lowMastery: false to composePracticeQueue', async () => {
+	it('a warm (majority State.Review) chord session passes lowMastery: false to planRound', async () => {
 		vi.spyOn(Math, 'random').mockReturnValue(0.1);
 		getDueCardsMock.mockResolvedValue(warmChordCards());
 
 		render(PracticePage);
 		await screen.findByTestId('practice-pre-start');
 
-		expect(composeCalls).toHaveLength(1);
-		expect(composeCalls[0][3]).toEqual({ lowMastery: false });
+		expect(planCalls).toHaveLength(1);
+		expect(planCalls[0][4]?.lowMastery).toBe(false);
 	});
 });
 

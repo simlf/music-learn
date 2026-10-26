@@ -29,12 +29,16 @@ vi.mock('$lib/srs/deck', async (importOriginal) => {
 
 const remainingIntroBudgetMock = vi.fn();
 const consumeIntroBudgetMock = vi.fn();
+const trickleSpentTodayMock = vi.fn();
+const consumeTrickleMock = vi.fn();
 vi.mock('$lib/srs/introBudget', () => ({
 	remainingIntroBudget: (...args: unknown[]) => remainingIntroBudgetMock(...args),
-	consumeIntroBudget: (...args: unknown[]) => consumeIntroBudgetMock(...args)
+	consumeIntroBudget: (...args: unknown[]) => consumeIntroBudgetMock(...args),
+	trickleSpentToday: (...args: unknown[]) => trickleSpentTodayMock(...args),
+	consumeTrickle: (...args: unknown[]) => consumeTrickleMock(...args)
 }));
 
-const { loadDueWithIntroduction, applySongFilter } = await import('./reviewLoad');
+const { loadDueWithIntroduction, applySongFilter, BACKLOG_TRICKLE_FACTS } = await import('./reviewLoad');
 
 const NOW = new Date('2026-07-15T12:00:00Z');
 
@@ -49,21 +53,61 @@ beforeEach(() => {
 	remainingIntroBudgetMock.mockReset();
 	remainingIntroBudgetMock.mockReturnValue(10);
 	consumeIntroBudgetMock.mockReset();
+	trickleSpentTodayMock.mockReset();
+	trickleSpentTodayMock.mockReturnValue(false);
+	consumeTrickleMock.mockReset();
 });
 
 describe('loadDueWithIntroduction', () => {
-	it('with more than 20 pre-due facts, introduceNewCards is never called (backlog gate)', async () => {
+	it('with more than 20 pre-due facts, only the one-fact trickle is introduced, chords before scale degrees (backlog gate)', async () => {
 		const manyDueCards = Array.from({ length: 21 }, (_, i) =>
 			makeCard(`interval-size:fake-${i}`, 'interval-size')
 		);
 		getDueCardsMock.mockResolvedValue(manyDueCards);
 
-		const due = await loadDueWithIntroduction(NOW);
+		await loadDueWithIntroduction(NOW);
+
+		expect(BACKLOG_TRICKLE_FACTS).toBe(1);
+		expect(introduceNewCardsMock).toHaveBeenCalledTimes(1);
+		expect(introduceNewCardsMock).toHaveBeenCalledWith(1, NOW, undefined, {
+			deferKinds: ['scale-degree']
+		});
+	});
+
+	it('a trickle records itself as the day\'s trickle and consumes only what it introduced', async () => {
+		getDueCardsMock.mockResolvedValue(
+			Array.from({ length: 21 }, (_, i) => makeCard(`interval-size:fake-${i}`, 'interval-size'))
+		);
+		remainingIntroBudgetMock.mockReturnValue(10);
+		introduceNewCardsMock.mockResolvedValue(1);
+
+		await loadDueWithIntroduction(NOW);
+
+		expect(consumeTrickleMock).toHaveBeenCalledWith(1, NOW);
+		expect(consumeIntroBudgetMock).not.toHaveBeenCalled();
+	});
+
+	it('over the gate with the day\'s trickle already spent, nothing is introduced', async () => {
+		getDueCardsMock.mockResolvedValue(
+			Array.from({ length: 21 }, (_, i) => makeCard(`interval-size:fake-${i}`, 'interval-size'))
+		);
+		trickleSpentTodayMock.mockReturnValue(true);
+
+		await loadDueWithIntroduction(NOW);
 
 		expect(introduceNewCardsMock).not.toHaveBeenCalled();
-		expect(remainingIntroBudgetMock).not.toHaveBeenCalled();
+	});
+
+	it('a trickle that finds nothing to introduce consumes nothing', async () => {
+		getDueCardsMock.mockResolvedValue(
+			Array.from({ length: 21 }, (_, i) => makeCard(`interval-size:fake-${i}`, 'interval-size'))
+		);
+		introduceNewCardsMock.mockResolvedValue(0);
+
+		await loadDueWithIntroduction(NOW);
+
 		expect(consumeIntroBudgetMock).not.toHaveBeenCalled();
-		expect(due).toEqual(manyDueCards);
+		expect(consumeTrickleMock).not.toHaveBeenCalled();
 	});
 
 	it('with exactly 20 pre-due facts (at, not over, the gate), the budget path still runs', async () => {
@@ -152,13 +196,15 @@ describe('loadDueWithIntroduction', () => {
 		expect(introduceNewCardsMock).toHaveBeenCalledTimes(1);
 	});
 
-	it('21 facts spread over 63 cards DOES trip the gate', async () => {
+	it('21 facts spread over 63 cards DOES trip the gate (down to the trickle)', async () => {
 		const over = dueCardsFor(21, 3);
 		getDueCardsMock.mockResolvedValue(over);
 
 		await loadDueWithIntroduction(NOW);
 
-		expect(introduceNewCardsMock).not.toHaveBeenCalled();
+		expect(introduceNewCardsMock).toHaveBeenCalledWith(1, NOW, undefined, {
+			deferKinds: ['scale-degree']
+		});
 	});
 });
 

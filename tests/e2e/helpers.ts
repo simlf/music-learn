@@ -68,9 +68,8 @@ export const HUBS = [
  * against call-order changes. Two useful anchors:
  *   - `RNG_IDENTITY` (0.99): `j === i`, so every shuffle is the identity.
  *   - `RNG_ZERO` (0): `j === 0`, a fixed rotation.
- * These two are enough to steer which family wins composePracticeQueue's
- * tie-break (it prefers the family with the most items remaining, breaking
- * ties by position in the shuffled family order).
+ * These two are enough to steer which applied family planRound draws first
+ * (it takes them round-robin in a shuffled family order).
  */
 export async function pinRandom(page: Page, value: number): Promise<void> {
 	await page.addInitScript((v) => {
@@ -83,15 +82,6 @@ export const RNG_IDENTITY = 0.99;
 
 /** Every shuffle becomes a fixed rotation of the input. */
 export const RNG_ZERO = 0;
-
-/**
- * A middle constant. Needed because both RNG_IDENTITY and RNG_ZERO happen to
- * leave `progression` ahead of `inversion` in a 3-family order, so neither can
- * surface an inversion first. At c = 0.4 the two Fisher-Yates draws over a
- * 3-element array are `floor(3c) = 1` then `floor(2c) = 0`, which rotates
- * `inversion` to the front.
- */
-export const RNG_MID = 0.4;
 
 /* ------------------------------------------------------------------ *
  * localStorage seeding (the app's own keys)
@@ -257,52 +247,49 @@ const TRIADS: SeedCard[] = ['C', 'D', 'E', 'F', 'G', 'A'].map((root) => ({
 	mode: 'formula' as SeedMode
 }));
 
-/**
- * Seventh chords -- one voicing item each (shellVoicing.seventhChordSymbols).
- * Exactly TWO on purpose: voicing's per-round draw is capped at 2
- * (practiceQueue.SYNTHETIC_VOICING_COUNT), so a bigger seventh deck can never
- * raise voicing's item count -- it only grows name-it, which then strictly
- * outnumbers voicing and steals the first slot. Two sevenths make name-it 2
- * as well, the tie the voicing recipe below needs.
- */
+/** Two seventh chords -- each can earn a voicing item (shellVoicing.seventhChordSymbols). */
 const SEVENTHS: SeedCard[] = ['Cmaj7', 'Dm7'].map((symbol) => ({
+	factId: `chord-formula:${symbol}`,
+	mode: 'formula' as SeedMode
+}));
+
+/** The three qualities a major ii-V-I is made of, so a progression item is drawable (progressionTemplateTaught). */
+const MAJOR_TWO_FIVE_ONE: SeedCard[] = ['Dm7', 'G7', 'Cmaj7'].map((symbol) => ({
 	factId: `chord-formula:${symbol}`,
 	mode: 'formula' as SeedMode
 }));
 
 /**
  * Per-family recipe: the deck shape plus the `Math.random` constant that makes
- * that family win the first queue slot.
+ * that family the first question, or (for an applied family) the first
+ * non-NAME-IT question of the session.
  *
- * HOW EACH ONE IS FORCED (composePracticeQueue picks the family with the MOST
- * items remaining, breaking ties by position in the rng-shuffled family
- * order; every synthetic family's per-round count is 2: the page's
- * SYNTHETIC_PROGRESSION/INVERSION/CHORD_SCALE_COUNT consts plus voicing's
- * SYNTHETIC_VOICING_COUNT draw cap in practiceQueue.ts):
- *   - name-it   6 triads  -> name-it 6 vs 2 per synthetic family. Strict max,
- *               any rng.
- *   - build-it  6 triads in 'formula-build' -> build-it 6. Strict max, any rng.
- *   - interval  6 interval facts -> no chord card is due, so NO synthetics are
- *               generated at all; a single-family queue is returned verbatim.
- *               Strict, any rng.
- *   - voicing   2 sevenths -> a FIVE-way tie at 2 (name-it 2; voicing,
- *               progression, inversion and chord-scale each draw their full
- *               count of 2). More sevenths cannot help: voicing's draw is
- *               capped at 2 while name-it keeps growing. RNG_ZERO rotates the
- *               insertion order (name-it, voicing, progression, inversion,
- *               chord-scale) into (voicing, progression, inversion,
- *               chord-scale, name-it), so voicing wins the tie.
- *   - progression 1 triad -> name-it 1, prog 2, inv 2; prog/inv tie and
- *               RNG_IDENTITY leaves prog ahead of inv in insertion order.
- *   - inversion 1 triad -> same tie, RNG_MID rotates inv ahead of prog.
- *               (RNG_ZERO does NOT work here: over three families it lands
- *               prog first too, same as identity.)
+ * HOW EACH ONE IS FORCED. practiceQueue.planRound plans the round: one card
+ * per fact, carded items woven first, applied (synthetic) items spread
+ * through the round and NEVER in its first slot while a carded item exists.
+ * So the carded families lead outright, and an applied family is reached by
+ * answering the NAME IT questions ahead of it (openPracticeFamily does that).
+ * Every seeded card is mature (State.Review), which every applied family
+ * needs (dailyRound.buildSyntheticItems' maturity gate).
+ *   - name-it   6 triads in 'formula' -> the only carded family. Any rng.
+ *   - build-it  6 triads in 'formula-build' -> the only carded family. Any rng.
+ *   - interval  6 interval facts -> no chord card is due, so NO applied items
+ *               are built at all. Any rng.
+ *   - voicing   2 sevenths -> applied candidates voicing, inversion and
+ *               chord-scale, in that order; the deck is too small for the
+ *               applied reserve to take a chord from its review, so the
+ *               round adds one applied item per chord, round-robin in the
+ *               shuffled family order. RNG_IDENTITY keeps voicing first.
+ *   - progression the ii-V-I's three sevenths -> a progression carries no
+ *               chord symbol, so it is the one applied family the reserve
+ *               takes on a small deck: always the first applied item. Any rng.
+ *   - inversion 1 triad -> applied candidates inversion and chord-scale (no
+ *               seventh, no taught progression); RNG_IDENTITY keeps inversion
+ *               first.
  *
- * The three tie-broken families depend on the tie-break, so if the queue
- * composer's ordering rules change, those three tests fail loudly with a
- * "expected X, got Y" message and the constant needs re-picking. That is a
- * deliberate trade: a loud, one-line fix beats having no automated way into a
- * progression at all.
+ * If the planner's rules change, a recipe fails loudly with an
+ * "expected X, got Y" message and needs re-picking: a loud, one-line fix
+ * beats having no automated way into a progression at all.
  */
 const RECIPES: Record<Family, { cards: SeedCard[]; rng: number }> = {
 	'name-it': { cards: TRIADS, rng: RNG_IDENTITY },
@@ -317,17 +304,19 @@ const RECIPES: Record<Family, { cards: SeedCard[]; rng: number }> = {
 		})),
 		rng: RNG_IDENTITY
 	},
-	voicing: { cards: SEVENTHS, rng: RNG_ZERO },
-	progression: { cards: [TRIADS[0]], rng: RNG_IDENTITY },
-	inversion: { cards: [TRIADS[0]], rng: RNG_MID }
+	voicing: { cards: SEVENTHS, rng: RNG_IDENTITY },
+	progression: { cards: MAJOR_TWO_FIVE_ONE, rng: RNG_ZERO },
+	inversion: { cards: [TRIADS[0]], rng: RNG_IDENTITY }
 };
 
 /**
- * Opens `/practice` with a deck and rng pinned so that `family` is the FIRST
- * question of the session, then presses "Start practice".
+ * Opens `/practice` with a deck and rng pinned so that `family` is the first
+ * question of the session, or for an applied family the first question after
+ * the NAME IT items ahead of it, presses "Start practice", and answers those
+ * NAME IT items (any chip, then Next) until `family`'s drill is on screen.
  *
- * Returns once the session is running. The caller asserts on
- * `FAMILY_TESTID[family]`.
+ * Returns once that drill is showing, or once anything else that is not a
+ * NAME IT question is (the caller's assertion then names what it got).
  */
 export async function openPracticeFamily(page: Page, family: Family): Promise<void> {
 	const recipe = RECIPES[family];
@@ -341,6 +330,16 @@ export async function openPracticeFamily(page: Page, family: Family): Promise<vo
 	await page.goto('/practice');
 	await page.getByTestId('practice-pre-start').waitFor();
 	await page.getByRole('button', { name: 'Start practice' }).click();
+
+	const target = page.getByTestId(FAMILY_TESTID[family]);
+	const nameIt = page.locator('[data-testid="practice-chord-drill"][data-mode="formula"]');
+	for (let guard = 0; guard < 12; guard++) {
+		await page.getByTestId('question-source-tag').waitFor();
+		if (await target.isVisible()) return;
+		if (!(await nameIt.isVisible())) return;
+		await page.getByRole('button', { name: /^Answer: / }).first().click();
+		await page.getByRole('button', { name: 'Next' }).click();
+	}
 }
 
 /* ------------------------------------------------------------------ *

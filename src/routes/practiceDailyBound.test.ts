@@ -4,6 +4,7 @@ import PracticePage from './practice/+page.svelte';
 import { newCard, Rating } from '$lib/srs/scheduler';
 import type { CardRecord } from '$lib/srs/deck';
 import { DAILY_TARGET, answeredToday, recordDailyAnswer } from '$lib/practice/dailySession';
+import { LEVEL_KEY } from '$lib/practice/levelState';
 
 /**
  * B1: the bounded daily session. `/practice` used to compose the ENTIRE due
@@ -212,6 +213,25 @@ describe('B1: a small due set is not padded up to the target', () => {
 		const register = screen.getByTestId('practice-due-register');
 		expect(register).toHaveTextContent('3 CARDS DUE TODAY');
 		expect(register).not.toHaveTextContent('WAITING');
+	});
+});
+
+describe('the quiet tier line on the pre-start card (ml-practice-variety)', () => {
+	it('names the tier the round draws new material from, and nothing more', async () => {
+		localStorage.setItem(LEVEL_KEY, JSON.stringify({ currentTier: 2, unlockedTiers: [1, 2] }));
+		getDueCardsMock.mockResolvedValue(TWENTY_SYMBOLS.slice(0, 3).map(makeChordCard));
+		render(PracticePage);
+		await screen.findByTestId('practice-pre-start');
+
+		expect(screen.getByTestId('practice-tier-line')).toHaveTextContent('TIER 2 · All-key triads');
+	});
+
+	it('defaults to tier 1 on a fresh device', async () => {
+		getDueCardsMock.mockResolvedValue(TWENTY_SYMBOLS.slice(0, 3).map(makeChordCard));
+		render(PracticePage);
+		await screen.findByTestId('practice-pre-start');
+
+		expect(screen.getByTestId('practice-tier-line')).toHaveTextContent('TIER 1 · White-key triads');
 	});
 });
 

@@ -15,6 +15,11 @@ import type { CardRecord } from '$lib/srs/deck';
  * intake self-throttled into a stop-start pattern with no cause the user could
  * see. These tests drive the gate through the real page.
  *
+ * Over the gate no longer means "nothing new" (ml-practice-variety): a
+ * one-round-a-day user is over it most days, so a closed gate meant the same
+ * handful of chords for weeks. Over the gate, the day gets a one-fact trickle,
+ * chord vocabulary before scale degrees (reviewLoad.BACKLOG_TRICKLE_FACTS).
+ *
  * Mock architecture mirrors tests/practice-hub.e2e.test.ts. Note that
  * practiceQueue is only PARTIALLY mocked (synthetic builders stubbed, everything
  * else spread from the real module), so the gate's own backlogFactCount and
@@ -50,7 +55,9 @@ const remainingIntroBudgetMock = vi.fn();
 const consumeIntroBudgetMock = vi.fn();
 vi.mock('$lib/srs/introBudget', () => ({
 	remainingIntroBudget: (...args: unknown[]) => remainingIntroBudgetMock(...args),
-	consumeIntroBudget: (...args: unknown[]) => consumeIntroBudgetMock(...args)
+	consumeIntroBudget: (...args: unknown[]) => consumeIntroBudgetMock(...args),
+	trickleSpentToday: () => false,
+	consumeTrickle: vi.fn()
 }));
 
 vi.mock('$lib/practice/answerTelemetry', () => ({ recordPracticeAnswer: vi.fn() }));
@@ -142,7 +149,7 @@ describe('the due-backlog gate counts facts, not cards', () => {
 		expect(introduceNewCardsMock).toHaveBeenCalledWith(10, expect.any(Date));
 	});
 
-	it('still blocks new facts on a genuine multi-day backlog (30 distinct facts)', async () => {
+	it('holds a genuine multi-day backlog (30 distinct facts) down to the one-fact trickle', async () => {
 		const backlog: CardRecord[] = [];
 		for (let i = 0; i < 30; i++) {
 			backlog.push(makeCard(`interval-size:m${i}`, 'interval-size', 'formula'));
@@ -152,10 +159,12 @@ describe('the due-backlog gate counts facts, not cards', () => {
 		render(PracticePage);
 		await screen.findByTestId('practice-pre-start');
 
-		expect(introduceNewCardsMock).not.toHaveBeenCalled();
+		expect(introduceNewCardsMock).toHaveBeenCalledWith(1, expect.any(Date), undefined, {
+			deferKinds: ['scale-degree']
+		});
 	});
 
-	it('passes exactly at the two-day boundary and blocks just past it', async () => {
+	it('passes exactly at the two-day boundary and trickles just past it', async () => {
 		getDueCardsMock.mockResolvedValue(
 			Array.from({ length: 20 }, (_, i) =>
 				makeCard(`interval-size:at${i}`, 'interval-size', 'formula')
@@ -163,7 +172,7 @@ describe('the due-backlog gate counts facts, not cards', () => {
 		);
 		render(PracticePage);
 		await screen.findByTestId('practice-pre-start');
-		expect(introduceNewCardsMock).toHaveBeenCalled();
+		expect(introduceNewCardsMock).toHaveBeenCalledWith(10, expect.any(Date));
 
 		introduceNewCardsMock.mockClear();
 		getDueCardsMock.mockResolvedValue(
@@ -173,7 +182,9 @@ describe('the due-backlog gate counts facts, not cards', () => {
 		);
 		render(PracticePage);
 		await vi.waitFor(() => expect(screen.getAllByTestId('practice-pre-start').length).toBe(2));
-		expect(introduceNewCardsMock).not.toHaveBeenCalled();
+		expect(introduceNewCardsMock).toHaveBeenCalledWith(1, expect.any(Date), undefined, {
+			deferKinds: ['scale-degree']
+		});
 	});
 
 	/**
@@ -220,6 +231,8 @@ describe('the due-backlog gate counts facts, not cards', () => {
 		render(PracticePage);
 		await screen.findByTestId('practice-pre-start');
 
-		expect(introduceNewCardsMock).not.toHaveBeenCalled();
+		expect(introduceNewCardsMock).toHaveBeenCalledWith(1, expect.any(Date), undefined, {
+			deferKinds: ['scale-degree']
+		});
 	});
 });

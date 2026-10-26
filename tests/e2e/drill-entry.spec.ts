@@ -6,18 +6,17 @@ import { FAMILY_TESTID, openPracticeFamily, PHONE, SCREENSHOT_DIR, type Family }
  *
  * WHY THIS EXISTS: a previous phase's visual UAT for the progression drill was
  * abandoned as BLOCKED, on the grounds that there was no deterministic way to
- * open a progression bar. That was true by hand. /practice composes one hybrid
- * queue from FSRS-due cards plus synthetic items, weaves the families together
- * with `Math.random`, and additionally keeps progression and inversion out of
- * the first slot whenever the session is "cold" (mostly New cards) -- which a
- * fresh deck always is. So a human tapping Start could wait a long time to see
- * a progression lead, and could never guarantee it.
+ * open a progression bar. That was true by hand. /practice plans one bounded
+ * round from FSRS-due cards plus synthetic (applied) items, shuffles with
+ * `Math.random`, and never opens a round on an applied item while a carded one
+ * is due -- so a human tapping Start could never guarantee reaching one.
  *
  * `openPracticeFamily` closes that by controlling the three real inputs:
  *   - the deck (seeded straight into the app's own IndexedDB store, MATURE, so
- *     the cold-session first-pick guard is not in play),
+ *     the applied families' maturity gate is open),
  *   - the daily intro budget (exhausted, so the page cannot top the deck up),
- *   - `Math.random` (pinned to a constant before any app script runs).
+ *   - `Math.random` (pinned to a constant before any app script runs),
+ * and then answering the NAME IT questions ahead of an applied family.
  * No production code was added or changed to enable any of this. See helpers.ts
  * for the per-family recipes and the exact tie-break reasoning.
  */
@@ -27,14 +26,14 @@ test.use({ viewport: PHONE });
 const FAMILIES = Object.keys(FAMILY_TESTID) as Family[];
 
 for (const family of FAMILIES) {
-	test(`opens the ${family} drill as the first question`, async ({ page }) => {
+	test(`opens the ${family} drill deterministically`, async ({ page }) => {
 		await openPracticeFamily(page, family);
 
 		const drill = page.getByTestId(FAMILY_TESTID[family]);
 		await expect(
 			drill,
-			`expected the ${family} drill (data-testid="${FAMILY_TESTID[family]}") to lead the session. ` +
-				`If the queue composer's ordering changed, re-pick the rng constant in helpers.ts RECIPES.`
+			`expected the ${family} drill (data-testid="${FAMILY_TESTID[family]}") to be the first ` +
+				`question past the NAME IT items. If the round planner's rules changed, re-pick the recipe in helpers.ts RECIPES.`
 		).toBeVisible();
 
 		/*

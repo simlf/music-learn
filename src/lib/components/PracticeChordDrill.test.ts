@@ -650,3 +650,71 @@ describe('PracticeChordDrill: song provenance (retention audit item)', () => {
 		expect(screen.queryByTestId('song-mark')).not.toBeInTheDocument();
 	});
 });
+
+describe('PracticeChordDrill: NAME IT templates (C5, ml-practice-variety)', () => {
+	it('pick-notes shows the SYMBOL, no keyboard, and four note spellings to choose from', () => {
+		render(PracticeChordDrill, {
+			props: { symbol: 'Cm', mode: 'formula', variant: 'pick-notes', onComplete: vi.fn() }
+		});
+
+		expect(screen.getByTestId('chord-drill-notes-prompt')).toBeInTheDocument();
+		expect(screen.getByText('Which notes spell this chord?')).toBeInTheDocument();
+		expect(document.querySelector('.piano-keyboard')).toBeNull();
+		const grid = screen.getByTestId('choice-grid');
+		expect(grid).toHaveAttribute('data-variant', 'pick-notes');
+		const choices = within(grid).getAllByRole('button', { name: /^Answer: / });
+		expect(choices).toHaveLength(4);
+		expect(within(grid).getByRole('button', { name: 'Answer: C E♭ G' })).toBeInTheDocument();
+	});
+
+	it('pick-notes grades the right spelling correct and reveals the notes on the keyboard', async () => {
+		const onComplete = vi.fn();
+		render(PracticeChordDrill, {
+			props: { symbol: 'Cm', mode: 'formula', variant: 'pick-notes', onComplete }
+		});
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Answer: C E♭ G' }));
+		expect(screen.getByTestId('chord-drill-correct')).toBeInTheDocument();
+		expect(document.querySelector('.piano-keyboard')).not.toBeNull();
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+		expect(onComplete).toHaveBeenCalledWith(true);
+	});
+
+	it('pick-notes names a miss in notes, not symbols', async () => {
+		const onComplete = vi.fn();
+		render(PracticeChordDrill, {
+			props: { symbol: 'Cm', mode: 'formula', variant: 'pick-notes', onComplete }
+		});
+
+		const wrong = screen
+			.getAllByRole('button', { name: /^Answer: / })
+			.find((button) => button.getAttribute('aria-label') !== 'Answer: C E♭ G');
+		expect(wrong).toBeDefined();
+		await fireEvent.click(wrong as HTMLElement);
+		expect(screen.getByTestId('chord-drill-picked-vs-correct')).toHaveTextContent('C E♭ G');
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+		expect(onComplete).toHaveBeenCalledWith(false);
+	});
+
+	it('name-mixed-root lights the notes and offers chips on more than one root', () => {
+		render(PracticeChordDrill, {
+			props: { symbol: 'C', mode: 'formula', variant: 'name-mixed-root', onComplete: vi.fn() }
+		});
+
+		expect(document.querySelector('.piano-keyboard')).not.toBeNull();
+		const labels = screen
+			.getAllByRole('button', { name: /^Answer: / })
+			.map((button) => button.getAttribute('aria-label')?.replace('Answer: ', '') ?? '');
+		expect(labels).toHaveLength(4);
+		expect(labels).toContain('C');
+		expect(labels.filter((label) => !label.startsWith('C')).length).toBe(2);
+	});
+
+	it('the variant is ignored outside the formula mode', () => {
+		render(PracticeChordDrill, {
+			props: { symbol: 'Cm', mode: 'see-play', variant: 'pick-notes', onComplete: vi.fn() }
+		});
+		expect(screen.queryByTestId('choice-grid')).toBeNull();
+		expect(screen.getByRole('button', { name: 'Check' })).toBeInTheDocument();
+	});
+});

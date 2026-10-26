@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
 	generateQuestion,
+	nameItVariantFor,
 	pickDistractors,
+	pickMixedRootDistractors,
 	pickQuestionFamily,
 	pickQuestionType
 } from './generateQuestion';
@@ -300,5 +302,84 @@ describe('pickDistractors is bounded by the candidate matrix, not an iteration c
 		expect(huge.length).toBeGreaterThan(50);
 		expect(new Set(huge).size, 'no repeats').toBe(huge.length);
 		expect(huge).not.toContain('Cm7');
+	});
+});
+
+describe('pickMixedRootDistractors (C5: NAME IT chips that do not give the root away)', () => {
+	const SAMPLE = ['C', 'Am', 'F#m', 'Bdim', 'Cmaj7', 'Ebm7', 'G7', 'Bm7b5', 'Cdim7', 'C7b9'];
+
+	function rootOf(symbol: string): string {
+		return ROOTS.filter((root) => symbol.startsWith(root)).sort((a, b) => b.length - a.length)[0];
+	}
+
+	it('returns 3 distinct, recognized distractors, none the answer and none its enharmonic twin', () => {
+		for (const symbol of SAMPLE) {
+			const distractors = pickMixedRootDistractors(symbol);
+			expect(distractors).toHaveLength(3);
+			expect(new Set(distractors).size).toBe(3);
+			for (const distractor of distractors) {
+				expect(distractor).not.toBe(symbol);
+				expect(spellChord(distractor).recognized).toBe(true);
+				const chroma = chromaSetFor(distractor);
+				const answer = chromaSetFor(symbol);
+				expect(chroma.size === answer.size && [...chroma].every((pc) => answer.has(pc))).toBe(false);
+			}
+		}
+	});
+
+	it('mixes roots: one same-root quality, the others on other roots that share notes with the answer', () => {
+		for (const symbol of SAMPLE) {
+			const distractors = pickMixedRootDistractors(symbol);
+			const answerRoot = rootOf(symbol);
+			const answer = chromaSetFor(symbol);
+			expect(distractors.filter((d) => rootOf(d) === answerRoot)).toHaveLength(1);
+			for (const other of distractors.filter((d) => rootOf(d) !== answerRoot)) {
+				const shared = [...chromaSetFor(other)].filter((pc) => answer.has(pc)).length;
+				expect(shared).toBeGreaterThanOrEqual(2);
+			}
+		}
+	});
+
+	it('keeps the note count: a triad is never offered a four-note distractor', () => {
+		for (const symbol of ['C', 'Am', 'F#m', 'Bdim']) {
+			for (const distractor of pickMixedRootDistractors(symbol)) {
+				expect(chromaSetFor(distractor).size).toBe(3);
+			}
+		}
+	});
+
+	it('never offers a chord that needs a double accidental', () => {
+		for (const symbol of ROOTS.map((root) => `${root}dim`)) {
+			for (const distractor of pickMixedRootDistractors(symbol)) {
+				const letters = spellChord(distractor).notes.map((note) => note.letter);
+				expect(letters.some((letter) => /𝄫|𝄪|♭♭|♯♯/.test(letter))).toBe(false);
+			}
+		}
+	});
+
+	it('is what generateQuestion draws with distractors: mixed-root', () => {
+		const question = generateQuestion({ symbol: 'C', direction: 'identification', distractors: 'mixed-root' });
+		expect(question.kind === 'chord' && question.choices).toBeTruthy();
+		const choices = question.kind === 'chord' ? (question.choices ?? []) : [];
+		expect(choices).toContain('C');
+		expect(choices.filter((choice) => rootOf(choice) !== 'C').length).toBe(2);
+	});
+});
+
+describe('nameItVariantFor (C5: the NAME IT template rotates per appearance)', () => {
+	it('asks a card the original question first, then rotates through the other two', () => {
+		expect([0, 1, 2, 3, 4, 5].map(nameItVariantFor)).toEqual([
+			'name-same-root',
+			'name-mixed-root',
+			'pick-notes',
+			'name-same-root',
+			'name-mixed-root',
+			'pick-notes'
+		]);
+	});
+
+	it('is total over odd input', () => {
+		expect(nameItVariantFor(-1)).toBe('name-same-root');
+		expect(nameItVariantFor(1.7)).toBe('name-mixed-root');
 	});
 });
