@@ -142,7 +142,54 @@ export const practice = {
 		'practice.cue.degree': 'DEGREE',
 		'practice.cue.progression': 'PROGRESSION',
 		'practice.cue.inversion': 'INVERSION',
-		'practice.cue.chordScale': 'SCALE FIT'
+		'practice.cue.chordScale': 'SCALE FIT',
+
+		// The tier path (ml-practice-game, practice/tierPath.ts). Every stop is
+		// a name, never a padlock, and the count only ever grows: it is the
+		// chords already known, never the chords still missing.
+		'practice.path.label': 'YOUR PATH',
+		'practice.path.known': '{N} OF {M} CHORDS KNOWN TOWARD THE NEXT TIER',
+		'practice.path.knownTop': '{N} OF {M} CHORDS KNOWN',
+		'practice.path.state.reached': 'reached',
+		'practice.path.state.current': 'you are here',
+		'practice.path.state.ahead': 'coming up',
+		'practice.path.unlocked': 'New tier open: {NAME}. Its chords join your challenges today.',
+
+		// The challenges (ml-practice-game, practice/challenges.ts). Encouraging
+		// by construction: a run below the best shows the best on its own, never
+		// the gap to it, and a day without play costs nothing.
+		'practice.challenge.heading': 'CHALLENGES',
+		'practice.challenge.todayPick': "TODAY'S PICK",
+		'practice.challenge.input.tap': 'TAP TO ANSWER',
+		'practice.challenge.input.ear': 'HEADPHONES',
+		'practice.challenge.input.keys': 'ON-SCREEN KEYS',
+		'practice.challenge.playAria': 'Play {NAME}',
+		'practice.challenge.play': 'Play',
+		'practice.challenge.best': 'BEST {N}',
+		'practice.challenge.back': 'Back to practice',
+		'practice.challenge.again': 'Play again',
+		'practice.challenge.newBest': 'NEW BEST',
+		'practice.challenge.points': '{N} POINTS',
+		'practice.challenge.combo': 'COMBO ×{X}',
+		'practice.challenge.inARow': '{N} IN A ROW',
+		'practice.challenge.sprint.name': '60-second sprint',
+		'practice.challenge.sprint.blurb':
+			'See a chord symbol, tap its notes. Right answers in a row raise your combo.',
+		'practice.challenge.sprint.timeLeft': '{T} LEFT',
+		'practice.challenge.sprint.timeUp': "TIME'S UP",
+		'practice.challenge.sprint.end': '{N} right in 60 seconds.',
+		'practice.challenge.earDuel.name': 'Ear duel',
+		'practice.challenge.earDuel.blurb': 'Ten chords by ear. Hear it, tap its name.',
+		'practice.challenge.earDuel.progress': 'CHORD {N} OF {M}',
+		'practice.challenge.earDuel.end': '{N} of {M} by ear.',
+		'practice.challenge.earDuel.soundOff':
+			'Sound is off. Switch it on in Progress settings to hear the chords.',
+		'practice.challenge.keyClimb.name': 'Key climb',
+		'practice.challenge.keyClimb.blurb':
+			'Today: {CHORDS} and on around the circle of fifths. All twelve keys, on the on-screen keys.',
+		'practice.challenge.keyClimb.progress': 'KEY {N} OF {M}',
+		'practice.challenge.keyClimb.retry': 'Not quite. Fix the gray keys and check again.',
+		'practice.challenge.keyClimb.end': 'All twelve keys in {TIME}.'
 	},
 	fr: {
 		'practice.page.title': 'Pratique',
@@ -211,6 +258,48 @@ export const practice = {
 		'practice.cue.degree': 'DEGRÉ',
 		'practice.cue.progression': 'PROGRESSION',
 		'practice.cue.inversion': 'INVERSION',
-		'practice.cue.chordScale': 'HORS GAMME'
+		'practice.cue.chordScale': 'HORS GAMME',
+
+		'practice.path.label': 'TON PARCOURS',
+		'practice.path.known': '{N} SUR {M} ACCORDS CONNUS VERS LE PROCHAIN NIVEAU',
+		'practice.path.knownTop': '{N} SUR {M} ACCORDS CONNUS',
+		'practice.path.state.reached': 'atteint',
+		'practice.path.state.current': 'tu es ici',
+		'practice.path.state.ahead': 'à venir',
+		'practice.path.unlocked':
+			"Nouveau niveau ouvert : {NAME}. Ses accords rejoignent tes défis dès aujourd'hui.",
+
+		'practice.challenge.heading': 'DÉFIS',
+		'practice.challenge.todayPick': 'DÉFI DU JOUR',
+		'practice.challenge.input.tap': 'RÉPONSE AU TOUCHER',
+		'practice.challenge.input.ear': 'CASQUE',
+		'practice.challenge.input.keys': "CLAVIER À L'ÉCRAN",
+		'practice.challenge.playAria': 'Jouer : {NAME}',
+		'practice.challenge.play': 'Jouer',
+		'practice.challenge.best': 'RECORD {N}',
+		'practice.challenge.back': 'Retour à la pratique',
+		'practice.challenge.again': 'Rejouer',
+		'practice.challenge.newBest': 'NOUVEAU RECORD',
+		'practice.challenge.points': '{N} POINTS',
+		'practice.challenge.combo': 'COMBO ×{X}',
+		'practice.challenge.inARow': '{N} DE SUITE',
+		'practice.challenge.sprint.name': 'Sprint de 60 secondes',
+		'practice.challenge.sprint.blurb':
+			"Un symbole d'accord, touche ses notes. Les bonnes réponses de suite font monter ton combo.",
+		'practice.challenge.sprint.timeLeft': 'ENCORE {T}',
+		'practice.challenge.sprint.timeUp': 'TEMPS ÉCOULÉ',
+		'practice.challenge.sprint.end': '{N} bonnes réponses en 60 secondes.',
+		'practice.challenge.earDuel.name': "Duel à l'oreille",
+		'practice.challenge.earDuel.blurb': "Dix accords à l'oreille. Écoute, touche son nom.",
+		'practice.challenge.earDuel.progress': 'ACCORD {N} SUR {M}',
+		'practice.challenge.earDuel.end': "{N} sur {M} à l'oreille.",
+		'practice.challenge.earDuel.soundOff':
+			'Le son est coupé. Active-le dans les réglages de Progrès pour entendre les accords.',
+		'practice.challenge.keyClimb.name': 'Ascension des tonalités',
+		'practice.challenge.keyClimb.blurb':
+			"Aujourd'hui : {CHORDS} et la suite du cycle des quintes. Les douze tonalités, sur le clavier à l'écran.",
+		'practice.challenge.keyClimb.progress': 'TONALITÉ {N} SUR {M}',
+		'practice.challenge.keyClimb.retry': 'Pas tout à fait. Corrige les touches grises et vérifie.',
+		'practice.challenge.keyClimb.end': 'Les douze tonalités en {TIME}.'
 	}
 } satisfies LocaleDict;

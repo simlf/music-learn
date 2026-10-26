@@ -163,13 +163,28 @@ export function tierMastered(
 	cards: CardRecord[],
 	threshold: number = MASTERY_DAY_COUNT
 ): boolean {
+	const { mastered, total } = tierMasteryCount(tier, cards, threshold);
+	if (total === 0) return false;
+	return mastered * 100 >= total * TIER_MASTERY_PERCENT;
+}
+
+/**
+ * How many of `tier`'s chord symbols are mastered (any mode, same rule as
+ * tierMastered, which reads it) out of how many the tier holds. Exposed so the
+ * practice page's tier path draws its progress bar from the very count the
+ * gate opens on, rather than a second definition that could drift from it.
+ */
+export function tierMasteryCount(
+	tier: TierId,
+	cards: CardRecord[],
+	threshold: number = MASTERY_DAY_COUNT
+): { mastered: number; total: number } {
 	const symbols = itemsForTier(tier);
-	if (symbols.length === 0) return false;
-	const mastered = new Set(
+	const masteredIds = new Set(
 		cards.filter((card) => card.masteryDayCount >= threshold).map((card) => card.factId)
 	);
-	const masteredCount = symbols.filter((symbol) => mastered.has(chordFormulaFactId(symbol))).length;
-	return masteredCount * 100 >= symbols.length * TIER_MASTERY_PERCENT;
+	const mastered = symbols.filter((symbol) => masteredIds.has(chordFormulaFactId(symbol))).length;
+	return { mastered, total: symbols.length };
 }
 
 /**
@@ -204,10 +219,11 @@ export function earnedTier(state: LevelState, cards: CardRecord[]): TierId {
  *
  * Called by `srs/deck.ts:introduceNewCards` at the start of every
  * introduction pass, which is the one hook both /practice and /progress >
- * Recall share. Deliberately silent: the reward for mastering a tier is that
- * new material starts arriving, not a congratulation banner or a "ready to
- * level up?" prompt. The /progress tier line reflects the new tier the next
- * time it is opened.
+ * Recall share. Silent here: the reward for mastering a tier is that new
+ * material starts arriving, never a "ready to level up?" prompt that asks
+ * permission. The /practice tier path (practice/tierPath.ts) notices the new
+ * tier the next time it renders and shows one unlock moment for it, after the
+ * fact; the /progress tier line reflects it the next time it is opened.
  */
 export function advanceTierOnMastery(cards: CardRecord[]): LevelState {
 	const current = getLevelState();
