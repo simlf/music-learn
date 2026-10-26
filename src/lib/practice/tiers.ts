@@ -5,8 +5,8 @@
  *
  * TIERS 5 AND 6 (n1-tier-unlock). Both are now `available: true`, gated
  * entirely by mastery (levelState.ts's `tierMastered`/`earnedTier`): tier 5
- * opens once every tier-4 chord is mastered, tier 6 once every tier-5 chord
- * is. A user who has not yet mastered tier 4 sees zero behavior change -
+ * opens once tier 4's chords are mastered (TIER_MASTERY_PERCENT of them),
+ * tier 6 once tier 5's are. A user who has not yet mastered tier 4 sees zero behavior change -
  * `currentTier` simply never advances past 4 for them, `available` here
  * only controls whether the RUNG EXISTS at all, not who can reach it.
  *

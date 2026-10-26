@@ -1,27 +1,17 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import {
-		composePracticeQueue,
-		cardsToQueueItems,
 		advanceHybridQueue,
 		isHybridSessionComplete,
-		sliceRound,
 		RETRY_MIN_GAP,
 		RETRY_MAX_GAP,
-		syntheticVoicingItems,
-		sampleVoicingItems,
-		SYNTHETIC_VOICING_COUNT,
-		syntheticProgressionItems,
-		syntheticInversionItems,
-		syntheticChordScaleItems,
-		filterVoicingsBySong,
-		isLowMasterySession,
 		type HybridQueueItem,
-		type VoicingQueueItem,
-		type InversionQueueItem,
-		type ChordScaleQueueItem,
 		type CardedQueueItem
 	} from '$lib/practice/practiceQueue';
+	import { composeDailyRound } from '$lib/practice/dailyRound';
+	import { nameItVariantFor } from '$lib/drills/generateQuestion';
+	import { getLevelState } from '$lib/practice/levelState';
+	import type { TierId } from '$lib/practice/tiers';
 	import {
 		DAILY_TARGET,
 		answeredToday,
@@ -36,8 +26,7 @@
 	import { localStreak, recordPracticeDay } from '$lib/practice/practiceDays';
 	import { pickStreakLine } from '$lib/copy/streak';
 	import { getAllCards, recordGrade, type CardRecord, type Mode } from '$lib/srs/deck';
-	import { selectReviewCards, interleaveQueue } from '$lib/srs/rotation';
-	import { Rating, State, newCard } from '$lib/srs/scheduler';
+	import { Rating, newCard } from '$lib/srs/scheduler';
 	import { factById } from '$lib/srs/facts';
 	import { consumeDrillSeeds, consumeLessonSeeds, setDrillSeeds } from '$lib/practice/drillSeeds';
 	import {
@@ -46,7 +35,7 @@
 		type SongPlaythroughSeed
 	} from '$lib/practice/songPlaythrough';
 	import { readSongFilter } from '$lib/practice/songFilterPref';
-	import { buildProvenanceIndex, symbolHasProvenance } from '$lib/practice/songProvenance';
+	import { buildProvenanceIndex } from '$lib/practice/songProvenance';
 	import { recordPracticeAnswer } from '$lib/practice/answerTelemetry';
 	import { loadDueWithIntroduction, applySongFilter } from '$lib/practice/reviewLoad';
 	import { createGradeGuard } from '$lib/practice/reviewGuard.svelte';
@@ -162,6 +151,16 @@
 	 * session then keeps.
 	 */
 	let lastSession = $state<DaySummary | undefined>(undefined);
+
+	/**
+	 * The quiet tier line under the pre-start register (ml-practice-variety):
+	 * "TIER 2 · ALL-KEY TRIADS". Read after the round's introduction pass,
+	 * which is where a mastered tier silently opens the next, so the line is
+	 * the tier this round's new material came from. A plain statement, never a
+	 * progress bar or a "N to go" count: the ladder is visible without turning
+	 * into a scoreboard (the anti-guilt rule, .planning/design/guided-path.md).
+	 */
+	let currentTier = $state<TierId>(1);
 	let returningItems = $state<string[]>([]);
 
 	/** At most this many of yesterday's misses are named, so the cue stays one line. */
@@ -223,33 +222,6 @@
 	 * `introduceNewCards` in the app (RecallSession no longer introduces cards
 	 * at all; see its own load()).
 	 */
-
-	/**
-	 * The small, session-scaled count of synthetic progression items woven
-	 * into one round when at least one chord-formula card is due (Plan 05).
-	 * Kept low deliberately: progressions are the heaviest single item in the
-	 * mix (a 4-bar earn-the-symbol grid), so a handful is "enough variety",
-	 * not a flood that crowds out the carded half.
-	 */
-	const SYNTHETIC_PROGRESSION_COUNT = 2;
-
-	/**
-	 * The small, session-scaled count of synthetic inversion items woven into
-	 * one round when at least one chord-formula card is due (Phase 35, INV-03).
-	 * Inversions are one carded-symbol-per-item (lighter than a progression's
-	 * 4-bar grid), so a small fixed count keeps variety without crowding the
-	 * carded half - mirrors SYNTHETIC_PROGRESSION_COUNT's own rationale.
-	 */
-	const SYNTHETIC_INVERSION_COUNT = 2;
-
-	/**
-	 * The small, session-scaled count of synthetic chord-scale items woven into
-	 * one round when at least one chord-formula card is due (ml-modes-practice).
-	 * One tap per item (lighter than a voicing/inversion attempt), so a small
-	 * fixed count keeps variety without crowding the carded half - mirrors
-	 * SYNTHETIC_INVERSION_COUNT's own rationale.
-	 */
-	const SYNTHETIC_CHORD_SCALE_COUNT = 2;
 
 	/**
 	 * How many questions the round's budget reserves per seeded item. A seed
@@ -410,155 +382,40 @@
 				return;
 			}
 
-			const selectedCards = selectReviewCards(due);
-			const orderedCards = interleaveQueue(selectedCards, Math.random);
-			const cardedItems = cardsToQueueItems(orderedCards);
-
+			answeredEarlier = answeredToday();
+			const composedTarget = extraRound ? DAILY_TARGET : remainingDailyTarget();
 			/**
-			 * PRAC-05 single-type-due gate: voicing/progression synthetics
-			 * are gated on the FSRS due signal, not injected unconditionally.
-			 * The due chord-formula symbols are read from `selectedCards`
-			 * (the actual carded half selected above) - an interval-only due
-			 * set yields an empty set here, so both synthetic halves stay
-			 * empty and the session surfaces intervals only.
+			 * B1: bound the round to what the DAY still owes, not to the whole due
+			 * set. composeDailyRound (practice/dailyRound.ts) selects the carded
+			 * half, builds the applied candidates, and plans the round
+			 * (practiceQueue.planRound): one card per fact, a reserved share of
+			 * applied slots, no family hogging the round, and the remainder counted
+			 * into `waiting` so the pre-start card can show it. A day whose target is
+			 * already spent plans an empty round and lands on the pre-start card's
+			 * done branch, where extra practice is an explicit opt-in rather than an
+			 * unbounded default.
+			 *
+			 * Seeds are held OUT of that bound on purpose. A seed is not the
+			 * scheduler's suggestion, it is the user asking for one specific chord
+			 * ("Drill it" from Lookup, "Fix this one" from the end card, "Drill
+			 * these" from Progress) - and the seed channel is one-shot, so an item a
+			 * cut dropped was not deferred, it was destroyed: "Keep going" re-runs
+			 * load() against an already-drained channel and the chord is simply
+			 * gone. The day's budget may bound what the app PROPOSES; it must not
+			 * silently discard what the user REQUESTED. So the seeds always lead and
+			 * always run, the plan keeps their facts and symbols out of the composed
+			 * half, and the round's question budget is widened by
+			 * SEED_QUESTION_BUDGET per seed (the seed itself plus its retry slot) so
+			 * the bound on the composed half is unchanged.
 			 */
-			const dueChordSymbols = new Set<string>();
-			for (const card of selectedCards) {
-				if (card.factKind !== 'chord-formula') continue;
-				const fact = factById(card.factId);
-				if (fact !== undefined && fact.factKind === 'chord-formula') {
-					dueChordSymbols.add(fact.symbol);
-				}
-			}
-
-			let voicingItems: VoicingQueueItem[] = [];
-			let progressionItems: HybridQueueItem[] = [];
-			let inversionItems: InversionQueueItem[] = [];
-			let chordScaleItems: ChordScaleQueueItem[] = [];
-			if (dueChordSymbols.size > 0) {
-				// Voicing synthetics: one item per DUE seventh chord only - a
-				// chord card that isn't due never surfaces its voicing item,
-				// even if it is a seventh chord.
-				const allCards = await getAllCards();
-				const cardsBySymbol = new Map<string, CardRecord[]>();
-				for (const card of allCards) {
-					if (card.factKind !== 'chord-formula') continue;
-					const fact = factById(card.factId);
-					if (fact === undefined || fact.factKind !== 'chord-formula') continue;
-					if (!dueChordSymbols.has(fact.symbol)) continue;
-					const list = cardsBySymbol.get(fact.symbol);
-					if (list) {
-						list.push(card);
-					} else {
-						cardsBySymbol.set(fact.symbol, [card]);
-					}
-				}
-				// PRAC-06: a chord is eligible for a voicing item only once its
-				// OWN recognition cards have left State.New and reached
-				// State.Review ("fully internalized") - a chord's name-it card
-				// is due the same day it's introduced, so gating on due-ness
-				// alone (above) let a brand-new chord's voicing item ("meet")
-				// appear the very day the chord was first seen. This does not
-				// change voicingStageForChord's own meet/subtract/drill
-				// pedagogy - only whether the chord is in the round at all.
-				const reviewGatedSymbols = new Set<string>();
-				for (const symbol of dueChordSymbols) {
-					const cards = cardsBySymbol.get(symbol);
-					if (cards?.some((card) => card.state === State.Review)) {
-						reviewGatedSymbols.add(symbol);
-					}
-				}
-				voicingItems = syntheticVoicingItems(cardsBySymbol).filter((item) =>
-					reviewGatedSymbols.has(item.symbol)
-				);
-				if (songFilterOn && provenanceIndex.size > 0) {
-					voicingItems = filterVoicingsBySong(voicingItems, (symbol) =>
-						symbolHasProvenance(symbol, provenanceIndex)
-					);
-				}
-				// Voicing's builder is per-symbol and therefore unbounded (one
-				// item per due seventh chord), unlike the other three synthetic
-				// families whose builders draw a small fixed count themselves.
-				// The draw down to the same per-round count happens last, after
-				// both eligibility filters above, or the cap would be spent on
-				// items the filters then discard - see sampleVoicingItems'
-				// docstring for the stuck-progression defect an uncapped draw
-				// causes in a DAILY_TARGET-bounded round.
-				voicingItems = sampleVoicingItems(voicingItems, SYNTHETIC_VOICING_COUNT, Math.random);
-
-				// Progression synthetics: a small, session-scaled count, only
-				// when at least one chord card is due (progressions are
-				// chord-naming practice). Progressions have no single chord
-				// symbol of their own to test against song provenance
-				// (key/template-based, not single-song-chord based), so the
-				// chosen filter policy is to omit them entirely when the
-				// song filter is ON rather than guess at a partial
-				// restriction (PRAC-04).
-				if (!(songFilterOn && provenanceIndex.size > 0)) {
-					progressionItems = syntheticProgressionItems(SYNTHETIC_PROGRESSION_COUNT, Math.random);
-				}
-
-				// Inversion synthetics (Phase 35, INV-03): drawn from the same
-				// due chord-formula symbols as voicing, gated identically on the
-				// due-chord signal (PRAC-05's single-type-due gate). Unlike
-				// progressions, inversions DO carry a single chord symbol of
-				// their own, so they are song-filterable exactly like voicing
-				// rather than omitted entirely under the filter.
-				let inversionCandidates = [...dueChordSymbols];
-				if (songFilterOn && provenanceIndex.size > 0) {
-					inversionCandidates = inversionCandidates.filter((symbol) =>
-						symbolHasProvenance(symbol, provenanceIndex)
-					);
-				}
-				inversionItems = syntheticInversionItems(
-					inversionCandidates,
-					SYNTHETIC_INVERSION_COUNT,
-					Math.random
-				);
-
-				// Chord-scale synthetics (ml-modes-practice): drawn from the same
-				// due chord-formula symbols, gated identically on the due-chord
-				// signal (PRAC-05's single-type-due gate). Carries a single chord
-				// symbol of its own, so it is song-filterable exactly like
-				// voicing/inversion rather than omitted entirely.
-				let chordScaleCandidates = [...dueChordSymbols];
-				if (songFilterOn && provenanceIndex.size > 0) {
-					chordScaleCandidates = chordScaleCandidates.filter((symbol) =>
-						symbolHasProvenance(symbol, provenanceIndex)
-					);
-				}
-				chordScaleItems = syntheticChordScaleItems(
-					chordScaleCandidates,
-					SYNTHETIC_CHORD_SCALE_COUNT,
-					Math.random
-				);
-			}
-
-			const syntheticItems: HybridQueueItem[] = [
-				...voicingItems,
-				...progressionItems,
-				...inversionItems,
-				...chordScaleItems
-			];
-			/**
-			 * QUEUE-01 (36-CONTEXT): a session is cold/low-mastery when the
-			 * carded half actually entering the weave is overwhelmingly
-			 * New/Learning, with mature (State.Review) cards a minority -
-			 * isLowMasterySession reads cardedItems (not selectedCards) so any
-			 * card dropped by cardsToQueueItems never skews the signal. When
-			 * set and a simpler family (name-it/
-			 * build-it/interval/degree/voicing) is present, the composer keeps a
-			 * scaffold-heavy progression/inversion item out of the very
-			 * first slot only; seeded items are prepended after composition
-			 * and always lead regardless. The warm path (majority-mature or
-			 * empty carded half) is unchanged (REG-01).
-			 */
-			const lowMastery = isLowMasterySession(cardedItems.map((item) => item.card));
-			const composed = composePracticeQueue(cardedItems, syntheticItems, Math.random, {
-				lowMastery
+			const composed = await composeDailyRound(due, {
+				target: composedTarget,
+				seededItems,
+				songFilterOn,
+				provenanceIndex
 			});
 
-			if (composed.length === 0 && seededItems.length === 0) {
+			if (composed.empty && seededItems.length === 0) {
 				// Every due card belonged to a family this surface cannot render
 				// - nothing practiceable is due right now. Before W1 this branch
 				// could fire while 84 genuinely-due scale-degree cards sat
@@ -568,63 +425,12 @@
 				return;
 			}
 
-			// Seeded items lead the queue; a due card for a seeded FACT is
-			// deduped from the composed half, so the chord is drilled once, at
-			// the front, not twice. A card dropped that way is still FSRS-due
-			// UNLESS the seed asks that exact card (same fact, same mode): the
-			// seed replaces it and grades it, so only drops the seed does not
-			// itself ask are counted into `waiting` below - the rest would
-			// otherwise vanish from both the round and the register.
-			// The dedup key is the factId, not the item id:
-			// the seed deliberately asks a different MODE of the same fact
-			// (see-play), so an id-keyed dedup (`fsrs:{factId}:{mode}`) would
-			// let the same chord be asked twice in one round - exactly the
-			// same-symbol adjacency composePracticeQueue guards against.
-			// Only CARDED items are dropped: a synthetic voicing/progression/
-			// inversion item carries no factId and is a different question
-			// about the symbol, not the same question twice.
-			const seedFactIds = new Set(seededItems.map((item) => item.factId));
-			const seedItemIds = new Set(seededItems.map((item) => item.id));
-			const droppedByDedup = composed.filter(
-				(item) => 'factId' in item && seedFactIds.has(item.factId)
-			);
-			const dedupedComposed = composed.filter(
-				(item) => !('factId' in item) || !seedFactIds.has(item.factId)
-			);
-			const droppedStillDue = droppedByDedup.filter((item) => !seedItemIds.has(item.id)).length;
-
-			/**
-			 * B1: bound the composed queue to what the DAY still owes, not to
-			 * the whole due set. sliceRound preserves the composer's order
-			 * exactly (its variety weave and its cold-session first-pick guard
-			 * survive the cut) and reports the remainder so the pre-start card
-			 * can show it. A day whose target is already spent slices the
-			 * composed half to nothing and lands on the pre-start card's done
-			 * branch, where extra practice is an explicit opt-in rather than an
-			 * unbounded default.
-			 *
-			 * Seeds are held OUT of that cut on purpose. A seed is not the
-			 * scheduler's suggestion, it is the user asking for one specific
-			 * chord ("Drill it" from Lookup, "Fix this one" from the end card,
-			 * "Drill these" from Progress) - and the seed channel is one-shot,
-			 * so an item the slice dropped was not deferred, it was destroyed:
-			 * "Keep going" re-runs load() against an already-drained channel
-			 * and the chord is simply gone. The day's budget may bound what the
-			 * app PROPOSES; it must not silently discard what the user
-			 * REQUESTED. So the seeds always lead and always run, and the
-			 * round's question budget is widened by SEED_QUESTION_BUDGET per
-			 * seed (the seed itself plus its retry slot) so the bound on the
-			 * composed half is unchanged.
-			 */
-			answeredEarlier = answeredToday();
-			const composedTarget = extraRound ? DAILY_TARGET : remainingDailyTarget();
-			const sliced = sliceRound(dedupedComposed, composedTarget);
-
-			queue = [...seededItems, ...sliced.round];
+			currentTier = getLevelState().currentTier;
+			queue = [...seededItems, ...composed.round];
 			roundTarget = composedTarget + seededItems.length * SEED_QUESTION_BUDGET;
 			roundSize = queue.length;
 			seededCount = seededItems.length;
-			waiting = sliced.waiting + droppedStillDue;
+			waiting = composed.waiting;
 
 			/**
 			 * B5: yesterday's line, and specifically which of yesterday's misses
@@ -1198,6 +1004,11 @@
 			<p class="text-label font-mono uppercase" data-testid="practice-due-register">
 				{isPlaythrough ? playthroughPreStartLine : preStartRegister}
 			</p>
+			{#if !isPlaythrough}
+				<p class="text-label text-muted mt-1 font-mono uppercase" data-testid="practice-tier-line">
+					{t('progress.settings.tierPrefix')} {currentTier} · {t(`progress.tier.${currentTier}.name`)}
+				</p>
+			{/if}
 
 			{#if lastSessionLine || comingBackLine}
 				<div class="mt-4" data-testid="practice-last-session">
@@ -1242,9 +1053,16 @@
 
 		{#key `${currentItem.id}|${cardEpoch}`}
 			{#if currentItem.family === 'name-it'}
+				<!--
+					C5: the formula card's template rotates with its own review count
+					(name it from same-root chips, from mixed-root chips, or pick the
+					notes of the shown symbol), so a card is never asked the same way
+					twice running.
+				-->
 				<PracticeChordDrill
 					symbol={currentItem.symbol ?? ''}
 					mode="formula"
+					variant={nameItVariantFor(currentItem.card.reps)}
 					onComplete={(correct) => completeCarded(correct)}
 				/>
 			{:else if currentItem.family === 'play-it'}

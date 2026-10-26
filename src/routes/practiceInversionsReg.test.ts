@@ -303,6 +303,10 @@ afterEach(() => {
 describe('REG-01: six-family interleave, carded FSRS grade-commit, and synthetic telemetry silence', () => {
 	it('interleaves all six families (including inversion) with no family running three-in-a-row, commits FSRS grades ONLY for the carded three, and never records telemetry for any synthetic completion', async () => {
 		vi.spyOn(Math, 'random').mockReturnValue(0.1);
+		// No piano anywhere (the train/phone case): jsdom has no Web MIDI, and
+		// every item of this reserved-slot round, applied ones included, is
+		// answered below by on-screen taps alone.
+		expect('requestMIDIAccess' in navigator).toBe(false);
 
 		const buildCard = makeCard('chord-formula:Cm7', 'chord-formula', 'formula-build');
 		const nameCard = makeCard('chord-formula:Dm7', 'chord-formula', 'formula');
@@ -325,9 +329,10 @@ describe('REG-01: six-family interleave, carded FSRS grade-commit, and synthetic
 
 		const familiesSeen: string[] = [];
 
-		// 3 carded (build/name/interval) + 2 voicing (Cm7, Dm7 - both survive
-		// the SYNTHETIC_VOICING_COUNT draw, rng-ordered) + 1 progression
-		// + up to 2 inversion (SYNTHETIC_INVERSION_COUNT) = up to 8.
+		// 3 carded (build/name/interval) + the planner's 3 applied slots: the
+		// progression, then (both due chords already asked by a carded item,
+		// so their symbols are reused once each) one voicing and one
+		// inversion - 6 items, and 8 is a generous guard.
 		for (let i = 0; i < 8 && !screen.queryByTestId('session-end-card'); i++) {
 			familiesSeen.push(screen.getByTestId('question-source-tag').textContent?.trim() ?? '');
 

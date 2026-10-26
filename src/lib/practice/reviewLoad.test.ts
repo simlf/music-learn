@@ -34,7 +34,7 @@ vi.mock('$lib/srs/introBudget', () => ({
 	consumeIntroBudget: (...args: unknown[]) => consumeIntroBudgetMock(...args)
 }));
 
-const { loadDueWithIntroduction, applySongFilter } = await import('./reviewLoad');
+const { loadDueWithIntroduction, applySongFilter, BACKLOG_TRICKLE_FACTS } = await import('./reviewLoad');
 
 const NOW = new Date('2026-07-15T12:00:00Z');
 
@@ -52,18 +52,42 @@ beforeEach(() => {
 });
 
 describe('loadDueWithIntroduction', () => {
-	it('with more than 20 pre-due facts, introduceNewCards is never called (backlog gate)', async () => {
+	it('with more than 20 pre-due facts, only the one-fact trickle is introduced, chords before scale degrees (backlog gate)', async () => {
 		const manyDueCards = Array.from({ length: 21 }, (_, i) =>
 			makeCard(`interval-size:fake-${i}`, 'interval-size')
 		);
 		getDueCardsMock.mockResolvedValue(manyDueCards);
 
-		const due = await loadDueWithIntroduction(NOW);
+		await loadDueWithIntroduction(NOW);
 
-		expect(introduceNewCardsMock).not.toHaveBeenCalled();
-		expect(remainingIntroBudgetMock).not.toHaveBeenCalled();
+		expect(BACKLOG_TRICKLE_FACTS).toBe(1);
+		expect(introduceNewCardsMock).toHaveBeenCalledTimes(1);
+		expect(introduceNewCardsMock).toHaveBeenCalledWith(1, NOW, undefined, {
+			deferKinds: ['scale-degree']
+		});
+	});
+
+	it('a trickle spends the rest of the day\'s budget, so a reload the same day cannot trickle again', async () => {
+		getDueCardsMock.mockResolvedValue(
+			Array.from({ length: 21 }, (_, i) => makeCard(`interval-size:fake-${i}`, 'interval-size'))
+		);
+		remainingIntroBudgetMock.mockReturnValue(10);
+		introduceNewCardsMock.mockResolvedValue(1);
+
+		await loadDueWithIntroduction(NOW);
+
+		expect(consumeIntroBudgetMock).toHaveBeenCalledWith(10, NOW);
+	});
+
+	it('a trickle that finds nothing to introduce consumes nothing', async () => {
+		getDueCardsMock.mockResolvedValue(
+			Array.from({ length: 21 }, (_, i) => makeCard(`interval-size:fake-${i}`, 'interval-size'))
+		);
+		introduceNewCardsMock.mockResolvedValue(0);
+
+		await loadDueWithIntroduction(NOW);
+
 		expect(consumeIntroBudgetMock).not.toHaveBeenCalled();
-		expect(due).toEqual(manyDueCards);
 	});
 
 	it('with exactly 20 pre-due facts (at, not over, the gate), the budget path still runs', async () => {
@@ -152,13 +176,15 @@ describe('loadDueWithIntroduction', () => {
 		expect(introduceNewCardsMock).toHaveBeenCalledTimes(1);
 	});
 
-	it('21 facts spread over 63 cards DOES trip the gate', async () => {
+	it('21 facts spread over 63 cards DOES trip the gate (down to the trickle)', async () => {
 		const over = dueCardsFor(21, 3);
 		getDueCardsMock.mockResolvedValue(over);
 
 		await loadDueWithIntroduction(NOW);
 
-		expect(introduceNewCardsMock).not.toHaveBeenCalled();
+		expect(introduceNewCardsMock).toHaveBeenCalledWith(1, NOW, undefined, {
+			deferKinds: ['scale-degree']
+		});
 	});
 });
 

@@ -30,6 +30,7 @@ export const drills = {
 
 		// Identification prompts.
 		'drills.prompt.nameChord': 'Name this chord.',
+		'drills.prompt.pickNotes': 'Which notes spell this chord?',
 		'drills.prompt.nameInterval': 'Name this interval.',
 		'drills.aria.answerPrefix': 'Answer:',
 
@@ -124,6 +125,7 @@ export const drills = {
 		'drills.score.streak': 'SÉRIE',
 
 		'drills.prompt.nameChord': 'Nomme cet accord.',
+		'drills.prompt.pickNotes': 'Quelles notes forment cet accord ?',
 		'drills.prompt.nameInterval': 'Nomme cet intervalle.',
 		'drills.aria.answerPrefix': 'Réponse :',
 

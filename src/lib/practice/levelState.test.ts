@@ -5,6 +5,7 @@ import { chordFormulaFactId } from '$lib/srs/facts';
 import {
 	LEVEL_KEY,
 	MASTERY_DAY_COUNT,
+	TIER_MASTERY_PERCENT,
 	getLevelState,
 	setCurrentTier,
 	tierMastered,
@@ -122,22 +123,30 @@ describe('tierMastered (deck-derived, offline, no server)', () => {
 		expect(tierMastered(1, masteredTierCards(1))).toBe(true);
 	});
 
-	it('is false when a single chord of the tier is one day short', () => {
-		const cards = masteredTierCards(1);
-		cards[cards.length - 1] = formulaCard(itemsForTier(1)[itemsForTier(1).length - 1], 1);
-		expect(tierMastered(1, cards)).toBe(false);
+	it('TIER_MASTERY_PERCENT is 80: four in five chords, not every chord (ml-practice-variety)', () => {
+		expect(TIER_MASTERY_PERCENT).toBe(80);
 	});
 
-	it('is false when a chord of the tier has no card at all', () => {
-		expect(tierMastered(1, masteredTierCards(1).slice(0, -1))).toBe(false);
+	it('a straggler no longer holds the tier: tier 1 opens with 12 of its 14 chords mastered, and not with 11', () => {
+		const symbols = itemsForTier(1);
+		expect(symbols).toHaveLength(14);
+		const twelve = symbols.map((symbol, index) => formulaCard(symbol, index < 12 ? MASTERY_DAY_COUNT : 1));
+		expect(tierMastered(1, twelve)).toBe(true);
+		const eleven = symbols.map((symbol, index) => formulaCard(symbol, index < 11 ? MASTERY_DAY_COUNT : 1));
+		expect(tierMastered(1, eleven)).toBe(false);
 	});
 
-	it('ignores non-formula modes: a mastered see-play card does not count', () => {
+	it('a chord with no card at all counts as unmastered', () => {
+		expect(tierMastered(1, masteredTierCards(1).slice(0, 11))).toBe(false);
+		expect(tierMastered(1, masteredTierCards(1).slice(0, 12))).toBe(true);
+	});
+
+	it('counts a chord mastered through ANY of its modes: the teach cluster is asked one mode per round now, build it first', () => {
 		const cards = itemsForTier(1).map((symbol) => ({
 			...formulaCard(symbol, MASTERY_DAY_COUNT),
-			mode: 'see-play' as const
+			mode: 'formula-build' as const
 		}));
-		expect(tierMastered(1, cards)).toBe(false);
+		expect(tierMastered(1, cards)).toBe(true);
 	});
 
 	it('mastering tier 1 does not master tier 2 (tier 2 adds accidental roots and dim)', () => {
@@ -200,12 +209,12 @@ describe('earnedTier (pure progression)', () => {
 		const noEvidence = { currentTier: 4 as const, unlockedTiers: [1, 2, 3, 4] as TierId[] };
 		expect(earnedTier(noEvidence, [])).toBe(4);
 
-		const oneChordShort = masteredTierCards(4);
-		oneChordShort[oneChordShort.length - 1] = {
-			...oneChordShort[oneChordShort.length - 1],
-			masteryDayCount: 1
-		};
-		expect(earnedTier(noEvidence, oneChordShort)).toBe(4);
+		// Tier 4 has 24 chords: 80% is 20 (19.2 rounded up), so 19 mastered
+		// still holds the user at 4.
+		const fiveShort = masteredTierCards(4).map((card, index) =>
+			index < 19 ? card : { ...card, masteryDayCount: 1 }
+		);
+		expect(earnedTier(noEvidence, fiveShort)).toBe(4);
 	});
 
 	it('stops at tier 5 once mastered but tier 6 is not yet (does not skip ahead without its own evidence)', () => {

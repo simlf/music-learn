@@ -22,8 +22,9 @@
  * visualises in the recall map: `CardRecord.masteryDayCount >= 2`, correct
  * recall on two distinct local calendar days (srs/deck.ts's IMP-01
  * successive-relearning gate). It needs no network, it is monotonic, and it
- * is the same number the user can already see. A tier whose every chord has
- * cleared it opens the next tier silently, with no prompt and no nag.
+ * is the same number the user can already see. A tier whose chords have
+ * cleared it (TIER_MASTERY_PERCENT percent of them) opens the next tier
+ * silently, with no prompt and no nag.
  */
 
 import { chordFormulaFactId } from '$lib/srs/facts';
@@ -125,13 +126,30 @@ export function setCurrentTier(tier: TierId): LevelState {
 }
 
 /**
- * True once EVERY chord symbol in `tier` has a 'formula' card that cleared
- * the MASTERY_DAY_COUNT gate. Pure: the caller supplies the cards it already
- * read (introduceNewCards always has them in hand), so this never touches
- * Dexie or the network.
+ * The share of a tier's chords that must be mastered before the next tier
+ * opens (ml-practice-variety, C3).
  *
- * 'formula' is the mode checked because it is the one mode every fact kind
- * carries and the one the /practice name-it family and /recall both grade.
+ * This was every chord, and "every" let the single slowest chord of a tier
+ * hold back all new material: a one-round-a-day user sat on tier 1's
+ * fourteen triads and tier 2's triads for eight weeks before meeting a
+ * seventh chord. Four in five keeps the gate meaning "you know this tier"
+ * while the stragglers keep coming back through FSRS like any other due
+ * card, alongside the next tier's material instead of in front of it.
+ */
+export const TIER_MASTERY_PERCENT = 80;
+
+/**
+ * True once at least TIER_MASTERY_PERCENT percent of the chord symbols in
+ * `tier` have a card, in any mode, that cleared the MASTERY_DAY_COUNT gate.
+ * Pure: the caller supplies the cards it already read (introduceNewCards
+ * always has them in hand), so this never touches Dexie or the network.
+ *
+ * Any mode, not just 'formula': /practice now asks a chord's teach cluster
+ * one mode per round, build it first and name it last (practiceQueue's
+ * TEACH_MODE_ORDER), so the 'formula' card is the last of the cluster to be
+ * asked at all. Correct recall on two distinct days of building or playing a
+ * chord is the same successive-relearning evidence as naming it, and gating
+ * on 'formula' alone would hold the tier back by the length of the cluster.
  * `masteryDayCount` rather than `deriveCellState(...) === 'mastered'` because
  * the cell state is deliberately transient (a mastered card that comes due
  * again reports 'due'), which would make the gate flicker from day to day;
@@ -148,11 +166,10 @@ export function tierMastered(
 	const symbols = itemsForTier(tier);
 	if (symbols.length === 0) return false;
 	const mastered = new Set(
-		cards
-			.filter((card) => card.mode === 'formula' && card.masteryDayCount >= threshold)
-			.map((card) => card.factId)
+		cards.filter((card) => card.masteryDayCount >= threshold).map((card) => card.factId)
 	);
-	return symbols.every((symbol) => mastered.has(chordFormulaFactId(symbol)));
+	const masteredCount = symbols.filter((symbol) => mastered.has(chordFormulaFactId(symbol))).length;
+	return masteredCount * 100 >= symbols.length * TIER_MASTERY_PERCENT;
 }
 
 /**

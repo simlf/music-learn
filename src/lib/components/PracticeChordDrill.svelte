@@ -1,7 +1,12 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { Note } from 'tonal';
-	import { generateQuestion, type ChordQuestion } from '$lib/drills/generateQuestion';
+	import {
+		generateQuestion,
+		pickDistractors,
+		type ChordQuestion,
+		type NameItVariant
+	} from '$lib/drills/generateQuestion';
 	import { spellChord } from '$lib/theory/chord';
 	import { matchChord, type MatchResult } from '$lib/drills/matchChord';
 	import { toAsciiAccidentals } from '$lib/theory/interval';
@@ -115,11 +120,23 @@
 		 * before this prop existed keeps exactly the render it had (REG-01).
 		 */
 		mode?: ChordDrillMode;
+		/**
+		 * Which NAME IT template a 'formula' question uses (C5, see
+		 * generateQuestion.nameItVariantFor). Ignored by the other two modes.
+		 * Defaults to 'name-same-root', the original question (REG-01).
+		 */
+		variant?: NameItVariant;
 		/** Fired exactly once, at the user's Next tap after the reveal. */
 		onComplete: (correct: boolean) => void;
 	}
 
-	let { symbol, mode = 'formula', onComplete }: Props = $props();
+	let { symbol, mode = 'formula', variant = 'name-same-root', onComplete }: Props = $props();
+
+	/**
+	 * The 'formula' card asked the other way round: the SYMBOL is shown and the
+	 * answer is one of four note spellings. Init-time snapshot like `target`.
+	 */
+	const pickingNotes = untrack(() => mode === 'formula' && variant === 'pick-notes');
 
 	/**
 	 * Computed once at init from the supplied symbol (a fresh component
@@ -155,10 +172,49 @@
 	 * it from consuming the Math.random() sequence a caller may be controlling.
 	 */
 	const question = untrack(() =>
-		identifying
-			? (generateQuestion({ symbol, direction: 'identification' }) as ChordQuestion)
+		identifying && !pickingNotes
+			? (generateQuestion({
+					symbol,
+					direction: 'identification',
+					distractors: mode === 'formula' && variant === 'name-mixed-root' ? 'mixed-root' : 'same-root'
+				}) as ChordQuestion)
 			: undefined
 	);
+
+	/**
+	 * pick-notes' four options, each a chord symbol rendered as its own note
+	 * spelling: the answer and three same-root qualities (pickDistractors), so
+	 * the root is given and the user must know which third, fifth and seventh
+	 * this symbol means. Drawn only for that template; `question` above is
+	 * unused there.
+	 */
+	const noteChoices = untrack(() =>
+		pickingNotes ? shuffleChoices([symbol, ...pickDistractors(symbol)]) : []
+	);
+
+	function shuffleChoices(items: string[]): string[] {
+		const result = [...items];
+		for (let i = result.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[result[i], result[j]] = [result[j], result[i]];
+		}
+		return result;
+	}
+
+	/** A choice symbol's notes, as the pick-notes grid shows them: "C E♭ G". */
+	function spellingOf(choice: string): string {
+		return spellChord(choice)
+			.notes.map((note) => note.letter)
+			.join(' ');
+	}
+
+	/** The grid's options: chord symbols for the naming templates, spellings for pick-notes. */
+	const gridChoices = $derived(pickingNotes ? noteChoices : (question?.choices ?? []));
+
+	/** How a choice reads on its button and in the picked-vs-correct line. */
+	function choiceLabel(choice: string): string {
+		return pickingNotes ? spellingOf(choice) : choice;
+	}
 
 	/** The answer chord's quality suffix ("m7", "m7b5", ...) - same slice ChordGlyph's quality prop already uses below. */
 	const targetQuality = target.symbol.slice(target.root.length);
@@ -265,7 +321,19 @@
 </script>
 
 <div data-testid="practice-chord-drill" data-mode={mode}>
-	{#if mode === 'formula'}
+	{#if pickingNotes}
+		<div class="flex items-start gap-4" data-testid="chord-drill-notes-prompt">
+			<ChordGlyph root={target.root} quality={targetQuality} />
+			<SongMark songs={provenanceSongs} />
+		</div>
+		<p class="text-body mt-4">{t('drills.prompt.pickNotes')}</p>
+
+		{#if answered}
+			<div class="mt-4">
+				<PianoKeyboard notes={target.notes} inspectable showIntervalBadges showIntervalTicks />
+			</div>
+		{/if}
+	{:else if mode === 'formula'}
 		<p class="text-body">{t('drills.prompt.nameChord')}</p>
 
 		<div class="mt-4">
@@ -325,16 +393,29 @@
 	{/if}
 
 	{#if identifying}
-		<div class="mt-4 grid grid-cols-2 gap-2 xl:grid-cols-4" data-testid="choice-grid">
-			{#each question?.choices ?? [] as choice (choice)}
+		<div
+			class="mt-4 grid grid-cols-2 gap-2 xl:grid-cols-4"
+			data-testid="choice-grid"
+			data-variant={mode === 'formula' ? variant : undefined}
+		>
+			{#each gridChoices as choice (choice)}
 				<Button
 					type="button"
 					variant="ghost"
 					disabled={answered}
-					aria-label={`${t('drills.aria.answerPrefix')} ${choice}`}
+					aria-label={`${t('drills.aria.answerPrefix')} ${choiceLabel(choice)}`}
 					onclick={() => selectChoice(choice)}
 				>
-					<span class="font-serif text-heading font-bold">{choice}</span>
+					{#if pickingNotes}
+						<!-- One span per note, gapped: a bare "A C E" string reads as "ACE" at this size. -->
+						<span class="inline-flex gap-3 font-serif text-heading font-bold">
+							{#each spellingOf(choice).split(' ') as letter, index (index)}
+								<span>{letter}</span>
+							{/each}
+						</span>
+					{:else}
+						<span class="font-serif text-heading font-bold">{choice}</span>
+					{/if}
 				</Button>
 			{/each}
 		</div>
@@ -342,7 +423,7 @@
 
 	{#if answered}
 		<div class="mt-4 stamp" data-testid="chord-drill-feedback">
-			{#if mode !== 'see-play'}
+			{#if mode !== 'see-play' && !pickingNotes}
 				<!--
 					'formula'/'hear-name' ask the user to NAME this symbol, so showing
 					the mark any earlier would leak the answer; see-play already shows
@@ -371,8 +452,8 @@
 				{#if identifying}
 					<p class="text-body mt-2" data-testid="chord-drill-picked-vs-correct">
 						{t('drills.feedback.pickedVsCorrect')
-							.replace('{picked}', picked ?? '')
-							.replace('{correct}', symbol)}
+							.replace('{picked}', picked === undefined ? '' : choiceLabel(picked))
+							.replace('{correct}', choiceLabel(symbol))}
 					</p>
 				{:else}
 					<!--

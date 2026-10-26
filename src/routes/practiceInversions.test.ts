@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { newCard } from '$lib/srs/scheduler';
+import { newCard, State } from '$lib/srs/scheduler';
 import type { CardRecord } from '$lib/srs/deck';
 import { spellChord } from '$lib/theory/chord';
 import { bassNoteFor } from '$lib/practice/inversions';
@@ -180,7 +180,10 @@ describe('inversion family surfaces and completes without an FSRS write (INV-03)
 	it('renders InversionDrill under the INVERSION family cue, and completing it advances the queue with no deck.recordGrade call for that item', async () => {
 		vi.spyOn(Math, 'random').mockReturnValue(0.1);
 
-		const nameCard = makeCard('chord-formula:Cm7', 'chord-formula', 'formula');
+		// State.Review: an inversion is only drawn for a chord whose own cards
+		// have matured (dailyRound.buildSyntheticItems' PRAC-06 gate), never for
+		// one introduced today.
+		const nameCard = { ...makeCard('chord-formula:Cm7', 'chord-formula', 'formula'), state: State.Review };
 		getDueCardsMock.mockResolvedValue([nameCard]);
 		getAllCardsMock.mockResolvedValue([nameCard]);
 
@@ -193,9 +196,10 @@ describe('inversion family surfaces and completes without an FSRS write (INV-03)
 		let sawInversion = false;
 		let recordGradeCallsBeforeInversion = 0;
 
-		// The due card (Cm7) always earns its own name-it item PLUS up to 2
-		// inversion items (SYNTHETIC_INVERSION_COUNT) - at most 3 items in
-		// this fixture's queue.
+		// The due card (Cm7) earns its own name-it item plus one inversion item:
+		// with a single due chord the planner's applied reserve cannot take the
+		// chord away from its FSRS review, so the inversion reuses the symbol,
+		// once (practiceQueue.planRound) - at most 3 items is a generous guard.
 		for (let i = 0; i < 3 && !screen.queryByTestId('session-end-card'); i++) {
 			if (screen.queryByTestId('practice-chord-drill')) {
 				expect(screen.getByTestId('question-source-tag')).toHaveTextContent('NAME IT');

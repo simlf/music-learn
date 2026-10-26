@@ -165,6 +165,21 @@ export async function getCard(factId: string, mode: Mode): Promise<CardRecord | 
 	return all.find((card) => card.factId === factId && card.mode === mode);
 }
 
+/** introduceNewCards' optional fourth argument. */
+export interface IntroduceOptions {
+	/**
+	 * Fact kinds the NEW-fact pass takes only once every other teachable fact
+	 * is introduced: the curriculum order itself is unchanged (deferred facts
+	 * keep their place for any call without this option), this call just
+	 * walks the rest of it first. The retrofit pass is unaffected.
+	 * practice/reviewLoad.ts's backlog trickle defers 'scale-degree' so its one
+	 * fact a day goes to chord vocabulary, the app's core value, rather than
+	 * spending a month of trickle days on a tier's 27-fact scale-degree batch
+	 * while the next tier's chords wait behind it.
+	 */
+	deferKinds?: readonly FactKind[];
+}
+
 /**
  * Introduces up to `limit` NEW FACTS' worth of cards (not `limit` raw
  * records - a fact's introduction may write more than one card), returns the
@@ -228,7 +243,8 @@ export async function getCard(factId: string, mode: Mode): Promise<CardRecord | 
 export async function introduceNewCards(
 	limit: number = NEW_CARDS_PER_SESSION,
 	now: Date = new Date(),
-	maxTier?: TierId
+	maxTier?: TierId,
+	options: IntroduceOptions = {}
 ): Promise<number> {
 	const existing = await getAllCards();
 	const existingByFact = new Map<string, CardRecord[]>();
@@ -286,7 +302,13 @@ export async function introduceNewCards(
 	const tier = maxTier ?? advanceTierOnMastery(existing).currentTier;
 
 	// Pass 1, genuinely new facts: curriculum order, tier-gated.
-	for (const fact of introductionOrder(tier, new Set(existingByFact.keys()))) {
+	const deferKinds = new Set(options.deferKinds ?? []);
+	const teachable = introductionOrder(tier, new Set(existingByFact.keys()));
+	const walk = [
+		...teachable.filter((fact) => !deferKinds.has(fact.factKind)),
+		...teachable.filter((fact) => deferKinds.has(fact.factKind))
+	];
+	for (const fact of walk) {
 		if (factsTouched >= limit) break;
 		if (existingByFact.has(fact.factId)) continue;
 		const pending = pendingFor(fact);

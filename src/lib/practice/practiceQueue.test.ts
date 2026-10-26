@@ -17,6 +17,10 @@ import {
 	isLowMasterySession,
 	advanceHybridQueue,
 	sliceRound,
+	planRound,
+	appliedSlotsFor,
+	familyCapFor,
+	progressionTemplateTaught,
 	RETRY_MIN_GAP,
 	RETRY_MAX_GAP,
 	filterVoicingsBySong,
@@ -354,6 +358,17 @@ describe('voicing cap preserves a bounded round scheduler throughput (regression
 		// The bar that matters: at least half the bounded round must reach the
 		// scheduler, or due cards stay due and the intro gate never reopens.
 		expect(carded).toBeGreaterThanOrEqual(6);
+	});
+
+	it('planRound: the applied reserve is the cap, even over an uncapped voicing pool', () => {
+		const rng = seededRng(7);
+		const { cardedItems, voicingPool, otherSynthetics } = midTier3Fixture(rng);
+		const { round } = planRound(cardedItems, [...voicingPool, ...otherSynthetics], ROUND_TARGET, rng);
+		const { carded } = familyCounts(round);
+
+		expect(round).toHaveLength(ROUND_TARGET);
+		expect(round.length - carded).toBe(appliedSlotsFor(ROUND_TARGET));
+		expect(carded).toBe(ROUND_TARGET - appliedSlotsFor(ROUND_TARGET));
 	});
 
 	it('documents the defect: an uncapped voicing draw starves the same round', () => {
@@ -1199,5 +1214,202 @@ describe('due-backlog gate (T13)', () => {
 			);
 		}
 		expect(backlogFactCount(degrees)).toBe(7);
+	});
+});
+
+describe('planRound (ml-practice-variety: what one bounded round asks)', () => {
+	const ROUND = 12;
+
+	/** One chord fact's due cards, all in `state`, in the given modes. */
+	function chordCards(symbol: string, modes: Mode[], state: State = State.New): CardRecord[] {
+		return modes.map((mode, index) =>
+			makeCardRecord({
+				factId: `chord-formula:${symbol}`,
+				mode,
+				state,
+				stability: index + 1
+			})
+		);
+	}
+
+	const CLUSTER: Mode[] = ['formula', 'see-play', 'formula-build'];
+	const TWELVE = ['C', 'D', 'E', 'F', 'G', 'A', 'B', 'Cm', 'Dm', 'Em', 'Fm', 'Gm'];
+
+	function subjectOf(item: HybridQueueItem): string {
+		if (item.family === 'progression') return `${item.templateId}:${item.key}`;
+		if (item.family === 'interval') return item.short ?? '';
+		if (item.family === 'degree') return `${item.tonic}${item.degree}`;
+		return item.symbol ?? '';
+	}
+
+	it('reserves 3 applied slots in 12, and caps a carded family at 4', () => {
+		expect(appliedSlotsFor(12)).toBe(3);
+		expect(appliedSlotsFor(5)).toBe(1);
+		expect(appliedSlotsFor(3)).toBe(0);
+		expect(familyCapFor(12)).toBe(4);
+		expect(familyCapFor(3)).toBe(2);
+	});
+
+	it('asks each chord once: a 12-chord teach cohort is 12 chords, not 4 chords x 3 modes', () => {
+		const carded = cardsToQueueItems(TWELVE.flatMap((symbol) => chordCards(symbol, CLUSTER)));
+		const { round, waiting } = planRound(carded, [], ROUND, seededRng(1));
+
+		expect(round).toHaveLength(ROUND);
+		expect(new Set(round.map(subjectOf)).size).toBe(ROUND);
+		expect(waiting).toBe(36 - ROUND);
+	});
+
+	it('teaches a new chord build-first, and spills to the next mode when the family is full', () => {
+		const carded = cardsToQueueItems(TWELVE.flatMap((symbol) => chordCards(symbol, CLUSTER)));
+		const { round } = planRound(carded, [], ROUND, seededRng(1));
+		const counts = new Map<string, number>();
+		for (const item of round) counts.set(item.family, (counts.get(item.family) ?? 0) + 1);
+
+		// build-it first (4, the cap), then play-it (4), then name-it (4).
+		expect(counts.get('build-it')).toBe(4);
+		expect(counts.get('play-it')).toBe(4);
+		expect(counts.get('name-it')).toBe(4);
+	});
+
+	it('asks an owed review weakest-first, the ear card last', () => {
+		const cards = [
+			makeCardRecord({ mode: 'hear-name', state: State.Review, stability: 0.1 }),
+			makeCardRecord({ mode: 'see-play', state: State.Review, stability: 5 }),
+			makeCardRecord({ mode: 'formula', state: State.Review, stability: 2 })
+		];
+		const { round } = planRound(cardsToQueueItems(cards), [], 1, seededRng(1));
+		expect(round).toHaveLength(1);
+		expect((round[0] as CardedQueueItem).mode).toBe('formula');
+	});
+
+	it('no carded family takes more than 4 of 12 while another family can fill', () => {
+		const plays = TWELVE.flatMap((symbol) => chordCards(symbol, ['see-play'], State.Review));
+		const intervals = ['m3', 'M3', 'P5', 'm7', 'M7', 'A4', 'M6', 'P4'].map((short) =>
+			makeCardRecord({ factId: `interval-size:${short}`, factKind: 'interval-size', state: State.Review })
+		);
+		const degrees = [1, 3, 5, 7].map((degree) =>
+			makeCardRecord({
+				factId: `scale-degree:C:${degree}`,
+				factKind: 'scale-degree',
+				state: State.Review
+			})
+		);
+		const { round } = planRound(
+			cardsToQueueItems([...plays, ...intervals, ...degrees]),
+			[],
+			ROUND,
+			seededRng(3)
+		);
+		expect(round).toHaveLength(ROUND);
+		for (const family of ['play-it', 'interval', 'degree']) {
+			expect(round.filter((item) => item.family === family)).toHaveLength(4);
+		}
+	});
+
+	it('relaxes the family cap rather than ask fewer questions', () => {
+		const plays = TWELVE.flatMap((symbol) => chordCards(symbol, ['see-play'], State.Review));
+		const { round } = planRound(cardsToQueueItems(plays), [], ROUND, seededRng(3));
+		expect(round).toHaveLength(ROUND);
+	});
+
+	it('gives the applied reserve its slots on a big due set, on chords the carded half then skips', () => {
+		const rng = seededRng(5);
+		const symbols = seventhChordSymbols().slice(0, 20);
+		const carded = cardsToQueueItems(
+			symbols.flatMap((symbol) => chordCards(symbol, ['formula'], State.Review))
+		);
+		const synthetic: HybridQueueItem[] = [
+			...syntheticInversionItems(symbols, 6, rng),
+			...syntheticChordScaleItems(symbols, 6, rng),
+			...syntheticProgressionItems(2, rng)
+		];
+		const { round, waiting } = planRound(carded, synthetic, ROUND, rng);
+
+		const applied = round.filter((item) => !('card' in item));
+		expect(applied).toHaveLength(3);
+		// One of each family before a second of any.
+		expect(new Set(applied.map((item) => item.family)).size).toBe(3);
+		// Every subject in the round is different.
+		expect(new Set(round.map(subjectOf)).size).toBe(ROUND);
+		// Only the CARDED items left behind count as waiting.
+		expect(waiting).toBe(carded.length - (ROUND - 3));
+	});
+
+	it('spreads the applied items through the round: never first, never in the last two slots', () => {
+		const rng = seededRng(9);
+		const symbols = seventhChordSymbols().slice(0, 20);
+		const carded = cardsToQueueItems(
+			symbols.flatMap((symbol) => chordCards(symbol, ['formula'], State.Review))
+		);
+		const synthetic = [...syntheticInversionItems(symbols, 6, rng), ...syntheticChordScaleItems(symbols, 6, rng)];
+		const { round } = planRound(carded, synthetic, ROUND, rng);
+		const appliedAt = round.flatMap((item, index) => ('card' in item ? [] : [index]));
+
+		expect(appliedAt).toHaveLength(3);
+		expect(appliedAt[0]).toBeGreaterThan(0);
+		expect(appliedAt[appliedAt.length - 1]).toBeLessThan(ROUND - 2);
+	});
+
+	it('never takes a small deck\'s chords away from their FSRS reviews', () => {
+		const rng = seededRng(2);
+		const symbols = ['Cm7', 'Dm7', 'G7'];
+		const carded = cardsToQueueItems(
+			symbols.flatMap((symbol) => chordCards(symbol, ['formula'], State.Review))
+		);
+		const synthetic = syntheticInversionItems(symbols, 6, rng);
+		const { round, waiting } = planRound(carded, synthetic, ROUND, rng);
+
+		expect(round.filter((item) => 'card' in item)).toHaveLength(3);
+		expect(waiting).toBe(0);
+		// The room left is spent on applied items reusing those symbols, one each.
+		const inversions = round.filter((item) => item.family === 'inversion');
+		expect(inversions.length).toBeLessThanOrEqual(3);
+		expect(new Set(inversions.map(subjectOf)).size).toBe(inversions.length);
+	});
+
+	it('keeps a seeded symbol out of the applied half', () => {
+		const rng = seededRng(4);
+		const symbols = seventhChordSymbols().slice(0, 20);
+		const carded = cardsToQueueItems(
+			symbols.slice(1).flatMap((symbol) => chordCards(symbol, ['formula'], State.Review))
+		);
+		const synthetic = syntheticInversionItems([symbols[0]], 4, rng);
+		const { round } = planRound(carded, synthetic, ROUND, rng, {
+			excludeSymbols: new Set([symbols[0]])
+		});
+		expect(round.some((item) => item.family === 'inversion')).toBe(false);
+	});
+
+	it('a non-positive target plans an empty round with every carded item waiting', () => {
+		const carded = cardsToQueueItems(chordCards('C', CLUSTER));
+		expect(planRound(carded, [], 0, seededRng(1))).toEqual({ round: [], waiting: 3 });
+		expect(planRound(carded, [], Number.NaN, seededRng(1))).toEqual({ round: [], waiting: 3 });
+	});
+
+	it('keeps the cold-session guard: a low-mastery round never opens on a scaffold-heavy item', () => {
+		const rng = seededRng(6);
+		const carded = cardsToQueueItems(chordCards('C', ['formula']));
+		const { round } = planRound(carded, syntheticProgressionItems(2, rng), ROUND, rng, {
+			lowMastery: true
+		});
+		expect(SCAFFOLD_HEAVY.has(round[0].family)).toBe(false);
+	});
+});
+
+describe('progressionTemplateTaught', () => {
+	it('needs every quality the template uses', () => {
+		expect(progressionTemplateTaught('major-ii-V-I', new Set(['m7', '7', 'maj7']))).toBe(true);
+		expect(progressionTemplateTaught('major-ii-V-I', new Set(['m7', '7']))).toBe(false);
+		expect(progressionTemplateTaught('minor-ii-V-i', new Set(['m7', '7', 'maj7']))).toBe(false);
+		expect(progressionTemplateTaught('nope', new Set(['m7', '7', 'maj7', 'm7b5']))).toBe(false);
+	});
+
+	it('restricts syntheticProgressionItems to the templates it accepts', () => {
+		const items = syntheticProgressionItems(20, seededRng(1), (templateId) =>
+			progressionTemplateTaught(templateId, new Set(['m7', '7', 'maj7']))
+		);
+		expect(items.length).toBeGreaterThan(0);
+		expect(items.every((item) => item.templateId !== 'minor-ii-V-i')).toBe(true);
+		expect(syntheticProgressionItems(5, seededRng(1), () => false)).toEqual([]);
 	});
 });
