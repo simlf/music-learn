@@ -29,9 +29,13 @@ vi.mock('$lib/srs/deck', async (importOriginal) => {
 
 const remainingIntroBudgetMock = vi.fn();
 const consumeIntroBudgetMock = vi.fn();
+const trickleSpentTodayMock = vi.fn();
+const consumeTrickleMock = vi.fn();
 vi.mock('$lib/srs/introBudget', () => ({
 	remainingIntroBudget: (...args: unknown[]) => remainingIntroBudgetMock(...args),
-	consumeIntroBudget: (...args: unknown[]) => consumeIntroBudgetMock(...args)
+	consumeIntroBudget: (...args: unknown[]) => consumeIntroBudgetMock(...args),
+	trickleSpentToday: (...args: unknown[]) => trickleSpentTodayMock(...args),
+	consumeTrickle: (...args: unknown[]) => consumeTrickleMock(...args)
 }));
 
 const { loadDueWithIntroduction, applySongFilter, BACKLOG_TRICKLE_FACTS } = await import('./reviewLoad');
@@ -49,6 +53,9 @@ beforeEach(() => {
 	remainingIntroBudgetMock.mockReset();
 	remainingIntroBudgetMock.mockReturnValue(10);
 	consumeIntroBudgetMock.mockReset();
+	trickleSpentTodayMock.mockReset();
+	trickleSpentTodayMock.mockReturnValue(false);
+	consumeTrickleMock.mockReset();
 });
 
 describe('loadDueWithIntroduction', () => {
@@ -67,7 +74,7 @@ describe('loadDueWithIntroduction', () => {
 		});
 	});
 
-	it('a trickle spends the rest of the day\'s budget, so a reload the same day cannot trickle again', async () => {
+	it('a trickle records itself as the day\'s trickle and consumes only what it introduced', async () => {
 		getDueCardsMock.mockResolvedValue(
 			Array.from({ length: 21 }, (_, i) => makeCard(`interval-size:fake-${i}`, 'interval-size'))
 		);
@@ -76,7 +83,19 @@ describe('loadDueWithIntroduction', () => {
 
 		await loadDueWithIntroduction(NOW);
 
-		expect(consumeIntroBudgetMock).toHaveBeenCalledWith(10, NOW);
+		expect(consumeTrickleMock).toHaveBeenCalledWith(1, NOW);
+		expect(consumeIntroBudgetMock).not.toHaveBeenCalled();
+	});
+
+	it('over the gate with the day\'s trickle already spent, nothing is introduced', async () => {
+		getDueCardsMock.mockResolvedValue(
+			Array.from({ length: 21 }, (_, i) => makeCard(`interval-size:fake-${i}`, 'interval-size'))
+		);
+		trickleSpentTodayMock.mockReturnValue(true);
+
+		await loadDueWithIntroduction(NOW);
+
+		expect(introduceNewCardsMock).not.toHaveBeenCalled();
 	});
 
 	it('a trickle that finds nothing to introduce consumes nothing', async () => {
@@ -88,6 +107,7 @@ describe('loadDueWithIntroduction', () => {
 		await loadDueWithIntroduction(NOW);
 
 		expect(consumeIntroBudgetMock).not.toHaveBeenCalled();
+		expect(consumeTrickleMock).not.toHaveBeenCalled();
 	});
 
 	it('with exactly 20 pre-due facts (at, not over, the gate), the budget path still runs', async () => {

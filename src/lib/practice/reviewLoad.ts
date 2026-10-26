@@ -1,5 +1,10 @@
 import { getDueCards, introduceNewCards, type CardRecord } from '$lib/srs/deck';
-import { remainingIntroBudget, consumeIntroBudget } from '$lib/srs/introBudget';
+import {
+	remainingIntroBudget,
+	consumeIntroBudget,
+	trickleSpentToday,
+	consumeTrickle
+} from '$lib/srs/introBudget';
 import { factById } from '$lib/srs/facts';
 import { symbolHasProvenance } from './songProvenance';
 import { DUE_BACKLOG_GATE_FACTS, backlogFactCount } from './practiceQueue';
@@ -48,9 +53,10 @@ export const BACKLOG_TRICKLE_FACTS = 1;
  * new-card introduction budget, and re-fetches. The due backlog (in FACTS
  * this surface can answer, `practiceQueue.backlogFactCount`) decides how
  * much: at or under `DUE_BACKLOG_GATE_FACTS`, the whole remaining budget; over
- * it, only `BACKLOG_TRICKLE_FACTS`, and that trickle then spends the rest of
- * the day's budget, so a reload or a "Keep going" the same day cannot trickle
- * again (the backlog is the deck's job right now, not growing it further).
+ * it, only `BACKLOG_TRICKLE_FACTS`, once a day: a reload or a "Keep going"
+ * the same day that is still over the gate cannot trickle again (the backlog
+ * is the deck's job right now, not growing it further), but one that finds
+ * the backlog back under the gate gets the rest of the day's budget.
  *
  * The ONE caller of `introduceNewCards` post-consolidation. Kept here (not
  * inlined in the `/practice` component) so the gate/introduce/re-fetch
@@ -60,13 +66,19 @@ export async function loadDueWithIntroduction(now: Date = new Date()): Promise<C
 	const preDue = await getDueCards(now);
 	const remaining = remainingIntroBudget(now);
 	if (remaining <= 0) return preDue;
-	const overGate = backlogFactCount(preDue) > DUE_BACKLOG_GATE_FACTS;
-	const introduced = overGate
-		? await introduceNewCards(Math.min(remaining, BACKLOG_TRICKLE_FACTS), now, undefined, {
-				deferKinds: ['scale-degree']
-			})
-		: await introduceNewCards(remaining, now);
-	if (introduced > 0) consumeIntroBudget(overGate ? remaining : introduced, now);
+	if (backlogFactCount(preDue) > DUE_BACKLOG_GATE_FACTS) {
+		if (trickleSpentToday(now)) return preDue;
+		const trickled = await introduceNewCards(
+			Math.min(remaining, BACKLOG_TRICKLE_FACTS),
+			now,
+			undefined,
+			{ deferKinds: ['scale-degree'] }
+		);
+		if (trickled > 0) consumeTrickle(trickled, now);
+	} else {
+		const introduced = await introduceNewCards(remaining, now);
+		if (introduced > 0) consumeIntroBudget(introduced, now);
+	}
 	return getDueCards(now);
 }
 

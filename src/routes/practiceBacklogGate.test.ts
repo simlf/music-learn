@@ -55,7 +55,9 @@ const remainingIntroBudgetMock = vi.fn();
 const consumeIntroBudgetMock = vi.fn();
 vi.mock('$lib/srs/introBudget', () => ({
 	remainingIntroBudget: (...args: unknown[]) => remainingIntroBudgetMock(...args),
-	consumeIntroBudget: (...args: unknown[]) => consumeIntroBudgetMock(...args)
+	consumeIntroBudget: (...args: unknown[]) => consumeIntroBudgetMock(...args),
+	trickleSpentToday: () => false,
+	consumeTrickle: vi.fn()
 }));
 
 vi.mock('$lib/practice/answerTelemetry', () => ({ recordPracticeAnswer: vi.fn() }));

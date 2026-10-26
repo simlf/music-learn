@@ -28,6 +28,8 @@ interface BudgetRecord {
 	date: string;
 	/** Facts consumed so far on `date`. */
 	count: number;
+	/** Whether `date`'s over-backlog trickle has already been spent (absent on older records reads as false). */
+	trickled?: boolean;
 }
 
 /** Returns `date`'s LOCAL calendar date as YYYY-MM-DD, mirroring progress.ts's localDateString convention without importing it. */
@@ -46,7 +48,8 @@ function isBudgetRecord(value: unknown): value is BudgetRecord {
 		typeof entry.count === 'number' &&
 		Number.isFinite(entry.count) &&
 		Number.isInteger(entry.count) &&
-		entry.count >= 0
+		entry.count >= 0 &&
+		(entry.trickled === undefined || typeof entry.trickled === 'boolean')
 	);
 }
 
@@ -72,11 +75,16 @@ function writeBudget(record: BudgetRecord): void {
 	}
 }
 
-/** Facts already consumed on `now`'s local calendar day; a stored record for a DIFFERENT date (rollover) reads as 0. */
-function consumedFor(now: Date): number {
+/** `now`'s local-day record; a stored record for a DIFFERENT date (rollover) reads as a fresh day. */
+function recordFor(now: Date): BudgetRecord {
+	const today = localDateStringForBudget(now);
 	const record = readBudget();
-	if (!record || record.date !== localDateStringForBudget(now)) return 0;
-	return record.count;
+	return record && record.date === today ? record : { date: today, count: 0 };
+}
+
+/** Facts already consumed on `now`'s local calendar day. */
+function consumedFor(now: Date): number {
+	return recordFor(now).count;
 }
 
 /** Facts still available to introduce today, never negative, capped at MAX_NEW_CARDS_PER_DAY. */
@@ -86,7 +94,17 @@ export function remainingIntroBudget(now: Date = new Date()): number {
 
 /** Records `n` more facts consumed against today's budget (rolling over from a stale stored date first). Never throws. */
 export function consumeIntroBudget(n: number, now: Date = new Date()): void {
-	const today = localDateStringForBudget(now);
-	const consumed = consumedFor(now);
-	writeBudget({ date: today, count: consumed + Math.max(0, n) });
+	const record = recordFor(now);
+	writeBudget({ ...record, count: record.count + Math.max(0, n) });
+}
+
+/** Whether today's over-backlog trickle (reviewLoad's BACKLOG_TRICKLE_FACTS) has already been spent. */
+export function trickleSpentToday(now: Date = new Date()): boolean {
+	return recordFor(now).trickled === true;
+}
+
+/** Records today's over-backlog trickle as spent, consuming only the `n` facts it actually introduced, so the rest of the day's budget stays available once the backlog drops back under the gate. Never throws. */
+export function consumeTrickle(n: number, now: Date = new Date()): void {
+	const record = recordFor(now);
+	writeBudget({ ...record, count: record.count + Math.max(0, n), trickled: true });
 }
