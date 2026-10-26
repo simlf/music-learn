@@ -231,6 +231,15 @@ Four reasons, in order of force:
 3. **The learner is a competent adult who reads Beethoven.** He already hears the difference between a major and a minor third; what he lacks is the vocabulary. Refusing to show him unit 12 because unit 5 is not "mastered" contradicts what the app knows about him. He is also the sole author of this app: gating him out of his own content is absurd.
 4. **The anti-guilt discipline.** The streak badge self-hides at zero (`src/lib/components/StreakBadge.svelte:9`), and `zeroStreak` copy "never mentions a count and never scolds" and reads identically for a first visit and a lapsed 40-day run (`src/lib/copy/streak.ts:11-16`). A grid of padlocks is the single most scolding surface a learning app can render. It is out of character for this codebase.
 
+**The game-layer rule (ml-practice-game).** The owner asked for `/practice` to be more fun, and chose a game layer on top of the variety pass: daily challenge cards (60-second sprint, ear duel, key climb), the tier ladder drawn as a path with a progress bar, unlock moments, and instant feedback (sounds, colour bursts, an in-round streak and combo). Progress, scores and unlocks are therefore allowed now; what stays forbidden is guilt. The rule every game surface obeys:
+
+- **Gains only, never losses.** A bar fills and never drains: the tier path's bar is the same mastered-chord count the tier gate opens on (`levelState.tierMasteryCount`), and `masteryDayCount` only grows, so a skipped week costs it nothing. A personal best only ever improves, and a run below it shows the best on its own, never the gap to it or a "worse than last time" (`practice/challengeRecords.ts`).
+- **Nothing is locked, nothing expires.** Tiers ahead on the path are named stops ("coming up"), never padlocks, and the tier picker can still open any of them. Every challenge is playable every day; the daily rotation only changes which card leads ("today's pick"), so there is no missed challenge to mourn and no daily quota.
+- **A miss costs only the run's own momentum.** In a sprint it resets the in-round combo to x1 and takes no points away; in the key climb it marks the stray keys gray to fix in place, costing only seconds. The in-round streak is a counter that resets quietly, never a broken streak with copy attached. The day streak keeps the `zeroStreak` discipline above unchanged.
+- **Celebrate after the fact, never ask permission.** A tier still opens silently in the deck (`advanceTierOnMastery`); the path then shows one unlock moment for it, once (`practice/tierPath.ts:takeUnlockMoment`). There is no "ready to level up?" prompt.
+- **Games never touch the deck.** Challenges write no FSRS grade and no answer telemetry, only their own personal bests and the practice day. Speed-scored answers are a different signal from the unhurried recall FSRS schedules on, so the daily round stays the only writer of scheduling state.
+- **No piano required.** Every challenge is answerable one-handed on a phone: four-chip grids for the sprint and the duel, the on-screen keyboard for the climb, headphones for the duel. The commute, not the piano bench, is the intended setting.
+
 The one place hard ordering *is* correct is invisible to the user: the deck's introduction order (section 4.2). The user is never told "you may not learn this yet"; the deck simply teaches prerequisites first.
 
 ### 5.3 What is deliberately not reused
@@ -461,7 +470,7 @@ Explicit, and the owner authorised aggressive removal.
 - `src/lib/copy/mnemonics.ts`, including its "NEVER invent filler: better none than cheesy" rule.
 - The ø7-vs-°7 lesson (`TheoryLessons.svelte:184-199`), which is correct.
 - `CountingChipRow.svelte` and its shape grammar (m3 solid ink, M3 outline, so `m7` reads small-big-small). Units 5 and 6 reuse it as-is; nothing in this design changes its `stackedThirdsFor` source of truth.
-- The anti-guilt copy discipline. Every new string specified here obeys it.
+- The anti-guilt copy discipline. Every new string specified here obeys it (and the game layer obeys the game-layer rule in section 5.2).
 - FSRS itself: `scheduler.ts`, the grading path, `recordGrade`, `deriveCellState`, `masteryDayCount`, `selectReviewCards`, `interleaveQueue`. The path reads these. It never rewrites them.
 
 ---

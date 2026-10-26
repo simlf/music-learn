@@ -52,6 +52,22 @@
 	import PracticeDegreeDrill from '$lib/components/PracticeDegreeDrill.svelte';
 	import ScaleKeyboardDrill from '$lib/components/ScaleKeyboardDrill.svelte';
 	import { MAJOR_SCALE_ROOTS, majorScaleNotes } from '$lib/theory/scale';
+	import TierPath from '$lib/components/TierPath.svelte';
+	import ChallengeCards from '$lib/components/ChallengeCards.svelte';
+	import SprintChallenge from '$lib/components/SprintChallenge.svelte';
+	import EarDuelChallenge from '$lib/components/EarDuelChallenge.svelte';
+	import KeyClimbChallenge from '$lib/components/KeyClimbChallenge.svelte';
+	import {
+		challengeOrder,
+		challengePool,
+		keyClimbQuality,
+		type ChallengeId
+	} from '$lib/practice/challenges';
+	import {
+		takeUnlockMoment,
+		tierPath,
+		type TierPath as TierPathData
+	} from '$lib/practice/tierPath';
 
 	/**
 	 * Phase 27 Plan 04+05: the thin `/practice` host. Owns ONLY reactive
@@ -60,9 +76,11 @@
 	 * PracticeIntervalDrill/BuildSession (the three FSRS-carded families,
 	 * 27-01/27-03) and ShellVoicingDrill/ProgressionDrill (the two synthetic,
 	 * non-persisted families, woven in by Plan 05 via their 27-02 embed
-	 * seams). Never a mode-picker grid (PRAC-01) - a single "Start practice"
-	 * action, populated by the hybrid FSRS+synthetic queue composed via
-	 * practiceQueue.ts.
+	 * seams). The daily round is never a mode-picker grid (PRAC-01) - a single
+	 * "Start practice" action, populated by the hybrid FSRS+synthetic queue
+	 * composed via practiceQueue.ts. The challenge cards below it
+	 * (ml-practice-game) are not a way into that round: they are a separate,
+	 * ungraded game layer that never touches the queue or the deck.
 	 */
 
 	type PageState =
@@ -153,14 +171,76 @@
 	let lastSession = $state<DaySummary | undefined>(undefined);
 
 	/**
-	 * The quiet tier line under the pre-start register (ml-practice-variety):
+	 * The tier line under the pre-start register (ml-practice-variety):
 	 * "TIER 2 · ALL-KEY TRIADS". Read after the round's introduction pass,
 	 * which is where a mastered tier silently opens the next, so the line is
-	 * the tier this round's new material came from. A plain statement, never a
-	 * progress bar or a "N to go" count: the ladder is visible without turning
-	 * into a scoreboard (the anti-guilt rule, .planning/design/guided-path.md).
+	 * the tier this round's new material came from.
+	 *
+	 * ml-practice-game draws it as a path (TierPath): every tier as a stop, a
+	 * bar filling toward the next tier, and one unlock moment when a tier
+	 * opens. The bar only fills (mastery never drains) and no stop is ever a
+	 * padlock: the game-layer rule in .planning/design/guided-path.md section
+	 * 5.2. `path` stays null until the deck has been read, and the plain line
+	 * renders in its place, so a deck read failure never costs the round.
 	 */
 	let currentTier = $state<TierId>(1);
+	let path = $state<TierPathData | null>(null);
+	let unlockedTier = $state<TierId | null>(null);
+
+	/**
+	 * The challenges (ml-practice-game, practice/challenges.ts): a game layer
+	 * BESIDE the daily round, never inside it. A challenge writes no FSRS grade
+	 * and no answer telemetry, so it can be played as often as wanted without
+	 * moving a single card. `activeChallenge` takes over the page while one
+	 * runs and the daily round's own state waits untouched underneath it;
+	 * `challengeRun` remounts the challenge for "Play again".
+	 */
+	let activeChallenge = $state<ChallengeId | null>(null);
+	let challengeRun = $state(0);
+	let challengeSymbols = $state<string[]>([]);
+	const today = localDateString();
+	let order = $state<ChallengeId[]>(challengeOrder(today));
+	let climbQuality = $state(keyClimbQuality(today, getLevelState()));
+
+	/** The page states the challenge cards show under: anywhere a round is not being answered. */
+	const showChallenges = $derived(
+		activeChallenge === null &&
+			!isPlaythrough &&
+			(pageState === 'pre-start' ||
+				pageState === 'complete' ||
+				pageState === 'empty-no-deck' ||
+				pageState === 'empty-none-due' ||
+				pageState === 'empty-filtered')
+	);
+
+	function playChallenge(id: ChallengeId): void {
+		challengeSymbols = challengePool(getLevelState());
+		challengeRun += 1;
+		activeChallenge = id;
+	}
+
+	function leaveChallenge(): void {
+		activeChallenge = null;
+	}
+
+	/**
+	 * Reads the deck for the tier path and refreshes what the challenges draw
+	 * from, after load() (whose introduction pass is where a tier opens).
+	 * Defensive on purpose: the path is decoration on top of the round, so any
+	 * failure leaves `path` null and the plain tier line stands in.
+	 */
+	async function refreshPath(): Promise<void> {
+		const level = getLevelState();
+		order = challengeOrder(today);
+		climbQuality = keyClimbQuality(today, level);
+		try {
+			const cards = await getAllCards();
+			path = tierPath(level, Array.isArray(cards) ? cards : []);
+			unlockedTier = takeUnlockMoment(level.currentTier);
+		} catch {
+			path = null;
+		}
+	}
 	let returningItems = $state<string[]>([]);
 
 	/** At most this many of yesterday's misses are named, so the cue stays one line. */
@@ -459,7 +539,7 @@
 	}
 
 	onMount(() => {
-		void load();
+		void load().then(refreshPath);
 	});
 
 	const currentItem = $derived(queue[0]);
@@ -960,7 +1040,35 @@
 <main class="bg-paper text-ink min-h-screen px-2 py-8 font-sans sm:px-8">
 	<h1 class="text-heading mt-2 font-bold">{t('practice.page.title')}</h1>
 
-	{#if pageState === 'loading'}
+	{#if activeChallenge !== null}
+		<div class="mt-6" data-testid="practice-challenge">
+			<!-- Leaving is always one tap away, mid-run included: a challenge abandoned
+				 part-way stores nothing and costs nothing. -->
+			<div class="mb-4">
+				<Button type="button" variant="ghost" onclick={leaveChallenge}>
+					{t('practice.challenge.back')}
+				</Button>
+			</div>
+			{#key challengeRun}
+				{#if activeChallenge === 'sprint'}
+					<SprintChallenge
+						pool={challengeSymbols}
+						onAgain={() => playChallenge('sprint')}
+					/>
+				{:else if activeChallenge === 'ear-duel'}
+					<EarDuelChallenge
+						pool={challengeSymbols}
+						onAgain={() => playChallenge('ear-duel')}
+					/>
+				{:else}
+					<KeyClimbChallenge
+						quality={climbQuality}
+						onAgain={() => playChallenge('key-climb')}
+					/>
+				{/if}
+			{/key}
+		</div>
+	{:else if pageState === 'loading'}
 		<p class="text-label mt-6 font-mono uppercase" data-testid="practice-loading">
 			{t('recall.state.loading')}
 		</p>
@@ -1005,9 +1113,15 @@
 				{isPlaythrough ? playthroughPreStartLine : preStartRegister}
 			</p>
 			{#if !isPlaythrough}
-				<p class="text-label text-muted mt-1 font-mono uppercase" data-testid="practice-tier-line">
-					{t('progress.settings.tierPrefix')} {currentTier} · {t(`progress.tier.${currentTier}.name`)}
-				</p>
+				{#if path !== null}
+					<div class="mt-4">
+						<TierPath {path} {currentTier} unlocked={unlockedTier} />
+					</div>
+				{:else}
+					<p class="text-label text-muted mt-1 font-mono uppercase" data-testid="practice-tier-line">
+						{t('progress.settings.tierPrefix')} {currentTier} · {t(`progress.tier.${currentTier}.name`)}
+					</p>
+				{/if}
 			{/if}
 
 			{#if lastSessionLine || comingBackLine}
@@ -1220,7 +1334,11 @@
 		</div>
 	{/if}
 
-	<div class="mt-8">
+	{#if showChallenges}
+		<ChallengeCards {order} {climbQuality} onPlay={playChallenge} />
+	{/if}
+
+	<div class="mt-8" class:hidden={activeChallenge !== null}>
 		<Button
 			type="button"
 			variant="ghost"
