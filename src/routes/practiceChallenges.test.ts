@@ -145,6 +145,23 @@ describe('the tier path on the pre-start card', () => {
 		await screen.findByTestId('tier-path');
 		expect(screen.queryByTestId('tier-path-unlocked')).toBeNull();
 	});
+
+	it('keeps the unlock moment for a visit that shows the path, not one that lands empty', async () => {
+		localStorage.setItem(TIER_SEEN_KEY, '1');
+		localStorage.setItem(LEVEL_KEY, JSON.stringify({ currentTier: 2, unlockedTiers: [1, 2] }));
+		getDueCardsMock.mockResolvedValueOnce([]);
+		getAllCardsMock.mockResolvedValueOnce([makeChordCard('C')]);
+		const empty = render(PracticePage);
+		await screen.findByTestId('practice-empty-none-due');
+		await screen.findByTestId('challenge-cards');
+		await vi.waitFor(() => expect(getAllCardsMock).toHaveBeenCalledTimes(2));
+		empty.unmount();
+
+		render(PracticePage);
+		expect(await screen.findByTestId('tier-path-unlocked')).toHaveTextContent(
+			'New tier open: All-key triads.'
+		);
+	});
 });
 
 describe('the challenge cards', () => {

@@ -236,7 +236,8 @@
 		try {
 			const cards = await getAllCards();
 			path = tierPath(level, Array.isArray(cards) ? cards : []);
-			unlockedTier = takeUnlockMoment(level.currentTier);
+			unlockedTier =
+				pageState === 'pre-start' && !isPlaythrough ? takeUnlockMoment(level.currentTier) : null;
 		} catch {
 			path = null;
 		}
