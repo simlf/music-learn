@@ -1,14 +1,20 @@
 {
 	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
-	"extends": ["config:recommended", "schedule:monthly"],
+	"extends": ["config:recommended", "schedule:monthly", "helpers:pinGitHubActionDigests"],
 	"enabledManagers": ["npm", "github-actions", "dockerfile", "docker-compose"],
 	"dependencyDashboard": false,
 	"packageRules": [
 		{
-			"description": "Batch every non-major update into one monthly PR and automerge it once CI passes",
-			"matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+			"description": "Pin every Docker image by sha256 digest, keeping the tag for readability",
+			"matchManagers": ["dockerfile", "docker-compose"],
+			"pinDigests": true
+		},
+		{
+			"description": "Batch every non-major update into one monthly PR, held until 2 days after release, and automerge it once CI passes",
+			"matchUpdateTypes": ["minor", "patch", "pin", "digest", "pinDigest"],
 			"groupName": "all non-major dependencies",
 			"groupSlug": "all-minor-patch",
+			"minimumReleaseAge": "2 days",
 			"automerge": true,
 			"automergeType": "pr"
 		}
