@@ -3,6 +3,7 @@ import { flushSync } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setLocale } from '$lib/i18n/locale.svelte';
 import { setCompSongSeed } from '$lib/practice/compSongSeed';
+import { setCompPresetSeed } from '$lib/practice/compPresetSeed';
 import type { CompLoopHandle, CompLoopOptions } from '$lib/audio/audio';
 
 /**
@@ -309,6 +310,35 @@ describe('what the loop shows before it even starts', () => {
 	});
 });
 
+describe('the guide-tone reading and a lesson hand-off (design 4.3)', () => {
+	it('names the guide tone that holds and the one that falls into the bar on screen', async () => {
+		render(CompingLoop);
+		expect(screen.queryByTestId('comping-guide-motion')).not.toBeInTheDocument();
+		await clickStart();
+		flushSync(() => lastStart().onBar?.(1));
+		expect(screen.getByTestId('comping-guide-motion')).toHaveTextContent(
+			'Guide tones: F holds, C falls a half step to B.'
+		);
+		flushSync(() => lastStart().onBar?.(2));
+		expect(screen.getByTestId('comping-guide-motion')).toHaveTextContent(
+			'Guide tones: B holds, F falls a half step to E.'
+		);
+		// The form wrapping round from I to ii is not that motion, so it says nothing.
+		flushSync(() => lastStart().onBar?.(0));
+		expect(screen.queryByTestId('comping-guide-motion')).not.toBeInTheDocument();
+	});
+
+	it('lands on the form and key a lesson handed over, one-shot', () => {
+		setCompPresetSeed('minor-ii-V-i', 'F');
+		render(CompingLoop);
+		expect(screen.getByTestId('comping-position')).toHaveTextContent('KEY: F MINOR');
+		expect(currentChip()).toHaveTextContent('Gm7b5');
+		cleanup();
+		render(CompingLoop);
+		expect(screen.getByTestId('comping-position')).toHaveTextContent('KEY: C MAJOR');
+	});
+});
+
 describe('song mode (proposal 2: Play over it)', () => {
 	it('plays the song’s own chords instead of a template, with no roman numeral', () => {
 		setCompSongSeed('Blue Bossa', ['Cm7', 'Fm7', 'Bb7']);
@@ -374,9 +404,11 @@ describe('starting, following, and stopping', () => {
 		expect(startCalls).toHaveLength(1);
 		expect(lastStart().bpm).toBe(70);
 		expect(lastStart().roll).toBe(false);
+		// Voice-led: G7 keeps Dm7's F4 and drops C5 to B4, Cmaj7 keeps the B4
+		// and drops F4 to E4, so the guide tones move by step, never by leap.
 		expect(lastStart().bars.map((bar) => bar.pitches)).toEqual([
 			['D3', 'F4', 'C5'],
-			['G3', 'B4', 'F5'],
+			['G3', 'F4', 'B4'],
 			['C3', 'E4', 'B4']
 		]);
 		expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument();
@@ -501,7 +533,7 @@ describe('loop this bar (hold)', () => {
 		await fireEvent.click(holdButton());
 
 		expect(startCalls).toHaveLength(2);
-		expect(lastStart().bars.map((bar) => bar.pitches)).toEqual([['G3', 'B4', 'F5']]);
+		expect(lastStart().bars.map((bar) => bar.pitches)).toEqual([['G3', 'F4', 'B4']]);
 		expect(currentChip()).toHaveTextContent('G7');
 		expect(screen.getByTestId('comping-position')).toHaveTextContent('BAR 2 / 3');
 
