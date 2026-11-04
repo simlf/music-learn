@@ -4,6 +4,7 @@ import {
 	toAsciiPitchClass,
 	toAscendingPitches,
 	toCompPitches,
+	toVoiceLedCompPitches,
 	toMelodyPitch,
 	toPitch
 } from './voicing';
@@ -102,6 +103,47 @@ describe('toCompPitches', () => {
 
 	it('voices the bass alone when there are no guide tones', () => {
 		expect(toCompPitches('C', [])).toEqual(['C3']);
+	});
+});
+
+describe('toVoiceLedCompPitches', () => {
+	const midis = (pitches: string[]) => pitches.map((pitch) => Note.midi(pitch) as number);
+
+	it('voice-leads ii V I in C: the common tone holds on its key, the 7th falls one key', () => {
+		const dm7 = toCompPitches('D', ['F', 'C']);
+		const g7 = toVoiceLedCompPitches('G', ['B', 'F'], dm7.slice(1));
+		const cmaj7 = toVoiceLedCompPitches('C', ['E', 'B'], g7.slice(1));
+		expect([dm7, g7, cmaj7]).toEqual([
+			['D3', 'F4', 'C5'],
+			['G3', 'F4', 'B4'],
+			['C3', 'E4', 'B4']
+		]);
+		expect([dm7, g7, cmaj7].map(midis)).toEqual([
+			[50, 65, 72],
+			[55, 65, 71],
+			[48, 64, 71]
+		]);
+	});
+
+	it('is exactly toCompPitches for a first bar, with nothing to lead from', () => {
+		expect(toVoiceLedCompPitches('G', ['B', 'F'], [])).toEqual(toCompPitches('G', ['B', 'F']));
+		expect(toVoiceLedCompPitches('G', ['B', 'F'], ['garbage'])).toEqual(toCompPitches('G', ['B', 'F']));
+	});
+
+	it('returns the pitches low to high, so a rolled chord still rises from the bass', () => {
+		// The 7th (F4) lands under the 3rd (B4): sorted, not in role order.
+		const pitches = toVoiceLedCompPitches('G', ['B', 'F'], ['F4', 'C5']);
+		const sorted = [...midis(pitches)].sort((a, b) => a - b);
+		expect(midis(pitches)).toEqual(sorted);
+	});
+
+	it('lifts a guide tone that would land at or under the bass an octave, above the root', () => {
+		// After A3 E4, Bm7's A would hold on A3, under its own B3 bass.
+		expect(toVoiceLedCompPitches('B', ['D', 'A'], ['A3', 'E4'])).toEqual(['B3', 'D4', 'A4']);
+	});
+
+	it('drops a guide tone that drifted above G5 an octave, out of the player’s register', () => {
+		expect(toVoiceLedCompPitches('C', ['E', 'B'], ['A5', 'C6'])).toEqual(['C3', 'B4', 'E5']);
 	});
 });
 

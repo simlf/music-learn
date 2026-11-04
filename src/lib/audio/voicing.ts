@@ -74,6 +74,73 @@ export function toCompPitches(root: string, upper: string[]): string[] {
 	return [bass, ...ascendFrom(upper, COMP_UPPER_OCTAVE, bassMidi)];
 }
 
+/**
+ * The highest a voice-led guide tone may climb before it drops an octave:
+ * the top of the comp's register, above which belongs to the player. No
+ * unled comp voicing reaches it (the highest, a 7th stacked over a 3rd from
+ * B4, tops out at F♯5), so it only ever catches a line that has drifted up.
+ */
+const COMP_UPPER_CEILING = Note.midi('G5') as number;
+
+/**
+ * The comping voicing of a chord that FOLLOWS another one: the same bass
+ * root in octave 3, but each guide tone goes to the octave nearest the
+ * previous bar's guide tones (`previousUpper`, the upper pitches that bar
+ * actually played) instead of being restacked from octave 4. That is voice
+ * leading: a common tone stays on the very key it was on, and a 7th that
+ * resolves lands a half or whole step below, not an octave and a step away.
+ * Dm7 (D3 F4 C5) to G7 gives G3 F4 B4, and on to Cmaj7 gives C3 E4 B4.
+ *
+ * A guide tone that would land at or under the bass goes up an octave, and
+ * one that drifts above `COMP_UPPER_CEILING` comes down an octave (while it
+ * stays above the bass), so a long song cannot walk the comp into the root
+ * or into the player's register. Such a voice jumps, which is the honest
+ * result: the loop's guide-tone reading measures the real pitches and names
+ * no motion for it. The result is sorted low to high, like `toCompPitches`,
+ * so a rolled chord still rises from the bass.
+ *
+ * Total: with no usable `previousUpper` (the first bar), or a root tonal
+ * cannot pitch, this is exactly `toCompPitches`.
+ */
+export function toVoiceLedCompPitches(
+	root: string,
+	upper: string[],
+	previousUpper: readonly string[]
+): string[] {
+	const previous = previousUpper
+		.map((pitch) => Note.midi(pitch))
+		.filter((midi): midi is number => midi !== null);
+	const [bass] = ascendFrom([root], COMP_BASS_OCTAVE, -1);
+	const bassMidi = bass === undefined ? null : Note.midi(bass);
+	if (previous.length === 0 || bass === undefined || bassMidi === null) {
+		return toCompPitches(root, upper);
+	}
+	const led = upper.map((letter) => {
+		const pitchClass = toAsciiPitchClass(letter);
+		let best: { octave: number; midi: number; distance: number } | null = null;
+		for (let octave = COMP_BASS_OCTAVE - 1; octave <= COMP_UPPER_OCTAVE + 2; octave++) {
+			const midi = Note.midi(`${pitchClass}${octave}`);
+			if (midi === null) continue;
+			const distance = Math.min(...previous.map((voice) => Math.abs(voice - midi)));
+			if (best === null || distance < best.distance) best = { octave, midi, distance };
+		}
+		if (best === null) return null;
+		let { octave, midi } = best;
+		while (midi <= bassMidi) {
+			octave += 1;
+			midi += 12;
+		}
+		while (midi > COMP_UPPER_CEILING && midi - 12 > bassMidi) {
+			octave -= 1;
+			midi -= 12;
+		}
+		return { pitch: `${pitchClass}${octave}`, midi };
+	});
+	if (led.some((note) => note === null)) return toCompPitches(root, upper);
+	const voiced = (led as { pitch: string; midi: number }[]).sort((a, b) => a.midi - b.midi);
+	return [bass, ...voiced.map((note) => note.pitch)];
+}
+
 /** Octave a melody note starts its search from when it sounds over a voiced chord. */
 const MELODY_OCTAVE = 4;
 

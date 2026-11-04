@@ -404,9 +404,11 @@ describe('starting, following, and stopping', () => {
 		expect(startCalls).toHaveLength(1);
 		expect(lastStart().bpm).toBe(70);
 		expect(lastStart().roll).toBe(false);
+		// Voice-led: G7 keeps Dm7's F4 and drops C5 to B4, Cmaj7 keeps the B4
+		// and drops F4 to E4, so the guide tones move by step, never by leap.
 		expect(lastStart().bars.map((bar) => bar.pitches)).toEqual([
 			['D3', 'F4', 'C5'],
-			['G3', 'B4', 'F5'],
+			['G3', 'F4', 'B4'],
 			['C3', 'E4', 'B4']
 		]);
 		expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument();
@@ -531,7 +533,7 @@ describe('loop this bar (hold)', () => {
 		await fireEvent.click(holdButton());
 
 		expect(startCalls).toHaveLength(2);
-		expect(lastStart().bars.map((bar) => bar.pitches)).toEqual([['G3', 'B4', 'F5']]);
+		expect(lastStart().bars.map((bar) => bar.pitches)).toEqual([['G3', 'F4', 'B4']]);
 		expect(currentChip()).toHaveTextContent('G7');
 		expect(screen.getByTestId('comping-position')).toHaveTextContent('BAR 2 / 3');
 
