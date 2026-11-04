@@ -63,6 +63,20 @@ export interface LessonStep {
 	 * with `semitonesFromC`'s result. `null` when the step has no tap to grade.
 	 */
 	wrongHint: BilingualCopy | null;
+	/**
+	 * Optional: the keyboard's whole lit state after this step's correct tap,
+	 * replacing what was earned so far. For a lesson where one tap changes
+	 * more than one note's meaning (unit 11: a held note turns from one
+	 * chord's 3rd into the next chord's 7th). Omitted, the tap earns only
+	 * its own `letter`/`role`, as every earlier lesson does.
+	 */
+	shows?: { letter: string; role: IntervalRole }[];
+	/**
+	 * Optional: the letters "Hear it" plays as one chord while this step is
+	 * active, instead of the C-anchored root + preview pair. Omitted, "Hear
+	 * it" behaves as it always has.
+	 */
+	hearNotes?: string[];
 }
 
 /**

@@ -4,11 +4,19 @@
 	import ShellCycleDrill from '$lib/components/ShellCycleDrill.svelte';
 	import CircleConcept from '$lib/components/CircleConcept.svelte';
 	import CircleOfFifthsDrill from '$lib/components/CircleOfFifthsDrill.svelte';
+	import InteractiveLesson from '$lib/components/InteractiveLesson.svelte';
+	import GuideToneLines from '$lib/components/GuideToneLines.svelte';
+	import GuideToneCycleDrill from '$lib/components/GuideToneCycleDrill.svelte';
+	import Button from '$lib/components/Button.svelte';
+	import { GUIDE_TONE_LESSON } from '$lib/lessons/guideToneLesson';
+	import { GUIDE_TONE_KEY, GUIDE_TONE_TEMPLATE_ID } from '$lib/lessons/guideTones';
+	import { setCompPresetSeed } from '$lib/practice/compPresetSeed';
 	import {
 		chapterById,
 		CIRCLE_CHAPTER,
 		CIRCLE_DISTANCE_CHECK,
 		CIRCLE_LAP_CHECK,
+		GUIDE_TONES_CHAPTER,
 		SHELL_CYCLE_CHECK,
 		SHELLS_CHAPTER
 	} from '$lib/path/chapters';
@@ -24,13 +32,41 @@
 	let { data }: PageProps = $props();
 
 	const chapter = $derived(chapterById(data.chapterId));
+
+	/** Chapter 11's lesson hands off to the comping loop pre-set to the ii V I in C it just taught (improvisation.md 4.3.1). */
+	function openGuideToneLoop(): void {
+		setCompPresetSeed(GUIDE_TONE_TEMPLATE_ID, GUIDE_TONE_KEY);
+	}
 </script>
 
 <main class="bg-paper text-ink min-h-screen px-2 py-8 font-sans sm:px-8">
 	<!-- max-w must stay an arbitrary value: the Print Shop @theme defines
 	     --spacing-2xl: 48px, so a named max-w-2xl utility resolves to 48px. -->
 	<div class="mx-auto flex max-w-[42rem] flex-col gap-8">
-		{#if chapter?.id === SHELLS_CHAPTER.id}
+		{#if chapter?.id === GUIDE_TONES_CHAPTER.id}
+			<Chapter {chapter}>
+				{#snippet concept()}
+					<p class="text-body">{t('book.ch11.concept.body')}</p>
+					<InteractiveLesson
+						steps={GUIDE_TONE_LESSON}
+						showHandoff={false}
+						subtitleKey="book.ch11.lesson.subtitle"
+					/>
+					<p class="text-body">{t('book.ch11.handoff.body')}</p>
+					<div>
+						<Button href="/learn#learn-comping" onclick={openGuideToneLoop} data-testid="guide-tones-handoff">
+							{t('book.ch11.handoff.cta')}
+						</Button>
+					</div>
+					<p class="text-body">{t('book.ch11.concept.linesIntro')}</p>
+					<GuideToneLines />
+				{/snippet}
+				{#snippet piano()}
+					<p class="text-body">{t('book.ch11.piano.intro')}</p>
+					<GuideToneCycleDrill />
+				{/snippet}
+			</Chapter>
+		{:else if chapter?.id === SHELLS_CHAPTER.id}
 			<Chapter {chapter}>
 				{#snippet concept()}
 					<p class="text-body">{t('book.ch15.concept.body')}</p>

@@ -3,6 +3,7 @@ import { Note } from 'tonal';
 import {
 	barsFromSymbols,
 	buildCompBars,
+	compBarGuideMotion,
 	compBarScale,
 	compScaleGhosts,
 	compVoicing,
@@ -385,5 +386,51 @@ describe('barsFromSymbols: the song-driven sibling of buildCompBars', () => {
 	it('keeps a slash embedded in the quality name itself, not a bass, intact', () => {
 		const bars = barsFromSymbols(['C6/9']);
 		expect(bars[0].quality).toBe('6/9');
+	});
+});
+
+describe('compBarGuideMotion: the loop reads its own guide tones moving', () => {
+	const motions = (templateId: string, key: string) => {
+		const bars = buildCompBars(templateId, key);
+		return bars.map((bar, index) => compBarGuideMotion(bars[(index - 1 + bars.length) % bars.length], bar));
+	};
+
+	it('names ii V I in C exactly as the lesson does: F holds while C falls to B, then B holds while F falls to E', () => {
+		expect(motions('major-ii-V-I', 'C')).toEqual([
+			null,
+			[
+				{ from: 'F', to: 'F', semitonesDown: 0 },
+				{ from: 'C', to: 'B', semitonesDown: 1 }
+			],
+			[
+				{ from: 'B', to: 'B', semitonesDown: 0 },
+				{ from: 'F', to: 'E', semitonesDown: 1 }
+			]
+		]);
+	});
+
+	it('counts the minor V to i fall as a whole step, never assumed to be a half step', () => {
+		expect(motions('minor-ii-V-i', 'C')[2]?.[1]).toEqual({ from: 'F', to: 'E♭', semitonesDown: 2 });
+	});
+
+	it('says nothing about a change that does not move that way (I to vi)', () => {
+		const turnaround = motions('major-turnaround-I-vi-ii-V', 'C');
+		expect(turnaround[1]).toBeNull();
+		expect(turnaround[3]).not.toBeNull();
+	});
+
+	it('in every key of every form, each named voice holds or falls at most a whole step, and every ii to V is named', () => {
+		for (const template of PROGRESSION_TEMPLATES) {
+			for (const key of PROGRESSION_KEYS) {
+				const named = motions(template.id, key);
+				for (const motion of named) {
+					for (const voice of motion ?? []) expect(voice.semitonesDown).toBeLessThanOrEqual(2);
+				}
+				const bars = buildCompBars(template.id, key);
+				bars.forEach((bar, index) => {
+					if (bar.roman.startsWith('V') && index > 0) expect(named[index], `${template.id} ${key}`).not.toBeNull();
+				});
+			}
+		}
 	});
 });

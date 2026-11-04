@@ -3,7 +3,8 @@ import type { LocaleDict } from './index';
 /**
  * Book domain dictionary: the method-book chapter template (Concept / At the
  * piano / In the repertoire / Practice checklist, `Chapter.svelte`) and the
- * chapters built on it, starting with chapter 15, shells in every key.
+ * chapters built on it: chapter 11 (guide tones, the first Part I unit on
+ * the template), then chapters 15 and 16.
  *
  * IMMUNITY: chord symbols, note letters, roman numerals, key letters, tune
  * titles and years stay raw values, never routed through t(). `{name}`
@@ -12,6 +13,7 @@ import type { LocaleDict } from './index';
 export const book = {
 	en: {
 		// Chapter chrome
+		'book.part.1': 'Part I · Reading the chart',
 		'book.part.2': 'Part II · The left hand',
 		'book.chapter.label': 'Chapter',
 		'book.chapter.back': 'Back to Learn',
@@ -34,6 +36,67 @@ export const book = {
 
 		// /learn entry row
 		'book.learn.open': 'Open the chapter',
+
+		// Chapter 11: guide tones and voice leading
+		'book.ch11.title': 'Guide tones and voice leading',
+		'book.ch11.idea':
+			'In a ii V I, the 7th of each chord falls a half step to the 3rd of the next while the other note holds. That is why two notes sound like music.',
+		'book.ch11.concept.body':
+			'The shell is two notes, the 3rd and the 7th, because those two carry the chord: the 3rd says major or minor, the 7th says which seventh. They are also the two that move. Play a ii V I with nothing else and, at each change, one of them holds while the other steps down a half step. Tap your way through it first.',
+		'book.ch11.lesson.subtitle': 'ii V I in C, the 3rd and the 7th only. Tap each note the line moves to.',
+		'book.ch11.handoff.body':
+			'The comping loop plays this ii V I in C on repeat and names, bar by bar, which guide tone holds and which falls. Play the two notes along with it.',
+		'book.ch11.handoff.cta': 'Open the comping loop on ii V I in C',
+		'book.ch11.concept.linesIntro':
+			'The same ii V I as a pattern, one line of code per voice: the top line, the bottom line, then the roots. Pick a key and press Play. Then open the pattern, delete the roots line, and hear that the two guide tones still say ii V I.',
+		'book.ch11.lines.keyLabel': 'Key',
+		'book.ch11.lines.upper': 'Top line:',
+		'book.ch11.lines.lower': 'Bottom line:',
+		'book.ch11.lines.play': 'Play the lines',
+		'book.ch11.lines.stop': 'Stop',
+		'book.ch11.lines.edit': 'Edit the pattern',
+		'book.ch11.lines.reset': 'Reset',
+		'book.ch11.lines.editIntro':
+			'Each note(...) line is one voice. Delete a line or change a note, then play it again.',
+		'book.ch11.lines.soundOff':
+			'Sound is off, so this pattern has nothing to play. Turn it back on in Progress, under Practice Settings.',
+		'book.ch11.lines.unavailable':
+			"Live code isn't available right now. Open this once with an internet connection so your device can keep it for offline use.",
+		'book.ch11.lines.visualUnavailable':
+			"The pattern is playing, but its pianoroll can't be shown right now. Open this once with an internet connection so your device can keep it for offline use.",
+		'book.ch11.lines.errorPrefix': 'That pattern has a problem:',
+		'book.ch11.piano.intro':
+			"A ii V I in all 12 keys, around the cycle of fourths, with the 3rd and the 7th only: no root. Start each key with either note at the bottom. From the V on, keep the note that holds on its key and move the other one down. Right notes played with a jump are a retry.",
+		'book.ch11.keyLabel': 'Key',
+		'book.ch11.prompt.first': 'The 3rd and the 7th only, no root. Either one at the bottom.',
+		'book.ch11.prompt.next': 'The 3rd and the 7th only, carrying on the line: one note holds, the other steps down.',
+		'book.ch11.motion': 'Keep {held}. Move {from} down to {to}.',
+		'book.ch11.button.check': 'Check',
+		'book.ch11.button.hear': 'Hear it',
+		'book.ch11.button.show': 'Show me',
+		'book.ch11.button.clear': 'Clear',
+		'book.ch11.button.again': 'Start again',
+		'book.ch11.retry.missing': 'Missing: {letters}.',
+		'book.ch11.retry.extra': 'Not a guide tone here: {letters}.',
+		'book.ch11.retry.jump':
+			'Right notes, but the hand jumped. Keep {held} on the key it was on and move {from} down a half step.',
+		'book.ch11.shown.first': 'Shown with the 3rd at the bottom. Play it, then Check.',
+		'book.ch11.shown.next': 'Shown moving on from the pair you just played. Play it, then Check.',
+		'book.ch11.right': 'Right: {symbol}.',
+		'book.ch11.keyDone': '{key} done. Next key: {next}.',
+		'book.ch11.done.clean': 'All 12 keys, every one clean.',
+		'book.ch11.done.retry':
+			'All 12 keys. Still to play clean, with no retry and no Show me: {keys}. Tap a key to run it again.',
+		'book.ch11.check.cycle': 'ii V I guide tones in all 12 keys, every key clean: no retry, no jump, no Show me.',
+		'book.ch11.check.noRoots': 'In the pattern, delete the roots line and hear the two guide tones still say ii V I.',
+		'book.ch11.check.sing': 'At your piano, play the guide tones of ii V I in C and sing the note that falls.',
+		'book.ch11.check.comp': 'Comp bars 9 to 12 of Blue Bossa with the guide tones only while the loop plays them.',
+		'book.ch11.tune.blueBossa.bars': 'Bars 9 to 12',
+		'book.ch11.tune.blueBossa.note':
+			'The tune leaves C minor for a ii V I in D♭. D♭, the 7th of E♭m7, falls to C, the 3rd of A♭7. Then G♭, the 7th of A♭7, falls to F, the 3rd of D♭maj7. Each time the other note holds.',
+		'book.ch11.tune.satinDoll.bars': 'Bars 1 to 4, two chords a bar',
+		'book.ch11.tune.satinDoll.note':
+			'Two ii Vs, each played twice, the second a whole step higher. Inside each, the 7th of the first chord falls a half step to the 3rd of the second, and the 3rd of the first holds as the 7th of the second.',
 
 		// Chapter 15: shells in every key
 		'book.ch15.title': 'Shells in every key',
@@ -149,6 +212,7 @@ export const book = {
 	},
 	fr: {
 		// Chapter chrome
+		'book.part.1': 'Partie I · Lire la grille',
 		'book.part.2': 'Partie II · La main gauche',
 		'book.chapter.label': 'Chapitre',
 		'book.chapter.back': 'Retour à Apprendre',
@@ -172,6 +236,73 @@ export const book = {
 
 		// /learn entry row
 		'book.learn.open': 'Ouvrir le chapitre',
+
+		// Chapter 11: guide tones and voice leading
+		'book.ch11.title': 'Tons de guidage et conduite des voix',
+		'book.ch11.idea':
+			"Dans un ii V I, la septième de chaque accord descend d'un demi-ton vers la tierce du suivant pendant que l'autre note tient. Voilà pourquoi deux notes sonnent comme de la musique.",
+		'book.ch11.concept.body':
+			"Le shell, ce sont deux notes, la tierce et la septième, parce que ces deux-là portent l'accord : la tierce dit majeur ou mineur, la septième dit quelle septième. Ce sont aussi les deux qui bougent. Joue un ii V I avec rien d'autre et, à chaque changement, l'une tient pendant que l'autre descend d'un demi-ton. Fais-le d'abord du bout des doigts.",
+		'book.ch11.lesson.subtitle':
+			"ii V I en do, la tierce et la septième seulement. Touche chaque note vers laquelle la ligne se déplace.",
+		'book.ch11.handoff.body':
+			"La boucle d'accompagnement joue ce ii V I en do en boucle et dit, mesure par mesure, quel ton de guidage tient et lequel descend. Joue les deux notes avec elle.",
+		'book.ch11.handoff.cta': "Ouvrir la boucle d'accompagnement sur ii V I en do",
+		'book.ch11.concept.linesIntro':
+			"Le même ii V I sous forme de motif, une ligne de code par voix : la ligne du haut, la ligne du bas, puis les fondamentales. Choisis un ton et appuie sur Jouer. Ouvre ensuite le motif, supprime la ligne des fondamentales, et écoute : les deux tons de guidage disent encore ii V I.",
+		'book.ch11.lines.keyLabel': 'Ton',
+		'book.ch11.lines.upper': 'Ligne du haut :',
+		'book.ch11.lines.lower': 'Ligne du bas :',
+		'book.ch11.lines.play': 'Jouer les lignes',
+		'book.ch11.lines.stop': 'Arrêter',
+		'book.ch11.lines.edit': 'Modifier le motif',
+		'book.ch11.lines.reset': 'Réinitialiser',
+		'book.ch11.lines.editIntro':
+			'Chaque ligne note(...) est une voix. Supprime une ligne ou change une note, puis rejoue-le.',
+		'book.ch11.lines.soundOff':
+			"Le son est coupé, ce motif n'a donc rien à jouer. Réactive-le dans Progrès, dans les réglages de pratique.",
+		'book.ch11.lines.unavailable':
+			"Le live code n'est pas disponible pour l'instant. Ouvre cette page une fois avec une connexion internet pour que ton appareil puisse le garder hors ligne.",
+		'book.ch11.lines.visualUnavailable':
+			"Le motif joue, mais son affichage pianoroll ne peut pas s'afficher pour l'instant. Ouvre cette page une fois avec une connexion internet pour que ton appareil puisse le garder hors ligne.",
+		'book.ch11.lines.errorPrefix': 'Ce motif a un problème :',
+		'book.ch11.piano.intro':
+			"Un ii V I dans les 12 tonalités, autour du cycle des quartes, avec la tierce et la septième seulement : sans fondamentale. Commence chaque tonalité avec l'une ou l'autre en bas. À partir du V, garde sur sa touche la note qui tient et descends l'autre. Les bonnes notes jouées avec un saut comptent comme un nouvel essai.",
+		'book.ch11.keyLabel': 'Ton',
+		'book.ch11.prompt.first': "La tierce et la septième seulement, sans fondamentale. L'une ou l'autre en bas.",
+		'book.ch11.prompt.next':
+			"La tierce et la septième seulement, en continuant la ligne : une note tient, l'autre descend.",
+		'book.ch11.motion': 'Garde {held}. Descends {from} vers {to}.',
+		'book.ch11.button.check': 'Vérifier',
+		'book.ch11.button.hear': "L'entendre",
+		'book.ch11.button.show': 'Montre-moi',
+		'book.ch11.button.clear': 'Effacer',
+		'book.ch11.button.again': 'Recommencer',
+		'book.ch11.retry.missing': 'Il manque : {letters}.',
+		'book.ch11.retry.extra': "Pas un ton de guidage ici : {letters}.",
+		'book.ch11.retry.jump':
+			"Les bonnes notes, mais la main a sauté. Garde {held} sur sa touche et descends {from} d'un demi-ton.",
+		'book.ch11.shown.first': 'Montré avec la tierce en bas. Joue-le, puis Vérifier.',
+		'book.ch11.shown.next': 'Montré dans la suite de la paire que tu viens de jouer. Joue-le, puis Vérifier.',
+		'book.ch11.right': 'Juste : {symbol}.',
+		'book.ch11.keyDone': '{key} fini. Tonalité suivante : {next}.',
+		'book.ch11.done.clean': 'Les 12 tonalités, toutes sans faute.',
+		'book.ch11.done.retry':
+			'Les 12 tonalités. Reste à jouer sans faute, sans nouvel essai ni Montre-moi : {keys}. Touche une tonalité pour la refaire.',
+		'book.ch11.check.cycle':
+			'Les tons de guidage du ii V I dans les 12 tonalités, chacune sans faute : ni nouvel essai, ni saut, ni Montre-moi.',
+		'book.ch11.check.noRoots':
+			'Dans le motif, supprime la ligne des fondamentales et écoute les deux tons de guidage dire encore ii V I.',
+		'book.ch11.check.sing':
+			'Sur ton piano, joue les tons de guidage du ii V I en do et chante la note qui descend.',
+		'book.ch11.check.comp':
+			"Accompagne les mesures 9 à 12 de Blue Bossa avec les seuls tons de guidage pendant que la boucle les joue.",
+		'book.ch11.tune.blueBossa.bars': 'Mesures 9 à 12',
+		'book.ch11.tune.blueBossa.note':
+			"Le morceau quitte do mineur pour un ii V I en ré♭. D♭, la septième de E♭m7, descend vers C, la tierce de A♭7. Puis G♭, la septième de A♭7, descend vers F, la tierce de D♭maj7. Chaque fois, l'autre note tient.",
+		'book.ch11.tune.satinDoll.bars': 'Mesures 1 à 4, deux accords par mesure',
+		'book.ch11.tune.satinDoll.note':
+			"Deux ii V, chacun joué deux fois, le second un ton plus haut. Dans chacun, la septième du premier accord descend d'un demi-ton vers la tierce du second, et la tierce du premier tient comme septième du second.",
 
 		// Chapter 15: shells in every key
 		'book.ch15.title': 'Les shells dans toutes les tonalités',

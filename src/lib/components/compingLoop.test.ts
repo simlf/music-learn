@@ -3,6 +3,7 @@ import { flushSync } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setLocale } from '$lib/i18n/locale.svelte';
 import { setCompSongSeed } from '$lib/practice/compSongSeed';
+import { setCompPresetSeed } from '$lib/practice/compPresetSeed';
 import type { CompLoopHandle, CompLoopOptions } from '$lib/audio/audio';
 
 /**
@@ -306,6 +307,35 @@ describe('what the loop shows before it even starts', () => {
 				'.piano-keyboard__key--root, .piano-keyboard__key--third, .piano-keyboard__key--fifth, .piano-keyboard__key--seventh'
 			)
 		).toHaveLength(4);
+	});
+});
+
+describe('the guide-tone reading and a lesson hand-off (design 4.3)', () => {
+	it('names the guide tone that holds and the one that falls into the bar on screen', async () => {
+		render(CompingLoop);
+		expect(screen.queryByTestId('comping-guide-motion')).not.toBeInTheDocument();
+		await clickStart();
+		flushSync(() => lastStart().onBar?.(1));
+		expect(screen.getByTestId('comping-guide-motion')).toHaveTextContent(
+			'Guide tones: F holds, C falls a half step to B.'
+		);
+		flushSync(() => lastStart().onBar?.(2));
+		expect(screen.getByTestId('comping-guide-motion')).toHaveTextContent(
+			'Guide tones: B holds, F falls a half step to E.'
+		);
+		// The form wrapping round from I to ii is not that motion, so it says nothing.
+		flushSync(() => lastStart().onBar?.(0));
+		expect(screen.queryByTestId('comping-guide-motion')).not.toBeInTheDocument();
+	});
+
+	it('lands on the form and key a lesson handed over, one-shot', () => {
+		setCompPresetSeed('minor-ii-V-i', 'F');
+		render(CompingLoop);
+		expect(screen.getByTestId('comping-position')).toHaveTextContent('KEY: F MINOR');
+		expect(currentChip()).toHaveTextContent('Gm7b5');
+		cleanup();
+		render(CompingLoop);
+		expect(screen.getByTestId('comping-position')).toHaveTextContent('KEY: C MAJOR');
 	});
 });
 

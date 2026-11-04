@@ -67,6 +67,10 @@ export const learn = {
 		'learn.comping.voicingCaption-flat5':
 			'On this bar the ♭5 stays in too. On a ♭5 symbol the fifth is the chord identity, not filler.',
 		'learn.comping.keyboardCaption': 'The lit keys are what the loop plays on this bar.',
+		'learn.comping.guideLine': 'Guide tones: {MOVES}.',
+		'learn.comping.guideHold': '{FROM} holds',
+		'learn.comping.guideHalf': '{FROM} falls a half step to {TO}',
+		'learn.comping.guideWhole': '{FROM} falls a whole step to {TO}',
 		'learn.comping.soundOff':
 			'Sound is off, so the loop has nothing to play. Turn it back on in Progress, under Practice Settings.',
 		'learn.comping.studyNote':
@@ -151,6 +155,10 @@ export const learn = {
 		'learn.comping.voicingCaption-flat5':
 			"Sur cette mesure la ♭5 reste aussi. Sur un symbole en ♭5, la quinte fait l'identité de l'accord, ce n'est pas du remplissage.",
 		'learn.comping.keyboardCaption': 'Les touches allumées sont ce que la boucle joue sur cette mesure.',
+		'learn.comping.guideLine': 'Tons de guidage : {MOVES}.',
+		'learn.comping.guideHold': '{FROM} tient',
+		'learn.comping.guideHalf': "{FROM} descend d'un demi-ton vers {TO}",
+		'learn.comping.guideWhole': "{FROM} descend d'un ton vers {TO}",
 		'learn.comping.soundOff':
 			'Le son est coupé, la boucle n\'a donc rien à jouer. Réactive-le dans Progrès, dans les réglages de pratique.',
 		'learn.comping.studyNote':

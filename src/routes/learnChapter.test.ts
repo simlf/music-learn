@@ -5,9 +5,11 @@ import { spellChord } from '$lib/theory/chord';
 import { chromaOf } from '$lib/theory/interval';
 import { PATH_KEY, checklistTicks } from '$lib/path/pathState';
 import { consumeCompSongSeed } from '$lib/practice/compSongSeed';
+import { consumeCompPresetSeed } from '$lib/practice/compPresetSeed';
 import { consumeDrillSeeds } from '$lib/practice/drillSeeds';
 import { SHELL_CYCLE_KEYS, positionForBar, shellCycleBars, voiceRootedShell } from '$lib/practice/shellCycle';
 import { HOPS_PER_ROUND, ROUNDS_PER_LAP, cycleRound, stepsFrom } from '$lib/practice/circleOfFifths';
+import { GUIDE_TONE_CYCLE_KEYS, guideToneCycleBars, voiceGuideTones } from '$lib/practice/guideToneCycle';
 
 /**
  * /learn/[chapter]: the method-book chapter template rendering chapter 15.
@@ -19,7 +21,9 @@ import { HOPS_PER_ROUND, ROUNDS_PER_LAP, cycleRound, stepsFrom } from '$lib/prac
 vi.mock('$lib/audio/audio', () => ({
 	playChord: vi.fn(),
 	playNote: vi.fn(),
-	ensureAudioReady: vi.fn()
+	ensureAudioReady: vi.fn(),
+	soundEnabled: () => true,
+	onAppAudioStart: () => () => {}
 }));
 
 const gotoMock = vi.fn();
@@ -32,6 +36,7 @@ const { load, entries } = await import('./learn/[chapter]/+page');
 
 const CHAPTER_ID = 'shells-in-every-key';
 const CIRCLE_ID = 'circle-of-fifths';
+const GUIDE_TONES_ID = 'guide-tones';
 
 function renderPage(chapterId = CHAPTER_ID) {
 	// The page reads only `data`; the route's other props are irrelevant here.
@@ -51,7 +56,8 @@ afterEach(() => {
 
 describe('/learn/[chapter] route', () => {
 	it('prerenders every chapter and 404s an unknown one', () => {
-		expect(entries()).toEqual([{ chapter: CHAPTER_ID }, { chapter: CIRCLE_ID }]);
+		expect(entries()).toEqual([{ chapter: GUIDE_TONES_ID }, { chapter: CHAPTER_ID }, { chapter: CIRCLE_ID }]);
+		expect(load({ params: { chapter: GUIDE_TONES_ID } } as never)).toEqual({ chapterId: GUIDE_TONES_ID });
 		expect(load({ params: { chapter: CIRCLE_ID } } as never)).toEqual({ chapterId: CIRCLE_ID });
 		expect(load({ params: { chapter: CHAPTER_ID } } as never)).toEqual({ chapterId: CHAPTER_ID });
 		expect(() => load({ params: { chapter: 'nope' } } as never)).toThrow();
@@ -261,6 +267,122 @@ describe('chapter 16, the circle of fifths, on the four-block template', () => {
 			const { container } = renderPage(CIRCLE_ID);
 			if (locale === 'fr') {
 				expect(screen.getByRole('heading', { level: 1, name: 'Le cycle des quintes' })).toBeInTheDocument();
+			}
+			expect(container.textContent).not.toMatch(/[–—]/);
+			cleanup();
+		}
+	});
+});
+
+describe('chapter 11, guide tones, on the four-block template', () => {
+	/** The keys inside `scope` whose accessible name resolves to `letter`'s pitch class, left to right. */
+	const keysIn = (scope: HTMLElement, letter: string) =>
+		within(scope)
+			.getAllByRole('button', { name: / key(, selected)?$/ })
+			.filter((key) => chromaOf((key.getAttribute('aria-label') ?? '').replace(/ key(, selected)?$/, '')) === chromaOf(letter));
+
+	it('renders as the first Part I chapter, with its one idea and the four blocks', () => {
+		renderPage(GUIDE_TONES_ID);
+		expect(screen.getByRole('heading', { level: 1, name: 'Guide tones and voice leading' })).toBeInTheDocument();
+		expect(screen.getByText('Part I · Reading the chart · Chapter 11')).toBeInTheDocument();
+		expect(screen.getByTestId('chapter-idea').textContent).toContain(
+			'the 7th of each chord falls a half step to the 3rd of the next'
+		);
+		for (const id of ['chapter-concept', 'chapter-piano', 'chapter-repertoire', 'chapter-checklist']) {
+			expect(screen.getByTestId(id)).toBeInTheDocument();
+		}
+	});
+
+	it('teaches the concept as the step lesson, hands off to the comping loop, then the editable two-line pattern, with no /practice handoff', () => {
+		renderPage(GUIDE_TONES_ID);
+		const concept = screen.getByTestId('chapter-concept');
+		const lesson = within(concept).getByTestId('interactive-lesson');
+		const handoff = within(concept).getByTestId('guide-tones-handoff');
+		const lines = within(concept).getByTestId('guide-lines');
+		expect(lesson.compareDocumentPosition(handoff) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		expect(handoff.compareDocumentPosition(lines) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		expect(within(lesson).getByText('Two notes, one chord')).toBeInTheDocument();
+		expect(within(concept).queryByTestId('lesson-handoff')).toBeNull();
+		expect(within(lines).getByTestId('guide-lines-upper').textContent).toContain('C → B → B');
+		expect(within(lines).getByTestId('guide-lines-lower').textContent).toContain('F → F → E');
+	});
+
+	it('walking the lesson relights the board per chord and never writes a /practice seed', async () => {
+		renderPage(GUIDE_TONES_ID);
+		const lesson = screen.getByTestId('interactive-lesson');
+		const tap = async (letter: string) => {
+			await fireEvent.click(keysIn(lesson, letter)[0]);
+		};
+		await tap('C');
+		await tap('B');
+		await tap('E');
+		expect(within(screen.getByTestId('lesson-step-2')).getByTestId('lesson-feedback').textContent).toContain(
+			'B held: the 3rd of G7 is the 7th of Cmaj7.'
+		);
+		expect(within(lesson).getByRole('button', { name: 'Continue' })).toBeInTheDocument();
+		expect(consumeDrillSeeds()).toEqual([]);
+	});
+
+	it('the lesson hands off to the comping loop pre-set to ii V I in C', async () => {
+		renderPage(GUIDE_TONES_ID);
+		const handoff = screen.getByTestId('guide-tones-handoff');
+		expect(handoff.getAttribute('href')).toBe('/learn#learn-comping');
+		handoff.addEventListener('click', (event) => event.preventDefault());
+		await fireEvent.click(handoff);
+		expect(consumeCompPresetSeed()).toEqual({ templateId: 'major-ii-V-I', key: 'C' });
+	});
+
+	it('marks the exercise CHECKED, but a clean cycle never ticks the checklist: the proof stays the voicing drill', async () => {
+		renderPage(GUIDE_TONES_ID);
+		expect(screen.getByTestId('chapter-grading').textContent).toContain('Checked');
+		const piano = screen.getByTestId('chapter-piano');
+		expect(within(piano).getByTestId('guide-cycle')).toBeInTheDocument();
+		for (const key of GUIDE_TONE_CYCLE_KEYS) {
+			let previous: number[] | null = null;
+			for (const [index, bar] of guideToneCycleBars(key).entries()) {
+				const voiced = voiceGuideTones(spellChord(bar.symbol), index, previous);
+				for (const note of voiced) {
+					const el = keysIn(piano, note.letter)[note.octave - 4];
+					fireEvent.pointerDown(el);
+					fireEvent.click(el);
+				}
+				previous = voiced.map((note) => note.pitch);
+				await fireEvent.click(screen.getByTestId('guide-cycle-check'));
+			}
+		}
+		expect(screen.getByTestId('guide-cycle-done').textContent).toContain('All 12 keys, every one clean.');
+		const line = screen.getAllByTestId('checklist-item').find((item) => item.dataset.item === 'guide-cycle')!;
+		expect(line.dataset.ticked).not.toBe('true');
+		expect(checklistTicks(GUIDE_TONES_ID)).toEqual([]);
+	});
+
+	it('shows Blue Bossa and Satin Doll as changes only, and hands Blue Bossa to the loop', async () => {
+		renderPage(GUIDE_TONES_ID);
+		const tunes = screen.getAllByTestId('chapter-tune');
+		expect(tunes).toHaveLength(2);
+		expect(tunes[0].textContent).toContain('Blue Bossa');
+		expect(tunes[0].textContent).toContain('1963 · changes only');
+		expect(within(tunes[0]).getByTestId('chapter-tune-strip').textContent?.replace(/\s+/g, '')).toBe(
+			'E♭m7iiA♭7VD♭maj7ID♭maj7I'
+		);
+		expect(tunes[1].textContent).toContain('Satin Doll');
+		expect(tunes[1].textContent).toContain('1953 · changes only');
+		await fireEvent.click(within(tunes[0]).getByRole('button', { name: 'Play over it' }));
+		expect(consumeCompSongSeed()).toEqual({
+			songName: 'Blue Bossa',
+			symbols: ['Ebm7', 'Ab7', 'Dbmaj7', 'Dbmaj7']
+		});
+	});
+
+	it('renders in French with no em or en dashes in either locale', () => {
+		for (const locale of ['en', 'fr'] as const) {
+			setLocale(locale);
+			const { container } = renderPage(GUIDE_TONES_ID);
+			if (locale === 'fr') {
+				expect(
+					screen.getByRole('heading', { level: 1, name: 'Tons de guidage et conduite des voix' })
+				).toBeInTheDocument();
+				expect(screen.getByText('Partie I · Lire la grille · Chapitre 11')).toBeInTheDocument();
 			}
 			expect(container.textContent).not.toMatch(/[–—]/);
 			cleanup();

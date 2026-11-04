@@ -62,8 +62,19 @@ describe('/learn: hub structure and section presence', () => {
 	it('lists the method-book chapters under the loop, each linking to its own page', () => {
 		renderPage();
 		const book = screen.getByTestId('learn-book');
-		expect(within(book).getByText('Part II · The left hand')).toBeInTheDocument();
-		const [shells, circle] = within(book).getAllByTestId('learn-chapter-row');
+		expect(within(book).getAllByTestId('learn-book-part').map((part) => part.textContent?.trim())).toEqual([
+			'Part I · Reading the chart',
+			'Part II · The left hand'
+		]);
+		const [guideTones, shells, circle] = within(book).getAllByTestId('learn-chapter-row');
+		expect(guideTones).toHaveAttribute('href', '/learn/guide-tones');
+		expect(guideTones.textContent).toContain('Chapter 11');
+		expect(guideTones.textContent).toContain('Guide tones and voice leading');
+		// Each part label sits directly above its own chapters.
+		const [partOne, partTwo] = within(book).getAllByTestId('learn-book-part');
+		expect(partOne.compareDocumentPosition(guideTones) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		expect(guideTones.compareDocumentPosition(partTwo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		expect(partTwo.compareDocumentPosition(shells) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 		expect(shells).toHaveAttribute('href', '/learn/shells-in-every-key');
 		expect(shells.textContent).toContain('Chapter 15');
 		expect(shells.textContent).toContain('Shells in every key');
