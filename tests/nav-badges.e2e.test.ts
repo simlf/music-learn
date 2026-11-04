@@ -1,6 +1,5 @@
 import { render, screen, waitFor, cleanup, within } from '@testing-library/svelte';
 import { createRawSnippet, flushSync } from 'svelte';
-import { readable } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setLocale } from '../src/lib/i18n/locale.svelte';
 import { PRACTICE_DAYS_KEY } from '../src/lib/practice/practiceDays';
@@ -17,13 +16,13 @@ import { _resetDueCount } from '../src/lib/srs/dueBadge.svelte';
  * badge answers "is there anything waiting for me" without opening Practice
  * first.
  *
- * $app/stores is mocked exactly as tests/masthead.e2e.test.ts does (the real
- * page store needs the client router). getDueCards is mocked so the count is
+ * $app/state is mocked exactly as tests/masthead.e2e.test.ts does (the real
+ * page state needs the client router). getDueCards is mocked so the count is
  * deterministic without an IndexedDB fixture.
  */
 
-vi.mock('$app/stores', () => ({
-	page: readable({ url: new URL('http://localhost/') })
+vi.mock('$app/state', () => ({
+	page: { url: new URL('http://localhost/') }
 }));
 
 const getDueCardsMock = vi.fn();

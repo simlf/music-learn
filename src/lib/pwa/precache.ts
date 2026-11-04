@@ -1,10 +1,10 @@
 /**
  * Pure helpers for the service worker's precache list and cache naming.
  *
- * This module intentionally imports nothing from `$service-worker` (the
- * virtual module only resolves inside the SW bundle) so it stays runnable
- * under Vitest. `src/service-worker.ts` passes in the `build`/`files`/
- * `prerendered` arrays and `version` string it gets from `$service-worker`.
+ * This module intentionally imports nothing from `$app/manifest` (its build
+ * values only exist inside the SW bundle) so it stays runnable under Vitest.
+ * `src/service-worker.ts` passes in the resolved `immutable`/`assets`/
+ * `prerendered` paths and the `version` string from `$app/env`.
  */
 
 import { SALAMANDER_BASE_URL } from '$lib/audio/samples';

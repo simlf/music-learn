@@ -1,5 +1,4 @@
 import { render, screen, fireEvent, within, waitFor } from '@testing-library/svelte';
-import { readable } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ProgressPage from '../src/routes/progress/+page.svelte';
 import { readSongFilter } from '$lib/practice/songFilterPref';
@@ -21,8 +20,8 @@ import { resetStatsCache } from '$lib/practice/statsCache';
  * the true persisted value.
  */
 
-vi.mock('$app/stores', () => ({
-	page: readable({ url: new URL('http://localhost/') })
+vi.mock('$app/state', () => ({
+	page: { url: new URL('http://localhost/') }
 }));
 
 const fetchStatsMock = vi.fn();

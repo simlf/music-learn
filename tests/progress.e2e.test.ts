@@ -1,16 +1,15 @@
 import { render, screen, fireEvent, within, waitFor } from '@testing-library/svelte';
 import { createRawSnippet } from 'svelte';
-import { readable } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ProgressPage from '../src/routes/progress/+page.svelte';
 import { setLocale } from '$lib/i18n/locale.svelte';
 import { resetStatsCache } from '$lib/practice/statsCache';
 import { PRACTICE_DAYS_KEY } from '$lib/practice/practiceDays';
 
-// +layout.svelte reads the `$page` store from $app/stores to mark the active
+// +layout.svelte reads `page` from $app/state to mark the active
 // nav link, same mock shape as tests/drills.e2e.test.ts.
-vi.mock('$app/stores', () => ({
-	page: readable({ url: new URL('http://localhost/') })
+vi.mock('$app/state', () => ({
+	page: { url: new URL('http://localhost/') }
 }));
 
 const fetchStatsMock = vi.fn();

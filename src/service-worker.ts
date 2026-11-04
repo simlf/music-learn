@@ -1,9 +1,11 @@
 /// <reference types="@sveltejs/kit" />
 
 // SvelteKit auto-registers this file as the production client's service
-// worker. In dev the `$service-worker` arrays are empty so the worker
-// effectively no-ops (no stale-cache risk while developing).
-import { build, files, prerendered, version } from '$service-worker';
+// worker. In dev the `immutable` and `prerendered` manifests are empty so the
+// worker effectively no-ops (no stale-cache risk while developing).
+import { version } from '$app/env';
+import { assets, immutable, prerendered } from '$app/manifest';
+import { asset, resolve } from '$app/paths';
 import { SALAMANDER_BASE_URL } from '$lib/audio/samples';
 import { SAMPLE_CACHE, cacheName, installPrecacheList, keepCache } from '$lib/pwa/precache';
 
@@ -18,7 +20,13 @@ const CACHE = cacheName(version);
 // manifest), and prerendered route HTML. The ~1.9MB Salamander samples are
 // deliberately excluded here (see installPrecacheList) and are instead
 // runtime-cached on demand the first time they're actually played.
-const PRECACHE = installPrecacheList(build, files, prerendered);
+// The manifests hold base-relative paths; resolve them to the absolute
+// pathnames the fetch handler compares against.
+const PRECACHE = installPrecacheList(
+	immutable.map(({ path }) => resolve(path)),
+	assets.map(({ path }) => asset(path)),
+	prerendered.map(({ path }) => resolve(path))
+);
 const PRECACHE_SET = new Set(PRECACHE);
 
 sw.addEventListener('install', (event) => {

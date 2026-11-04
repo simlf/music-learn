@@ -1,7 +1,7 @@
 # Build context for the web image (Dockerfile). The build stage does
 # `COPY package.json package-lock.json` + `npm ci`, then `COPY . .` +
 # `npm run build`, so the context only needs what Vite/SvelteKit actually
-# read: src/, static/, and the config files (svelte.config.js, vite.config.ts,
+# read: src/, static/, and the config files (vite.config.ts,
 # tsconfig.json, package*.json).
 #
 # Two paths must NOT be excluded:

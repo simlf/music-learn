@@ -1,4 +1,4 @@
-import { browser } from '$app/environment';
+import { browser } from '$app/env';
 import { enableMidi, midiUnsupportedReason, prewarmMidi, watchPorts } from './webmidi';
 import type { MidiEnableResult, MidiPortEvent } from './webmidi';
 
