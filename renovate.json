@@ -10,10 +10,11 @@
 			"pinDigests": true
 		},
 		{
-			"description": "Batch every non-major update into one monthly PR and automerge it once CI passes",
+			"description": "Batch every non-major update into one monthly PR, held until 2 days after release, and automerge it once CI passes",
 			"matchUpdateTypes": ["minor", "patch", "pin", "digest", "pinDigest"],
 			"groupName": "all non-major dependencies",
 			"groupSlug": "all-minor-patch",
+			"minimumReleaseAge": "2 days",
 			"automerge": true,
 			"automergeType": "pr"
 		}
