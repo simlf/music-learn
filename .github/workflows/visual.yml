@@ -24,7 +24,7 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v4
         with:
@@ -44,10 +44,10 @@ jobs:
       # so there is no separate build step here.
       #
       # `test:e2e` runs `svelte-kit sync` first. That is load-bearing on a fresh
-      # runner: tsconfig.json extends ./.svelte-kit/tsconfig.json, which only
+      # runner: tsconfig.json extends $app/tsconfig, which only
       # exists after sync, and Playwright loads tsconfig before it ever starts
       # the webServer. Without it the run dies with "Failed to resolve extends
-      # path". It passed locally only because .svelte-kit was already present.
+      # path". It passed locally only because sync had already run.
       - name: Visual checks
         run: npm run test:e2e
 

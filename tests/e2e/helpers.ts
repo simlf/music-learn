@@ -333,8 +333,12 @@ export async function openPracticeFamily(page: Page, family: Family): Promise<vo
 
 	const target = page.getByTestId(FAMILY_TESTID[family]);
 	const nameIt = page.locator('[data-testid="practice-chord-drill"][data-mode="formula"]');
+	// Answer chips are disabled only once answered, so while one is still
+	// attached the next question has not replaced the answered one yet.
+	const answeredChip = page.getByRole('button', { name: /^Answer: /, disabled: true }).first();
 	for (let guard = 0; guard < 12; guard++) {
 		await page.getByTestId('question-source-tag').waitFor();
+		await answeredChip.waitFor({ state: 'detached' });
 		if (await target.isVisible()) return;
 		if (!(await nameIt.isVisible())) return;
 		await page.getByRole('button', { name: /^Answer: / }).first().click();

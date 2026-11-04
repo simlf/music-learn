@@ -1,6 +1,5 @@
 import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/svelte';
 import { createRawSnippet, flushSync } from 'svelte';
-import { readable } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { messages } from './messages/index';
 import { setLocale, t, type MessageKey } from './locale.svelte';
@@ -43,8 +42,8 @@ import StreakBadge from '../components/StreakBadge.svelte';
 // into one file so each surface's real page can be rendered here exactly as
 // its own per-plan test file already proved it could. ----
 
-vi.mock('$app/stores', () => ({
-	page: readable({ url: new URL('http://localhost/') })
+vi.mock('$app/state', () => ({
+	page: { url: new URL('http://localhost/') }
 }));
 
 vi.mock('$lib/audio/audio', () => ({

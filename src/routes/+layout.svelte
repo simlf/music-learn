@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import '../app.css';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { fetchStreak, localDateString } from '$lib/api/progress';
 	import { localStreak } from '$lib/practice/practiceDays';
 	import { dueCount, formatDueBadge, primeDueCount, refreshDueCount } from '$lib/srs/dueBadge.svelte';
@@ -143,7 +143,7 @@
 	// refreshed here - it is a full Dexie table scan, primed once per session
 	// and refreshed on visibilitychange instead.
 	$effect(() => {
-		void $page.url.pathname;
+		void page.url.pathname;
 		syncLocalStreak();
 	});
 
@@ -212,7 +212,7 @@
 			<a
 				href={link.href}
 				class="masthead__link text-label font-mono uppercase"
-				class:masthead__link--active={isActiveLink($page.url.pathname, link.href)}
+				class:masthead__link--active={isActiveLink(page.url.pathname, link.href)}
 				style="letter-spacing: 0.08em;"
 				aria-label={mastheadAriaLabel(link)}
 			>
@@ -231,7 +231,7 @@
 		<a
 			href={link.href}
 			class="bottom-tab-bar__item font-mono"
-			class:bottom-tab-bar__item--active={isActiveLink($page.url.pathname, link.href)}
+			class:bottom-tab-bar__item--active={isActiveLink(page.url.pathname, link.href)}
 			aria-label={tabAriaLabel(link)}
 		>
 			<span class="bottom-tab-bar__icon">

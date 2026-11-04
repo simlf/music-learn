@@ -1,4 +1,4 @@
-import { browser } from '$app/environment';
+import { browser } from '$app/env';
 
 /**
  * Reactive SW-update state (Plan 22-03, PWA-03). A `.svelte.ts` module (not

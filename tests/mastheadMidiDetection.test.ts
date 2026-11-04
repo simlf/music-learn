@@ -1,6 +1,5 @@
 import { render, screen, cleanup } from '@testing-library/svelte';
 import { createRawSnippet } from 'svelte';
-import { readable } from 'svelte/store';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 
 /**
@@ -37,11 +36,11 @@ Object.defineProperty(Navigator.prototype, 'requestMIDIAccess', {
 	configurable: true
 });
 
-// Same minimal $page stub as tests/masthead.e2e.test.ts: +layout.svelte reads
-// $page.url.pathname to mark the active nav link, and the real SvelteKit client
+// Same minimal `page` stub as tests/masthead.e2e.test.ts: +layout.svelte reads
+// page.url.pathname to mark the active nav link, and the real SvelteKit client
 // router is not present when rendering the layout standalone.
-vi.mock('$app/stores', () => ({
-	page: readable({ url: new URL('http://localhost/') })
+vi.mock('$app/state', () => ({
+	page: { url: new URL('http://localhost/') }
 }));
 
 const { default: RootLayout } = await import('../src/routes/+layout.svelte');

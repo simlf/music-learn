@@ -16,7 +16,7 @@
  * background.
  */
 
-import { browser } from '$app/environment';
+import { browser } from '$app/env';
 import { getDueCards } from '$lib/srs/deck';
 import { setAppBadgeCount } from '$lib/pwa/appBadge';
 

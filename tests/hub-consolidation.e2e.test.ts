@@ -1,6 +1,5 @@
 import { render, screen, fireEvent, within, waitFor, cleanup } from '@testing-library/svelte';
 import { createRawSnippet } from 'svelte';
-import { readable } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { newCard } from '$lib/srs/scheduler';
 import type { CardRecord } from '$lib/srs/deck';
@@ -34,7 +33,7 @@ import { resetStatsCache } from '$lib/practice/statsCache';
  *
  * Mock scaffolding below is reused (not re-derived) from the harnesses each
  * per-hub suite already proved: tests/masthead.e2e.test.ts (layout +
- * $app/stores), tests/lookup.e2e.test.ts (audio contract), src/routes/
+ * $app/state), tests/lookup.e2e.test.ts (audio contract), src/routes/
  * learn.test.ts (audio contract), tests/practice-hub-mix.e2e.test.ts (deck/
  * introBudget/telemetry/audio/practiceQueue mocks + the build-it key-tap
  * sequence), and tests/progress-hub.e2e.test.ts (api/progress, api/client,
@@ -44,8 +43,8 @@ import { resetStatsCache } from '$lib/practice/statsCache';
  * real logic is stubbed away.
  */
 
-vi.mock('$app/stores', () => ({
-	page: readable({ url: new URL('http://localhost/') })
+vi.mock('$app/state', () => ({
+	page: { url: new URL('http://localhost/') }
 }));
 
 // afterNavigate is stubbed as a no-op: the Lookup page registers a callback
