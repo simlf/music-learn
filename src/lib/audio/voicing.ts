@@ -83,6 +83,15 @@ export function toCompPitches(root: string, upper: string[]): string[] {
 const COMP_UPPER_CEILING = Note.midi('G5') as number;
 
 /**
+ * The lowest a voice-led guide tone may sink before it lifts an octave: the
+ * bottom of the comp's register, the mirror of `COMP_UPPER_CEILING`. It is
+ * the lowest guide tone any template bar reaches (Gm7's B♭3 in the minor
+ * ii V i in G), so it only ever catches a song line that has drifted down
+ * towards the bass, such as a chain of dominants falling by fifths.
+ */
+const COMP_LOWER_FLOOR = Note.midi('Bb3') as number;
+
+/**
  * The comping voicing of a chord that FOLLOWS another one: the same bass
  * root in octave 3, but each guide tone goes to the octave nearest the
  * previous bar's guide tones (`previousUpper`, the upper pitches that bar
@@ -91,10 +100,11 @@ const COMP_UPPER_CEILING = Note.midi('G5') as number;
  * resolves lands a half or whole step below, not an octave and a step away.
  * Dm7 (D3 F4 C5) to G7 gives G3 F4 B4, and on to Cmaj7 gives C3 E4 B4.
  *
- * A guide tone that would land at or under the bass goes up an octave, and
- * one that drifts above `COMP_UPPER_CEILING` comes down an octave (while it
- * stays above the bass), so a long song cannot walk the comp into the root
- * or into the player's register. Such a voice jumps, which is the honest
+ * A guide tone that would land at or under the bass, or below
+ * `COMP_LOWER_FLOOR`, goes up an octave, and one that drifts above
+ * `COMP_UPPER_CEILING` comes down an octave (while it stays above the bass
+ * and the floor), so a long song cannot walk the comp down into the root or
+ * up into the player's register. Such a voice jumps, which is the honest
  * result: the loop's guide-tone reading measures the real pitches and names
  * no motion for it. The result is sorted low to high, like `toCompPitches`,
  * so a rolled chord still rises from the bass.
@@ -126,11 +136,15 @@ export function toVoiceLedCompPitches(
 		}
 		if (best === null) return null;
 		let { octave, midi } = best;
-		while (midi <= bassMidi) {
+		while (midi <= bassMidi || midi < COMP_LOWER_FLOOR) {
 			octave += 1;
 			midi += 12;
 		}
-		while (midi > COMP_UPPER_CEILING && midi - 12 > bassMidi) {
+		while (
+			midi > COMP_UPPER_CEILING &&
+			midi - 12 > bassMidi &&
+			midi - 12 >= COMP_LOWER_FLOOR
+		) {
 			octave -= 1;
 			midi -= 12;
 		}

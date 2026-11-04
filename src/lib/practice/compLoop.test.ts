@@ -393,6 +393,18 @@ describe('barsFromSymbols: the song-driven sibling of buildCompBars', () => {
 		const bars = barsFromSymbols(['C6/9']);
 		expect(bars[0].quality).toBe('6/9');
 	});
+
+	it('never lets a long falling chain of dominants walk a guide tone below B♭3', () => {
+		const chain = ['C7', 'F7', 'Bb7', 'Eb7', 'Ab7', 'Db7', 'Gb7'];
+		const floor = Note.midi('Bb3') as number;
+
+		expect(barsFromSymbols(chain)).toHaveLength(7);
+		for (const bar of [...barsFromSymbols(chain), ...barsFromSymbols([...chain, 'Fmaj7'])]) {
+			for (const pitch of bar.pitches.slice(1)) {
+				expect(Note.midi(pitch), `${bar.symbol} ${pitch}`).toBeGreaterThanOrEqual(floor);
+			}
+		}
+	});
 });
 
 describe('buildCompBars voice-leads: the guide tones move by step in the registers the loop plays', () => {
