@@ -1,9 +1,10 @@
+import { Note } from 'tonal';
 import { spellChord } from '$lib/theory/chord';
 import { shellNotes } from '$lib/practice/shellVoicing';
-import { toCompPitches } from '$lib/audio/voicing';
+import { toVoiceLedCompPitches } from '$lib/audio/voicing';
 import { buildProgression, PROGRESSION_TEMPLATES } from '$lib/practice/progressions';
 import { improvGuideFor, type ChordScaleOption } from '$lib/theory/chordScale';
-import { toAsciiAccidentals } from '$lib/theory/interval';
+import { chromaOf, toAsciiAccidentals } from '$lib/theory/interval';
 import type { SpelledNote } from '$lib/theory/types';
 
 /**
@@ -39,7 +40,11 @@ export interface CompBar {
 	quality: string;
 	/** Root + guide tones, interval-tagged, for the keyboard display. */
 	notes: SpelledNote[];
-	/** Tone-ready ASCII pitches, root in the bass (see voicing.toCompPitches). */
+	/**
+	 * Tone-ready ASCII pitches, low to high, root in the bass: voice-led from
+	 * the bar before (see voicing.toVoiceLedCompPitches), so these are the
+	 * registers the loop really plays.
+	 */
 	pitches: string[];
 }
 
@@ -54,11 +59,18 @@ export interface CompBar {
  * by, and the root is the cheapest possible anchor. Everything above the
  * guide tones is deliberately left empty.
  *
+ * `previousUpper` is the guide-tone pitches the bar before actually played
+ * (its `pitches` without the bass). With it, each guide tone is voice-led to
+ * the octave nearest them, so a common tone holds on its key and a 7th
+ * resolves by step; without it (a form's first bar), they stack up from
+ * octave 4.
+ *
  * Total: an unrecognized symbol, or one with no root, returns null and the
  * caller drops the bar rather than surfacing a malformed voicing.
  */
 export function compVoicing(
-	symbol: string
+	symbol: string,
+	previousUpper: readonly string[] = []
 ): { root: string; notes: SpelledNote[]; pitches: string[] } | null {
 	const chord = spellChord(symbol);
 	if (!chord.recognized) return null;
@@ -69,9 +81,10 @@ export function compVoicing(
 	return {
 		root: rootNote.letter,
 		notes: [rootNote, ...guides],
-		pitches: toCompPitches(
+		pitches: toVoiceLedCompPitches(
 			rootNote.letter,
-			guides.map((note) => note.letter)
+			guides.map((note) => note.letter),
+			previousUpper
 		)
 	};
 }
@@ -79,14 +92,15 @@ export function compVoicing(
 /**
  * The loop's bars for `templateId` in `key`, voiced for comping. Reuses
  * `buildProgression` verbatim (same 3 templates, same 12 keys, same
- * spellChord validation), then adds the voicing. Total: an unknown template
+ * spellChord validation), then adds the voicing, each bar voice-led from
+ * the one before it. Total: an unknown template
  * or key returns [], and any bar whose symbol will not voice is dropped
  * rather than surfaced.
  */
 export function buildCompBars(templateId: string, key: string): CompBar[] {
 	const bars: CompBar[] = [];
 	for (const bar of buildProgression(templateId, key)) {
-		const voicing = compVoicing(bar.symbol);
+		const voicing = compVoicing(bar.symbol, bars.at(-1)?.pitches.slice(1));
 		if (!voicing) continue;
 		bars.push({
 			index: bars.length,
@@ -107,7 +121,7 @@ export function buildCompBars(templateId: string, key: string): CompBar[] {
  * song's own `chordSymbols` through this instead of a template+key, and the
  * loop comps the tune's actual changes rather than a fixed ii-V-I/I-vi-ii-V/
  * minor-ii-V-i shape. Voices each symbol exactly the same way
- * (`compVoicing`, already proven per-symbol) but carries no roman numeral or
+ * (`compVoicing`, voice-led from the bar before) but carries no roman numeral or
  * diatonic function - a song's chords are not steps of a fixed template, so
  * `roman` is always ''.
  *
@@ -120,7 +134,7 @@ export function barsFromSymbols(symbols: readonly string[]): CompBar[] {
 	for (const symbol of symbols) {
 		const chord = spellChord(symbol);
 		if (!chord.recognized) continue;
-		const voicing = compVoicing(symbol);
+		const voicing = compVoicing(symbol, bars.at(-1)?.pitches.slice(1));
 		if (!voicing) continue;
 		const asciiRoot = toAsciiAccidentals(chord.root);
 		const bodySymbol =
@@ -178,6 +192,49 @@ export function compBarScale(symbol: string): ChordScaleOption | null {
 	const guide = improvGuideFor(spellChord(symbol));
 	if (!guide) return null;
 	return guide.scales[0] ?? null;
+}
+
+/** One guide-tone voice across a bar change: the note it left, the note it lands on, and how far it fell (0 = held). */
+export interface CompGuideVoice {
+	from: string;
+	to: string;
+	semitonesDown: number;
+}
+
+/**
+ * The guide-tone reading of a bar change (improvisation.md 4.3.2), read off
+ * the loop's OWN voicing: the outgoing 3rd going to the incoming 7th, then
+ * the outgoing 7th going to the incoming 3rd, each held or falling, and by
+ * how much (a minor V to i drops its 7th a whole step, so the step is
+ * counted, never assumed). Measured on the PITCHES the loop strikes, not on
+ * pitch classes: "F holds" means the same F key sounds again, and "falls a
+ * half step" means the next key down, so the caption is what the learner
+ * hears. Null for any change that does not move that way (I to vi, the form
+ * wrapping round, a voice that jumped an octave, a bar without both guide
+ * tones), so the loop never names a motion its own notes do not make.
+ */
+export function compBarGuideMotion(previous: CompBar, current: CompBar): CompGuideVoice[] | null {
+	/** A guide tone of `bar` by role, with the midi its pitch sounds at (matched by chroma; the bass is skipped). */
+	const voice = (bar: CompBar, wanted: 'third' | 'seventh') => {
+		const note = bar.notes.find((entry) => entry.role === wanted);
+		const chroma = note && chromaOf(note.letter);
+		if (!note || chroma === undefined) return null;
+		const pitch = bar.pitches.slice(1).find((entry) => Note.chroma(entry) === chroma);
+		const midi = pitch === undefined ? null : Note.midi(pitch);
+		return midi === null ? null : { letter: note.letter, midi };
+	};
+	const pairs = [
+		[voice(previous, 'third'), voice(current, 'seventh')],
+		[voice(previous, 'seventh'), voice(current, 'third')]
+	];
+	const voices: CompGuideVoice[] = [];
+	for (const [from, to] of pairs) {
+		if (!from || !to) return null;
+		const semitonesDown = from.midi - to.midi;
+		if (semitonesDown < 0 || semitonesDown > 2) return null;
+		voices.push({ from: from.letter, to: to.letter, semitonesDown });
+	}
+	return voices;
 }
 
 /** One ghost-hatched key of the loop's scale overlay, shaped for PianoKeyboard's `ghostKeys`. */

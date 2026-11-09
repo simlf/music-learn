@@ -126,6 +126,8 @@ let audioBusyUntilMs = 0;
  * Transport. This is the guard that keeps a loop from outliving its page.
  */
 let loopToken = 0;
+/** Who to tell when this engine is about to sound. See onAppAudioStart. */
+const startListeners = new Set<() => void>();
 
 function readStoredEnabled(): boolean {
 	try {
@@ -176,6 +178,28 @@ export function isAppAudioActive(): boolean {
 	if (heldNotes.length > 0) return true;
 	if (activeLoop !== null) return true;
 	return Date.now() < audioBusyUntilMs;
+}
+
+/**
+ * Subscribes to this engine being about to sound: every play path goes
+ * through `ensureAudioReady` or `startCompLoop`, and both call `listener`
+ * synchronously before anything is attacked. The seam the second engine's
+ * surfaces (`$lib/audio/strudel`) use to stop their own pattern first, so
+ * the two engines never sound at once. Returns an unsubscribe function.
+ */
+export function onAppAudioStart(listener: () => void): () => void {
+	startListeners.add(listener);
+	return () => startListeners.delete(listener);
+}
+
+function announceStart(): void {
+	for (const listener of [...startListeners]) {
+		try {
+			listener();
+		} catch {
+			// A listener must never break playback.
+		}
+	}
 }
 
 /** Extends (never shortens) the audio-busy gate window. See isAppAudioActive. */
@@ -271,6 +295,7 @@ function beginSampleLoad(t: ToneModule): void {
  */
 export async function ensureAudioReady(): Promise<void> {
 	if (!soundEnabled()) return;
+	announceStart();
 	const t = await loadTone();
 	await t.start();
 	beginSampleLoad(t);
@@ -803,6 +828,7 @@ export function compLoopRunning(): boolean {
 export async function startCompLoop(opts: CompLoopOptions): Promise<CompLoopHandle | null> {
 	if (!soundEnabled()) return null;
 	if (opts.bars.length === 0) return null;
+	announceStart();
 
 	// Claim this generation first, so any earlier in-flight start is already
 	// stale by the time it resolves, then tear down whatever is playing.
@@ -937,4 +963,5 @@ export function _resetForTests(): void {
 	studyMode = null;
 	lastAttackAt.clear();
 	heldNotes.length = 0;
+	startListeners.clear();
 }

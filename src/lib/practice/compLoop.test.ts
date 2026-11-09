@@ -3,11 +3,13 @@ import { Note } from 'tonal';
 import {
 	barsFromSymbols,
 	buildCompBars,
+	compBarGuideMotion,
 	compBarScale,
 	compScaleGhosts,
 	compVoicing,
 	romanShape,
-	templateMode
+	templateMode,
+	type CompBar
 } from './compLoop';
 import { PROGRESSION_KEYS, PROGRESSION_TEMPLATES, buildProgression } from './progressions';
 import { spellChord } from '$lib/theory/chord';
@@ -82,6 +84,11 @@ describe('compVoicing: root in the bass, guide tones above, nothing else', () =>
 	it('voices G7 and Cmaj7 with the bass a register below the guide tones', () => {
 		expect(compVoicing('G7')?.pitches).toEqual(['G3', 'B4', 'F5']);
 		expect(compVoicing('Cmaj7')?.pitches).toEqual(['C3', 'E4', 'B4']);
+	});
+
+	it('voice-leads from the guide tones the bar before played, rather than restacking from octave 4', () => {
+		expect(compVoicing('G7', ['F4', 'C5'])?.pitches).toEqual(['G3', 'F4', 'B4']);
+		expect(compVoicing('Cmaj7', ['F4', 'B4'])?.pitches).toEqual(['C3', 'E4', 'B4']);
 	});
 
 	it('keeps the ♭5 in the comp on a ♭5 symbol, because there the fifth IS the chord', () => {
@@ -385,5 +392,135 @@ describe('barsFromSymbols: the song-driven sibling of buildCompBars', () => {
 	it('keeps a slash embedded in the quality name itself, not a bass, intact', () => {
 		const bars = barsFromSymbols(['C6/9']);
 		expect(bars[0].quality).toBe('6/9');
+	});
+
+	it('never lets a long falling chain of dominants walk a guide tone below B♭3', () => {
+		const chain = ['C7', 'F7', 'Bb7', 'Eb7', 'Ab7', 'Db7', 'Gb7'];
+		const floor = Note.midi('Bb3') as number;
+
+		expect(barsFromSymbols(chain)).toHaveLength(7);
+		for (const bar of [...barsFromSymbols(chain), ...barsFromSymbols([...chain, 'Fmaj7'])]) {
+			for (const pitch of bar.pitches.slice(1)) {
+				expect(Note.midi(pitch), `${bar.symbol} ${pitch}`).toBeGreaterThanOrEqual(floor);
+			}
+		}
+	});
+});
+
+describe('buildCompBars voice-leads: the guide tones move by step in the registers the loop plays', () => {
+	const midis = (templateId: string, key: string) =>
+		buildCompBars(templateId, key).map((bar) => bar.pitches.map((pitch) => Note.midi(pitch)));
+
+	it('plays ii V I in C as D3 F4 C5, G3 F4 B4, C3 E4 B4: F and then B held on the same key, each 7th down one key', () => {
+		expect(buildCompBars('major-ii-V-I', 'C').map((bar) => bar.pitches)).toEqual([
+			['D3', 'F4', 'C5'],
+			['G3', 'F4', 'B4'],
+			['C3', 'E4', 'B4']
+		]);
+		expect(midis('major-ii-V-I', 'C')).toEqual([
+			[50, 65, 72],
+			[55, 65, 71],
+			[48, 64, 71]
+		]);
+	});
+
+	it('plays the minor ii V i in C with the V to i 7th falling a whole step (F4 to E♭4)', () => {
+		expect(midis('minor-ii-V-i', 'C')).toEqual([
+			[50, 65, 68, 72],
+			[55, 65, 71],
+			[48, 63, 70]
+		]);
+	});
+
+	it('keeps a form’s first bar on the unled comp voicing, so the form always starts from the same place', () => {
+		for (const template of PROGRESSION_TEMPLATES) {
+			for (const key of PROGRESSION_KEYS) {
+				const [first] = buildCompBars(template.id, key);
+				expect(first.pitches, `${template.id} ${key}`).toEqual(compVoicing(first.symbol)?.pitches);
+			}
+		}
+	});
+});
+
+describe('compBarGuideMotion: the loop reads its own guide tones moving', () => {
+	const motions = (templateId: string, key: string) => {
+		const bars = buildCompBars(templateId, key);
+		return bars.map((bar, index) => compBarGuideMotion(bars[(index - 1 + bars.length) % bars.length], bar));
+	};
+
+	it('names ii V I in C exactly as the lesson does: F holds while C falls to B, then B holds while F falls to E', () => {
+		expect(motions('major-ii-V-I', 'C')).toEqual([
+			null,
+			[
+				{ from: 'F', to: 'F', semitonesDown: 0 },
+				{ from: 'C', to: 'B', semitonesDown: 1 }
+			],
+			[
+				{ from: 'B', to: 'B', semitonesDown: 0 },
+				{ from: 'F', to: 'E', semitonesDown: 1 }
+			]
+		]);
+	});
+
+	it('counts the minor V to i fall as a whole step, never assumed to be a half step', () => {
+		expect(motions('minor-ii-V-i', 'C')[2]?.[1]).toEqual({ from: 'F', to: 'E♭', semitonesDown: 2 });
+	});
+
+	it('measures the pitches, not the pitch classes: a voice that jumps an octave is never named as held', () => {
+		// The old restacked G7 (B4 F5) after Dm7 (F4 C5): same pitch classes,
+		// but F jumps up an octave, so "F holds" would be false.
+		const [dm7, g7] = buildCompBars('major-ii-V-I', 'C');
+		expect(compBarGuideMotion(dm7, { ...g7, pitches: ['G3', 'B4', 'F5'] })).toBeNull();
+	});
+
+	it('says nothing about a change that does not move that way (I to vi)', () => {
+		const turnaround = motions('major-turnaround-I-vi-ii-V', 'C');
+		expect(turnaround[1]).toBeNull();
+		expect(turnaround[3]).not.toBeNull();
+	});
+
+	it('in every key of every form, each named voice holds or falls at most a whole step, and every ii to V is named', () => {
+		for (const template of PROGRESSION_TEMPLATES) {
+			for (const key of PROGRESSION_KEYS) {
+				const named = motions(template.id, key);
+				for (const motion of named) {
+					for (const voice of motion ?? []) expect(voice.semitonesDown).toBeLessThanOrEqual(2);
+				}
+				const bars = buildCompBars(template.id, key);
+				bars.forEach((bar, index) => {
+					if (bar.roman.startsWith('V') && index > 0) expect(named[index], `${template.id} ${key}`).not.toBeNull();
+				});
+			}
+		}
+	});
+
+	it('in both ii V I forms in every key, the V to I change is named too, now that the loop really plays it by step', () => {
+		for (const templateId of ['major-ii-V-I', 'minor-ii-V-i']) {
+			for (const key of PROGRESSION_KEYS) {
+				expect(motions(templateId, key)[2], `${templateId} ${key}`).not.toBeNull();
+			}
+		}
+	});
+
+	it('every named voice is the real distance between the two keys the loop strikes', () => {
+		const midiOf = (bar: CompBar, letter: string) =>
+			bar.pitches
+				.slice(1)
+				.map((pitch) => Note.midi(pitch) as number)
+				.find((midi) => midi % 12 === Note.chroma(toAscii(letter)));
+		for (const template of PROGRESSION_TEMPLATES) {
+			for (const key of PROGRESSION_KEYS) {
+				const bars = buildCompBars(template.id, key);
+				bars.forEach((bar, index) => {
+					const previous = bars[(index - 1 + bars.length) % bars.length];
+					for (const voice of compBarGuideMotion(previous, bar) ?? []) {
+						expect(
+							(midiOf(previous, voice.from) as number) - (midiOf(bar, voice.to) as number),
+							`${template.id} ${key} bar ${index + 1}`
+						).toBe(voice.semitonesDown);
+					}
+				});
+			}
+		}
 	});
 });

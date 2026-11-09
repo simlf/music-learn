@@ -52,7 +52,7 @@ export const voicings = {
 		'voicings.button.gotIt': 'Got it',
 
 		'voicings.subtract.teach':
-			'Drop what the symbol already tells you. The root is named right there, and a plain 5th adds no color. Keep the two guide tones: the 3rd says major or minor, the 7th says which seventh.',
+			'Drop what the symbol already tells you. The root is named right there, and a plain 5th adds no color. Keep the two guide tones: the 3rd says major or minor, the 7th says which seventh. They are also the notes that move: in a ii V I, one holds from chord to chord and the other steps down, so two notes sound like a line.',
 		'voicings.subtract.teach-flat5':
 			'Drop the root: the symbol already names it. The ♭5 stays. On a ♭5 symbol the fifth is the chord identity, not filler, so the shell keeps the 3rd, the ♭5 and the 7th.',
 
@@ -91,7 +91,7 @@ export const voicings = {
 		'voicings.button.gotIt': 'Compris',
 
 		'voicings.subtract.teach':
-			"Laisse tomber ce que le symbole te dit déjà. La fondamentale est nommée juste là, et une quinte juste n'ajoute pas de couleur. Garde les deux tons de guidage : la tierce dit majeur ou mineur, la septième dit quelle septième c'est.",
+			"Laisse tomber ce que le symbole te dit déjà. La fondamentale est nommée juste là, et une quinte juste n'ajoute pas de couleur. Garde les deux tons de guidage : la tierce dit majeur ou mineur, la septième dit quelle septième c'est. Ce sont aussi les notes qui bougent : dans un ii V I, l'une tient d'un accord à l'autre et l'autre descend d'un pas, et deux notes sonnent comme une ligne.",
 		'voicings.subtract.teach-flat5':
 			"Laisse tomber la fondamentale : le symbole la nomme déjà. Mais la ♭5 reste. Sur un symbole en ♭5, la quinte fait l'identité de l'accord, ce n'est pas du remplissage : le shell garde la tierce, la ♭5 et la septième.",
 
