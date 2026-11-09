@@ -5,8 +5,9 @@
 # only the compiled output and pruned node_modules, running as a non-root
 # user (T-08-SC mitigation).
 
-# Pin by tag, not `node:latest` (supply-chain hardening, T-08-SC).
-FROM node:22-bookworm-slim AS build
+# Pin by tag plus sha256 digest, not `node:latest` (supply-chain hardening,
+# T-08-SC); Renovate keeps the digest current.
+FROM node:22-bookworm-slim@sha256:4b150b48b4116e2a22f2c39cc27025fbf4f153e2078fd3b14d159fdb5c7279da AS build
 
 # better-sqlite3 needs a native build toolchain at npm install time.
 RUN apt-get update \
@@ -22,7 +23,7 @@ COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
 
-FROM node:22-bookworm-slim AS runtime
+FROM node:22-bookworm-slim@sha256:4b150b48b4116e2a22f2c39cc27025fbf4f153e2078fd3b14d159fdb5c7279da AS runtime
 
 WORKDIR /app
 
