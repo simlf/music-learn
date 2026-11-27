@@ -93,6 +93,7 @@ let tonePromise: Promise<ToneModule> | null = null;
 let toneModule: ToneModule | null = null;
 let synth: ToneNS.PolySynth | null = null;
 let sampler: ToneNS.Sampler | null = null;
+let clickSynth: ToneNS.Synth | null = null;
 let samplesLoaded = false;
 let sampleLoadAttempts = 0;
 /**
@@ -378,6 +379,50 @@ export function playNote(note: string, opts: PlayOpts = {}): void {
 			opts.velocity ?? NOTE_VELOCITY
 		);
 	});
+}
+
+const CLICK_ACCENT_PITCH = 'C6';
+const CLICK_PITCH = 'G5';
+const CLICK_LENGTH_SEC = 0.03;
+const CLICK_AUDIO_GATE_MS = 200;
+
+/**
+ * One metronome click, accented on the downbeat. Its own short square-wave
+ * voice rather than the piano, so it cuts through a played note without being
+ * mistaken for one. Fires synchronously once the engine is up (a metronome
+ * cannot afford an await per beat); the very first click, before the engine is
+ * ready, waits for it instead of being dropped. Honours the sound toggle and
+ * never throws.
+ */
+export function playClick(accent = false): void {
+	if (!soundEnabled()) return;
+	markAudioBusyFor(CLICK_AUDIO_GATE_MS);
+	const fire = (t: ToneModule): void => {
+		try {
+			clickSynth ??= new t.Synth({
+				oscillator: { type: 'square' },
+				envelope: { attack: 0.001, decay: 0.03, sustain: 0, release: 0.01 },
+				volume: -10
+			}).toDestination();
+			clickSynth.triggerAttackRelease(
+				accent ? CLICK_ACCENT_PITCH : CLICK_PITCH,
+				CLICK_LENGTH_SEC,
+				undefined,
+				accent ? 0.9 : 0.6
+			);
+		} catch {
+			// A retrigger inside the same audio tick, or a torn-down context: skip this click.
+		}
+	};
+	if (toneModule) {
+		fire(toneModule);
+		return;
+	}
+	void ensureAudioReady()
+		.then(() => {
+			if (toneModule) fire(toneModule);
+		})
+		.catch(() => {});
 }
 
 /** Attacks and holds a note until noteOff (future MIDI echo / held keys). */
@@ -956,6 +1001,7 @@ export function _resetForTests(): void {
 	toneModule = null;
 	synth = null;
 	sampler = null;
+	clickSynth = null;
 	samplesLoaded = false;
 	sampleLoadAttempts = 0;
 	samplerReady = null;

@@ -20,6 +20,7 @@ import { practice } from './messages/practice';
 import { learn } from './messages/learn';
 import { improvise } from './messages/improvise';
 import { book } from './messages/book';
+import { homework } from './messages/homework';
 
 /**
  * Dead-message-key gate.
@@ -165,7 +166,8 @@ const DOMAINS: Record<string, Record<string, string>> = {
 	practice: practice.en,
 	learn: learn.en,
 	improvise: improvise.en,
-	book: book.en
+	book: book.en,
+	homework: homework.en
 };
 
 function walk(dir: string, out: string[] = []): string[] {

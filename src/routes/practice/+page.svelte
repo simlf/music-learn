@@ -1040,6 +1040,11 @@
 
 <main class="bg-paper text-ink min-h-screen px-2 py-8 font-sans sm:px-8">
 	<h1 class="text-heading mt-2 font-bold">{t('practice.page.title')}</h1>
+	<p class="mt-2">
+		<a class="text-body underline" href="/homework" data-testid="practice-homework-link">
+			{t('homework.practiceLink')}
+		</a>
+	</p>
 
 	{#if activeChallenge !== null}
 		<div class="mt-6" data-testid="practice-challenge">
