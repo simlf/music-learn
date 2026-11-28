@@ -18,6 +18,7 @@ import { practice } from './messages/practice';
 import { learn } from './messages/learn';
 import { improvise } from './messages/improvise';
 import { book } from './messages/book';
+import { homework } from './messages/homework';
 import { setLocale, t } from './locale.svelte';
 
 /**
@@ -77,7 +78,8 @@ describe('domain dictionary key collisions (I18N-02)', () => {
 		['practice', practice.en],
 		['learn', learn.en],
 		['improvise', improvise.en],
-		['book', book.en]
+		['book', book.en],
+		['homework', homework.en]
 	];
 
 	it('has no key defined by more than one domain dictionary', () => {

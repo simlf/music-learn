@@ -16,6 +16,7 @@ import { practice } from './practice';
 import { learn } from './learn';
 import { improvise } from './improvise';
 import { book } from './book';
+import { homework } from './homework';
 
 /**
  * Shared shape for every per-domain (and the merged) locale dictionary:
@@ -53,7 +54,8 @@ export const messages = {
 		...practice.en,
 		...learn.en,
 		...improvise.en,
-		...book.en
+		...book.en,
+		...homework.en
 	},
 	fr: {
 		...chrome.fr,
@@ -73,6 +75,7 @@ export const messages = {
 		...practice.fr,
 		...learn.fr,
 		...improvise.fr,
-		...book.fr
+		...book.fr,
+		...homework.fr
 	}
 } satisfies LocaleDict;
