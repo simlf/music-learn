@@ -111,6 +111,7 @@
 <main class="bg-paper text-ink min-h-screen px-2 py-8 font-sans sm:px-8">
 	<h1 class="text-heading mt-2 font-bold">{t('homework.page.title')}</h1>
 	<p class="text-body mt-2 max-w-prose">{t('homework.page.intro')}</p>
+	<p class="text-label mt-2 max-w-prose" data-testid="homework-pending">{t('homework.pending')}</p>
 
 	<div class="mt-6 flex flex-col gap-2">
 		<p class="text-label font-mono uppercase" style="letter-spacing: 0.08em;">

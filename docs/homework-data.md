@@ -34,6 +34,9 @@ signature, any note token is malformed or any exercise falls off the staff.
 2. Run `npm test`: the data tests tell you which bar or note is malformed.
 3. Open the exercise on `/homework` and compare it with the book.
 
+Status: all exercise data is hand-transcribed from the books and still pending
+verification against them. The app says so on the `/homework` page.
+
 Transcription is by eye, so check each new exercise against the printed page
 before trusting its score.
 

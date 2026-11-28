@@ -356,6 +356,19 @@ describe('RhythmDrill: the Space bar', () => {
 		expect(ev.defaultPrevented).toBe(false);
 		input.remove();
 	});
+
+	it('leaves the space key to a focused button and records no tap', async () => {
+		mount();
+		await startAndReachFirstBeat();
+		const btn = document.createElement('button');
+		document.body.appendChild(btn);
+		const ev = new KeyboardEvent('keydown', { key: ' ', code: 'Space', cancelable: true, bubbles: true });
+		btn.dispatchEvent(ev);
+		expect(ev.defaultPrevented).toBe(false);
+		await advance(5000);
+		expect(screen.getByTestId('rhythm-extra')).toHaveTextContent('Extra taps: 0');
+		btn.remove();
+	});
 });
 
 describe('RhythmDrill: cleanup and language', () => {

@@ -192,7 +192,7 @@
 		if (e.code !== 'Space' && e.key !== ' ') return;
 		if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
 		const target = e.target as HTMLElement | null;
-		if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+		if (target && (/^(INPUT|TEXTAREA|SELECT|BUTTON|A|SUMMARY)$/.test(target.tagName) || target.isContentEditable)) return;
 		e.preventDefault();
 		tap();
 	}

@@ -15,6 +15,8 @@ export const homework = {
 		'homework.page.title': 'Homework',
 		'homework.page.intro':
 			"Type the page and exercise number from your teacher's book and it opens here: notes to read, or a rhythm to tap with a metronome.",
+		'homework.pending':
+			'The exercises here are transcribed by hand from the books and are still waiting to be checked against them. If something looks different from your book, trust the book.',
 		'homework.kind.label': 'Book',
 		'homework.kind.reading': 'Note reading',
 		'homework.kind.rhythm': 'Rhythm',
@@ -88,6 +90,8 @@ export const homework = {
 		'homework.page.title': 'Devoirs',
 		'homework.page.intro':
 			'Tape la page et le numéro de l’exercice du livre de ton prof : il s’ouvre ici, des notes à lire ou un rythme à frapper avec un métronome.',
+		'homework.pending':
+			'Les exercices ici sont recopiés à la main depuis les livres et attendent encore d’être vérifiés avec eux. Si quelque chose diffère de ton livre, fais confiance au livre.',
 		'homework.kind.label': 'Livre',
 		'homework.kind.reading': 'Lecture de notes',
 		'homework.kind.rhythm': 'Rythme',

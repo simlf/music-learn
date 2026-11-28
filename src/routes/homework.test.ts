@@ -122,6 +122,17 @@ describe('homework page: opening an exercise by page and number', () => {
 	});
 });
 
+describe('homework page: the pending-verification note', () => {
+	it('tells the user the data is hand-transcribed and unverified, in both languages', () => {
+		render(HomeworkPage);
+		expect(screen.getByTestId('homework-pending')).toHaveTextContent('transcribed by hand');
+		cleanup();
+		setLocale('fr');
+		render(HomeworkPage);
+		expect(screen.getByTestId('homework-pending')).toHaveTextContent('recopiés à la main');
+	});
+});
+
 describe('homework page: the catalog shortcuts', () => {
 	it('lists every available exercise for the chosen book', () => {
 		render(HomeworkPage);
