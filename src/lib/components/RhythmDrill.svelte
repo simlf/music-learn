@@ -83,6 +83,7 @@
 	let taps: number[] = [];
 	let playStart: number | null = null;
 	let flashTimer: unknown = null;
+	let padEl: HTMLButtonElement | undefined;
 
 	let countInBeatsTotal = 0;
 
@@ -192,7 +193,7 @@
 		if (e.code !== 'Space' && e.key !== ' ') return;
 		if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
 		const target = e.target as HTMLElement | null;
-		if (target && (/^(INPUT|TEXTAREA|SELECT|BUTTON|A|SUMMARY)$/.test(target.tagName) || target.isContentEditable)) return;
+		if (target && target !== padEl && (/^(INPUT|TEXTAREA|SELECT|BUTTON|A|SUMMARY)$/.test(target.tagName) || target.isContentEditable)) return;
 		e.preventDefault();
 		tap();
 	}
@@ -271,6 +272,7 @@
 		style="touch-action: manipulation; -webkit-user-select: none; background: {flash
 			? 'var(--color-vermilion)'
 			: 'var(--color-paper-bright)'}; color: {flash ? 'var(--color-on-root)' : 'var(--color-ink)'};"
+		bind:this={padEl}
 		onpointerdown={onPointerDown}
 		data-testid="rhythm-tap"
 		aria-label={t('homework.rhythm.tapAria')}

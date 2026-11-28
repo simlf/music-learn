@@ -357,6 +357,22 @@ describe('RhythmDrill: the Space bar', () => {
 		input.remove();
 	});
 
+	it('taps from the focused tap pad itself', async () => {
+		mount();
+		await startAndReachFirstBeat();
+		const pad = screen.getByTestId('rhythm-tap');
+		pad.focus();
+		const ev = new KeyboardEvent('keydown', { key: ' ', code: 'Space', cancelable: true, bubbles: true });
+		pad.dispatchEvent(ev);
+		expect(ev.defaultPrevented).toBe(true);
+		await advance(500);
+		pad.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space', bubbles: true }));
+		await advance(500);
+		pad.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space', bubbles: true }));
+		await advance(3000);
+		expect(screen.getByTestId('rhythm-score')).toHaveTextContent('100%');
+	});
+
 	it('leaves the space key to a focused button and records no tap', async () => {
 		mount();
 		await startAndReachFirstBeat();
